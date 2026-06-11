@@ -1,0 +1,7 @@
+.claude/
+.vercel/
+_shotserver.js
+shot*.jpg
+node_modules/
+
+.vercel

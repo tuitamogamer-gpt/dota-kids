@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🏰 DOTA Kids 3D ⚔️</title>
+<style>
+  *{ margin:0; padding:0; box-sizing:border-box; user-select:none; -webkit-user-select:none; }
+  html,body{ width:100%; height:100%; overflow:hidden; background:#16331f;
+    font-family:"Comic Sans MS","Segoe UI",cursive,sans-serif; }
+  #game{ position:fixed; inset:0; width:100%; height:100%; display:block; z-index:1; }
+  #hud{ position:fixed; inset:0; z-index:4; display:block; cursor:crosshair; }
+
+  .hidden{ display:none !important; }
+
+  .overlay{ position:fixed; inset:0; z-index:20; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center;
+    background:radial-gradient(circle at 50% 30%, #2d6a4f 0%, #1b4332 55%, #081c15 100%); }
+
+  /* ---------- odabir junaka ---------- */
+  #select h1{ font-size:54px; color:#fde047; text-shadow:0 4px 0 #b45309, 0 8px 18px rgba(0,0,0,.5); margin-bottom:6px; }
+  #select .sub{ color:#d1fae5; font-size:19px; margin-bottom:22px; }
+  .selWrap{ display:flex; gap:22px; align-items:stretch; }
+  #cards{ display:grid; grid-template-columns:repeat(3, 162px); gap:11px; }
+  .card{ background:#fffbeb; border-radius:18px; padding:12px 6px; cursor:pointer;
+    border:4px solid transparent; transition:transform .12s, border-color .12s; box-shadow:0 6px 0 rgba(0,0,0,.25); }
+  .card:hover{ transform:translateY(-4px) scale(1.04); }
+  .card.sel{ border-color:#fde047; background:#fef9c3; transform:scale(1.05); }
+  .c-emoji{ font-size:46px; }
+  .c-name{ font-size:19px; font-weight:bold; color:#7c2d12; }
+  .c-type{ margin-top:3px; }
+  .c-role{ font-size:11px; color:#92400e; margin-top:4px; min-height:28px; }
+  .chip{ display:inline-block; border-radius:8px; padding:1px 8px; font-size:10.5px; font-weight:bold; color:#fff; }
+  .chipM{ background:#ea580c; }
+  .chipR{ background:#0d9488; }
+  .d-type{ margin-bottom:8px; }
+  .d-type .chip{ font-size:12px; padding:3px 10px; }
+  .detail{ width:320px; background:rgba(255,251,235,.95); border-radius:18px; padding:16px;
+    text-align:left; color:#431407; font-size:14px; box-shadow:0 6px 0 rgba(0,0,0,.25); }
+  .d-head{ font-size:26px; margin-bottom:2px; }
+  .d-role{ color:#9a3412; margin-bottom:10px; font-size:13px; }
+  .d-abil{ background:#fef3c7; border-radius:10px; padding:7px 9px; margin-top:7px; font-size:12.5px; line-height:1.35; }
+  .ultTag{ background:#a855f7; color:#fff; border-radius:7px; padding:1px 7px; font-size:10.5px; font-weight:bold; }
+  .pasTag{ background:#059669; color:#fff; border-radius:7px; padding:1px 7px; font-size:10.5px; font-weight:bold; }
+  .bigBtn{ margin-top:24px; font-family:inherit; font-size:28px; font-weight:bold; color:#431407;
+    background:linear-gradient(#fde047,#f59e0b); border:none; border-radius:18px; padding:14px 54px;
+    cursor:pointer; box-shadow:0 6px 0 #b45309; transition:transform .1s; }
+  .bigBtn:hover:not(:disabled){ transform:scale(1.06); }
+  .bigBtn:active:not(:disabled){ transform:translateY(4px); box-shadow:0 2px 0 #b45309; }
+  .bigBtn:disabled{ filter:grayscale(.8); cursor:not-allowed; opacity:.6; }
+  #select .hint{ margin-top:18px; color:#a7f3d0; font-size:14px; }
+
+  /* ---------- pomoć ---------- */
+  #help{ background:rgba(8,28,21,.88); }
+  .helpBox{ background:#fffbeb; color:#431407; border-radius:20px; padding:26px 34px; max-width:580px;
+    text-align:left; font-size:16px; line-height:1.9; box-shadow:0 10px 30px rgba(0,0,0,.5); }
+  .helpBox h2{ text-align:center; color:#b45309; margin-bottom:10px; }
+  .helpBox b{ color:#9a3412; }
+  #helpClose{ margin-top:14px; font-family:inherit; font-size:18px; font-weight:bold; border:none;
+    background:#f59e0b; color:#fff; padding:8px 26px; border-radius:12px; cursor:pointer; box-shadow:0 4px 0 #b45309; }
+
+  /* ---------- dućan ---------- */
+  #shop{ position:fixed; right:14px; top:50%; transform:translateY(-50%); width:330px; z-index:15;
+    background:rgba(13,19,35,.96); border:3px solid #f59e0b; border-radius:18px; padding:12px; color:#fff;
+    box-shadow:0 12px 40px rgba(0,0,0,.55); }
+  .shopHead{ display:flex; align-items:center; justify-content:space-between; font-size:19px; font-weight:bold;
+    color:#fde047; margin-bottom:6px; padding:0 2px; }
+  #shopClose{ background:none; border:none; color:#fff; font-size:17px; cursor:pointer; font-family:inherit; }
+  #shopItems{ max-height:72vh; overflow-y:auto; padding-right:5px; }
+  #shopItems::-webkit-scrollbar{ width:7px; }
+  #shopItems::-webkit-scrollbar-thumb{ background:#f59e0b; border-radius:4px; }
+  #shopItems::-webkit-scrollbar-track{ background:rgba(255,255,255,.06); border-radius:4px; }
+  .shopSec{ font-size:12.5px; font-weight:bold; margin:10px 2px 6px; padding:4px 9px; border-radius:9px; }
+  .shopSec.t1{ background:linear-gradient(90deg, rgba(180,120,70,.45), transparent); color:#fdba74; }
+  .shopSec.t2{ background:linear-gradient(90deg, rgba(148,163,184,.4), transparent); color:#e2e8f0; }
+  .shopSec.t3{ background:linear-gradient(90deg, rgba(234,179,8,.4), transparent); color:#fde047; }
+  .shopSec.t4{ background:linear-gradient(90deg, rgba(168,85,247,.45), transparent); color:#e9d5ff; }
+  .shopItem{ background:rgba(255,255,255,.06); border:1.5px solid rgba(255,255,255,.1);
+    border-radius:12px; padding:7px 9px; margin-bottom:7px; transition:border-color .12s, background .12s; }
+  .shopItem:hover{ background:rgba(255,255,255,.1); border-color:#f59e0b; }
+  .shopItem.tier4{ border-color:rgba(168,85,247,.5); }
+  .shopItem.tier4:hover{ border-color:#c084fc; }
+  .si-top{ display:flex; align-items:center; gap:8px; }
+  .si-emoji{ font-size:26px; filter:drop-shadow(0 2px 3px rgba(0,0,0,.4)); }
+  .si-name{ flex:1; font-size:14px; line-height:1.15; }
+  .si-name .own{ display:block; font-size:10px; color:#4ade80; font-weight:bold; }
+  .si-stats{ display:flex; flex-wrap:wrap; gap:4px; margin-top:5px; }
+  .ch{ font-size:10.5px; font-weight:bold; border-radius:7px; padding:1.5px 7px; background:rgba(255,255,255,.08); }
+  .ch-dmg{ color:#fbbf24; background:rgba(251,191,36,.14); }
+  .ch-hp{ color:#4ade80; background:rgba(74,222,128,.13); }
+  .ch-mp{ color:#7dd3fc; background:rgba(125,211,252,.13); }
+  .ch-spd{ color:#a7f3d0; background:rgba(167,243,208,.13); }
+  .ch-heal{ color:#86efac; background:rgba(134,239,172,.13); }
+  .si-rec{ display:flex; align-items:center; gap:4px; margin-top:6px; background:rgba(0,0,0,.28);
+    border-radius:9px; padding:4px 8px; font-size:13px; }
+  .si-rec .ce{ opacity:.45; transition:opacity .15s; }
+  .si-rec .ce.have{ opacity:1; text-shadow:0 0 8px #4ade80; }
+  .si-rec .plus{ color:#64748b; font-size:11px; font-weight:bold; }
+  .si-rec .rcost{ color:#fde047; font-size:11px; font-weight:bold; }
+  .si-rec .rarr{ color:#94a3b8; font-size:12px; margin:0 2px; }
+  .si-rec .res{ font-size:16px; }
+  .shopItem button{ font-family:inherit; font-size:12px; font-weight:bold; border:2px solid transparent; border-radius:9px;
+    padding:6px 9px; background:#334155; color:#94a3b8; cursor:pointer; white-space:nowrap; transition:all .12s; }
+  .shopItem button.afford{ background:#fde047; color:#431407; border-color:#4ade80; }
+  .shopItem button.afford:hover{ background:#facc15; transform:scale(1.06); }
+  .shopItem button:disabled{ background:#293548; color:#64748b; cursor:not-allowed; border-color:transparent; }
+  .shopTip{ font-size:11px; color:#94a3b8; text-align:center; margin-top:6px; }
+
+  /* ---------- pauza ---------- */
+  #pause{ background:rgba(8,28,21,.7); }
+  .pauseBox{ font-size:52px; font-weight:bold; color:#fde047; text-shadow:0 4px 14px rgba(0,0,0,.6); line-height:1.4; }
+  .pauseBox small{ font-size:20px; color:#d1fae5; }
+
+  /* ---------- kraj igre ---------- */
+  #end{ background:rgba(8,28,21,.92); }
+  #endEmoji{ font-size:74px; }
+  #end h1{ font-size:64px; text-shadow:0 5px 0 rgba(0,0,0,.4); margin:6px 0 16px; }
+  #endTable table{ border-collapse:collapse; background:rgba(255,255,255,.07); border-radius:14px; overflow:hidden; }
+  #endTable th, #endTable td{ padding:7px 20px; font-size:17px; color:#fff; }
+  #endTable th{ background:rgba(255,255,255,.12); color:#fde047; }
+  #endTable tr:nth-child(odd) td{ background:rgba(255,255,255,.04); }
+  #confetti span{ position:fixed; top:-50px; animation:fall 3.2s linear infinite; }
+  @keyframes fall{
+    0%{ transform:translateY(0) rotate(0); opacity:1; }
+    100%{ transform:translateY(110vh) rotate(360deg); opacity:.7; }
+  }
+
+  #err{ position:fixed; left:10px; top:10px; z-index:99; display:none; background:#b91c1c; color:#fff;
+    padding:8px 14px; border-radius:10px; font-size:13px; max-width:70vw; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<canvas id="hud"></canvas>
+<div id="err"></div>
+
+<!-- ODABIR JUNAKA -->
+<div id="select" class="overlay">
+  <h1>🏰 DOTA Kids 3D ⚔️</h1>
+  <p class="sub">Odaberi svog junaka! Ti i 2 prijatelja-bota 🔵 protiv 3 protivnika-bota 🔴 — sada u 3D! 🎮 <span style="opacity:.6;font-size:13px">v0.1</span></p>
+  <div class="selWrap">
+    <div id="cards"></div>
+    <div id="heroDetail" class="detail">👈 Klikni junaka da vidiš njegove moći!</div>
+  </div>
+  <button id="startBtn" class="bigBtn" disabled>▶️ ZAIGRAJ!</button>
+  <p class="hint">🖱️ klik = kreći se / napadni &nbsp;•&nbsp; ⬆️ levelovanjem učiš moći (Q W E, R = ULTI) &nbsp;•&nbsp; 🛒 B = dućan s receptima &nbsp;•&nbsp; 🐻 džungla i 🐲 Zmaj čekaju! &nbsp;•&nbsp; H = pomoć</p>
+</div>
+
+<!-- POMOĆ -->
+<div id="help" class="overlay hidden">
+  <div class="helpBox">
+    <h2>❓ Kako se igra</h2>
+    🖱️ <b>Lijevi ili desni klik</b> — kreći se / napadni neprijatelja<br>
+    🎯 <b>Ciljanje</b> — pritisni moć (Q/W/E/R): vidiš <b>prsten dometa</b> i krug područja, pa <b>klikni cilj</b>; desni klik ili Esc odustaje<br>
+    🏠 <b>T — teleport kući!</b> Stoji se 3 sekunde (prekida se ako se mičeš ili te omame), pa si u bazi. Puni se 60 s<br>
+    🌫️ <b>Magla rata</b> — vidiš samo gdje su tvoji! Neprijatelji se kriju u magli, <b>noću je vid kraći</b> — pazi na zasjede iz džungle<br>
+    ⬆️ <b>Poeni vještina</b> — svaki level daje 1 poen; klikni <b>+</b> • neke moći su <b>✨ PASIVNE</b> (rade same!), neke obrambene, neke napadačke<br>
+    ⛰️ <b>Visine</b> — rijeka je nizina, baze su platoi: tko puca <b>uzbrdo, promaši 25%</b>!<br>
+    🗼 <b>Kule su jake i BRANE svoje junake</b> — napadneš li junaka ispod kule, kula gađa TEBE! (⚠️ upozorenje)<br>
+    👻 <b>Nevidljivost</b> (Lunina Mjesečeva sjena) — neprijatelji te ne vide ni ne ciljaju; napad je prekida<br>
+    🛒 <b>B</b> — dućan s <b>receptima</b> • klik na predmet u torbi = <b>prodaja</b> za pola cijene<br>
+    ⚔️/🏹 <b>Blizina i Daljina</b> — značka kaže bori li se junak izbliza ili izdaleka<br>
+    🐻 <b>Džungla</b> i 🐲 <b>Veliki Zmaj</b> • ✨ <b>rune</b> svake 2 min • 🌙 dan/noć • 💪 veliki vojnici • ⛲ fontana liječi<br>
+    🎥 <b>Razmak</b> — prati junaka • <b>strelice</b> — kamera • <b>kotačić</b> — zum • ⏸️ <b>P</b> pauza • <b>M</b> zvuk • <b>S</b> stani<br>
+    🏆 <b>Cilj:</b> sruši čuvarske kule pa crveni <b>prijestol 👑</b> — i čuvaj svoj!
+  </div>
+  <button id="helpClose">Razumijem! 👍</button>
+</div>
+
+<!-- DUĆAN -->
+<div id="shop" class="hidden">
+  <div class="shopHead"><span>🛒 Dućan</span><span id="shopGold">💰 0</span><button id="shopClose">✖</button></div>
+  <div id="shopItems"></div>
+  <p class="shopTip">Kupuješ bilo gdje na mapi! 😊 (tipka B) • Cijena = ono što TI plaćaš (dijelovi koje imaš svijetle ✓) • Prodaja: klik na predmet u torbi</p>
+</div>
+
+<!-- PAUZA -->
+<div id="pause" class="overlay hidden">
+  <div class="pauseBox">⏸️ PAUZA<br><small>Pritisni P za nastavak</small></div>
+</div>
+
+<!-- KRAJ IGRE -->
+<div id="end" class="overlay hidden">
+  <div id="confetti"></div>
+  <div id="endEmoji"></div>
+  <h1 id="endTitle"></h1>
+  <div id="endTable"></div>
+  <button id="againBtn" class="bigBtn">🔄 Igraj ponovo!</button>
+</div>
+
+<script src="three.min.js"></script>
+<script src="data.js"></script>
+<script src="scene3d.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
