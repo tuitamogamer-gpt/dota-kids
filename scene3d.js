@@ -331,32 +331,64 @@ function ensureCastInd(){
 }
 function syncCastIndicator(){
   const ci = ensureCastInd();
-  if(!pendingCast || !player || player.dead){
+  // indikator radi i pri CILJANJU i pri LEBDENJU nad gumbom moći
+  let def = null, mode = null;
+  if(pendingCast && player && !player.dead){
+    def = player.abilities[pendingCast.i].def;
+    mode = 'pending';
+  }
+  else if(hoverUi && hoverUi.type === 'abil' && player && !player.dead && running && !gameOver){
+    const ab = player.abilities[hoverUi.i];
+    if(ab && ab.rank > 0 && !ab.def.passive){ def = ab.def; mode = 'hover'; }
+  }
+  if(!def){
     ci.ring.visible = ci.aoe.visible = ci.line.visible = false;
     return;
   }
-  const def = player.abilities[pendingCast.i].def;
-  const cr = def.castRange || 600;
   const pgh = groundHeight(player.x, player.y);
-  ci.ring.visible = true;
-  ci.ring.position.set(player.x, pgh + 2.2, player.y);
-  ci.ring.scale.set(cr, cr, 1);
-  const aim = clampRange(player, { x: mouse.wx, y: mouse.wy }, cr);
-  const agh = groundHeight(aim.x, aim.y);
-  if(def.aoe){
+  if(def.target === 'point'){
+    const cr = def.castRange || 600;
+    ci.ring.visible = true;
+    ci.ring.position.set(player.x, pgh + 2.2, player.y);
+    ci.ring.scale.set(cr, cr, 1);
+    ci.ring.material.color.set('#ffffff');
+    if(mode === 'pending'){
+      const aim = clampRange(player, { x: mouse.wx, y: mouse.wy }, cr);
+      const agh = groundHeight(aim.x, aim.y);
+      if(def.aoe){
+        ci.aoe.visible = true;
+        ci.aoe.position.set(aim.x, agh + 2, aim.y);
+        ci.aoe.scale.set(def.aoe, def.aoe, 1);
+        ci.aoe.material.color.set(def.color || '#fde047');
+      } else ci.aoe.visible = false;
+      if(def.line){
+        ci.line.visible = true;
+        const p = ci.line.geometry.attributes.position;
+        p.setXYZ(0, player.x, pgh + 26, player.y);
+        p.setXYZ(1, aim.x, agh + 26, aim.y);
+        p.needsUpdate = true;
+        ci.line.material.color.set(def.color || '#fde047');
+      } else ci.line.visible = false;
+    } else {
+      ci.aoe.visible = false;
+      ci.line.visible = false;
+    }
+  }
+  else if(def.selfAoe){
+    // krug djelovanja oko junaka, u boji moći
     ci.aoe.visible = true;
-    ci.aoe.position.set(aim.x, agh + 2, aim.y);
-    ci.aoe.scale.set(def.aoe, def.aoe, 1);
+    ci.aoe.position.set(player.x, pgh + 2, player.y);
+    ci.aoe.scale.set(def.selfAoe, def.selfAoe, 1);
     ci.aoe.material.color.set(def.color || '#fde047');
-  } else ci.aoe.visible = false;
-  if(def.line){
-    ci.line.visible = true;
-    const p = ci.line.geometry.attributes.position;
-    p.setXYZ(0, player.x, pgh + 26, player.y);
-    p.setXYZ(1, aim.x, agh + 26, aim.y);
-    p.needsUpdate = true;
-    ci.line.material.color.set(def.color || '#fde047');
-  } else ci.line.visible = false;
+    ci.ring.visible = true;
+    ci.ring.position.set(player.x, pgh + 2.2, player.y);
+    ci.ring.scale.set(def.selfAoe, def.selfAoe, 1);
+    ci.ring.material.color.set(def.color || '#fde047');
+    ci.line.visible = false;
+  }
+  else {
+    ci.ring.visible = ci.aoe.visible = ci.line.visible = false;
+  }
 }
 
 /* ---------- modeli jedinica ---------- */
@@ -620,6 +652,7 @@ function syncMapped(arr, map, buildFn, updateFn){
 /* ---------- glavna sinkronizacija ---------- */
 function pickStatusEmoji(u){
   if(u.status.stun > 0) return '⭐';
+  if(u.status.trackT > 0) return '💰';
   if(u.status.invisT > 0) return '👻';
   if(u.status.rootT > 0) return '🌱';
   if(u.status.slowT > 0) return '❄️';

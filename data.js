@@ -1,10 +1,12 @@
 'use strict';
 /* ============================================================
    DOTA Kids 3D — podaci (DotA All-Stars mehanike)
-   - 8 junaka; moći imaju RANGOVE (Q/W/E max 4, ULTI max 2).
-   - Ciljanje: target:'point' moći otvaraju prikaz dometa
-     (castRange = domet, aoe = krug područja, line = projektil).
-   - Predmeti s receptima; neutralni kampovi; rune; dan/noć.
+   - 10 junaka; moći imaju RANGOVE (Q/W/E i ulti po 3).
+   - Ciljanje: target:'point' otvara prikaz dometa (castRange,
+     aoe = krug područja, line = putanja); selfAoe = krug oko
+     junaka koji se vidi kad lebdiš nad moći.
+   - tip(rk) = kratki opis brojeva za tooltip.
+   - Atributi: str/agi/int + rast po levelu; primary daje štetu.
    ============================================================ */
 
 const WORLD = 3000;
@@ -34,22 +36,24 @@ const CFG = {
   fountainRadius: 330,
   fountainHeal: 0.07,
   maxLevel: 18,
-  ultLevels: [6, 11, 16],   // potrebni leveli za rang 1/2/3 ultija
-  statMaxRanks: 6,          // 6 poena ide u atribute (+2 sve po poenu)
+  ultLevels: [6, 11, 16],
+  statMaxRanks: 6,
   statPerPoint: 2,
   inventorySlots: 6,
   campRespawn: 60,
   bossRespawn: 180,
   runeEvery: 120,
   dayCycle: 240,
-  uphillMissChance: 0.25,   // promašaj kad pucaš uzbrdo (klasika!)
+  uphillMissChance: 0.25,
+  // DotA aggro pravila (creep aggro)
+  creepAggroRange: 500,     // napad na heroja povlači creepove u ovom radijusu
+  creepAggroChase: 2.3,     // koliko dugo ganjaju
+  creepAggroCd: 3,          // pa se smire
 };
 
 function xpNeed(level){ return 55 + level * 60; }
 
-/* ---------------- JUNACI ----------------
-   cast(u, aim, rk) — rk je rang moći. Vraća false ako nema mete.
-   target:'point' → igrač prvo vidi domet pa klikom bira cilj.   */
+/* ---------------- JUNACI ---------------- */
 
 const HEROES = [
   {
@@ -61,6 +65,8 @@ const HEROES = [
     abilities:[
       { key:'Q', name:'Vrtlog', emoji:'🌪️', cd:7, mana:40, color:'#fbbf24',
         desc:'Zavrti mač i udari sve oko sebe',
+        selfAoe:175,
+        tip:rk => '⚔️ ' + (60 + 45*rk) + ' štete svima oko tebe',
         bot:{type:'aoe-self', range:175},
         cast(u, aim, rk){
           damageCircle(u, u.x, u.y, 175, 60 + 45*rk, {color:'#fbbf24'});
@@ -69,10 +75,12 @@ const HEROES = [
         }},
       { key:'W', name:'Lavlja koža', emoji:'🦺', cd:0, mana:0, color:'#fde047',
         passive:true, pid:'koza',
-        desc:'PASIVNO: tvrda lavlja koža trajno smanjuje SVU primljenu štetu (6/9/12/15%)' },
+        desc:'PASIVNO: tvrda lavlja koža trajno smanjuje SVU primljenu štetu',
+        tip:rk => '🛡️ primaš ' + Math.round((0.03 + 0.03*rk) * 100) + '% manje štete' },
       { key:'E', name:'Junački skok', emoji:'💥', cd:15, mana:70, color:'#f97316',
         desc:'Skoči na mjesto, udari i omami neprijatelje',
         target:'point', castRange:360, aoe:160,
+        tip:rk => '⚔️ ' + (60 + 35*rk) + ' štete + omama ' + (0.7 + 0.1*rk).toFixed(1) + ' s',
         bot:{type:'gap', range:360},
         cast(u, aim, rk){
           leapTo(u, aim, 360);
@@ -82,6 +90,8 @@ const HEROES = [
         }},
       { key:'R', name:'Kraljev urlik', emoji:'🦁', cd:70, mana:120, ult:true, color:'#fde047',
         desc:'ULTI: Moćan urlik — velika šteta i omama oko tebe, a ti dobivaš štit',
+        selfAoe:320,
+        tip:rk => '⚔️ ' + (150 + 100*rk) + ' štete + omama ' + (1.2 + 0.3*rk).toFixed(1) + ' s + štit',
         bot:{type:'ult-aoe', range:300},
         cast(u, aim, rk){
           damageCircle(u, u.x, u.y, 320, 150 + 100*rk, {stun:1.2 + 0.3*rk, color:'#fde047'});
@@ -102,6 +112,7 @@ const HEROES = [
       { key:'Q', name:'Vatrena kugla', emoji:'🔥', cd:6, mana:45, color:'#fb923c',
         desc:'Ispali vatrenu kuglu prema cilju',
         target:'point', castRange:760, line:true,
+        tip:rk => '⚔️ ' + (70 + 45*rk) + ' štete prvom pogođenom',
         bot:{type:'shot', range:680},
         cast(u, aim, rk){
           return spawnSkillshot(u, aim, {speed:560, r:24, range:760,
@@ -109,6 +120,8 @@ const HEROES = [
         }},
       { key:'W', name:'Plameni krug', emoji:'💍', cd:10, mana:55, color:'#f97316',
         desc:'Plamen oprži sve oko tebe i malo ih uspori',
+        selfAoe:215,
+        tip:rk => '⚔️ ' + (45 + 32*rk) + ' štete oko tebe + usporenje',
         bot:{type:'aoe-self', range:215},
         cast(u, aim, rk){
           damageCircle(u, u.x, u.y, 215, 45 + 32*rk,
@@ -119,6 +132,7 @@ const HEROES = [
       { key:'E', name:'Meteor', emoji:'☄️', cd:20, mana:100, color:'#f97316',
         desc:'Pozovi meteor — velika šteta i kratka omama',
         target:'point', castRange:620, aoe:185,
+        tip:rk => '⚔️ ' + (130 + 70*rk) + ' štete + omama 0.5 s',
         bot:{type:'zone', range:560},
         cast(u, aim, rk){
           return spawnZone(u, aim, {r:185, delay:0.9, ticks:1, interval:0.5,
@@ -128,6 +142,7 @@ const HEROES = [
       { key:'R', name:'Zmajev dah', emoji:'🐲', cd:70, mana:130, ult:true, color:'#ef4444',
         desc:'ULTI: Ogromna vatrena lopta koja probija sve na svom putu',
         target:'point', castRange:950, line:true,
+        tip:rk => '⚔️ ' + (170 + 90*rk) + ' štete SVIMA na putu + usporenje',
         bot:{type:'shot', range:820},
         cast(u, aim, rk){
           return spawnSkillshot(u, aim, {speed:620, r:56, range:950,
@@ -146,6 +161,7 @@ const HEROES = [
       { key:'Q', name:'Ledena strijela', emoji:'🧊', cd:6, mana:40, color:'#38bdf8',
         desc:'Ledena strijela ranjava i jako usporava',
         target:'point', castRange:740, line:true,
+        tip:rk => '⚔️ ' + (58 + 40*rk) + ' štete + usporenje ' + Math.round((0.3 + 0.05*rk) * 100) + '%',
         bot:{type:'shot', range:660},
         cast(u, aim, rk){
           return spawnSkillshot(u, aim, {speed:520, r:22, range:740,
@@ -154,10 +170,12 @@ const HEROES = [
         }},
       { key:'W', name:'Ledeni dodir', emoji:'❄️', cd:0, mana:0, color:'#7dd3fc',
         passive:true, pid:'dodir',
-        desc:'PASIVNO: svaki tvoj napad usporava neprijatelja (15/20/25/30%)' },
+        desc:'PASIVNO: svaki tvoj napad usporava neprijatelja',
+        tip:rk => '❄️ napadi usporavaju ' + Math.round((0.1 + 0.05*rk) * 100) + '% na 1.5 s' },
       { key:'E', name:'Snježna oluja', emoji:'🌨️', cd:20, mana:100, color:'#7dd3fc',
         desc:'Mećava na mjestu — pada 4 puta i usporava',
         target:'point', castRange:600, aoe:205,
+        tip:rk => '⚔️ 4 × ' + (28 + 20*rk) + ' štete + usporenje',
         bot:{type:'zone', range:540},
         cast(u, aim, rk){
           return spawnZone(u, aim, {r:205, delay:0.5, ticks:4, interval:0.8,
@@ -167,6 +185,7 @@ const HEROES = [
       { key:'R', name:'Ledeno doba', emoji:'🥶', cd:75, mana:140, ult:true, color:'#bae6fd',
         desc:'ULTI: Zamrzni veliko područje — neprijatelji su omamljeni',
         target:'point', castRange:600, aoe:300,
+        tip:rk => '⚔️ ' + (140 + 80*rk) + ' štete + omama ' + (1.4 + 0.3*rk).toFixed(1) + ' s',
         bot:{type:'zone', range:560},
         cast(u, aim, rk){
           return spawnZone(u, aim, {r:300, delay:0.7, ticks:1, interval:0.5,
@@ -185,6 +204,7 @@ const HEROES = [
       { key:'Q', name:'Probojna strijela', emoji:'🎯', cd:7, mana:40, color:'#fbbf24',
         desc:'Strijela koja probija sve na svom putu',
         target:'point', castRange:860, line:true,
+        tip:rk => '⚔️ ' + (62 + 42*rk) + ' štete SVIMA na putu',
         bot:{type:'shot', range:760},
         cast(u, aim, rk){
           return spawnSkillshot(u, aim, {speed:680, r:18, range:860,
@@ -192,10 +212,12 @@ const HEROES = [
         }},
       { key:'W', name:'Oštro oko', emoji:'👁️', cd:0, mana:0, color:'#fb923c',
         passive:true, pid:'oko',
-        desc:'PASIVNO: 15% šanse za KRITIČNI pogodak (×1.5/1.75/2/2.25 štete)' },
+        desc:'PASIVNO: šansa za KRITIČNI pogodak',
+        tip:rk => '💥 15% šanse za ×' + (1.25 + 0.25*rk).toFixed(2) + ' štete' },
       { key:'E', name:'Kiša strijela', emoji:'🌧️', cd:18, mana:90, color:'#f59e0b',
         desc:'Strijele padaju 3 puta na odabrano mjesto',
         target:'point', castRange:600, aoe:200,
+        tip:rk => '⚔️ 3 × ' + (40 + 25*rk) + ' štete',
         bot:{type:'zone', range:540},
         cast(u, aim, rk){
           return spawnZone(u, aim, {r:200, delay:0.6, ticks:3, interval:0.6,
@@ -204,6 +226,7 @@ const HEROES = [
         }},
       { key:'R', name:'Sokolovo oko', emoji:'🌠', cd:65, mana:110, ult:true, color:'#fde047',
         desc:'ULTI: Čarobna strijela sama pronađe najslabijeg neprijateljskog junaka!',
+        tip:rk => '⚔️ ' + (180 + 120*rk) + ' štete najslabijem junaku (ne može promašiti)',
         bot:{type:'snipe', range:2000},
         cast(u, aim, rk){
           const t = weakestEnemyHero(u, 2200);
@@ -225,6 +248,7 @@ const HEROES = [
       { key:'Q', name:'Trnova kugla', emoji:'🌰', cd:6, mana:40, color:'#84cc16',
         desc:'Baci bodljikavu kuglu koja usporava',
         target:'point', castRange:720, line:true,
+        tip:rk => '⚔️ ' + (60 + 40*rk) + ' štete + usporenje 25%',
         bot:{type:'shot', range:640},
         cast(u, aim, rk){
           return spawnSkillshot(u, aim, {speed:540, r:22, range:720,
@@ -233,6 +257,8 @@ const HEROES = [
         }},
       { key:'W', name:'Iscjeljenje', emoji:'💚', cd:11, mana:65, color:'#4ade80',
         desc:'Izliječi sebe i prijatelje oko sebe',
+        selfAoe:270,
+        tip:rk => '💚 ' + (55 + 45*rk) + ' liječenja tebi i prijateljima',
         bot:{type:'heal', range:270},
         cast(u, aim, rk){
           healCircle(u, 270, 55 + 45*rk);
@@ -241,6 +267,7 @@ const HEROES = [
       { key:'E', name:'Korijenje', emoji:'🌱', cd:17, mana:90, color:'#22c55e',
         desc:'Korijenje zaustavi neprijatelje na mjestu',
         target:'point', castRange:560, aoe:215,
+        tip:rk => '⚔️ ' + (35 + 28*rk) + ' štete + korijen ' + (1.1 + 0.2*rk).toFixed(1) + ' s',
         bot:{type:'zone', range:520},
         cast(u, aim, rk){
           return spawnZone(u, aim, {r:215, delay:0.4, ticks:1, interval:0.5,
@@ -249,6 +276,8 @@ const HEROES = [
         }},
       { key:'R', name:'Šumsko srce', emoji:'🌳', cd:70, mana:130, ult:true, color:'#22c55e',
         desc:'ULTI: Velika šuma — izliječi i ubrza prijatelje, a neprijatelje veže korijenjem',
+        selfAoe:340,
+        tip:rk => '💚 ' + (110 + 70*rk) + ' liječenja + ⚔️ ' + (50 + 30*rk) + ' i korijen neprijateljima',
         bot:{type:'ult-heal', range:340},
         cast(u, aim, rk){
           healCircle(u, 340, 110 + 70*rk);
@@ -274,6 +303,8 @@ const HEROES = [
     abilities:[
       { key:'Q', name:'Munjeviti udar', emoji:'⚡', cd:6, mana:45, color:'#fde047',
         desc:'Munja skače s neprijatelja na neprijatelja (do 3)',
+        selfAoe:480,
+        tip:rk => '⚔️ ' + (55 + 38*rk) + ' štete, skače na 3 mete',
         bot:{type:'chain', range:470},
         cast(u, aim, rk){
           return chainLightning(u, {range:480, jump:330, max:3, dmg:55 + 38*rk});
@@ -281,6 +312,7 @@ const HEROES = [
       { key:'W', name:'Bljesak', emoji:'🌀', cd:9, mana:40, color:'#fde047',
         desc:'Munjevito juriš prema cilju i ošteti sve na putu',
         target:'point', castRange:330, line:true,
+        tip:rk => '⚔️ ' + (25 + 18*rk) + ' štete na putu juriša',
         bot:{type:'gap', range:330},
         cast(u, aim, rk){
           const fx = u.x, fy = u.y;
@@ -291,9 +323,12 @@ const HEROES = [
         }},
       { key:'E', name:'Statički naboj', emoji:'🔋', cd:0, mana:0, color:'#fde047',
         passive:true, pid:'naboj',
-        desc:'PASIVNO: tvoji napadi imaju šansu (20/25/30/35%) okinuti dodatnu munju' },
+        desc:'PASIVNO: tvoji napadi imaju šansu okinuti dodatnu munju',
+        tip:rk => '⚡ ' + Math.round((0.15 + 0.05*rk) * 100) + '% šanse za +' + (30 + 25*rk) + ' štete' },
       { key:'R', name:'Gnjev oluje', emoji:'🌩️', cd:65, mana:120, ult:true, color:'#a78bfa',
         desc:'ULTI: Divovska munja skače na čak 6 neprijatelja, a tebe ubrza',
+        selfAoe:600,
+        tip:rk => '⚔️ ' + (100 + 60*rk) + ' štete, skače na 6 meta + ubrzanje',
         bot:{type:'chain', range:550},
         cast(u, aim, rk){
           const ok = chainLightning(u, {range:600, jump:420, max:6, dmg:100 + 60*rk});
@@ -314,6 +349,7 @@ const HEROES = [
       { key:'Q', name:'Jezičina', emoji:'👅', cd:9, mana:50, color:'#f472b6',
         desc:'Izbaci jezik — prvog pogođenog povuče k sebi i kratko omami!',
         target:'point', castRange:560, line:true,
+        tip:rk => '⚔️ ' + (55 + 35*rk) + ' štete + povlačenje + omama ' + (0.4 + 0.1*rk).toFixed(1) + ' s',
         bot:{type:'shot', range:540},
         cast(u, aim, rk){
           return spawnSkillshot(u, aim, {speed:720, r:18, range:560,
@@ -329,6 +365,7 @@ const HEROES = [
       { key:'W', name:'Žablji skok', emoji:'🦵', cd:11, mana:55, color:'#86efac',
         desc:'Skoči na mjesto i uspori sve oko sebe',
         target:'point', castRange:340, aoe:150,
+        tip:rk => '⚔️ ' + (40 + 25*rk) + ' štete + usporenje 30%',
         bot:{type:'gap', range:340},
         cast(u, aim, rk){
           leapTo(u, aim, 340);
@@ -338,6 +375,8 @@ const HEROES = [
         }},
       { key:'E', name:'Mjehur', emoji:'🫧', cd:14, mana:60, color:'#a5f3fc',
         desc:'Mjehurići štite tebe i prijatelje (upijaju trećinu štete)',
+        selfAoe:260,
+        tip:rk => '🛡️ štit 35% na 3 s + 💚 ' + (30 + 25*rk) + ' liječenja',
         bot:{type:'shield', range:340},
         cast(u, aim, rk){
           for(const e of units){
@@ -353,6 +392,7 @@ const HEROES = [
       { key:'R', name:'Veliki val', emoji:'🌊', cd:70, mana:130, ult:true, color:'#38bdf8',
         desc:'ULTI: Pozovi golemi val — velika šteta i jako usporenje',
         target:'point', castRange:560, aoe:300,
+        tip:rk => '⚔️ ' + (160 + 90*rk) + ' štete + usporenje 50%',
         bot:{type:'zone', range:540},
         cast(u, aim, rk){
           return spawnZone(u, aim, {r:300, delay:0.6, ticks:1, interval:0.5,
@@ -371,6 +411,7 @@ const HEROES = [
       { key:'Q', name:'Pero-oštrica', emoji:'🪶', cd:6, mana:40, color:'#e2e8f0',
         desc:'Munjevito brzo pero — pogađa izdaleka',
         target:'point', castRange:900, line:true,
+        tip:rk => '⚔️ ' + (66 + 44*rk) + ' štete izdaleka',
         bot:{type:'shot', range:800},
         cast(u, aim, rk){
           return spawnSkillshot(u, aim, {speed:820, r:16, range:900,
@@ -378,6 +419,7 @@ const HEROES = [
         }},
       { key:'W', name:'Uzlet', emoji:'🌬️', cd:12, mana:50, color:'#bae6fd',
         desc:'Vjetar pod krilima — ubrzanje i skida sva usporenja s tebe',
+        tip:rk => '🌬️ +' + Math.round((0.4 + 0.05*rk) * 100) + '% brzine 3 s + čisti usporenja',
         bot:{type:'haste', range:520},
         cast(u, aim, rk){
           applyHaste(u, 1.4 + 0.05*rk, 3);
@@ -389,6 +431,7 @@ const HEROES = [
       { key:'E', name:'Obrušavanje', emoji:'🦅', cd:13, mana:65, color:'#fbbf24',
         desc:'Obruši se na mjesto — šteta i usporenje',
         target:'point', castRange:380, aoe:150,
+        tip:rk => '⚔️ ' + (55 + 35*rk) + ' štete + usporenje 35%',
         bot:{type:'gap', range:380},
         cast(u, aim, rk){
           leapTo(u, aim, 380);
@@ -398,14 +441,16 @@ const HEROES = [
         }},
       { key:'R', name:'Kralj neba', emoji:'🌪️', cd:70, mana:125, ult:true, color:'#fde047',
         desc:'ULTI: Pošalji sokole na SVE neprijateljske junake u blizini!',
+        selfAoe:1400,
+        tip:rk => '⚔️ ' + (130 + 70*rk) + ' štete SVAKOM vidljivom neprijateljskom junaku',
         bot:{type:'chain', range:900},
         cast(u, aim, rk){
           let n = 0;
           for(const e of units){
             if(e.kind !== 'hero' || e.team === u.team || e.dead || e.removeMe) continue;
             if(dist(u, e) > 1400) continue;
-            if(!isVisibleTo(u.team, e)) continue;   // magla rata: ne vidiš — ne gađaš
-            if(e.status.invisT > 0) continue;       // nevidljive ne možeš naciljati
+            if(!isVisibleTo(u.team, e)) continue;
+            if(e.status.invisT > 0 && e.status.trackT <= 0) continue;
             spawnHoming(u, e, {speed:800, dmg:130 + 70*rk, r:10,
               color:'#fde047', emoji:'🦅',
               onHit(t){ burst(t.x, t.y, '#fde047', 18, 240, 6); }});
@@ -427,6 +472,7 @@ const HEROES = [
       { key:'Q', name:'Sveta strijela', emoji:'🌠', cd:9, mana:50, color:'#e9d5ff',
         desc:'Mjesečeva strijela leti JAKO daleko — što dulje leti, jače omami i ranjava!',
         target:'point', castRange:1100, line:true,
+        tip:rk => '⚔️ do ' + (90 + 70*rk) + ' štete, omama do ' + (1.2 + 0.3*rk).toFixed(1) + ' s (raste s daljinom)',
         bot:{type:'shot', range:900},
         cast(u, aim, rk){
           return spawnSkillshot(u, aim, {speed:620, r:20, range:1100,
@@ -441,6 +487,8 @@ const HEROES = [
         }},
       { key:'W', name:'Zvjezdana kiša', emoji:'⭐', cd:11, mana:60, color:'#e9d5ff',
         desc:'Zvijezde padaju na sve neprijatelje oko tebe',
+        selfAoe:250,
+        tip:rk => '⚔️ ' + (40 + 32*rk) + ' štete svima oko tebe',
         bot:{type:'aoe-self', range:250},
         cast(u, aim, rk){
           damageCircle(u, u.x, u.y, 250, 40 + 32*rk, {color:'#e9d5ff'});
@@ -451,6 +499,7 @@ const HEROES = [
       { key:'E', name:'Mjesečev skok', emoji:'🌜', cd:12, mana:50, color:'#bae6fd',
         desc:'Skoči naprijed i potrči brže 2 sekunde',
         target:'point', castRange:400, line:true,
+        tip:rk => '🌜 skok ' + 400 + ' + ubrzanje ' + Math.round((0.2 + 0.05*rk) * 100) + '%',
         bot:{type:'gap', range:400},
         cast(u, aim, rk){
           leapTo(u, aim, 400);
@@ -460,6 +509,7 @@ const HEROES = [
         }},
       { key:'R', name:'Mjesečeva sjena', emoji:'👻', cd:80, mana:140, ult:true, color:'#c4b5fd',
         desc:'ULTI: CIJELI tvoj tim postaje NEVIDLJIV! Napad prekida nevidljivost',
+        tip:rk => '👻 svi tvoji junaci nevidljivi ' + (5 + 3*rk) + ' s',
         bot:{type:'ult-aoe', range:500},
         cast(u, aim, rk){
           for(const e of units){
@@ -468,6 +518,62 @@ const HEROES = [
             addFloat(e.x, e.y, '👻 Nevidljiv!', '#c4b5fd', 15);
             burst(e.x, e.y, '#c4b5fd', 12, 160, 5);
           }
+          return true;
+        }},
+    ],
+  },
+  {
+    id:'tragac', name:'Tragač', emoji:'🦝',
+    role:'💰 Lovac na glave — nevidljivi plaćenik',
+    hp:560, mp:250, dmg:60,
+    attrs:{ str:19, agi:25, int:16, strG:3.8, agiG:6.2, intG:2.4, primary:'agi' },
+    range:95, speed:175, atkCd:1.0, projSpeed:0,
+    abilities:[
+      { key:'Q', name:'Leteća zvijezda', emoji:'💫', cd:8, mana:45, color:'#fbbf24',
+        desc:'Baci oštru zvijezdu koja ranjava i kratko omami',
+        target:'point', castRange:600, line:true,
+        tip:rk => '⚔️ ' + (60 + 45*rk) + ' štete + omama 0.4 s',
+        bot:{type:'shot', range:560},
+        cast(u, aim, rk){
+          return spawnSkillshot(u, aim, {speed:750, r:16, range:600,
+            dmg:60 + 45*rk, color:'#fbbf24', emoji:'💫',
+            onHit(e){ applyStun(e, 0.4); }});
+        }},
+      { key:'W', name:'Lukavi udarac', emoji:'💢', cd:0, mana:0, color:'#fb923c',
+        passive:true, pid:'jinada',
+        desc:'PASIVNO: šansa da udarac bude podmukao — dodatna šteta i usporenje',
+        tip:rk => '💢 ' + Math.round((0.15 + 0.05*rk) * 100) + '% šanse za +' + (25 + 25*rk) + ' štete i usporenje' },
+      { key:'E', name:'Sjena', emoji:'👤', cd:16, mana:60, color:'#c4b5fd',
+        pid:'sjena',
+        desc:'Nestani u sjenu — nevidljiv si, a napad iz sjene jako boli!',
+        tip:rk => '👤 nevidljiv ' + (6 + 2*rk) + ' s; napad iz sjene +' + (40 + 30*rk) + ' štete',
+        bot:{type:'shield', range:380},
+        cast(u, aim, rk){
+          u.status.invisT = 6 + 2*rk;
+          applyHaste(u, 1.12, 2);
+          addFloat(u.x, u.y, '👤 U sjeni!', '#c4b5fd', 15);
+          burst(u.x, u.y, '#c4b5fd', 14, 180, 5);
+          return true;
+        }},
+      { key:'R', name:'Ucjena', emoji:'💰', cd:22, mana:60, ult:true, color:'#fde047',
+        desc:'ULTI: Označi neprijateljskog junaka — svi ga vide (i nevidljivog!), a njegova smrt donosi DODATNO zlato',
+        target:'point', castRange:700, aoe:260,
+        tip:rk => '💰 meta otkrivena 25 s; pogiba li, ti i ubojica dobivate +' + (80 + 40*rk) + ' zlata',
+        bot:{type:'track', range:650},
+        cast(u, aim, rk){
+          let best = null, bd = 260;
+          for(const e of units){
+            if(e.kind !== 'hero' || e.team === u.team || e.dead || e.removeMe) continue;
+            const d = distXY(aim.x, aim.y, e.x, e.y);
+            if(d < bd){ bd = d; best = e; }
+          }
+          if(!best) return false;
+          best.status.trackT = 25;
+          best.trackedBy = u;
+          best.trackBonus = 80 + 40*rk;
+          addFloat(best.x, best.y, '💰 Ucijenjen!', '#fde047', 16);
+          addLine(u.x, u.y, best.x, best.y, '#fde047', 4, 0.35);
+          burst(best.x, best.y, '#fde047', 14, 200, 5);
           return true;
         }},
     ],
