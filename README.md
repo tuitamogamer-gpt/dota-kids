@@ -12,7 +12,8 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 - 🤖 **3 protiv 3**: ti + 2 bota protiv 3 bota — botovi farmaju, koriste moći i ultije, uče vještine, slažu recepte, idu u džunglu, bježe teleportom
 - 🦁 **9 junaka-životinja** s po 4 moći (Q/W/E/R) — napadačke, obrambene i ✨ **pasivne**; ULTI se otključava na levelu 6
   - Lavko 🦁, Žarko 🐉, Ledena 🐧, Strijela 🦊, Listko 🐢, Munja 🐯, Skokica 🐸 (kuka jezikom!), Orlina 🦅, Luna 🐱 (Mirana-stil: Sveta strijela + timska nevidljivost)
-- ⬆️ **Poeni vještina**: svaki level = 1 poen, moći imaju rangove (Q/W/E max 4, ulti max 2)
+- ⬆️ **Poeni vještina**: svaki level (do 18!) = 1 poen — Q/W/E po 3 ranga, ulti 3 ranga (leveli 6/11/16), plus 6 poena za 📊 atribute
+- 💪🤸🧠 **Atributi kao u DotA**: Snaga (život), Okretnost (brzina + brzina napada), Inteligencija (mana) — glavni atribut daje štetu i raste svaki level
 - 🛒 **Dućan s receptima** u 4 tira (osnovno → legendarno), torba sa 6 mjesta, prodaja klikom
 - 🎯 **DotA ciljanje**: prsten dometa + krug područja prije bacanja moći
 - 🌫️ **Magla rata** — vid po jedinicama, noću kraći; gankovi rade u oba smjera

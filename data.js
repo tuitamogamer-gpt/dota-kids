@@ -33,8 +33,10 @@ const CFG = {
   respawnPerLvl: 1.3,
   fountainRadius: 330,
   fountainHeal: 0.07,
-  maxLevel: 12,
-  ultLevels: [6, 10],
+  maxLevel: 18,
+  ultLevels: [6, 11, 16],   // potrebni leveli za rang 1/2/3 ultija
+  statMaxRanks: 6,          // 6 poena ide u atribute (+2 sve po poenu)
+  statPerPoint: 2,
   inventorySlots: 6,
   campRespawn: 60,
   bossRespawn: 180,
@@ -53,7 +55,8 @@ const HEROES = [
   {
     id:'vitez', name:'Lavko', emoji:'🦁',
     role:'🛡️ Vitez — hrabri tenk',
-    hp:680, hpG:102, mp:240, mpG:24, dmg:60, dmgG:7,
+    hp:680, mp:240, dmg:60,
+    attrs:{ str:25, agi:16, int:13, strG:5.6, agiG:2.2, intG:2.0, primary:'str' },
     range:78, speed:168, atkCd:1.1, projSpeed:0,
     abilities:[
       { key:'Q', name:'Vrtlog', emoji:'🌪️', cd:7, mana:40, color:'#fbbf24',
@@ -92,7 +95,8 @@ const HEROES = [
   {
     id:'zarko', name:'Žarko', emoji:'🐉',
     role:'🔥 Vatreni zmaj — čarobnjak',
-    hp:530, hpG:76, mp:300, mpG:32, dmg:52, dmgG:6,
+    hp:530, mp:300, dmg:52,
+    attrs:{ str:18, agi:16, int:24, strG:3.6, agiG:2.4, intG:5.4, primary:'int' },
     range:330, speed:165, atkCd:1.15, projSpeed:600,
     abilities:[
       { key:'Q', name:'Vatrena kugla', emoji:'🔥', cd:6, mana:45, color:'#fb923c',
@@ -135,7 +139,8 @@ const HEROES = [
   {
     id:'ledena', name:'Ledena', emoji:'🐧',
     role:'❄️ Snježna čarobnica',
-    hp:530, hpG:76, mp:310, mpG:33, dmg:50, dmgG:6,
+    hp:530, mp:310, dmg:50,
+    attrs:{ str:18, agi:16, int:24, strG:3.6, agiG:2.4, intG:5.2, primary:'int' },
     range:330, speed:165, atkCd:1.15, projSpeed:600,
     abilities:[
       { key:'Q', name:'Ledena strijela', emoji:'🧊', cd:6, mana:40, color:'#38bdf8',
@@ -173,7 +178,8 @@ const HEROES = [
   {
     id:'strijela', name:'Strijela', emoji:'🦊',
     role:'🏹 Lukava lisica — strijelac',
-    hp:550, hpG:82, mp:250, mpG:26, dmg:58, dmgG:8,
+    hp:550, mp:250, dmg:58,
+    attrs:{ str:18, agi:24, int:15, strG:3.4, agiG:6.0, intG:2.2, primary:'agi' },
     range:360, speed:170, atkCd:1.0, projSpeed:680,
     abilities:[
       { key:'Q', name:'Probojna strijela', emoji:'🎯', cd:7, mana:40, color:'#fbbf24',
@@ -212,7 +218,8 @@ const HEROES = [
   {
     id:'listko', name:'Listko', emoji:'🐢',
     role:'🌿 Šumski iscjelitelj',
-    hp:600, hpG:88, mp:300, mpG:32, dmg:52, dmgG:6,
+    hp:600, mp:300, dmg:52,
+    attrs:{ str:23, agi:14, int:20, strG:4.8, agiG:2.0, intG:3.4, primary:'str' },
     range:300, speed:163, atkCd:1.15, projSpeed:560,
     abilities:[
       { key:'Q', name:'Trnova kugla', emoji:'🌰', cd:6, mana:40, color:'#84cc16',
@@ -261,7 +268,8 @@ const HEROES = [
   {
     id:'munja', name:'Munja', emoji:'🐯',
     role:'⚡ Brzi tigar — ubojica',
-    hp:580, hpG:88, mp:260, mpG:27, dmg:62, dmgG:8,
+    hp:580, mp:260, dmg:62,
+    attrs:{ str:19, agi:25, int:14, strG:4.0, agiG:6.2, intG:2.2, primary:'agi' },
     range:95, speed:188, atkCd:1.0, projSpeed:0,
     abilities:[
       { key:'Q', name:'Munjeviti udar', emoji:'⚡', cd:6, mana:45, color:'#fde047',
@@ -299,7 +307,8 @@ const HEROES = [
   {
     id:'skokica', name:'Skokica', emoji:'🐸',
     role:'👅 Žabac — vuče neprijatelje k sebi',
-    hp:640, hpG:95, mp:260, mpG:26, dmg:58, dmgG:7,
+    hp:640, mp:260, dmg:58,
+    attrs:{ str:24, agi:18, int:14, strG:5.2, agiG:3.0, intG:2.2, primary:'str' },
     range:85, speed:172, atkCd:1.05, projSpeed:0,
     abilities:[
       { key:'Q', name:'Jezičina', emoji:'👅', cd:9, mana:50, color:'#f472b6',
@@ -355,7 +364,8 @@ const HEROES = [
   {
     id:'orlina', name:'Orlina', emoji:'🦅',
     role:'🪶 Orao — zračni snajper',
-    hp:520, hpG:74, mp:270, mpG:28, dmg:60, dmgG:8,
+    hp:520, mp:270, dmg:60,
+    attrs:{ str:16, agi:25, int:16, strG:3.0, agiG:6.4, intG:2.4, primary:'agi' },
     range:380, speed:175, atkCd:1.0, projSpeed:700,
     abilities:[
       { key:'Q', name:'Pero-oštrica', emoji:'🪶', cd:6, mana:40, color:'#e2e8f0',
@@ -410,7 +420,8 @@ const HEROES = [
   {
     id:'luna', name:'Luna', emoji:'🐱',
     role:'🌙 Mjesečeva mačka — strijela iz sjene',
-    hp:540, hpG:80, mp:280, mpG:30, dmg:56, dmgG:7,
+    hp:540, mp:280, dmg:56,
+    attrs:{ str:17, agi:24, int:18, strG:3.2, agiG:5.8, intG:2.8, primary:'agi' },
     range:340, speed:172, atkCd:1.05, projSpeed:650,
     abilities:[
       { key:'Q', name:'Sveta strijela', emoji:'🌠', cd:9, mana:50, color:'#e9d5ff',
