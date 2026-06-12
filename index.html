@@ -49,7 +49,23 @@
   .bigBtn:hover:not(:disabled){ transform:scale(1.06); }
   .bigBtn:active:not(:disabled){ transform:translateY(4px); box-shadow:0 2px 0 #b45309; }
   .bigBtn:disabled{ filter:grayscale(.8); cursor:not-allowed; opacity:.6; }
-  #select .hint{ margin-top:18px; color:#a7f3d0; font-size:14px; }
+  #select .hint{ margin-top:14px; color:#a7f3d0; font-size:13px; }
+
+  /* ---------- multiplayer lobby ---------- */
+  #mpBox{ margin-top:16px; background:rgba(8,28,21,.55); border:2px solid rgba(125,211,252,.35);
+    border-radius:16px; padding:10px 18px; max-width:760px; }
+  .mpTitle{ color:#7dd3fc; font-size:13.5px; font-weight:bold; margin-bottom:7px; }
+  .mpRow{ display:flex; align-items:center; justify-content:center; gap:9px; flex-wrap:wrap; }
+  .mpBtn{ font-family:inherit; font-size:14px; font-weight:bold; border:none; border-radius:11px;
+    padding:8px 16px; background:#0ea5e9; color:#fff; cursor:pointer; box-shadow:0 3px 0 #0369a1; }
+  .mpBtn:hover{ background:#38bdf8; }
+  .mpOr{ color:#94a3b8; font-size:12px; }
+  #mpCode{ font-family:inherit; width:86px; text-align:center; font-size:17px; font-weight:bold;
+    letter-spacing:3px; border:2px solid #0ea5e9; border-radius:10px; padding:6px; background:#0b1220;
+    color:#fde047; text-transform:uppercase; }
+  #mpCodeBig{ font-size:22px; font-weight:bold; color:#fde047; background:rgba(253,224,71,.12);
+    border:2px dashed #fde047; border-radius:10px; padding:4px 14px; letter-spacing:4px; }
+  #mpStatus{ margin-top:7px; color:#d1fae5; font-size:12.5px; }
 
   /* ---------- pomoć ---------- */
   #help{ background:rgba(8,28,21,.88); }
@@ -138,12 +154,23 @@
 <!-- ODABIR JUNAKA -->
 <div id="select" class="overlay">
   <h1>🏰 DOTA Kids 3D ⚔️</h1>
-  <p class="sub">Odaberi svog junaka! Ti i 2 prijatelja-bota 🔵 protiv 3 protivnika-bota 🔴 — sada u 3D! 🎮 <span style="opacity:.6;font-size:13px">v0.3</span></p>
+  <p class="sub">Odaberi svog junaka! Ti i 2 prijatelja-bota 🔵 protiv 3 protivnika-bota 🔴 — sada u 3D! 🎮 <span style="opacity:.6;font-size:13px">v0.4</span></p>
   <div class="selWrap">
     <div id="cards"></div>
     <div id="heroDetail" class="detail">👈 Klikni junaka da vidiš njegove moći!</div>
   </div>
   <button id="startBtn" class="bigBtn" disabled>▶️ ZAIGRAJ!</button>
+  <div id="mpBox">
+    <div class="mpTitle">🌐 MULTIPLAYER — 1 na 1 protiv prijatelja (svaki vodi mid, 2 bota pomažu)</div>
+    <div class="mpRow">
+      <button id="mpHost" class="mpBtn">📡 Napravi sobu</button>
+      <span class="mpOr">ili upiši kod:</span>
+      <input id="mpCode" maxlength="4" placeholder="KOD" autocomplete="off">
+      <button id="mpJoin" class="mpBtn">🔌 Uđi</button>
+      <span id="mpCodeBig" class="hidden"></span>
+    </div>
+    <div id="mpStatus">Igraj solo ili pozovi prijatelja kodom sobe (multiplayer treba internet).</div>
+  </div>
   <p class="hint">🖱️ klik = kreći se / napadni &nbsp;•&nbsp; ⬆️ levelovanjem učiš moći (Q W E, R = ULTI) &nbsp;•&nbsp; 🛒 B = dućan s receptima &nbsp;•&nbsp; 🐻 džungla i 🐲 Zmaj čekaju! &nbsp;•&nbsp; H = pomoć</p>
 </div>
 
@@ -191,8 +218,10 @@
 </div>
 
 <script src="three.min.js"></script>
+<script src="peerjs.min.js"></script>
 <script src="data.js"></script>
 <script src="scene3d.js"></script>
+<script src="net.js"></script>
 <script src="game.js"></script>
 </body>
 </html>

@@ -1,12 +1,21 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije.
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **Sada i MULTIPLAYER 1 na 1!** 🌐
 
 **🎮 Igraj odmah: [dota-kids-brown.vercel.app](https://dota-kids-brown.vercel.app)**
 
-Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Three.js je uključen).
+Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Three.js je uključen; za multiplayer treba internet).
 
-## Što je u igri (v0.1)
+## 🌐 Multiplayer (1 na 1)
+
+1. Igrač 1 klikne **📡 Napravi sobu** i dobije kod od 4 znaka
+2. Igrač 2 upiše kod i klikne **🔌 Uđi**
+3. Oba odaberu junake i stisnu **✅ SPREMAN!**
+4. Domaćin je 🔵 plavi mid, gost 🔴 crveni mid — svaki sa 2 bota saveznika, pravi 3v3!
+
+P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
+
+## Što je u igri
 
 - 🗺️ **Kompletna mapa**: 3 staze, rijeka u udolini, baze na platoima (high/low ground — pucanje uzbrdo promaši 25%!), šuma, kule, fontane
 - 🤖 **3 protiv 3**: ti + 2 bota protiv 3 bota — botovi farmaju, koriste moći i ultije, uče vještine, slažu recepte, idu u džunglu, bježe teleportom
