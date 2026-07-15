@@ -106,6 +106,47 @@ function emojiSprite(ch, size){
   s.scale.set(size, size, 1);
   return s;
 }
+/* AI portret kao okrugla 3D glava (emoji dok se slika učitava) */
+const portraitTexCache = {};
+function portraitTexture(im, fallbackEmoji, ringColor, key){
+  if(portraitTexCache[key]) return portraitTexCache[key];
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const g = c.getContext('2d');
+  const tex = new THREE.CanvasTexture(c);
+  if(THREE.sRGBEncoding !== undefined) tex.encoding = THREE.sRGBEncoding;
+  const draw = () => {
+    g.clearRect(0, 0, 256, 256);
+    if(im && im.complete && im.naturalWidth > 0){
+      g.save();
+      g.beginPath(); g.arc(128, 128, 117, 0, Math.PI * 2); g.clip();
+      g.drawImage(im, 6, 6, 244, 244);
+      g.restore();
+      g.strokeStyle = ringColor;
+      g.lineWidth = 14;
+      g.beginPath(); g.arc(128, 128, 118, 0, Math.PI * 2); g.stroke();
+      g.strokeStyle = 'rgba(255,255,255,0.85)';
+      g.lineWidth = 4;
+      g.beginPath(); g.arc(128, 128, 125, 0, Math.PI * 2); g.stroke();
+    } else {
+      g.font = '190px "Segoe UI Emoji","Apple Color Emoji",sans-serif';
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(fallbackEmoji, 128, 140);
+    }
+    tex.needsUpdate = true;
+  };
+  draw();
+  if(im && !(im.complete && im.naturalWidth > 0)) im.addEventListener('load', draw);
+  portraitTexCache[key] = tex;
+  return tex;
+}
+function portraitSprite(im, fallbackEmoji, ringColor, key, size){
+  const m = new THREE.SpriteMaterial({ map: portraitTexture(im, fallbackEmoji, ringColor, key),
+    transparent: true, depthWrite: false });
+  const s = new THREE.Sprite(m);
+  s.scale.set(size, size, 1);
+  return s;
+}
 function disposeGroup(g){
   g.traverse(o => {
     if(o.geometry && !o.geometry.userData.shared) o.geometry.dispose();
@@ -407,8 +448,13 @@ function buildHeroMesh(u){
   body.position.y = 33;
   body.castShadow = true;
   g.add(body);
-  const head = emojiSprite(u.emoji, 52);
-  head.position.y = 78;
+  const head = portraitSprite(
+    (typeof GFX !== 'undefined') ? GFX.heroes[u.hero.id] : null,
+    u.emoji,
+    u.isPlayer ? '#fde047' : TEAM_COLOR[u.team],
+    'h:' + u.hero.id + ':' + u.team + ':' + (u.isPlayer ? 1 : 0),
+    60);
+  head.position.y = 80;
   g.add(head);
   const shield = new THREE.Mesh(
     cachedGeo('heroShield', () => { const s = new THREE.SphereGeometry(36, 14, 10); s.userData.shared = true; return s; }),
@@ -466,8 +512,12 @@ function buildNeutralMesh(u){
   body.scale.y = 0.92;
   body.castShadow = true;
   g.add(body);
-  const head = emojiSprite(u.emoji, Math.max(34, u.r * 2.2));
-  head.position.y = u.r * 2 + 20;
+  const head = portraitSprite(
+    (typeof GFX !== 'undefined') ? GFX.mobs[u.campType] : null,
+    u.emoji, '#f59e0b',
+    'm:' + (u.campType || 'x'),
+    Math.max(40, u.r * 2.4));
+  head.position.y = u.r * 2 + 22;
   g.add(head);
   if(u.boss){
     const ring = new THREE.Mesh(

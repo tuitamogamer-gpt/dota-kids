@@ -296,8 +296,10 @@ function makeGuestUnit(b){
     base.rangedCreep = !!b.rc; base.siege = !!b.sg;
   }
   else if(b.k === 'neutral'){
-    const ct = CAMP_TYPES[CAMP_KEYS[b.ct] || 'boars'];
+    const key = CAMP_KEYS[b.ct] || 'boars';
+    const ct = CAMP_TYPES[key];
     base.r = ct.r; base.emoji = ct.emoji; base.name = ct.name; base.boss = !!ct.boss;
+    base.campType = key;
   }
   else if(b.k === 'tower'){ base.r = 38; base.isStatic = true; base.isGuard = !!b.gd; }
   else if(b.k === 'ancient'){ base.r = 56; base.isStatic = true; base.invuln = !!b.iv; }

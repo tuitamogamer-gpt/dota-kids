@@ -202,6 +202,28 @@ function seenByPlayer(u){
   return isVisibleTo(myTeam, u);
 }
 
+/* ================= Grafika (AI generirane slike) ================= */
+const GFX = { heroes: {}, mobs: {}, tex: {} };
+function loadGameArt(){
+  for(const h of HEROES){
+    const im = new Image();
+    im.src = 'assets/hero_' + h.id + '.jpg';
+    GFX.heroes[h.id] = im;
+  }
+  const mobFiles = { boars: 'mob_boar', wolves: 'mob_wolf', bear: 'mob_bear', boss: 'mob_dragon' };
+  for(const k in mobFiles){
+    const im = new Image();
+    im.src = 'assets/' + mobFiles[k] + '.jpg';
+    GFX.mobs[k] = im;
+  }
+  for(const k of ['grass', 'path', 'water']){
+    const im = new Image();
+    im.src = 'assets/tex_' + k + '.jpg';
+    GFX.tex[k] = im;
+  }
+}
+function imgReady(im){ return !!(im && im.complete && im.naturalWidth > 0); }
+
 /* ================= Globalno stanje ================= */
 let glCanvas, hudCv, ctx, terrainCanvas;
 let VW = 800, VH = 600, DPR = 1;
@@ -342,7 +364,7 @@ function spawnCamp(c){
       r: t.r, hp: t.hp, maxhp: t.hp, hpRegen: t.hpRegen || 0.5,
       dmg: t.dmg, atkRange: t.range, atkCd: t.atkCd, projSpeed: 0, speed: t.speed,
       goldValue: t.gold, xpValue: t.xp,
-      emoji: t.emoji, name: t.name, boss: !!t.boss, camp: c,
+      emoji: t.emoji, name: t.name, boss: !!t.boss, camp: c, campType: c.type,
       scanT: rand(0, 0.4),
     });
     c.units.push(u);
@@ -1779,10 +1801,20 @@ function buildTerrain(){
   terrainCanvas.height = WORLD;
   const t = terrainCanvas.getContext('2d');
 
-  t.fillStyle = '#7ec850';
-  t.fillRect(0, 0, WORLD, WORLD);
+  // trava: AI tekstura ako je učitana, inače boja
+  if(imgReady(GFX.tex.grass)){
+    const pat = t.createPattern(GFX.tex.grass, 'repeat');
+    if(pat.setTransform) pat.setTransform(new DOMMatrix().scale(0.55));
+    t.fillStyle = pat;
+    t.fillRect(0, 0, WORLD, WORLD);
+    t.fillStyle = 'rgba(126,200,80,0.22)';   // blagi ton preko teksture
+    t.fillRect(0, 0, WORLD, WORLD);
+  } else {
+    t.fillStyle = '#7ec850';
+    t.fillRect(0, 0, WORLD, WORLD);
+  }
   for(let i = 0; i < 420; i++){
-    t.fillStyle = Math.random() < 0.5 ? 'rgba(96,160,56,0.18)' : 'rgba(170,220,120,0.16)';
+    t.fillStyle = Math.random() < 0.5 ? 'rgba(96,160,56,0.14)' : 'rgba(170,220,120,0.12)';
     t.beginPath();
     t.arc(rand(0, WORLD), rand(0, WORLD), rand(30, 130), 0, TAU);
     t.fill();
@@ -1794,13 +1826,19 @@ function buildTerrain(){
     t.fill();
   }
 
-  // rijeka (nizina)
+  // rijeka (nizina) — AI vodena tekstura ako postoji
   t.strokeStyle = '#5ab6ee';
   t.lineWidth = 230;
   t.lineCap = 'round';
   t.beginPath(); t.moveTo(-50, -50); t.lineTo(WORLD + 50, WORLD + 50); t.stroke();
-  t.strokeStyle = '#8ed3fa';
-  t.lineWidth = 140;
+  if(imgReady(GFX.tex.water)){
+    const wp = t.createPattern(GFX.tex.water, 'repeat');
+    if(wp.setTransform) wp.setTransform(new DOMMatrix().scale(0.5));
+    t.strokeStyle = wp;
+  } else {
+    t.strokeStyle = '#8ed3fa';
+  }
+  t.lineWidth = 150;
   t.beginPath(); t.moveTo(-50, -50); t.lineTo(WORLD + 50, WORLD + 50); t.stroke();
   t.fillStyle = 'rgba(255,255,255,0.5)';
   for(let i = 0; i < 60; i++){
@@ -1811,7 +1849,7 @@ function buildTerrain(){
     t.fill();
   }
 
-  // staze
+  // staze — AI zemljana tekstura ako postoji
   for(const l of LANE_LIST){
     const pts = LANE_PTS[l];
     t.strokeStyle = '#d9c79b';
@@ -1821,8 +1859,14 @@ function buildTerrain(){
     t.moveTo(pts[0][0], pts[0][1]);
     for(let i = 1; i < pts.length; i++) t.lineTo(pts[i][0], pts[i][1]);
     t.stroke();
-    t.strokeStyle = '#e8dab2';
-    t.lineWidth = 110;
+    if(imgReady(GFX.tex.path)){
+      const pp = t.createPattern(GFX.tex.path, 'repeat');
+      if(pp.setTransform) pp.setTransform(new DOMMatrix().scale(0.5));
+      t.strokeStyle = pp;
+    } else {
+      t.strokeStyle = '#e8dab2';
+    }
+    t.lineWidth = 116;
     t.beginPath();
     t.moveTo(pts[0][0], pts[0][1]);
     for(let i = 1; i < pts.length; i++) t.lineTo(pts[i][0], pts[i][1]);
@@ -2288,7 +2332,8 @@ function buildSelectScreen(){
       ? '<span class="chip chipR">🏹 Daljina</span>'
       : '<span class="chip chipM">⚔️ Blizina</span>';
     html += `<div class="card" id="card-${i}">
-      <div class="c-emoji">${h.emoji}</div>
+      <img class="c-img" src="assets/hero_${h.id}.jpg" alt="${h.emoji}"
+        onerror="this.outerHTML='<div class=&quot;c-emoji&quot;>${h.emoji}</div>'">
       <div class="c-name">${h.name}</div>
       <div class="c-type">${chip}</div>
       <div class="c-role">${h.role}</div>
@@ -2306,7 +2351,7 @@ function buildSelectScreen(){
         : '<span class="chip chipM">⚔️ Blizina — bori se prsa o prsa</span>';
       const primNames = { str: '💪 Snaga', agi: '🤸 Okretnost', int: '🧠 Inteligencija' };
       const primChip = '<span class="chip chipP">' + primNames[h.attrs.primary] + '</span>';
-      let det = `<div class="d-head">${h.emoji} <b>${h.name}</b></div><div class="d-role">${h.role}</div><div class="d-type">${chip} ${primChip}</div>`;
+      let det = `<img class="d-img" src="assets/hero_${h.id}.jpg" onerror="this.remove()"><div class="d-head">${h.emoji} <b>${h.name}</b></div><div class="d-role">${h.role}</div><div class="d-type">${chip} ${primChip}</div>`;
       for(const a of h.abilities){
         const tag = a.ult ? ' <span class="ultTag">🌟 ULTI</span>'
           : (a.passive ? ' <span class="pasTag">✨ PASIVNO</span>' : '');
@@ -2502,13 +2547,24 @@ function drawHud(){
     ctx.lineWidth = 3;
     ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 16); ctx.stroke();
 
-    // portret
+    // portret (AI slika junaka, emoji kao rezerva)
     ctx.fillStyle = player.dead ? '#475569' : TEAM_LIGHT[0];
     ctx.beginPath(); ctx.arc(px + 52, py + ph / 2, 36, 0, TAU); ctx.fill();
-    ctx.font = fontEmoji(42);
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.globalAlpha = player.dead ? 0.5 : 1;
-    ctx.fillText(player.emoji, px + 52, py + ph / 2 - 2);
+    const pim = GFX.heroes[player.hero.id];
+    if(imgReady(pim)){
+      ctx.save();
+      ctx.beginPath(); ctx.arc(px + 52, py + ph / 2, 34, 0, TAU); ctx.clip();
+      ctx.drawImage(pim, px + 18, py + ph / 2 - 34, 68, 68);
+      ctx.restore();
+      ctx.strokeStyle = player.dead ? '#64748b' : '#fde047';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(px + 52, py + ph / 2, 35, 0, TAU); ctx.stroke();
+    } else {
+      ctx.font = fontEmoji(42);
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(player.emoji, px + 52, py + ph / 2 - 2);
+    }
     ctx.globalAlpha = 1;
     ctx.fillStyle = '#1f2937';
     ctx.beginPath(); ctx.arc(px + 78, py + ph / 2 + 24, 12, 0, TAU); ctx.fill();
@@ -2986,6 +3042,7 @@ window.addEventListener('DOMContentLoaded', () => {
   glCanvas = document.getElementById('game');
   hudCv = document.getElementById('hud');
   ctx = hudCv.getContext('2d');
+  loadGameArt();
   fogCanvas = document.createElement('canvas');
   fogCanvas.width = fogCanvas.height = 256;
   fogCtx = fogCanvas.getContext('2d');
