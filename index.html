@@ -44,6 +44,7 @@
   .d-type .chip{ font-size:12px; padding:3px 10px; }
   .detail{ width:320px; background:rgba(255,251,235,.95); border-radius:18px; padding:16px;
     text-align:left; color:#431407; font-size:14px; box-shadow:0 6px 0 rgba(0,0,0,.25); }
+  .d-3d{ float:right; width:150px; height:170px; margin:-8px -6px 0 6px; }
   .d-head{ font-size:26px; margin-bottom:2px; }
   .d-role{ color:#9a3412; margin-bottom:10px; font-size:13px; }
   .d-abil{ background:#fef3c7; border-radius:10px; padding:7px 9px; margin-top:7px; font-size:12.5px; line-height:1.35; }
@@ -160,7 +161,7 @@
 <!-- ODABIR JUNAKA -->
 <div id="select" class="overlay">
   <h1>🏰 DOTA Kids 3D ⚔️</h1>
-  <p class="sub">Odaberi svog junaka! Ti i 2 prijatelja-bota 🔵 protiv 3 protivnika-bota 🔴 — sada u 3D! 🎮 <span style="opacity:.6;font-size:13px">v0.5</span></p>
+  <p class="sub">Odaberi svog junaka! Ti i 2 prijatelja-bota 🔵 protiv 3 protivnika-bota 🔴 — sada u 3D! 🎮 <span style="opacity:.6;font-size:13px">v0.6</span></p>
   <div class="selWrap">
     <div id="cards"></div>
     <div id="heroDetail" class="detail">👈 Klikni junaka da vidiš njegove moći!</div>
@@ -223,8 +224,13 @@
   <button id="againBtn" class="bigBtn">🔄 Igraj ponovo!</button>
 </div>
 
-<script src="three.min.js"></script>
-<script src="peerjs.min.js"></script>
+<script src="lib/three.min.js"></script>
+<script src="lib/gltf-loader.min.js"></script>
+<script>
+  // file:// ne dopušta fetch — tada se Blender modeli učitaju iz base64 kopije
+  if(location.protocol === 'file:') document.write('<script src="assets/models.js"><\/script>');
+</script>
+<script src="lib/peerjs.min.js"></script>
 <script src="data.js"></script>
 <script src="scene3d.js"></script>
 <script src="net.js"></script>

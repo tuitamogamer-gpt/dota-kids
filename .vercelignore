@@ -1,3 +1,5 @@
 .claude
 _shotserver.js
 shot*.jpg
+tools/
+docs/

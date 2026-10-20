@@ -876,6 +876,8 @@ function castAbility(u, i, aim){
   }
   u.mp -= ab.def.mana;
   ab.cd = ab.def.cd;
+  u.castN = (u.castN || 0) + 1;   // 3D: animacija čaranja
+  if(aim && (Math.abs(aim.x - u.x) + Math.abs(aim.y - u.y) > 4)) u.dir = Math.atan2(aim.y - u.y, aim.x - u.x);
   sfxAt(ab.def.ult ? 'ult' : 'cast', u.x, u.y);
 }
 
@@ -995,6 +997,7 @@ function separation(){
 /* ================= Borba ================= */
 function performAttack(u, t){
   u.atkTimer = u.atkCd / (u.status.hasteT > 0 ? u.status.hasteF : 1) / (1 + (u.atkSpdBonus || 0));
+  u.atkN = (u.atkN || 0) + 1;   // 3D: animacija napada
   if(Math.abs(t.x - u.x) > 2) u.face = t.x < u.x ? -1 : 1;
   u.dir = Math.atan2(t.y - u.y, t.x - u.x);
   // napad iz sjene (Tragač): bonus PRIJE nego nevidljivost pukne
@@ -1887,7 +1890,7 @@ function buildTerrain(){
     t.fillStyle = team === TEAM_BLUE ? 'rgba(59,130,246,0.3)' : 'rgba(239,68,68,0.3)';
     t.beginPath(); t.arc(a.x, a.y, 260, 0, TAU); t.fill();
     const f = FOUNTAIN[team];
-    t.fillStyle = 'rgba(255,255,255,0.45)';
+    t.fillStyle = 'rgba(214,203,181,0.55)';
     t.beginPath(); t.arc(f.x, f.y, 150, 0, TAU); t.fill();
   }
 
@@ -2358,6 +2361,7 @@ function buildSelectScreen(){
         det += `<div class="d-abil"><b>${a.key}</b> ${a.emoji} <b>${a.name}</b>${tag} — ${a.desc}</div>`;
       }
       document.getElementById('heroDetail').innerHTML = det;
+      showHeroPreview(document.getElementById('heroDetail'), h.id);   // 3D model iz Blendera
       document.getElementById('startBtn').disabled = false;
       sfx('click');
     });
@@ -2379,11 +2383,11 @@ function drawBar(x, y, w, h, frac, fg, bg){
 }
 
 function barHeight(u){
-  if(u.kind === 'hero') return 105;
-  if(u.kind === 'creep') return u.r * 2 + 28;
-  if(u.kind === 'neutral') return u.r * 2 + 30;
-  if(u.kind === 'tower') return 158;
-  return 195;
+  if(u.kind === 'hero') return 102;
+  if(u.kind === 'creep') return u.siege ? 72 : 62;
+  if(u.kind === 'neutral') return u.boss ? 150 : u.r * 2.4 + 22;
+  if(u.kind === 'tower') return 172;
+  return 185;
 }
 
 function drawWorldOverlay(){
@@ -2446,6 +2450,7 @@ function drawWorldOverlay(){
   }
 
   for(const p of particles){
+    if(!p.emoji && typeof fx !== 'undefined' && fx.points) continue;   // obične iskre crta 3D sustav čestica
     const s = worldToScreen(p.x, groundHeight(p.x, p.y) + 28, p.y);
     if(!s) continue;
     ctx.globalAlpha = 1 - p.t / p.life;
@@ -3009,7 +3014,7 @@ function frame(now){
   applyDayNight(gameTime);
   updateCamera3();
   if(running) syncScene(now / 1000);
-  renderer3.render(scene3, camera3);
+  render3D();
 
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.clearRect(0, 0, VW, VH);

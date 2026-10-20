@@ -218,6 +218,8 @@ function buildSnapshot(){
       h: Math.round(u.hp), m: u.maxhp,
       d: +(u.dir || 0).toFixed(2),
     };
+    if(u.atkN) b.an = u.atkN % 1000;     // 3D animacije napada i čaranja
+    if(u.castN) b.cn = u.castN % 1000;
     if(u.kind === 'hero'){
       b.hi = HEROES.indexOf(u.hero);
       b.l = u.level; b.dd = u.dead ? 1 : 0;
@@ -332,6 +334,7 @@ function applySnapshot(d){
     u.tx2 = b.x; u.ty2 = b.y; u.tDir = b.d || 0;
     if(Math.abs(b.x - u.x) > 260 || Math.abs(b.y - u.y) > 260){ u.x = b.x; u.y = b.y; }
     u.hp = b.h; u.maxhp = b.m;
+    u.atkN = b.an || 0; u.castN = b.cn || 0;
     if(u.kind === 'hero'){
       u.level = b.l; u.dead = !!b.dd;
       u.mp = b.mp; u.maxmp = b.mm;
