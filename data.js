@@ -107,7 +107,7 @@ const HEROES = [
     role:'🔥 Vatreni zmaj — čarobnjak',
     hp:530, mp:300, dmg:52,
     attrs:{ str:18, agi:16, int:24, strG:3.6, agiG:2.4, intG:5.4, primary:'int' },
-    range:330, speed:165, atkCd:1.15, projSpeed:600,
+    range:330, speed:165, atkCd:1.15, projSpeed:600, shot:'fire',
     abilities:[
       { key:'Q', name:'Vatrena kugla', emoji:'🔥', cd:6, mana:45, color:'#fb923c',
         desc:'Ispali vatrenu kuglu prema cilju',
@@ -156,7 +156,7 @@ const HEROES = [
     role:'❄️ Snježna čarobnica',
     hp:530, mp:310, dmg:50,
     attrs:{ str:18, agi:16, int:24, strG:3.6, agiG:2.4, intG:5.2, primary:'int' },
-    range:330, speed:165, atkCd:1.15, projSpeed:600,
+    range:330, speed:165, atkCd:1.15, projSpeed:600, shot:'ice',
     abilities:[
       { key:'Q', name:'Ledena strijela', emoji:'🧊', cd:6, mana:40, color:'#38bdf8',
         desc:'Ledena strijela ranjava i jako usporava',
@@ -199,7 +199,7 @@ const HEROES = [
     role:'🏹 Lukava lisica — strijelac',
     hp:550, mp:250, dmg:58,
     attrs:{ str:18, agi:24, int:15, strG:3.4, agiG:6.0, intG:2.2, primary:'agi' },
-    range:360, speed:170, atkCd:1.0, projSpeed:680,
+    range:360, speed:170, atkCd:1.0, projSpeed:680, shot:'arrow',
     abilities:[
       { key:'Q', name:'Probojna strijela', emoji:'🎯', cd:7, mana:40, color:'#fbbf24',
         desc:'Strijela koja probija sve na svom putu',
@@ -243,7 +243,7 @@ const HEROES = [
     role:'🌿 Šumski iscjelitelj',
     hp:600, mp:300, dmg:52,
     attrs:{ str:23, agi:14, int:20, strG:4.8, agiG:2.0, intG:3.4, primary:'str' },
-    range:300, speed:163, atkCd:1.15, projSpeed:560,
+    range:300, speed:163, atkCd:1.15, projSpeed:560, shot:'leaf',
     abilities:[
       { key:'Q', name:'Trnova kugla', emoji:'🌰', cd:6, mana:40, color:'#84cc16',
         desc:'Baci bodljikavu kuglu koja usporava',
@@ -406,7 +406,7 @@ const HEROES = [
     role:'🪶 Orao — zračni snajper',
     hp:520, mp:270, dmg:60,
     attrs:{ str:16, agi:25, int:16, strG:3.0, agiG:6.4, intG:2.4, primary:'agi' },
-    range:380, speed:175, atkCd:1.0, projSpeed:700,
+    range:380, speed:175, atkCd:1.0, projSpeed:700, shot:'feather',
     abilities:[
       { key:'Q', name:'Pero-oštrica', emoji:'🪶', cd:6, mana:40, color:'#e2e8f0',
         desc:'Munjevito brzo pero — pogađa izdaleka',
@@ -467,7 +467,7 @@ const HEROES = [
     role:'🌙 Mjesečeva mačka — strijela iz sjene',
     hp:540, mp:280, dmg:56,
     attrs:{ str:17, agi:24, int:18, strG:3.2, agiG:5.8, intG:2.8, primary:'agi' },
-    range:340, speed:172, atkCd:1.05, projSpeed:650,
+    range:340, speed:172, atkCd:1.05, projSpeed:650, shot:'arrow',
     abilities:[
       { key:'Q', name:'Sveta strijela', emoji:'🌠', cd:9, mana:50, color:'#e9d5ff',
         desc:'Mjesečeva strijela leti JAKO daleko — što dulje leti, jače omami i ranjava!',
@@ -492,7 +492,7 @@ const HEROES = [
         bot:{type:'aoe-self', range:250},
         cast(u, aim, rk){
           damageCircle(u, u.x, u.y, 250, 40 + 32*rk, {color:'#e9d5ff'});
-          burst(u.x, u.y, '#fde047', 14, 200, 5, '⭐');
+          burst(u.x, u.y, '#fde047', 14, 200, 5);
           burst(u.x, u.y, '#e9d5ff', 14, 240, 5);
           return true;
         }},

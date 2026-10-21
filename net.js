@@ -219,7 +219,7 @@ function buildSnapshot(){
       d: +(u.dir || 0).toFixed(2),
     };
     if(u.atkN) b.an = u.atkN % 1000;     // 3D animacije napada i čaranja
-    if(u.castN) b.cn = u.castN % 1000;
+    if(u.castN){ b.cn = u.castN % 1000; b.cf = u.castFx; }
     if(u.kind === 'hero'){
       b.hi = HEROES.indexOf(u.hero);
       b.l = u.level; b.dd = u.dead ? 1 : 0;
@@ -237,8 +237,10 @@ function buildSnapshot(){
   return {
     c: 'snap', gt: +gameTime.toFixed(2), ks: kills.slice(),
     u: us,
-    p: projectiles.map(p => ({ i: p.id, x: Math.round(p.x), y: Math.round(p.y), r: p.r, cl: p.color, e: p.emoji || 0 })),
-    z: zones.map(z => ({ i: z.id, x: Math.round(z.x), y: Math.round(z.y), r: z.r, t: +z.t.toFixed(2), dl: z.delay, s: z.started ? 1 : 0, cl: z.color, e: z.emoji })),
+    p: projectiles.map(p => ({ i: p.id, x: Math.round(p.x), y: Math.round(p.y), r: p.r, cl: p.color, e: p.emoji || 0,
+      sh: p.shot || 0, sx: Math.round(p.src ? p.src.x : p.x), sy: Math.round(p.src ? p.src.y : p.y),
+      tx: p.target ? Math.round(p.target.x) : 0, ty: p.target ? Math.round(p.target.y) : 0 })),
+    z: zones.map(z => ({ i: z.id, x: Math.round(z.x), y: Math.round(z.y), r: z.r, t: +z.t.toFixed(2), dl: z.delay, s: z.started ? 1 : 0, cl: z.color, e: z.emoji, tk: z.ticksLeft })),
     rn: runes.length ? [{ x: runes[0].x, y: runes[0].y, di: RUNE_TYPES.indexOf(runes[0].def) }] : [],
     mk: markers.map(m => ({ x: Math.round(m.x), y: Math.round(m.y), t: +m.t.toFixed(2), r: Math.round(m.r), ir: m.isRing ? 1 : 0, cl: m.color })),
     ln: lines.map(l => ({ x1: Math.round(l.x1), y1: Math.round(l.y1), x2: Math.round(l.x2), y2: Math.round(l.y2), t: +l.t.toFixed(2), lf: l.life, cl: l.color })),
@@ -334,7 +336,7 @@ function applySnapshot(d){
     u.tx2 = b.x; u.ty2 = b.y; u.tDir = b.d || 0;
     if(Math.abs(b.x - u.x) > 260 || Math.abs(b.y - u.y) > 260){ u.x = b.x; u.y = b.y; }
     u.hp = b.h; u.maxhp = b.m;
-    u.atkN = b.an || 0; u.castN = b.cn || 0;
+    u.atkN = b.an || 0; u.castN = b.cn || 0; if(b.cf) u.castFx = b.cf;
     if(u.kind === 'hero'){
       u.level = b.l; u.dead = !!b.dd;
       u.mp = b.mp; u.maxmp = b.mm;
@@ -368,12 +370,13 @@ function applySnapshot(d){
   if(player && !net.ringBuilt){ buildPlayerRing(); net.ringBuilt = true; }
   // projektili / zone / rune
   projectiles = mergeById(projectiles, d.p,
-    o => ({ id: o.i, kind: 'homing', x: o.x, y: o.y, r: o.r, color: o.cl, emoji: o.e || null }),
-    (p, o) => { p.x = o.x; p.y = o.y; });
+    o => ({ id: o.i, kind: 'homing', x: o.x, y: o.y, r: o.r, color: o.cl, emoji: o.e || null,
+      shot: o.sh || null, sx: o.sx, sy: o.sy }),
+    (p, o) => { p.x = o.x; p.y = o.y; p.tx = o.tx || null; p.ty = o.ty || null; });
   zones = mergeById(zones, d.z,
     o => ({ id: o.i, x: o.x, y: o.y, r: o.r, t: o.t, delay: o.dl, started: !!o.s,
       ticksLeft: 1, interval: 1, color: o.cl, emoji: o.e, team: 0 }),
-    (z, o) => { z.t = o.t; z.started = !!o.s; });
+    (z, o) => { z.t = o.t; z.started = !!o.s; if(o.tk != null) z.ticksLeft = o.tk; });
   if(!d.rn.length) runes = [];
   else if(!runes.length || runes[0].x !== d.rn[0].x || runes[0].y !== d.rn[0].y){
     runes = [{ x: d.rn[0].x, y: d.rn[0].y, def: RUNE_TYPES[d.rn[0].di] || RUNE_TYPES[0], t: 0 }];

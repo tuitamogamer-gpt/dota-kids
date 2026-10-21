@@ -1152,6 +1152,207 @@ def build_nature():
     m.finish()
 
 
+# ------------------------------------------------------------------ PROJEKTILI (lete prema +X)
+def rotx(pt, deg):
+    """zarotiraj točku oko osi X (za perje strijele)"""
+    a = RAD(deg)
+    x, y, z = pt
+    return (x, y * math.cos(a) - z * math.sin(a), y * math.sin(a) + z * math.cos(a))
+
+
+def build_projectiles():
+    # strijela (Strijela, Luna, auto-napadi strijelaca)
+    m = Model('proj_arrow')
+    p = m.part('mesh')
+    p.cyl((-0.55, 0, 0), (0.42, 0, 0), 0.035, 0.035, '#a5733f', seg=6)
+    p.cyl((0.42, 0, 0), (0.68, 0, 0), 0.075, 0.0, '#d6dde6', seg=6)
+    for a in (0, 120, 240):
+        pts = [(-0.55, 0, 0.0), (-0.36, 0, 0.0), (-0.4, 0, 0.12), (-0.58, 0, 0.14)]
+        p.poly([rotx(q, a) for q in pts], '#ef4444' if a == 0 else '#f8fafc', thick=0.012)
+    m.finish()
+    # vatrena kugla (Žarko)
+    m = Model('proj_fireball')
+    p = m.part('mesh')
+    p.sphere((0, 0, 0), 0.24, '#ff7a1a', mat='glow', seg=(12, 8))
+    p.sphere((0.07, 0, 0.03), 0.15, '#ffe26b', mat='glow', seg=(10, 7))
+    for i, (x, r, c) in enumerate(((-0.27, 0.17, '#ff5a1a'), (-0.47, 0.12, '#ff3d00'), (-0.63, 0.075, '#c62d00'))):
+        p.sphere((x, 0, 0.03 * i), r, c, mat='glow', seg=(9, 6))
+    m.finish()
+    # ledena strijela (Ledena)
+    m = Model('proj_ice')
+    p = m.part('mesh')
+    p.ico((0, 0, 0), (0.42, 0.15, 0.15), '#9ae6ff', mat='glow', sub=0)
+    p.ico((-0.15, 0.1, 0.06), (0.16, 0.07, 0.07), '#dff6ff', mat='glow', sub=0, rot=(0, 0, 25))
+    p.ico((-0.1, -0.1, -0.05), (0.14, 0.06, 0.06), '#dff6ff', mat='glow', sub=0, rot=(0, 0, -30))
+    m.finish()
+    # pero (Orlina)
+    m = Model('proj_feather')
+    p = m.part('mesh')
+    p.cyl((-0.5, 0, 0), (0.45, 0, 0), 0.02, 0.012, '#f1f5f9', seg=5)
+    p.poly([(-0.42, 0, 0.01), (0.1, 0, 0.01), (0.35, 0.12, 0.01), (0.0, 0.2, 0.01), (-0.3, 0.14, 0.01)], '#eceff4', thick=0.015)
+    p.poly([(-0.42, 0, -0.01), (0.1, 0, -0.01), (0.35, -0.12, -0.01), (0.0, -0.2, -0.01), (-0.3, -0.14, -0.01)], '#cbd5e1', thick=0.015)
+    m.finish()
+    # leteća zvijezda / šuriken (Tragač) — vrti se u igri
+    m = Model('proj_star')
+    p = m.part('mesh')
+    for k in range(4):
+        a = RAD(k * 90)
+        p.cyl((0, 0, 0), (math.cos(a) * 0.42, math.sin(a) * 0.42, 0), 0.1, 0.0, '#d6dde6', seg=4)
+    p.cyl((0, 0, -0.03), (0, 0, 0.03), 0.13, 0.13, '#f6c945', seg=8)
+    m.finish()
+    # žir (Listko)
+    m = Model('proj_acorn')
+    p = m.part('mesh')
+    p.sphere((0.02, 0, 0), (0.3, 0.22, 0.22), '#b07a3c', seg=(10, 7))
+    p.sphere((-0.1, 0, 0), (0.18, 0.24, 0.24), '#6b4423', seg=(10, 7))
+    p.cyl((-0.26, 0, 0), (-0.4, 0, 0.06), 0.04, 0.02, '#4a2a14', seg=5)
+    p.cyl((0.3, 0, 0), (0.38, 0, 0), 0.03, 0.0, '#4a2a14', seg=5)
+    m.finish()
+    # mjesečeva / zvjezdana strijela (Luna Q, Strijela ulti)
+    m = Model('proj_moon')
+    p = m.part('mesh')
+    p.sphere((0, 0, 0), 0.16, '#fff7d6', mat='glow', seg=(10, 7))
+    p.arc((0, 0, 0), 0.3, 50, 310, 10, 0.05, '#e9d5ff', plane='xy', mat='glow')
+    for i, (x, r) in enumerate(((-0.4, 0.1), (-0.58, 0.07), (-0.72, 0.045))):
+        p.sphere((x, 0, 0), r, '#c4b5fd', mat='glow', seg=(8, 6))
+    m.finish()
+    # čarobna strelica u boji tima (kule, čarobnjaci, strijelci-vojnici)
+    m = Model('proj_bolt')
+    p = m.part('mesh')
+    p.ico((0, 0, 0), (0.4, 0.14, 0.14), '#ffffff', mat='teamglow', sub=0)
+    p.sphere((0.06, 0, 0), 0.1, '#ffffff', mat='glow', seg=(8, 6))
+    m.finish()
+    # sokol (Orlina ulti)
+    m = Model('proj_hawk')
+    p = m.part('mesh')
+    p.sphere((0, 0, 0), (0.3, 0.16, 0.14), '#7a4a2a', seg=(10, 7))
+    p.sphere((0.28, 0, 0.06), 0.13, '#f3efe4', seg=(10, 7))
+    p.cyl((0.38, 0, 0.05), (0.52, 0, 0.03), 0.05, 0.0, '#f5b324', seg=5)
+    for s in (1, -1):
+        p.poly([(0.05, s * 0.1, 0.05), (-0.1, s * 0.62, 0.22), (-0.3, s * 0.7, 0.12), (-0.25, s * 0.3, 0.02), (-0.2, s * 0.1, 0.0)],
+               '#6b3f22', thick=0.03)
+        p.sphere((0.33, s * 0.05, 0.1), 0.025, '#111111', seg=(5, 4))
+    p.cyl((-0.28, 0, 0.0), (-0.5, 0, 0.04), 0.08, 0.02, '#5a3a22', seg=5)
+    m.finish()
+    # vrh jezika (Skokica) — tijelo jezika rasteže three.js
+    m = Model('proj_tongue')
+    p = m.part('mesh')
+    p.sphere((0, 0, 0), (0.22, 0.17, 0.14), '#f472b6', seg=(10, 7))
+    p.sphere((0.08, 0, 0.05), (0.1, 0.08, 0.05), '#fbcfe8', seg=(8, 5))
+    m.finish()
+
+
+# ------------------------------------------------------------------ EFEKTI MOĆI
+def build_fx():
+    # meteor (pada s neba; plamen prema +Z)
+    m = Model('fx_meteor')
+    p = m.part('mesh')
+    p.ico((0, 0, 0), 0.5, '#4b5563', sub=1, jitter=0.18, seed=5)
+    p.ico((0.2, 0.15, 0.2), 0.25, '#374151', sub=1, jitter=0.2, seed=6)
+    for z, r, c in ((0.45, 0.42, '#ff7a1a'), (0.8, 0.3, '#ffb020'), (1.08, 0.18, '#ffe26b')):
+        p.sphere((0, 0, z), (r, r, r * 1.3), c, mat='glow', seg=(10, 7))
+    m.finish()
+    # korijenje (izbija iz tla)
+    m = Model('fx_root')
+    p = m.part('mesh')
+    for a, h, lean in ((0, 1.0, 0.35), (120, 0.8, 0.3), (240, 0.9, 0.4)):
+        ca, sa = math.cos(RAD(a)), math.sin(RAD(a))
+        base = (ca * 0.12, sa * 0.12, 0)
+        mid = (ca * (0.12 + lean * 0.5), sa * (0.12 + lean * 0.5), h * 0.55)
+        top = (ca * (0.12 + lean), sa * (0.12 + lean), h)
+        p.cyl(base, mid, 0.14, 0.09, '#6b4423', seg=6)
+        p.cyl(mid, top, 0.09, 0.0, '#8a5a2b', seg=6)
+        p.sphere(top, (0.1, 0.06, 0.04), '#4caf50', seg=(6, 4))
+    m.finish()
+    # ledeni kristali (Ledeno doba)
+    m = Model('fx_ice')
+    p = m.part('mesh')
+    for a, h, r in ((0, 1.1, 0.22), (90, 0.75, 0.17), (200, 0.9, 0.19), (290, 0.6, 0.14)):
+        ca, sa = math.cos(RAD(a)), math.sin(RAD(a))
+        c = (ca * 0.25, sa * 0.25, h * 0.45)
+        p.ico(c, (r, r, h * 0.55), '#9ae6ff', mat='glow', sub=0, rot=(sa * 18, -ca * 18, a))
+        p.ico((c[0], c[1], h * 0.85), (r * 0.4, r * 0.4, h * 0.2), '#eefaff', mat='glow', sub=0, rot=(sa * 18, -ca * 18, a))
+    m.finish()
+    # val (prsten vode s pjenom) — širi se u igri
+    m = Model('fx_wave')
+    p = m.part('mesh')
+    p.arc((0, 0, 0.1), 1.0, 0, 360, 24, 0.18, '#3b9fe0', plane='xy', seg=8)
+    for k in range(12):
+        a = RAD(k * 30)
+        p.sphere((math.cos(a) * 1.0, math.sin(a) * 1.0, 0.26), (0.14, 0.14, 0.1), '#eaf7ff', mat='glow', seg=(7, 5))
+    m.finish()
+    # zvijezda (omama, Zvjezdana kiša) — uspravna, gleda prema kameri
+    m = Model('fx_star')
+    p = m.part('mesh')
+    pts = []
+    for i in range(10):
+        a = RAD(90 + i * 36)
+        r = 0.5 if i % 2 == 0 else 0.22
+        pts.append((math.cos(a) * r, 0, math.sin(a) * r))
+    p.poly(pts, '#fde047', mat='glow', thick=0.08)
+    m.finish()
+    # srce (liječenje)
+    m = Model('fx_heart')
+    p = m.part('mesh')
+    p.sphere((0.14, 0, 0.12), 0.2, '#f43f5e', seg=(10, 7))
+    p.sphere((-0.14, 0, 0.12), 0.2, '#f43f5e', seg=(10, 7))
+    p.cyl((0, 0, -0.32), (0, 0, 0.1), 0.0, 0.3, '#f43f5e', seg=8)
+    p.sphere((0.1, -0.12, 0.25), 0.05, '#ffd1dc', seg=(6, 4))
+    m.finish()
+    # duh (diže se kad junak pogine) — lice gleda prema -Y (prema kameri u igri)
+    m = Model('fx_ghost')
+    p = m.part('mesh')
+    p.sphere((0, 0, 0.45), (0.36, 0.33, 0.36), '#f8fafc', seg=(12, 9))
+    p.cyl((0, 0, 0.45), (0, 0, 0.0), 0.36, 0.3, '#f8fafc', seg=10, smooth=True)
+    for k in range(3):
+        a = RAD(k * 120 + 90)
+        p.sphere((math.cos(a) * 0.22, math.sin(a) * 0.22, 0.0), (0.14, 0.14, 0.16), '#f8fafc', seg=(8, 6))
+    for s in (1, -1):
+        p.sphere((s * 0.13, -0.3, 0.52), (0.07, 0.04, 0.09), '#1f2937', seg=(8, 6))
+    p.sphere((0, -0.34, 0.36), (0.07, 0.03, 0.05), '#1f2937', seg=(8, 5))
+    m.finish()
+    # nadgrobni kamen s cvijetom (gdje je junak pao)
+    m = Model('fx_tomb')
+    p = m.part('mesh')
+    p.box((0, 0, 0.32), (0.42, 0.18, 0.62), '#9ca3af', bevel=0.04)
+    p.sphere((0, 0, 0.62), (0.21, 0.09, 0.2), '#9ca3af', seg=(10, 7))
+    p.sphere((0, 0, 0.02), (0.5, 0.4, 0.1), '#7a4b25', seg=(10, 6))
+    p.cyl((0.22, -0.12, 0.05), (0.26, -0.14, 0.3), 0.015, 0.012, '#4caf50', seg=4)
+    p.sphere((0.26, -0.14, 0.32), 0.06, '#f9a8d4', seg=(7, 5))
+    m.finish()
+
+
+# ------------------------------------------------------------------ RUNE
+def build_runes():
+    # 💨 brzina: zeleno-žuti vrtlog vjetra
+    m = Model('rune_haste')
+    p = m.part('mesh')
+    p.arc((0, 0, 0.5), 0.3, 0, 300, 10, 0.06, '#bef264', plane='xy', mat='glow')
+    p.arc((0, 0, 0.5), 0.16, 60, 360, 8, 0.045, '#d9f99d', plane='xy', mat='glow')
+    p.ico((0, 0, 0.5), 0.12, '#fef08a', mat='glow', sub=0)
+    m.finish()
+    # 💚 obnova: zeleno srce
+    m = Model('rune_regen')
+    p = m.part('mesh')
+    p.sphere((0.14, 0, 0.62), 0.2, '#4ade80', mat='glow', seg=(10, 7))
+    p.sphere((-0.14, 0, 0.62), 0.2, '#4ade80', mat='glow', seg=(10, 7))
+    p.cyl((0, 0, 0.18), (0, 0, 0.6), 0.0, 0.3, '#4ade80', mat='glow', seg=8)
+    m.finish()
+    # ⚔️ dvostruka šteta: crveni dvostruki kristal
+    m = Model('rune_double')
+    p = m.part('mesh')
+    p.ico((0, 0, 0.5), (0.2, 0.2, 0.5), '#f87171', mat='glow', sub=0)
+    p.ico((0, 0, 0.5), (0.32, 0.32, 0.18), '#fca5a5', mat='glow', sub=0, rot=(0, 0, 45))
+    m.finish()
+    # 🛡️ štit: plavi štit
+    m = Model('rune_shield')
+    p = m.part('mesh')
+    p.cyl((0, -0.06, 0.5), (0, 0.06, 0.5), 0.4, 0.4, '#60a5fa', mat='glow', seg=10)
+    p.cyl((0, -0.1, 0.5), (0, -0.05, 0.5), 0.3, 0.3, '#bfdbfe', mat='glow', seg=10)
+    p.ico((0, -0.14, 0.5), 0.1, '#ffffff', mat='glow', sub=0)
+    m.finish()
+
+
 # ------------------------------------------------------------------ IZVOZ
 def export(path):
     bpy.ops.export_scene.gltf(
@@ -1232,6 +1433,9 @@ def main():
     build_neutrals()
     build_tower()
     build_nature()
+    build_projectiles()
+    build_fx()
+    build_runes()
     os.makedirs(ASSETS, exist_ok=True)
     glb = os.path.join(ASSETS, 'models.glb')
     export(glb)
@@ -1241,9 +1445,11 @@ def main():
         f.write('window.MODELS_GLB_B64 = "%s";\n' % base64.b64encode(data).decode('ascii'))
     print('GLB: %.1f KB' % (len(data) / 1024))
     if WANT_PREVIEW:
-        preview(os.path.join(HERE, 'preview.png'))
+        preview(os.path.join(HERE, 'preview.png'), cols=10)
     elif '--preview-heroes' in argv:
         preview(os.path.join(HERE, 'preview_heroes.png'), only=['hero_', 'creep_'], cols=5)
+    elif '--preview-fx' in argv:
+        preview(os.path.join(HERE, 'preview_fx.png'), only=['proj_', 'fx_', 'rune_'], cols=6)
 
 
 main()

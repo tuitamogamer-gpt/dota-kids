@@ -752,6 +752,7 @@ function spawnHoming(src, target, o){
     speed: o.speed, dmg: o.dmg, src, team: src.team,
     color: o.color || '#fff', emoji: o.emoji || null, r: o.r || 6,
     onHit: o.onHit || null, miss: !!o.miss,
+    shot: o.shot || null,   // 3D model projektila (arrow/fire/ice/leaf/feather/bolt/tower)
   });
 }
 function spawnZone(u, aim, o){
@@ -876,7 +877,8 @@ function castAbility(u, i, aim){
   }
   u.mp -= ab.def.mana;
   ab.cd = ab.def.cd;
-  u.castN = (u.castN || 0) + 1;   // 3D: animacija čaranja
+  u.castFx = u.hero.id + ':' + ab.def.key;   // 3D: efekt moći (scene3d.js)
+  u.castN = (u.castN || 0) + 1;              // 3D: animacija čaranja
   if(aim && (Math.abs(aim.x - u.x) + Math.abs(aim.y - u.y) > 4)) u.dir = Math.atan2(aim.y - u.y, aim.x - u.x);
   sfxAt(ab.def.ult ? 'ult' : 'cast', u.x, u.y);
 }
@@ -1062,6 +1064,7 @@ function performAttack(u, t){
       onHit: miss ? null : onHitFx,
       color: u.kind === 'tower' ? '#fbbf24' : TEAM_LIGHT[u.team],
       r: u.kind === 'tower' ? 9 : 6,
+      shot: u.kind === 'tower' ? 'tower' : (u.kind === 'hero' ? (u.hero.shot || 'bolt') : 'bolt'),
     });
     sfxAt('pew', u.x, u.y);
   } else {
@@ -1967,6 +1970,13 @@ function endGame(winTeam){
 function endGameView(winTeam){
   gameOver = true;
   const won = player && player.team === winTeam;
+  pendingCast = null;
+  announce(won ? '🏆 POBJEDA!' : '💔 PORAZ...', won ? 'Neprijateljski prijestol se raspada!' : 'Naš prijestol je pao...');
+  startCinematic(ANCIENT_POS[1 - winTeam]);   // kamera leti do prijestola koji se raspada
+  sfx(won ? 'win' : 'lose');
+  setTimeout(() => showEndScreen(winTeam, won), 3200);
+}
+function showEndScreen(winTeam, won){
   document.getElementById('endEmoji').textContent = won ? '🎉🏆🎉' : '😢💔😢';
   document.getElementById('endTitle').textContent = won ? 'POBJEDA!' : 'PORAZ!';
   document.getElementById('endTitle').style.color = won ? '#fde047' : '#fca5a5';
@@ -1992,7 +2002,6 @@ function endGameView(winTeam){
     }
   }
   document.getElementById('end').classList.remove('hidden');
-  sfx(won ? 'win' : 'lose');
 }
 
 /* ================= Zvuk ================= */
