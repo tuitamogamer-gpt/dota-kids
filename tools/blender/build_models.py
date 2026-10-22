@@ -1998,7 +1998,8 @@ def preview(path, only=None, cols=8):
     cam = bpy.data.objects.new('cam', bpy.data.cameras.new('cam'))
     sc.collection.objects.link(cam)
     cam.data.type = 'ORTHO'
-    cam.data.ortho_scale = cols * 2.7
+    # mreža je zarotirana 45° prema kameri: pokrij dijagonalu (širina + visina mreže)
+    cam.data.ortho_scale = (cols * 2.6 + rows * 3.2) * 0.72 + 3
     cam.location = (cx + 14, cy - 14, 14)
     cam.rotation_euler = (RAD(58), 0, RAD(45))
     # usmjeri kameru u središte
@@ -2034,7 +2035,7 @@ def preview(path, only=None, cols=8):
     sc.cycles.samples = 24
     sc.cycles.use_denoising = False
     sc.render.resolution_x = 1800
-    sc.render.resolution_y = int(1800 * rows * 3.2 / (cols * 2.7) * 1.15) + 200
+    sc.render.resolution_y = 1800
     sc.render.filepath = path
     bpy.ops.render.render(write_still=True)
 
