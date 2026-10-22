@@ -576,13 +576,13 @@ function magicCircle(x, y, r, color, life, big){
 function shockwave(x, y, r, color){
   const gh = groundHeight(x, y);
   const ringGeo = cachedGeo('shockRing', () => { const g = new THREE.RingGeometry(0.82, 1, 48); g.rotateX(-Math.PI / 2); return g; });
-  const rm = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, depthWrite: false,
+  const rm = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.75, depthWrite: false,
     side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
   addFx(rm, 0.45, (o, f) => {
     const s = r * (0.15 + 0.85 * Math.sqrt(f));
     o.scale.set(s, 1, s);
     o.position.set(x, gh + 3, y);
-    o.material.opacity = 0.9 * (1 - f);
+    o.material.opacity = 0.75 * (1 - f) * (1 - f * 0.3);
   });
   const wallGeo = cachedGeo('shockWall', () => new THREE.CylinderGeometry(1, 1, 1, 40, 1, true));
   const wm = new THREE.Mesh(wallGeo, new THREE.MeshBasicMaterial({ map: beamTexture(), color, transparent: true, opacity: 0.7,
@@ -592,7 +592,7 @@ function shockwave(x, y, r, color){
     o.scale.set(s, hh, s);
     o.position.set(x, gh + hh / 2, y);
     o.rotation.x = Math.PI;   // svjetliji dio pri tlu
-    o.material.opacity = 0.65 * (1 - f);
+    o.material.opacity = 0.42 * (1 - f);
   });
   for(let i = 0; i < 20; i++){
     const a = i / 20 * TAU;
@@ -2207,7 +2207,7 @@ function castFx(u, g, key){
     if(hid !== 'item'){
       if(!HERO_BY_ID3[hid]) HERO_BY_ID3[hid] = HEROES.find(h => h.id === hid);
       const ab = HERO_BY_ID3[hid] && HERO_BY_ID3[hid].abilities.find(a => a.key === k);
-      if(ab){ col = ab.color || col; ult = !!ab.ult; self = ab.selfAoe || 0; }
+      if(ab){ col = ab.color || col; ult = !!ab.ult; self = (ab.bot && ab.bot.type === 'chain') ? 0 : Math.min(360, ab.selfAoe || 0); }
     }
     if(g.visible){
       magicCircle(u.x, u.y, ult ? 125 : (hid === 'item' ? 55 : 80), col, ult ? 1.35 : 0.85, ult);
