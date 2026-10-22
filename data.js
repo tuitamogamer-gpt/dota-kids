@@ -45,6 +45,14 @@ const CFG = {
   runeEvery: 120,
   dayCycle: 240,
   uphillMissChance: 0.25,
+  barracksHp: 1500,
+  barracksGoldTeam: 150,
+  superCreepHp: 1.6,        // vojnici postaju "super" kad padne vojarna
+  superCreepDmg: 1.4,
+  buybackBase: 100,         // otkup (buyback): cijena = base + level * perLvl
+  buybackPerLvl: 20,
+  buybackCd: 180,
+  aegisDuration: 300,       // Zmajev štit (Aegis) traje 5 min
   // DotA aggro pravila (creep aggro)
   creepAggroRange: 500,     // napad na heroja povlači creepove u ovom radijusu
   creepAggroChase: 2.3,     // koliko dugo ganjaju
@@ -578,6 +586,254 @@ const HEROES = [
         }},
     ],
   },
+  /* ---------------- NOVI JUNACI (v0.9) ---------------- */
+  {
+    id:'jez', name:'Bodljo', emoji:'🦔',
+    role:'🌵 Jež — bodljikavi tenk',
+    hp:660, mp:230, dmg:58,
+    attrs:{ str:24, agi:17, int:13, strG:5.4, agiG:2.4, intG:1.8, primary:'str' },
+    range:80, speed:170, atkCd:1.1, projSpeed:0,
+    abilities:[
+      { key:'Q', name:'Kiša bodlji', emoji:'🌵', cd:6, mana:35, color:'#a3e635',
+        desc:'Ispali bodlje na sve oko sebe; svaka bodlja u neprijatelju boli sve više!',
+        selfAoe:230,
+        tip:rk => '⚔️ ' + (45 + 35*rk) + ' štete svima oko tebe, +8 po svakoj bodlji u meti',
+        bot:{type:'aoe-self', range:230},
+        cast(u, aim, rk){
+          for(const e of units){
+            if(e.team === u.team || e.dead || e.removeMe || e.invuln || !isSpellTarget(e)) continue;
+            if(dist(u, e) > 230 + e.r * 0.5) continue;
+            const stacks = (e.quillT > gameTime) ? (e.quillN || 0) : 0;
+            applyDamage(e, 45 + 35*rk + stacks * 8, u);
+            e.quillN = stacks + 1; e.quillT = gameTime + 8;
+            if(e.kind === 'hero' && e.quillN >= 3) addFloat(e.x, e.y, '🌵 ×' + e.quillN, '#a3e635', 13);
+          }
+          ring(u.x, u.y, 230, '#a3e635');
+          burst(u.x, u.y, '#a3e635', 18, 260, 5);
+          return true;
+        }},
+      { key:'W', name:'Ljepljiva sluz', emoji:'🟢', cd:8, mana:45, color:'#84cc16',
+        desc:'Baci ljepljivu grudu — prvi pogođeni se zalijepi i uspori',
+        target:'point', castRange:650, line:true,
+        tip:rk => '⚔️ ' + (40 + 30*rk) + ' štete + usporenje ' + Math.round((0.3 + 0.05*rk) * 100) + '% na 3 s',
+        bot:{type:'shot', range:600},
+        cast(u, aim, rk){
+          return spawnSkillshot(u, aim, {speed:600, r:22, range:650,
+            dmg:40 + 30*rk, slow:{f:0.3 + 0.05*rk, t:3}, color:'#84cc16', emoji:'🟢'});
+        }},
+      { key:'E', name:'Oklop od bodlji', emoji:'🦔', cd:0, mana:0, color:'#a3e635',
+        passive:true, pid:'oklop',
+        desc:'PASIVNO: tko te udari, može dobiti bodlje natrag!',
+        tip:rk => '🌵 ' + Math.round((0.2 + 0.05*rk) * 100) + '% šanse da napadaču poleti ' + (3) + ' bodlje po ' + (18 + 10*rk) + ' štete' },
+      { key:'R', name:'Juriš bodlji', emoji:'🏃', cd:60, mana:100, ult:true, color:'#bef264',
+        desc:'ULTI: Zalet! Puno brži i jači 8 sekundi, a život ti se obnavlja',
+        tip:rk => '🏃 +' + Math.round((0.25 + 0.1*rk) * 100) + '% brzine, ×' + (1.2 + 0.1*rk).toFixed(1) + ' štete 8 s + 💚 ' + (60 + 40*rk) + ' liječenja',
+        bot:{type:'ult-aoe', range:450},
+        cast(u, aim, rk){
+          applyHaste(u, 1.25 + 0.1*rk, 8);
+          u.status.dmgMulT = 8; u.status.dmgMulF = 1.2 + 0.1*rk;
+          heal(u, 60 + 40*rk);
+          burst(u.x, u.y, '#bef264', 24, 260, 6);
+          return true;
+        }},
+    ],
+  },
+  {
+    id:'slon', name:'Tutnjo', emoji:'🐘',
+    role:'🐘 Slon — golemi branič',
+    hp:740, mp:220, dmg:62,
+    attrs:{ str:27, agi:13, int:12, strG:5.8, agiG:1.8, intG:1.8, primary:'str' },
+    range:88, speed:160, atkCd:1.15, projSpeed:0,
+    abilities:[
+      { key:'Q', name:'Topot', emoji:'🦶', cd:12, mana:60, color:'#c4b5fd',
+        desc:'Lupi nogom — zemlja se zatrese, svi oko tebe su omamljeni',
+        selfAoe:210,
+        tip:rk => '⚔️ ' + (60 + 45*rk) + ' štete + omama ' + (1.0 + 0.3*rk).toFixed(1) + ' s',
+        bot:{type:'aoe-self', range:210},
+        cast(u, aim, rk){
+          damageCircle(u, u.x, u.y, 210, 60 + 45*rk, {stun:1.0 + 0.3*rk, color:'#c4b5fd'});
+          burst(u.x, u.y, '#c9b48c', 22, 240, 6);
+          return true;
+        }},
+      { key:'W', name:'Surla-zamah', emoji:'🌀', cd:7, mana:40, color:'#a5b4fc',
+        desc:'Zamahni surlom ispred sebe — velika šteta u pravcu',
+        target:'point', castRange:320, line:true,
+        tip:rk => '⚔️ ' + (80 + 55*rk) + ' štete svima u pravcu zamaha',
+        bot:{type:'shot', range:300},
+        cast(u, aim, rk){
+          const p = clampRange(u, aim, 320);
+          u.dir = Math.atan2(p.y - u.y, p.x - u.x);
+          lineDamage(u, u.x, u.y, p.x, p.y, 90, 80 + 55*rk);
+          addLine(u.x, u.y, p.x, p.y, '#a5b4fc', 8, 0.25);
+          burst(p.x, p.y, '#a5b4fc', 12, 200, 5);
+          return true;
+        }},
+      { key:'E', name:'Debela koža', emoji:'🛡️', cd:0, mana:0, color:'#c7d2fe',
+        passive:true, pid:'debela',
+        desc:'PASIVNO: tko te udari izbliza, i sam se ozlijedi',
+        tip:rk => '🛡️ napadač izbliza prima ' + (14 + 10*rk) + ' štete natrag' },
+      { key:'R', name:'Stampedo', emoji:'🐘', cd:80, mana:130, ult:true, color:'#818cf8',
+        desc:'ULTI: Cijeli tvoj tim juri kao stampedo! Neprijatelji oko tebe su pregaženi i omamljeni',
+        selfAoe:320,
+        tip:rk => '🏃 tim +50% brzine 4 s • ⚔️ ' + (110 + 80*rk) + ' štete + omama 1.5 s oko tebe',
+        bot:{type:'ult-aoe', range:320},
+        cast(u, aim, rk){
+          for(const e of units){
+            if(e.kind === 'hero' && e.team === u.team && !e.dead) applyHaste(e, 1.5, 4);
+          }
+          damageCircle(u, u.x, u.y, 320, 110 + 80*rk, {stun:1.5, color:'#818cf8'});
+          burst(u.x, u.y, '#c9b48c', 40, 320, 8);
+          return true;
+        }},
+    ],
+  },
+  {
+    id:'pcela', name:'Zuja', emoji:'🐝',
+    role:'🍯 Pčela — otrovna čarobnica',
+    hp:520, mp:320, dmg:48,
+    attrs:{ str:17, agi:18, int:25, strG:3.4, agiG:2.6, intG:5.6, primary:'int' },
+    range:340, speed:168, atkCd:1.1, projSpeed:650, shot:'bolt',
+    abilities:[
+      { key:'Q', name:'Otrovni ubod', emoji:'🐝', cd:7, mana:45, color:'#facc15',
+        desc:'Pošalji pčelu — ubod otruje neprijatelja koji gubi život nekoliko sekundi',
+        target:'point', castRange:700, line:true,
+        tip:rk => '⚔️ ' + (35 + 25*rk) + ' štete + 🤢 otrov ' + (10 + 7*rk) + '/s na 4 s',
+        bot:{type:'shot', range:640},
+        cast(u, aim, rk){
+          return spawnSkillshot(u, aim, {speed:640, r:20, range:700,
+            dmg:35 + 25*rk, color:'#facc15', emoji:'🐝',
+            onHit(e){ applyPoison(e, 10 + 7*rk, 4, u); }});
+        }},
+      { key:'W', name:'Roj', emoji:'🍯', cd:14, mana:70, color:'#fbbf24',
+        desc:'Pozovi roj pčela na mjesto — bodu i usporavaju sve u krugu',
+        target:'point', castRange:600, aoe:200,
+        tip:rk => '⚔️ 5 × ' + (18 + 14*rk) + ' štete + usporenje',
+        bot:{type:'zone', range:540},
+        cast(u, aim, rk){
+          return spawnZone(u, aim, {r:200, delay:0.4, ticks:5, interval:0.8,
+            dmg:18 + 14*rk, slow:{f:0.3, t:1}, castRange:600,
+            color:'#fbbf24', emoji:'🍯'});
+        }},
+      { key:'E', name:'Med', emoji:'🧈', cd:0, mana:0, color:'#fde68a',
+        passive:true, pid:'med',
+        desc:'PASIVNO: slatki med polako liječi tebe i prijatelje oko tebe',
+        tip:rk => '💚 +' + (1 + rk) + ' života/s tebi i prijateljima u krugu 300' },
+      { key:'R', name:'Košnica', emoji:'🏺', cd:75, mana:140, ult:true, color:'#f59e0b',
+        desc:'ULTI: Golema košnica — otrovni oblak koji dugo traje i truje sve u njemu',
+        target:'point', castRange:650, aoe:320,
+        tip:rk => '⚔️ 6 × ' + (40 + 28*rk) + ' štete + 🤢 otrov svima u krugu',
+        bot:{type:'zone', range:600},
+        cast(u, aim, rk){
+          return spawnZone(u, aim, {r:320, delay:0.6, ticks:6, interval:1.0,
+            dmg:40 + 28*rk, poison:{dps:8 + 4*rk, t:3}, castRange:650,
+            color:'#f59e0b', emoji:'🏺'});
+        }},
+    ],
+  },
+  {
+    id:'sova', name:'Mudra', emoji:'🦉',
+    role:'🌙 Sova — gospodarica noći',
+    hp:540, mp:300, dmg:52,
+    attrs:{ str:18, agi:19, int:23, strG:3.6, agiG:2.8, intG:5.0, primary:'int' },
+    range:350, speed:170, atkCd:1.1, projSpeed:650, shot:'feather',
+    abilities:[
+      { key:'Q', name:'Huk', emoji:'📣', cd:10, mana:55, color:'#e9d5ff',
+        desc:'Glasni huk — neprijatelji oko tebe su ušutkani i ne mogu bacati moći',
+        selfAoe:260,
+        tip:rk => '⚔️ ' + (45 + 35*rk) + ' štete + 🤐 ušutkani ' + (2 + 0.5*rk).toFixed(1) + ' s',
+        bot:{type:'aoe-self', range:260},
+        cast(u, aim, rk){
+          damageCircle(u, u.x, u.y, 260, 45 + 35*rk, {silence:2 + 0.5*rk, color:'#e9d5ff'});
+          ring(u.x, u.y, 160, '#e9d5ff'); ring(u.x, u.y, 260, '#e9d5ff');
+          return true;
+        }},
+      { key:'W', name:'Sovino oko', emoji:'👁️', cd:25, mana:50, color:'#c4b5fd',
+        desc:'Pogledaj daleko — vidiš odabrano mjesto 10 sekundi (i kroz maglu rata!)',
+        target:'point', castRange:1400, aoe:420,
+        tip:rk => '👁️ vid u krugu 420 na ' + (8 + 3*rk) + ' s',
+        bot:{type:'ward', range:1200},
+        cast(u, aim, rk){
+          const p = clampRange(u, aim, 1400);
+          wards.push({ x:p.x, y:p.y, r:420, team:u.team, t:8 + 3*rk, owner:u });
+          ring(p.x, p.y, 420, '#c4b5fd');
+          burst(p.x, p.y, '#c4b5fd', 10, 150, 5);
+          return true;
+        }},
+      { key:'E', name:'Noćna ptica', emoji:'🌙', cd:0, mana:0, color:'#a78bfa',
+        passive:true, pid:'noc',
+        desc:'PASIVNO: noću si brža i jača!',
+        tip:rk => '🌙 noću +' + Math.round((0.15 + 0.08*rk) * 100) + '% brzine i +' + (12 + 10*rk) + ' štete' },
+      { key:'R', name:'Vječna noć', emoji:'🌑', cd:90, mana:120, ult:true, color:'#6d28d9',
+        desc:'ULTI: Pozovi noć usred dana! Neprijatelji vide kraće, a tvoj tim je brži',
+        tip:rk => '🌑 noć ' + (18 + 6*rk) + ' s • tim +20% brzine 6 s',
+        bot:{type:'night', range:700},
+        cast(u, aim, rk){
+          nightForceT = Math.max(nightForceT, 18 + 6*rk);
+          for(const e of units){
+            if(e.kind === 'hero' && e.team === u.team && !e.dead) applyHaste(e, 1.2, 6);
+          }
+          announce('🌑 Vječna noć!', u.emoji + ' ' + u.name + ' je pozvala noć!');
+          burst(u.x, u.y, '#6d28d9', 30, 300, 7);
+          return true;
+        }},
+    ],
+  },
+  {
+    id:'majmun', name:'Skakač', emoji:'🐵',
+    role:'🥢 Majmun — brzi borac sa štapom',
+    hp:580, mp:260, dmg:64,
+    attrs:{ str:19, agi:26, int:15, strG:4.0, agiG:6.4, intG:2.2, primary:'agi' },
+    range:90, speed:180, atkCd:1.0, projSpeed:0,
+    abilities:[
+      { key:'Q', name:'Štap-udarac', emoji:'🥢', cd:9, mana:50, color:'#fbbf24',
+        desc:'Štap se produži i udari sve u pravcu — kratka omama',
+        target:'point', castRange:420, line:true,
+        tip:rk => '⚔️ ' + (65 + 45*rk) + ' štete + omama ' + (0.5 + 0.2*rk).toFixed(1) + ' s svima u pravcu',
+        bot:{type:'shot', range:400},
+        cast(u, aim, rk){
+          const p = clampRange(u, aim, 420);
+          u.dir = Math.atan2(p.y - u.y, p.x - u.x);
+          for(const e of units){
+            if(e.team === u.team || e.dead || e.removeMe || e.invuln || !isSpellTarget(e)) continue;
+            if(distToSeg(e.x, e.y, u.x, u.y, p.x, p.y) <= 70 + e.r){
+              applyDamage(e, 65 + 45*rk, u);
+              applyStun(e, 0.5 + 0.2*rk);
+            }
+          }
+          addLine(u.x, u.y, p.x, p.y, '#fbbf24', 7, 0.3);
+          burst(p.x, p.y, '#fbbf24', 10, 180, 5);
+          return true;
+        }},
+      { key:'W', name:'Majmunski skok', emoji:'🐵', cd:10, mana:45, color:'#86efac',
+        desc:'Skoči na mjesto i kratko potrči brže',
+        target:'point', castRange:450, line:true,
+        tip:rk => '🐵 skok 450 + ubrzanje ' + Math.round((0.15 + 0.05*rk) * 100) + '% na 2 s',
+        bot:{type:'gap', range:450},
+        cast(u, aim, rk){
+          leapTo(u, aim, 450);
+          applyHaste(u, 1.15 + 0.05*rk, 2);
+          burst(u.x, u.y, '#c9b48c', 14, 200, 5);
+          return true;
+        }},
+      { key:'E', name:'Kombo', emoji:'👊', cd:0, mana:0, color:'#fde047',
+        passive:true, pid:'kombo',
+        desc:'PASIVNO: svaki treći udarac je jači i malo te izliječi',
+        tip:rk => '👊 svaki 3. napad +' + (30 + 25*rk) + ' štete i 💚 ' + (15 + 10*rk) + ' liječenja' },
+      { key:'R', name:'Majmunska vojska', emoji:'🐒', cd:80, mana:130, ult:true, color:'#f59e0b',
+        desc:'ULTI: Pozovi 3 majmuna koji se bore uz tebe!',
+        tip:rk => '🐒 3 majmuna (' + (260 + 140*rk) + ' života, ' + (22 + 14*rk) + ' štete) na ' + (12 + 3*rk) + ' s',
+        bot:{type:'ult-aoe', range:500},
+        cast(u, aim, rk){
+          for(let i = 0; i < 3; i++){
+            const a = i / 3 * TAU + 0.7;
+            makeSummon(u, { x:u.x + Math.cos(a) * 60, y:u.y + Math.sin(a) * 60,
+              hp:260 + 140*rk, dmg:22 + 14*rk, life:12 + 3*rk, model:'hero_majmun', emoji:'🐒', name:'Majmunčić' });
+          }
+          burst(u.x, u.y, '#f59e0b', 24, 260, 6);
+          return true;
+        }},
+    ],
+  },
 ];
 
 /* ---------------- DUĆAN S RECEPTIMA ---------------- */
@@ -607,8 +863,16 @@ const ITEMS = [
     stats:{hp:750, hpRegen:3}, components:['bigheart','heart'] },
   { id:'archstaff',  emoji:'🌟', name:'Arhimagov štap',  tier:3, cost:400, desc:'+30 štete, +320 mane, +3 obnova mane',
     stats:{dmg:30, mp:320, mpRegen:3}, components:['staff','orb'] },
+  { id:'blink',      emoji:'🪽', name:'Skokne čizme',    tier:3, cost:450, desc:'+50 brzine, +100 mane • AKTIVNO: skok do 600 daleko (klik = cilj)',
+    stats:{speed:50, mp:100}, components:['boots','orb'], tag:'boots',
+    active:{ cd:14, mana:40, target:'point', castRange:600,
+      use(h, aim){ leapTo(h, aim, 600); burst(h.x, h.y, '#bae6fd', 16, 200, 5); return true; } } },
+  { id:'bkb',        emoji:'👑', name:'Kraljevski oklop', tier:3, cost:500, desc:'+220 života, +20 štete • AKTIVNO: 5 s ništa te ne može omamiti ni usporiti',
+    stats:{hp:220, dmg:20}, components:['guard','sword'],
+    active:{ cd:60, mana:0,
+      use(h){ applyImmune(h, 5); burst(h.x, h.y, '#fde047', 20, 220, 6); return true; } } },
   // ----- TIR 4: legendarni -----
-  { id:'crown',       emoji:'👑', name:'Kruna kraljeva',  tier:4, cost:600, desc:'+55 štete, +450 života',
+  { id:'crown',       emoji:'🏵️', name:'Kruna kraljeva',  tier:4, cost:600, desc:'+55 štete, +450 života',
     stats:{dmg:55, hp:450}, components:['bigsword','bigheart'] },
   { id:'dragonblade', emoji:'🐲', name:'Zmajska oštrica', tier:4, cost:800, desc:'+85 štete, +650 života, +3 obnova',
     stats:{dmg:85, hp:650, hpRegen:3}, components:['kingsword','titanheart'] },

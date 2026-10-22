@@ -178,6 +178,8 @@ function onNetData(d){
     case 'buy': if(net.mode === 'host' && remoteHero && ITEM_BY_ID[d.id]) tryBuy(remoteHero, ITEM_BY_ID[d.id]); break;
     case 'sell': if(net.mode === 'host' && remoteHero) sellItem(remoteHero, d.i); break;
     case 'tp': if(net.mode === 'host' && remoteHero) startTeleport(remoteHero); break;
+    case 'buyback': if(net.mode === 'host' && remoteHero) buyback(remoteHero); break;
+    case 'item': if(net.mode === 'host' && remoteHero) useItem(remoteHero, d.i, d.x != null ? { x: d.x, y: d.y } : null); break;
   }
 }
 
@@ -190,11 +192,13 @@ function netStats(){ sendNet({ c: 'stats' }); }
 function netBuy(id){ sendNet({ c: 'buy', id }); }
 function netSell(i){ sendNet({ c: 'sell', i }); }
 function netTp(){ sendNet({ c: 'tp' }); }
+function netBuyback(){ sendNet({ c: 'buyback' }); }
+function netItem(i, aim){ sendNet({ c: 'item', i, x: aim ? Math.round(aim.x) : null, y: aim ? Math.round(aim.y) : null }); }
 
 /* ---------- SNAPSHOT: domaćin → gost ---------- */
 function packStatus(st){
-  return [st.slowT, st.stun, st.rootT, st.shieldT, st.hasteT, st.invisT, st.trackT, st.dmgMulT]
-    .map(v => Math.round(v * 10));
+  return [st.slowT, st.stun, st.rootT, st.shieldT, st.hasteT, st.invisT, st.trackT, st.dmgMulT,
+    st.silenceT, st.immuneT, st.poisonT].map(v => Math.round(v * 10));
 }
 function heroExtras(h){
   return {
@@ -203,6 +207,7 @@ function heroExtras(h){
     hr: +h.hpRegen.toFixed(2), mr: +h.mpRegen.toFixed(2),
     spd: Math.round(h.speed), dm: Math.round(h.dmg), ib: h.itemBonus.dmg,
     tc: +h.tpCd.toFixed(1), tch: +h.tpChannel.toFixed(2), dt2: +h.deadT.toFixed(1),
+    as: h.assists, bb: +h.buybackCd.toFixed(1), ag: h.aegis ? 1 : 0, at: Math.round(h.aegisT), ic: h.itemCd,
     ab: h.abilities.map(a => [a.rank, +a.cd.toFixed(1)]),
     it: h.items.map(i => i.id),
   };
@@ -225,10 +230,13 @@ function buildSnapshot(){
       b.l = u.level; b.dd = u.dead ? 1 : 0;
       b.mp = Math.round(u.mp); b.mm = u.maxmp;
       b.st = packStatus(u.status);
-      b.k2 = u.kills; b.d2 = u.deaths; b.gd2 = Math.floor(u.gold);
+      b.k2 = u.kills; b.d2 = u.deaths; b.a2 = u.assists; b.gd2 = Math.floor(u.gold);
       b.pl = u.isPlayer ? 1 : (u.human ? 2 : 0);
+      if(u.aegis) b.ag = 1;
+      b.it2 = u.items.map(i => i.emoji).join('');
     }
-    else if(u.kind === 'creep'){ if(u.rangedCreep) b.rc = 1; if(u.siege) b.sg = 1; }
+    else if(u.kind === 'creep'){ if(u.rangedCreep) b.rc = 1; if(u.siege) b.sg = 1; if(u.summonModel) b.sm = u.summonModel; if(u.superCreep) b.su = 1; }
+    else if(u.kind === 'barracks'){ b.iv = u.invuln ? 1 : 0; b.ln = u.lane; }
     else if(u.kind === 'neutral'){ b.ct = CAMP_KEYS.indexOf(u.camp.type); }
     else if(u.kind === 'tower'){ if(u.isGuard) b.gd = 1; }
     else if(u.kind === 'ancient'){ b.iv = u.invuln ? 1 : 0; }
@@ -248,6 +256,8 @@ function buildSnapshot(){
     fd: feed.map(f => ({ tx: f.txt, cl: f.color, t: +f.t.toFixed(2) })),
     bn: banner ? { tx: banner.txt, sb: banner.sub, t: banner.t, dr: banner.dur } : 0,
     me: remoteHero ? heroExtras(remoteHero) : 0,
+    nf: +nightForceT.toFixed(1),
+    wd: wards.map(w => ({ x: Math.round(w.x), y: Math.round(w.y), r: w.r, t: +w.t.toFixed(1), tm: w.team })),
   };
 }
 function maybeSendSnapshot(now){
@@ -262,6 +272,7 @@ function unpackStatus(st, arr){
   st.slowT = arr[0] / 10; st.stun = arr[1] / 10; st.rootT = arr[2] / 10;
   st.shieldT = arr[3] / 10; st.hasteT = arr[4] / 10; st.invisT = arr[5] / 10;
   st.trackT = arr[6] / 10; st.dmgMulT = arr[7] / 10;
+  st.silenceT = (arr[8] || 0) / 10; st.immuneT = (arr[9] || 0) / 10; st.poisonT = (arr[10] || 0) / 10;
   if(st.slowT > 0 && st.slowF <= 0) st.slowF = 0.3;
   st.dmgMulF = st.dmgMulT > 0 ? 2 : 1;
   st.hasteF = st.hasteT > 0 ? 1.3 : 1;
@@ -298,6 +309,11 @@ function makeGuestUnit(b){
   else if(b.k === 'creep'){
     base.r = b.sg ? 19 : (b.rc ? 14 : 16);
     base.rangedCreep = !!b.rc; base.siege = !!b.sg;
+    if(b.sm){ base.summonModel = b.sm; base.summonOf = true; base.r = 13; }
+    if(b.su){ base.superCreep = true; base.r += 2; }
+  }
+  else if(b.k === 'barracks'){
+    base.r = 58; base.isStatic = true; base.invuln = !!b.iv; base.lane = b.ln;
   }
   else if(b.k === 'neutral'){
     const key = CAMP_KEYS[b.ct] || 'boars';
@@ -341,10 +357,12 @@ function applySnapshot(d){
       u.level = b.l; u.dead = !!b.dd;
       u.mp = b.mp; u.maxmp = b.mm;
       unpackStatus(u.status, b.st);
-      u.kills = b.k2; u.deaths = b.d2; u.gold = b.gd2;
+      u.kills = b.k2; u.deaths = b.d2; u.assists = b.a2 || 0; u.gold = b.gd2;
+      u.aegis = !!b.ag;
+      if(!u.isPlayer) u.items = (b.it2 || '').split('').map(e => ({ emoji: e, name: '' })).filter(i => i.emoji.trim());
       if(b.pl === 2 && !u.isPlayer){ u.isPlayer = true; }
     }
-    if(u.kind === 'ancient') u.invuln = !!b.iv;
+    if(u.kind === 'ancient' || u.kind === 'barracks') u.invuln = !!b.iv;
   }
   for(const id of [...net.guestUnits.keys()]){
     if(!seen.has(id)) net.guestUnits.delete(id);
@@ -362,6 +380,8 @@ function applySnapshot(d){
     player.hpRegen = e.hr; player.mpRegen = e.mr;
     player.speed = e.spd; player.dmg = e.dm; player.itemBonus.dmg = e.ib;
     player.tpCd = e.tc; player.tpChannel = e.tch; player.deadT = e.dt2;
+    player.assists = e.as || 0; player.buybackCd = e.bb || 0; player.aegis = !!e.ag; player.aegisT = e.at || 0;
+    player.itemCd = e.ic || {};
     e.ab.forEach((a, j) => {
       if(player.abilities[j]){ player.abilities[j].rank = a[0]; player.abilities[j].cd = a[1]; }
     });
@@ -386,6 +406,15 @@ function applySnapshot(d){
   floats = d.fl.map(f => ({ x: f.x, y: f.y, h: f.hh, txt: f.tx, color: f.cl, size: f.sz, t: f.t }));
   feed = d.fd.map(f => ({ txt: f.tx, color: f.cl, t: f.t }));
   banner = d.bn ? { txt: d.bn.tx, sub: d.bn.sb, t: d.bn.t, dur: d.bn.dr } : null;
+  nightForceT = d.nf || 0;
+  {   // zadrži iste objekte oka da 3D prikaz ne gradi mrežu iznova svaki snapshot
+    const old = wards;
+    wards = (d.wd || []).map(w => {
+      const ex = old.find(o => o.x === w.x && o.y === w.y && o.team === w.tm);
+      if(ex){ ex.t = w.t; ex.r = w.r; return ex; }
+      return { x: w.x, y: w.y, r: w.r, t: w.t, team: w.tm };
+    });
+  }
 }
 
 /* gostov "frame" — interpolacija + kamera + vid (bez simulacije!) */
@@ -421,7 +450,7 @@ function guestFrame(dt){
   if(net.visT <= 0){ net.visT = 0.25; updateVision(); }
   // dan i noć (samo zastavica za HUD/svjetlo)
   const dayK = 0.5 + 0.5 * Math.cos((gameTime % CFG.dayCycle) / CFG.dayCycle * TAU);
-  isNight = dayK < 0.5;
+  isNight = dayK < 0.5 || nightForceT > 0;
   // ciljanje: odustani ako moć nije spremna
   if(pendingCast){
     const ab = player && !player.dead ? player.abilities[pendingCast.i] : null;
@@ -442,6 +471,7 @@ function resetMatchState(){
   kills = [0, 0];
   camps = []; runes = [];
   runeTimer = CFG.runeEvery; runeSpotI = 0; isNight = false;
+  wards = []; nightForceT = 0; superCreeps = [{}, {}]; winnerTeam = null;
   pendingCast = null;
   gameTime = 0; waveTimer = CFG.firstWave; waveCount = 0;
   firstBlood = false; gameOver = false; paused = false;

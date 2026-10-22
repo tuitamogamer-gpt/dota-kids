@@ -128,7 +128,7 @@ let visionTimer = 0;
 let fogCanvas = null, fogCtx = null;
 
 function visionRange(u){
-  const base = u.kind === 'hero' ? 950 : (u.kind === 'tower' || u.kind === 'ancient' ? 900 : 750);
+  const base = u.kind === 'hero' ? 950 : (u.kind === 'tower' || u.kind === 'ancient' ? 900 : (u.kind === 'barracks' ? 700 : 750));
   return base * (isNight ? 0.65 : 1);
 }
 function markVision(g, x, y, r){
@@ -155,6 +155,7 @@ function updateVision(){
       markVision(g, u.x, u.y, visionRange(u));
     }
     markVision(g, FOUNTAIN[team].x, FOUNTAIN[team].y, 800);
+    for(const w of wards) if(w.team === team) markVision(g, w.x, w.y, w.r);
   }
   // vizualna magla za MOJ tim (gost = crveni)
   if(fogCtx){
@@ -181,6 +182,14 @@ function updateVision(){
     fgr.addColorStop(1, 'rgba(0,0,0,0)');
     fogCtx.fillStyle = fgr;
     fogCtx.beginPath(); fogCtx.arc(ff.x * s, ff.y * s, fr, 0, TAU); fogCtx.fill();
+    for(const w of wards){   // 👁️ Sovino oko
+      if(w.team !== myTeam) continue;
+      const wr = w.r * s;
+      const wg = fogCtx.createRadialGradient(w.x * s, w.y * s, wr * 0.6, w.x * s, w.y * s, wr);
+      wg.addColorStop(0, 'rgba(0,0,0,1)'); wg.addColorStop(1, 'rgba(0,0,0,0)');
+      fogCtx.fillStyle = wg;
+      fogCtx.beginPath(); fogCtx.arc(w.x * s, w.y * s, wr, 0, TAU); fogCtx.fill();
+    }
     fogCtx.globalCompositeOperation = 'source-over';
     markFogDirty();
   }
@@ -198,7 +207,7 @@ function isVisibleTo(team, u){
 function seenByPlayer(u){
   if(u.kind === 'hero' && u.status.trackT > 0) return true;   // ucijenjeni se uvijek vide
   if(u.kind === 'hero' && u.status.invisT > 0 && u.team !== myTeam) return false;  // nevidljivost
-  if(u.team === myTeam || u.kind === 'tower' || u.kind === 'ancient') return true;
+  if(u.team === myTeam || isStructure(u)) return true;
   return isVisibleTo(myTeam, u);
 }
 
@@ -231,6 +240,11 @@ let units = [], projectiles = [], zones = [], particles = [], lines = [], floats
 let trees = [];
 let camps = [];
 let runes = [];
+let wards = [];                 // 👁️ privremeni vid (Sovino oko)
+let nightForceT = 0;            // 🌑 Vječna noć: prisilna noć još toliko sekundi
+let superCreeps = [{}, {}];     // [tim][staza] = true kad je protivnička vojarna srušena
+let winnerTeam = null;          // tim koji je pobijedio (junaci plešu pobjednički ples)
+const LANE_NAME = { top: 'gore', mid: 'sredina', bot: 'dolje' };
 let runeTimer = CFG.runeEvery, runeSpotI = 0;
 let isNight = false;
 let player = null;
@@ -256,7 +270,8 @@ let sfxLast = {};
 /* ================= Jedinice ================= */
 function baseStatus(){
   return { slowT: 0, slowF: 0, stun: 0, rootT: 0, shieldT: 0, shieldF: 0,
-    hasteT: 0, hasteF: 1, dmgMulT: 0, dmgMulF: 1, invisT: 0, trackT: 0 };
+    hasteT: 0, hasteF: 1, dmgMulT: 0, dmgMulF: 1, invisT: 0, trackT: 0,
+    poisonT: 0, poisonDps: 0, poisonAcc: 0, poisonSrc: null, silenceT: 0, immuneT: 0 };
 }
 
 function makeUnit(o){
@@ -294,7 +309,8 @@ function makeHero(def, team, isPlayer, lane){
     str: def.attrs.str, agi: def.attrs.agi, int: def.attrs.int,
     statRanks: 0, atkSpdBonus: 0,
     attrBonus: { dmg: 0, hp: 0, mp: 0, speed: 0, hpRegen: 0, mpRegen: 0 },
-    kills: 0, deaths: 0, streak: 0, items: [], buildI: 0,
+    kills: 0, deaths: 0, assists: 0, streak: 0, items: [], buildI: 0,
+    buybackCd: 0, aegis: false, aegisT: 0, reviveAt: null, itemCd: {}, comboN: 0, hitBy: {},
     itemBonus: { dmg: 0, hp: 0, mp: 0, speed: 0, hpRegen: 0, mpRegen: 0 },
     abilities: def.abilities.map(a => ({ def: a, cd: 0, rank: 0 })),
     isPlayer: !!isPlayer, lane,
@@ -326,6 +342,18 @@ function makeCreep(team, lane, ranged, siege){
     rangedCreep: !!ranged, siege: !!siege,
   });
 }
+// vojarna srušena → protivnički vojnici na toj stazi postaju SUPER (kao u DotA)
+function makeCreepOnLane(team, lane, ranged, siege){
+  const u = makeCreep(team, lane, ranged, siege);
+  if(superCreeps[team][lane]){
+    u.maxhp = u.hp = Math.round(u.maxhp * CFG.superCreepHp);
+    u.dmg *= CFG.superCreepDmg;
+    u.goldValue += 12;
+    u.r += 2;
+    u.superCreep = true;
+  }
+  return u;
+}
 
 function makeTower(team, x, y, lane, tier, isGuard){
   return makeUnit({
@@ -337,6 +365,24 @@ function makeTower(team, x, y, lane, tier, isGuard){
   });
 }
 
+// VOJARNE (barracks): po jedna uz svaku stazu u bazi; ranjive tek kad padne
+// unutarnja kula te staze. Srušena vojarna = protivnik dobiva super vojnike.
+function makeBarracks(team, lane, x, y){
+  return makeUnit({
+    kind: 'barracks', team, x, y, r: 58,
+    hp: CFG.barracksHp, maxhp: CFG.barracksHp,
+    dmg: 0, atkRange: 0, speed: 0, isStatic: true, invuln: true, lane,
+  });
+}
+// prizvane jedinice (Majmunska vojska): vojnici koji prate gospodara
+function makeSummon(owner, o){
+  return makeUnit({
+    kind: 'creep', team: owner.team, x: o.x, y: o.y, r: 13,
+    hp: o.hp, maxhp: o.hp, dmg: o.dmg, atkRange: 70, atkCd: 1.0, speed: 190,
+    goldValue: 15, xpValue: 18, name: o.name, emoji: o.emoji,
+    summonOf: owner, lifeT: o.life, summonModel: o.model, path: null, wpIndex: 0,
+  });
+}
 function makeAncient(team){
   const p = ANCIENT_POS[team];
   const u = makeUnit({
@@ -441,10 +487,27 @@ function announce(txt, sub){
 /* ================= Statusi ================= */
 function applySlow(t, f, dur){
   const st = t.status;
+  if(st.immuneT > 0) return;
   if(st.slowT <= 0 || f >= st.slowF){ st.slowF = f; st.slowT = Math.max(st.slowT, dur); }
 }
-function applyStun(t, dur){ t.status.stun = Math.max(t.status.stun, dur); }
-function applyRoot(t, dur){ t.status.rootT = Math.max(t.status.rootT, dur); }
+function applyStun(t, dur){ if(t.status.immuneT > 0) return; t.status.stun = Math.max(t.status.stun, dur); }
+function applyRoot(t, dur){ if(t.status.immuneT > 0) return; t.status.rootT = Math.max(t.status.rootT, dur); }
+function applySilence(t, dur){ if(t.status.immuneT > 0) return; t.status.silenceT = Math.max(t.status.silenceT, dur); }
+function applyPoison(t, dps, dur, src){
+  const st = t.status;
+  if(st.immuneT > 0 || !isSpellTarget(t)) return;
+  st.poisonDps = Math.max(st.poisonT > 0 ? st.poisonDps : 0, dps);
+  st.poisonT = Math.max(st.poisonT, dur);
+  st.poisonSrc = src || null;
+  if(t.kind === 'hero') addFloat(t.x, t.y, '🤢 Otrovan!', '#86efac', 13);
+}
+// Kraljevski oklov (BKB): kratko ništa ne omamljuje, usporava, truje...
+function applyImmune(h, dur){
+  const st = h.status;
+  st.immuneT = Math.max(st.immuneT, dur);
+  st.stun = 0; st.slowT = 0; st.rootT = 0; st.silenceT = 0; st.poisonT = 0;
+  addFloat(h.x, h.y, '👑 Nepokolebljiv!', '#fde047', 15);
+}
 function applyShield(t, f, dur){ t.status.shieldT = dur; t.status.shieldF = f; }
 function applyHaste(t, f, dur){ t.status.hasteT = dur; t.status.hasteF = f; }
 function heal(u, amt){
@@ -475,12 +538,20 @@ function applyDamage(t, amount, src){
   amount = Math.max(1, Math.round(amount));
   t.hp -= amount;
   t.flash = 0.12;
-  if(t.kind === 'hero' || t.kind === 'tower' || t.kind === 'ancient' || (src && src.isPlayer)){
+  if(t.kind === 'hero' || t.kind === 'tower' || t.kind === 'ancient' || t.kind === 'barracks' || (src && src.isPlayer)){
     addFloat(t.x, t.y, '-' + amount, src && src.team === TEAM_BLUE ? '#ffd166' : '#ff8fa3', t.kind === 'hero' ? 16 : 13);
   }
   if(src && src.kind === 'hero' && !src.dead && src.team !== t.team){
     t.lastHitter = src;
     t.lastHitT = gameTime;
+    if(t.kind === 'hero') (t.hitBy = t.hitBy || {})[src.id] = gameTime;   // za asistencije
+  }
+  // Oklop od bodlji (Bodljo E): napadaču polete bodlje natrag
+  const okl = passiveRank(t, 'oklop');
+  if(okl && src && src !== t && !src.dead && !src.removeMe && src.team !== t.team && isSpellTarget(src) &&
+     Math.random() < 0.2 + 0.05 * okl){
+    for(let i = 0; i < 3; i++) spawnHoming(t, src, { speed: 700, dmg: 18 + 10 * okl, r: 7, color: '#a3e635', emoji: '🌵' });
+    if(t.isPlayer) addFloat(t.x, t.y, '🌵 Bodlje!', '#a3e635', 13);
   }
   if((t.kind === 'creep' || t.kind === 'neutral') && src && !src.dead && !src.removeMe && src.team !== t.team){
     if(!isTargetable(t.attackTarget) && dist(t, src) < 620){
@@ -528,6 +599,9 @@ function kill(t, src){
         src.status.dmgMulF = Math.max(src.status.dmgMulF, 1.3);
         applyHaste(src, 1.15, 60);
         addFloat(src.x, src.y, '🐲 Zmajev blagoslov!', '#fde047', 17);
+        // 🛡️ Zmajev štit (Aegis): ubojica se nakon pogibije vraća na mjestu
+        src.aegis = true; src.aegisT = CFG.aegisDuration;
+        feedMsg('🛡️ ' + src.emoji + ' ' + src.name + ' ima Zmajev štit!', '#fde047');
         sfx('kill');
       }
     }
@@ -537,6 +611,12 @@ function kill(t, src){
     t.deaths++;
     kills[1 - t.team]++;
     t.deadT = CFG.respawnBase + t.level * CFG.respawnPerLvl;
+    if(t.aegis){   // 🛡️ Zmajev štit: vraća se za 3 s na mjestu pogibije
+      t.aegis = false; t.aegisT = 0;
+      t.reviveAt = { x: t.x, y: t.y };
+      t.deadT = 3;
+      announce('🛡️ Zmajev štit!', t.emoji + ' ' + t.name + ' se vraća za 3 sekunde!');
+    }
     t.moveTarget = null; t.attackTarget = null;
     t.tpChannel = 0;
     // zapamti ucjenu PRIJE čišćenja statusa
@@ -580,6 +660,14 @@ function kill(t, src){
       }
       feedMsg('💰 Ucjena naplaćena za ' + t.emoji + ' ' + t.name + '!', '#fde047');
     }
+    // asistencije: suigrači koji su udarili metu u zadnjih 10 s
+    if(credit){
+      for(const h of units){
+        if(h.kind !== 'hero' || h === credit || h.team !== credit.team) continue;
+        if(t.hitBy && gameTime - (t.hitBy[h.id] || -99) < 10) h.assists++;
+      }
+    }
+    t.hitBy = {};
     src = credit || src;   // za "Bravo!" najavu i sfx ispod
     for(const h of units){
       if(h.kind === 'hero' && h.team !== t.team && h !== src && !h.dead && dist(h, t) < CFG.xpRadius)
@@ -609,6 +697,32 @@ function kill(t, src){
       if(!stillGuarded && ancients[t.team]){
         ancients[t.team].invuln = false;
         announce('⚠️ Prijestol tima ' + TEAM_NAME[t.team] + ' je ranjiv!', 'Napadnite ga!');
+      }
+    }
+    if(t.tier === 2 && t.lane){   // pala unutarnja kula → vojarna te staze je ranjiva
+      for(const b of units){
+        if(b.kind === 'barracks' && b.team === t.team && b.lane === t.lane && !b.removeMe){
+          b.invuln = false;
+          feedMsg('🏚️ Vojarna tima ' + TEAM_NAME[t.team] + ' (' + LANE_NAME[t.lane] + ') je ranjiva!', '#fde047');
+        }
+      }
+    }
+    sfxAt('tower', t.x, t.y);
+  }
+  else if(t.kind === 'barracks'){
+    t.removeMe = true;
+    burst(t.x, t.y, '#fbbf24', 30, 300, 8);
+    burst(t.x, t.y, '#a16207', 20, 200, 7);
+    const enemy = 1 - t.team;
+    superCreeps[enemy][t.lane] = true;
+    const all = LANE_LIST.every(l => superCreeps[enemy][l]);
+    feedMsg('🏚️ Srušena vojarna tima ' + TEAM_NAME[t.team] + ' (' + LANE_NAME[t.lane] + ')!', TEAM_COLOR[enemy]);
+    announce(all ? '💪💪 MEGA VOJNICI!' : '💪 Super vojnici!',
+      'Vojnici tima ' + TEAM_NAME[enemy] + ' na stazi ' + LANE_NAME[t.lane] + ' su sada jači!');
+    for(const h of units){
+      if(h.kind === 'hero' && h.team === enemy){
+        h.gold += CFG.barracksGoldTeam;
+        if(h.isPlayer) addFloat(h.x, h.y, '+' + CFG.barracksGoldTeam + ' 💰', '#fde047', 15);
       }
     }
     sfxAt('tower', t.x, t.y);
@@ -761,7 +875,7 @@ function spawnZone(u, aim, o){
     id: nextId++,
     x: p.x, y: p.y, r: o.r, team: u.team, src: u,
     delay: o.delay || 0.5, ticksLeft: o.ticks || 1, interval: o.interval || 0.7,
-    dmg: o.dmg, slow: o.slow || null, root: o.root || 0, stun: o.stun || 0,
+    dmg: o.dmg, slow: o.slow || null, root: o.root || 0, stun: o.stun || 0, poison: o.poison || null,
     t: 0, tickT: 0, started: false,
     color: o.color || '#fff', emoji: o.emoji || '✨',
   });
@@ -778,6 +892,8 @@ function damageCircle(u, x, y, r, dmg, o){
       if(o.slow) applySlow(e, o.slow.f, o.slow.t);
       if(o.stun) applyStun(e, o.stun);
       if(o.root) applyRoot(e, o.root);
+      if(o.silence) applySilence(e, o.silence);
+      if(o.poison) applyPoison(e, o.poison.dps, o.poison.t, u);
     }
   }
   return true;
@@ -866,6 +982,7 @@ function castAbility(u, i, aim){
   }
   if(ab.cd > 0){ if(u.isPlayer) sfx('click'); return; }
   if(u.status.stun > 0) return;
+  if(u.status.silenceT > 0){ if(isHuman(u)) addFloat(u.x, u.y, '🤐 Ušutkan!', '#e5e7eb', 13); return; }
   if(u.mp < ab.def.mana){
     if(isHuman(u)) addFloat(u.x, u.y, 'Nema mane! 💧', '#7dd3fc', 14);
     return;
@@ -881,6 +998,67 @@ function castAbility(u, i, aim){
   u.castN = (u.castN || 0) + 1;              // 3D: animacija čaranja
   if(aim && (Math.abs(aim.x - u.x) + Math.abs(aim.y - u.y) > 4)) u.dir = Math.atan2(aim.y - u.y, aim.x - u.x);
   sfxAt(ab.def.ult ? 'ult' : 'cast', u.x, u.y);
+}
+
+/* ================= Otkup (buyback) ================= */
+function buybackCost(h){ return CFG.buybackBase + h.level * CFG.buybackPerLvl; }
+function buyback(h){
+  if(!h || !h.dead || gameOver) return;
+  const cost = buybackCost(h);
+  if(h.buybackCd > 0){ if(isHuman(h)) addFloat(h.x, h.y, '⏱️ Otkup se još puni!', '#e5e7eb', 13); return; }
+  if(h.gold < cost){ if(isHuman(h)) addFloat(h.x, h.y, 'Nemaš dovoljno zlata za otkup! 💰', '#fca5a5', 13); return; }
+  h.gold -= cost;
+  h.buybackCd = CFG.buybackCd;
+  h.reviveAt = null;
+  respawn(h);
+  feedMsg('💰 ' + h.emoji + ' ' + h.name + ' se otkupio!', TEAM_COLOR[h.team]);
+  if(h.isPlayer){ sfx('buy'); banner = null; }
+}
+
+/* ================= Aktivni predmeti (klik ili tipke 1–6) ================= */
+function useItem(h, idx, aim){
+  if(!h || h.dead || gameOver) return false;
+  const it = h.items[idx];
+  if(!it || !it.active) return false;
+  const cd = h.itemCd[it.id] || 0;
+  if(cd > 0){ if(isHuman(h)) addFloat(h.x, h.y, it.emoji + ' još se puni (' + Math.ceil(cd) + ' s)', '#e5e7eb', 13); return false; }
+  if(h.status.stun > 0) return false;
+  if(h.mp < it.active.mana){ if(isHuman(h)) addFloat(h.x, h.y, 'Nema mane! 💧', '#7dd3fc', 14); return false; }
+  if(it.active.target === 'point' && !aim) return false;
+  const ok = it.active.use(h, aim);
+  if(ok === false) return false;
+  h.mp -= it.active.mana;
+  h.itemCd[it.id] = it.active.cd;
+  h.castFx = 'item:' + it.id;
+  u_castAnim(h);
+  if(h.isPlayer) sfx('cast');
+  return true;
+}
+function u_castAnim(h){ h.castN = (h.castN || 0) + 1; }
+// igrač: predmet s ciljem prvo pokazuje domet (kao moći), ostali se odmah koriste
+function pressItem(i){
+  if(!player || player.dead || gameOver) return;
+  const it = player.items[i];
+  if(!it || !it.active) return;
+  if(it.active.target === 'point'){
+    if(pendingCast && pendingCast.item === i){ castPending({ x: mouse.wx, y: mouse.wy }); return; }
+    if((player.itemCd[it.id] || 0) > 0){ sfx('click'); return; }
+    pendingCast = { item: i, i: -1 };
+    sfx('click');
+  } else {
+    if(net.mode === 'guest') netItem(i, null);
+    else useItem(player, i, null);
+    pendingCast = null;
+  }
+}
+// izvrši ono što čeka klik na cilj (moć ili predmet)
+function castPending(aim){
+  if(!pendingCast) return;
+  if(pendingCast.item != null){
+    if(net.mode === 'guest') netItem(pendingCast.item, aim);
+    else useItem(player, pendingCast.item, aim);
+  } else castAbility(player, pendingCast.i, aim);
+  pendingCast = null;
 }
 
 /* ================= Teleport kući (T) ================= */
@@ -921,7 +1099,7 @@ function pressAbility(i, aimInstant){
   if(!ab) return;
   if(ab.rank <= 0){ castAbility(player, i, null); return; }
   if(ab.def.target === 'point'){
-    if(pendingCast && pendingCast.i === i){
+    if(pendingCast && pendingCast.item == null && pendingCast.i === i){
       castAbility(player, i, aimInstant || { x: mouse.wx, y: mouse.wy });
       pendingCast = null;
       return;
@@ -945,6 +1123,8 @@ function unitSpeed(u){
   const st = u.status;
   if(st.slowT > 0) s *= (1 - st.slowF);
   if(st.hasteT > 0) s *= st.hasteF;
+  const noc = passiveRank(u, 'noc');
+  if(noc && isNight) s *= 1.15 + 0.08 * noc;
   return s;
 }
 function moveToward(u, tx, ty, dt){
@@ -1033,6 +1213,14 @@ function performAttack(u, t){
   }
   let dmg = u.dmg;
   if(shadowBonus) dmg += shadowBonus;
+  const noc = passiveRank(u, 'noc');          // Noćna ptica: noću jača
+  if(noc && isNight) dmg += 12 + 10 * noc;
+  const kombo = passiveRank(u, 'kombo');      // Kombo: svaki 3. udarac
+  let komboHit = false;
+  if(kombo){
+    u.comboN = (u.comboN || 0) + 1;
+    if(u.comboN >= 3){ u.comboN = 0; dmg += 30 + 25 * kombo; komboHit = true; }
+  }
   // Lukavi udarac (Tragač W): podmukli proc
   let jinProc = false;
   const jin = passiveRank(u, 'jinada');
@@ -1046,6 +1234,7 @@ function performAttack(u, t){
   const naboj = passiveRank(u, 'naboj');             // Statički naboj: munja na napad
   const onHitFx = (tt) => {
     if(crit) addFloat(tt.x, tt.y, 'KRIT! 💥', '#fb923c', 15);
+    if(komboHit){ heal(u, 15 + 10 * kombo); addFloat(tt.x, tt.y, '👊 Kombo!', '#fde047', 15); }
     if(shadowBonus) addFloat(tt.x, tt.y, 'Iz sjene! 👤', '#c4b5fd', 15);
     if(jinProc){ applySlow(tt, 0.3, 1.5); addFloat(tt.x, tt.y, '💢', '#fb923c', 15); }
     if(dodir) applySlow(tt, 0.1 + 0.05 * dodir, 1.5);
@@ -1074,6 +1263,8 @@ function performAttack(u, t){
     } else {
       applyDamage(t, dmg, u);
       onHitFx(t);
+      const deb = passiveRank(t, 'debela');   // Debela koža (Tutnjo E): vraća štetu izbliza
+      if(deb && !u.dead && !u.removeMe && u.kind !== 'tower') applyDamage(u, 14 + 10 * deb, t);
     }
     sfxAt('hit', u.x, u.y);
   }
@@ -1088,7 +1279,7 @@ function creepThink(u){
   // isteklo prisilno ganjanje junaka? vrati se vojnicima/kulama ako ih ima
   if(u.attackTarget && u.attackTarget.kind === 'hero' && gameTime > (u.aggroT || 0)){
     const c = nearestEnemyOf(u, 470, e => e.kind === 'creep') ||
-              nearestEnemyOf(u, 470, e => e.kind === 'tower' || e.kind === 'ancient');
+              nearestEnemyOf(u, 470, e => isStructure(e));
     if(c) u.attackTarget = c;
   }
   if(!u.attackTarget){
@@ -1096,13 +1287,13 @@ function creepThink(u){
     if(u.siege){
       // siege vojnici prvo ruše građevine (kao u DotA!)
       u.attackTarget =
-        nearestEnemyOf(u, acq, e => e.kind === 'tower' || e.kind === 'ancient') ||
+        nearestEnemyOf(u, acq, e => isStructure(e)) ||
         nearestEnemyOf(u, 500, e => e.kind === 'creep') ||
         nearestEnemyOf(u, 260, e => e.kind === 'hero');
     } else {
       u.attackTarget =
         nearestEnemyOf(u, acq, e => e.kind === 'creep') ||
-        nearestEnemyOf(u, 470, e => e.kind === 'tower' || e.kind === 'ancient') ||
+        nearestEnemyOf(u, 470, e => isStructure(e)) ||
         nearestEnemyOf(u, 260, e => e.kind === 'hero');
     }
   }
@@ -1116,6 +1307,19 @@ function creepThink(u){
     } else {
       u.moveTarget = { x: ANCIENT_POS[1 - u.team].x, y: ANCIENT_POS[1 - u.team].y };
     }
+  }
+}
+
+function isStructure(e){ return e.kind === 'tower' || e.kind === 'ancient' || e.kind === 'barracks'; }
+/* prizvani (Majmunska vojska): brane gospodara i napadaju što i on */
+function summonThink(u){
+  const o = u.summonOf;
+  if(!isTargetable(u.attackTarget) || dist(u, u.attackTarget) > 600) u.attackTarget = null;
+  if(!u.attackTarget && o && !o.dead && isTargetable(o.attackTarget) && dist(o, o.attackTarget) < 600) u.attackTarget = o.attackTarget;
+  if(!u.attackTarget) u.attackTarget = nearestEnemyOf(u, 360, e => e.kind === 'hero' || e.kind === 'creep' || e.kind === 'neutral');
+  if(!u.attackTarget && o && !o.removeMe){
+    if(dist(u, o) > 110) u.moveTarget = { x: o.x + rand(-60, 60), y: o.y + rand(-60, 60) };
+    else u.moveTarget = null;
   }
 }
 
@@ -1255,6 +1459,16 @@ function botUseAbilities(u, eh){
       case 'zone':
         if(eh && dEh < hint.range) castAbility(u, i, { x: eh.x, y: eh.y });
         break;
+      case 'ward': {   // Sovino oko: pogledaj najbliže mjesto rune kad nema neprijatelja
+        if(eh) break;
+        let rs = null, bd = hint.range;
+        for(const r of RUNE_SPOTS){ const d = distXY(u.x, u.y, r.x, r.y); if(d < bd){ bd = d; rs = r; } }
+        if(rs) castAbility(u, i, { x: rs.x, y: rs.y });
+        break;
+      }
+      case 'night':
+        if(eh && dEh < hint.range && !isNight) castAbility(u, i, { x: u.x, y: u.y });
+        break;
     }
   }
 }
@@ -1304,7 +1518,7 @@ function botThink(u){
   }
   const lh = lowestHpEnemyCreep(u, 500);
   if(lh){ u.attackTarget = lh; return; }
-  const et = nearestEnemyOf(u, 520, e => e.kind === 'tower');
+  const et = nearestEnemyOf(u, 520, e => e.kind === 'tower' || e.kind === 'barracks');
   if(et && countOwnCreepsNear(u.team, et, 350) > 0){
     u.attackTarget = et;
     return;
@@ -1449,7 +1663,10 @@ function updateUnit(u, dt){
   if(u.dead){
     if(u.kind === 'hero'){
       u.deadT -= dt;
-      if(u.deadT <= 0) respawn(u);
+      if(u.buybackCd > 0) u.buybackCd -= dt;
+      // botovi se otkupljuju kasnije u igri kad su bogati
+      if(u.bot && u.deadT > 12 && gameTime > 420 && u.buybackCd <= 0 && u.gold > buybackCost(u) * 2.5) buyback(u);
+      else if(u.deadT <= 0) respawn(u);
     }
     return;
   }
@@ -1462,6 +1679,17 @@ function updateUnit(u, dt){
   st.dmgMulT = Math.max(0, st.dmgMulT - dt);
   st.invisT = Math.max(0, st.invisT - dt);
   st.trackT = Math.max(0, st.trackT - dt);
+  st.silenceT = Math.max(0, st.silenceT - dt);
+  st.immuneT = Math.max(0, st.immuneT - dt);
+  if(st.poisonT > 0){   // 🤢 otrov: šteta svakih pola sekunde
+    st.poisonT = Math.max(0, st.poisonT - dt);
+    st.poisonAcc += dt;
+    if(st.poisonAcc >= 0.5){
+      st.poisonAcc -= 0.5;
+      applyDamage(u, st.poisonDps * 0.5, st.poisonSrc && !st.poisonSrc.removeMe ? st.poisonSrc : null);
+      if(u.dead || u.removeMe) return;
+    }
+  }
   u.flash = Math.max(0, u.flash - dt);
   u.atkTimer -= dt;
 
@@ -1471,6 +1699,16 @@ function updateUnit(u, dt){
   if(u.kind === 'hero'){
     for(const ab of u.abilities) ab.cd = Math.max(0, ab.cd - dt);
     u.tpCd = Math.max(0, u.tpCd - dt);
+    for(const k in u.itemCd) u.itemCd[k] = Math.max(0, u.itemCd[k] - dt);
+    if(u.buybackCd > 0) u.buybackCd -= dt;
+    if(u.aegis){
+      u.aegisT -= dt;
+      if(u.aegisT <= 0){ u.aegis = false; if(u.isPlayer) addFloat(u.x, u.y, '🛡️ Zmajev štit je istekao', '#e5e7eb', 13); }
+    }
+    const med = passiveRank(u, 'med');   // Med (Zuja E): aura liječenja
+    if(med) for(const e of units){
+      if(e.kind === 'hero' && e.team === u.team && !e.dead && dist(u, e) <= 300) e.hp = Math.min(e.maxhp, e.hp + (1 + med) * dt);
+    }
     const f = FOUNTAIN[u.team];
     if(distXY(u.x, u.y, f.x, f.y) < CFG.fountainRadius){
       u.hp = Math.min(u.maxhp, u.hp + u.maxhp * CFG.fountainHeal * dt);
@@ -1515,8 +1753,12 @@ function updateUnit(u, dt){
   }
 
   if(u.kind === 'creep'){
+    if(u.summonOf){   // prizvani: ograničen vijek
+      u.lifeT -= dt;
+      if(u.lifeT <= 0){ u.removeMe = true; burst(u.x, u.y, '#f59e0b', 8, 120, 4); return; }
+    }
     u.scanT -= dt;
-    if(u.scanT <= 0){ u.scanT = 0.35; creepThink(u); }
+    if(u.scanT <= 0){ u.scanT = 0.35; if(u.summonOf) summonThink(u); else creepThink(u); }
   } else if(u.kind === 'neutral'){
     u.scanT -= dt;
     if(u.scanT <= 0){ u.scanT = 0.4; neutralThink(u); }
@@ -1551,8 +1793,13 @@ function respawn(u){
   u.hp = u.maxhp;
   u.mp = u.maxmp;
   const f = FOUNTAIN[u.team];
-  u.x = f.x + rand(-50, 50);
-  u.y = f.y + rand(-50, 50);
+  if(u.reviveAt){
+    u.x = u.reviveAt.x; u.y = u.reviveAt.y; u.reviveAt = null;
+    addFloat(u.x, u.y, '🛡️ Vratio se!', '#fde047', 16);
+  } else {
+    u.x = f.x + rand(-50, 50);
+    u.y = f.y + rand(-50, 50);
+  }
   u.status = baseStatus();
   u.tpChannel = 0;
   u.moveTarget = null; u.attackTarget = null;
@@ -1625,6 +1872,7 @@ function zoneTick(z){
       if(z.slow) applySlow(e, z.slow.f, z.slow.t);
       if(z.root) applyRoot(e, z.root);
       if(z.stun) applyStun(e, z.stun);
+      if(z.poison) applyPoison(e, z.poison.dps, z.poison.t, z.src);
     }
   }
   burst(z.x, z.y, z.color, 12, 180, 5);
@@ -1648,9 +1896,9 @@ function spawnWave(){
   waveCount++;
   for(let team = 0; team < 2; team++){
     for(const lane of LANE_LIST){
-      for(let i = 0; i < CFG.meleePerWave; i++) makeCreep(team, lane, false, false);
-      for(let i = 0; i < CFG.rangedPerWave; i++) makeCreep(team, lane, true, false);
-      if(waveCount % CFG.siegeEveryNthWave === 0) makeCreep(team, lane, false, true);
+      for(let i = 0; i < CFG.meleePerWave; i++) makeCreepOnLane(team, lane, false, false);
+      for(let i = 0; i < CFG.rangedPerWave; i++) makeCreepOnLane(team, lane, true, false);
+      if(waveCount % CFG.siegeEveryNthWave === 0) makeCreepOnLane(team, lane, false, true);
     }
   }
   if(waveCount === 1) announce('⚔️ Vojnici kreću!', 'Prati ih niz stazu');
@@ -1709,9 +1957,11 @@ function update(dt){
     }
   }
 
+  if(nightForceT > 0) nightForceT -= dt;
+  for(let i = wards.length - 1; i >= 0; i--){ wards[i].t -= dt; if(wards[i].t <= 0) wards.splice(i, 1); }
   const phase = (gameTime % CFG.dayCycle) / CFG.dayCycle;
   const dayK = 0.5 + 0.5 * Math.cos(phase * TAU);
-  const nightNow = dayK < 0.5;
+  const nightNow = dayK < 0.5 || nightForceT > 0;
   if(nightNow !== isNight){
     isNight = nightNow;
     announce(isNight ? '🌙 Pada noć...' : '☀️ Svanulo je!', isNight ? 'Vid je kraći — pazi na zasjede!' : '');
@@ -1726,8 +1976,12 @@ function update(dt){
 
   // ciljanje: odustani ako moć više nije spremna
   if(pendingCast){
-    const ab = player && !player.dead ? player.abilities[pendingCast.i] : null;
-    if(!ab || ab.rank <= 0) pendingCast = null;
+    if(pendingCast.item != null){
+      if(!player || player.dead || !player.items[pendingCast.item] || !player.items[pendingCast.item].active) pendingCast = null;
+    } else {
+      const ab = player && !player.dead ? player.abilities[pendingCast.i] : null;
+      if(!ab || ab.rank <= 0) pendingCast = null;
+    }
   }
 
   for(const u of units) updateUnit(u, dt);
@@ -1913,6 +2167,14 @@ function makeWorld(){
         const p = pointAt(LANE_PTS[lane], TOWER_FRACS[team][i]);
         makeTower(team, p.x, p.y, lane, i + 1, false);
       }
+      // vojarna: malo iza unutarnje kule, sa strane staze (dalje od sredine mape)
+      const bp = pointAt(LANE_PTS[lane], team === TEAM_BLUE ? 0.075 : 0.925);
+      const q = pointAt(LANE_PTS[lane], team === TEAM_BLUE ? 0.12 : 0.88);
+      const L = Math.hypot(q.x - bp.x, q.y - bp.y) || 1;
+      const nx = -(q.y - bp.y) / L, ny = (q.x - bp.x) / L;
+      const c1 = { x: bp.x + nx * 120, y: bp.y + ny * 120 }, c2 = { x: bp.x - nx * 120, y: bp.y - ny * 120 };
+      const far = distXY(c1.x, c1.y, WORLD / 2, WORLD / 2) > distXY(c2.x, c2.y, WORLD / 2, WORLD / 2) ? c1 : c2;
+      makeBarracks(team, lane, clamp(far.x, 80, WORLD - 80), clamp(far.y, 80, WORLD - 80));
     }
   }
   initCamps();
@@ -1926,6 +2188,7 @@ function startGame(heroIdx){
   kills = [0, 0];
   camps = []; runes = [];
   runeTimer = CFG.runeEvery; runeSpotI = 0; isNight = false;
+  wards = []; nightForceT = 0; superCreeps = [{}, {}]; winnerTeam = null;
   pendingCast = null;
   gameTime = 0; waveTimer = CFG.firstWave; waveCount = 0;
   firstBlood = false; gameOver = false; paused = false;
@@ -1969,6 +2232,7 @@ function endGame(winTeam){
 }
 function endGameView(winTeam){
   gameOver = true;
+  winnerTeam = winTeam;
   const won = player && player.team === winTeam;
   pendingCast = null;
   announce(won ? '🏆 POBJEDA!' : '💔 PORAZ...', won ? 'Neprijateljski prijestol se raspada!' : 'Naš prijestol je pao...');
@@ -2133,10 +2397,15 @@ function setupInput(){
       }
       for(let i = 0; i < uiRects.inv.length; i++){
         if(uiRects.inv[i] && inRect(sx, sy, uiRects.inv[i])){
-          if(net.mode === 'guest') netSell(i);
-          else sellItem(player, i);
+          if(player.items[i] && player.items[i].active) pressItem(i);
+          else addFloat(player.x, player.y, 'Desni klik = prodaja', '#e5e7eb', 13);
           return;
         }
+      }
+      if(uiRects.buyback && inRect(sx, sy, uiRects.buyback)){
+        if(net.mode === 'guest') netBuyback();
+        else buyback(player);
+        return;
       }
       if(inRect(sx, sy, uiRects.statBtn)){
         if(net.mode === 'guest') netStats();
@@ -2152,11 +2421,19 @@ function setupInput(){
       if(inRect(sx, sy, uiRects.mute)){ muted = !muted; sfx('click'); return; }
       if(inRect(sx, sy, uiRects.help)){ toggleHelp(); return; }
     }
+    if(e.button === 2){
+      for(let i = 0; i < uiRects.inv.length; i++){
+        if(uiRects.inv[i] && inRect(sx, sy, uiRects.inv[i])){
+          if(net.mode === 'guest') netSell(i);
+          else sellItem(player, i);
+          return;
+        }
+      }
+    }
     if(inRect(sx, sy, uiRects.mini)){
       const w = miniToWorld(sx, sy);
       if(pendingCast && e.button === 0){
-        castAbility(player, pendingCast.i, w);
-        pendingCast = null;
+        castPending(w);
         return;
       }
       if(e.button === 2) playerCommand(w.x, w.y);
@@ -2165,11 +2442,8 @@ function setupInput(){
     }
     // ciljanje moći: lijevi klik baca, desni odustaje
     if(pendingCast){
-      if(e.button === 0){
-        const w = screenToWorld(sx, sy);
-        castAbility(player, pendingCast.i, w);
-      }
-      pendingCast = null;
+      if(e.button === 0) castPending(screenToWorld(sx, sy));
+      else pendingCast = null;
       return;
     }
     const w = screenToWorld(sx, sy);
@@ -2231,6 +2505,9 @@ function setupInput(){
     }
     if(k === 'b') toggleShop();
     if(k === 'h') toggleHelp();
+    if(k === 'o'){ if(net.mode === 'guest') netBuyback(); else buyback(player); }
+    if(k >= '1' && k <= '6' && !e.ctrlKey && !e.metaKey) pressItem(parseInt(k, 10) - 1);
+    if(k === 'tab') e.preventDefault();
     if(k === 'm'){ muted = !muted; }
     if(k === 'p'){ paused = !paused; document.getElementById('pause').classList.toggle('hidden', !paused); }
     if(k === 'escape'){
@@ -2379,6 +2656,10 @@ function buildSelectScreen(){
     if(net.conn){ netReady(); return; }   // multiplayer: čekaj oba igrača
     if(selectedHero >= 0) startGame(selectedHero);
   });
+  const rndBtn = document.getElementById('randomBtn');
+  if(rndBtn) rndBtn.addEventListener('click', () => {
+    document.getElementById('card-' + Math.floor(Math.random() * HEROES.length)).click();
+  });
   document.getElementById('helpClose').addEventListener('click', toggleHelp);
   document.getElementById('againBtn').addEventListener('click', () => location.reload());
 }
@@ -2393,6 +2674,7 @@ function drawBar(x, y, w, h, frac, fg, bg){
 
 function barHeight(u){
   if(u.kind === 'hero') return 102;
+  if(u.kind === 'barracks') return 150;
   if(u.kind === 'creep') return u.siege ? 72 : 62;
   if(u.kind === 'neutral') return u.boss ? 150 : u.r * 2.4 + 22;
   if(u.kind === 'tower') return 172;
@@ -2447,6 +2729,14 @@ function drawWorldOverlay(){
     }
     else if(u.kind === 'tower'){
       drawBar(s.x - 42, s.y, 84, 8, u.hp / u.maxhp, TEAM_COLOR[u.team]);
+    }
+    else if(u.kind === 'barracks'){
+      drawBar(s.x - 42, s.y, 84, 8, u.hp / u.maxhp, TEAM_COLOR[u.team]);
+      if(u.invuln){
+        ctx.font = fontEmoji(16);
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText('🔒', s.x, s.y - 3);
+      }
     }
     else if(u.kind === 'ancient'){
       drawBar(s.x - 60, s.y, 120, 10, u.hp / u.maxhp, TEAM_COLOR[u.team]);
@@ -2585,6 +2875,13 @@ function drawHud(){
     ctx.fillStyle = '#fde047';
     ctx.font = fontTxt(13, true);
     ctx.fillText(player.level, px + 78, py + ph / 2 + 25);
+    if(player.aegis){   // 🛡️ Zmajev štit
+      ctx.font = fontEmoji(18);
+      ctx.fillText('🛡️', px + 24, py + ph / 2 - 26);
+      ctx.font = fontTxt(9, true);
+      ctx.fillStyle = '#fde047';
+      ctx.fillText(Math.ceil(player.aegisT / 60) + 'min', px + 24, py + ph / 2 - 12);
+    }
 
     // trake
     const bx = px + 104, bw = 200;
@@ -2594,7 +2891,7 @@ function drawHud(){
     ctx.fillText(player.name + ' ⭐ ', bx, py + 16);
     ctx.font = fontTxt(11, true);
     ctx.fillStyle = '#cbd5e1';
-    ctx.fillText('⚔️' + player.kills + ' 💀' + player.deaths, bx + 86, py + 16);
+    ctx.fillText('⚔️' + player.kills + ' 💀' + player.deaths + ' 🤝' + player.assists, bx + 86, py + 16);
     ctx.font = fontTxt(14, true);
     ctx.textAlign = 'right';
     ctx.fillStyle = '#fde047';
@@ -2644,10 +2941,24 @@ function drawHud(){
       ctx.strokeStyle = hovered ? '#fde047' : '#475569';
       ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.roundRect(ix, iy, 23, 23, 5); ctx.fill(); ctx.stroke();
-      if(player.items[i]){
+      const itm = player.items[i];
+      if(itm){
         ctx.font = fontEmoji(15);
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(player.items[i].emoji, ix + 11.5, iy + 12);
+        ctx.fillText(itm.emoji, ix + 11.5, iy + 12);
+        if(itm.active){
+          const icd = player.itemCd[itm.id] || 0;
+          if(icd > 0){
+            ctx.fillStyle = 'rgba(0,0,0,0.6)';
+            ctx.beginPath(); ctx.roundRect(ix, iy, 23, 23 * Math.min(1, icd / itm.active.cd), 5); ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.font = fontTxt(10, true);
+            ctx.fillText(Math.ceil(icd), ix + 11.5, iy + 12);
+          }
+          ctx.fillStyle = pendingCast && pendingCast.item === i ? '#fde047' : '#4ade80';
+          ctx.font = fontTxt(8, true);
+          ctx.fillText(i + 1, ix + 18, iy + 5);
+        }
       }
     }
     if(hoverUi && hoverUi.type === 'inv' && player.items[hoverUi.i]){
@@ -2657,7 +2968,7 @@ function drawHud(){
       ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
       ctx.strokeStyle = 'rgba(0,0,0,0.7)';
       ctx.lineWidth = 3;
-      const txt = it.name + ' — klik = prodaj za ' + v + ' 💰';
+      const txt = it.name + (it.active ? ' — klik ili tipka ' + (hoverUi.i + 1) + ' = koristi • ' : ' — ') + 'desni klik = prodaj za ' + v + ' 💰';
       ctx.strokeText(txt, bx, py - 6);
       ctx.fillStyle = '#fde047';
       ctx.fillText(txt, bx, py - 6);
@@ -2911,7 +3222,8 @@ function drawHud(){
       ctx.stroke();
     }
 
-    // oživljavanje
+    // oživljavanje + otkup (buyback)
+    uiRects.buyback = null;
     if(player.dead){
       ctx.fillStyle = 'rgba(15,23,42,0.45)';
       ctx.fillRect(0, 0, VW, VH);
@@ -2922,11 +3234,75 @@ function drawHud(){
       ctx.strokeText('⏳ Oživljavaš za ' + Math.ceil(player.deadT) + 's', VW / 2, VH * 0.42);
       ctx.fillStyle = '#fff';
       ctx.fillText('⏳ Oživljavaš za ' + Math.ceil(player.deadT) + 's', VW / 2, VH * 0.42);
+      if(!player.reviveAt){
+        const cost = buybackCost(player);
+        const can = player.buybackCd <= 0 && player.gold >= cost;
+        const br = { x: VW / 2 - 130, y: VH * 0.42 + 30, w: 260, h: 44 };
+        uiRects.buyback = br;
+        ctx.fillStyle = can ? '#b45309' : '#334155';
+        ctx.beginPath(); ctx.roundRect(br.x, br.y, br.w, br.h, 12); ctx.fill();
+        ctx.strokeStyle = can ? '#fde047' : '#64748b';
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.roundRect(br.x, br.y, br.w, br.h, 12); ctx.stroke();
+        ctx.font = fontTxt(17, true);
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = can ? '#fff' : '#94a3b8';
+        ctx.fillText(player.buybackCd > 0 ? '⏱️ Otkup za ' + Math.ceil(player.buybackCd) + ' s' : '💰 Otkup odmah (' + cost + ' zlata, tipka O)', br.x + br.w / 2, br.y + br.h / 2);
+      }
     }
   }
+  if(keys['tab']) drawScoreboard();
 
   // ----- minimapa -----
   const ms = 200, mx = VW - ms - 12, my = VH - ms - 12;
+  drawMinimap(ms, mx, my);
+}
+
+/* ================= Tablica rezultata (Tab) ================= */
+function drawScoreboard(){
+  const heroes = units.filter(u => u.kind === 'hero').sort((a, b) => a.team - b.team || b.kills - a.kills);
+  const w = 560, rowH = 30, h = 70 + heroes.length * rowH + 16;
+  const x = (VW - w) / 2, y = Math.max(80, VH * 0.5 - h / 2);
+  ctx.fillStyle = 'rgba(15,23,42,0.93)';
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, 16); ctx.fill();
+  ctx.strokeStyle = '#fde047';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, 16); ctx.stroke();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = fontTxt(20, true);
+  ctx.fillStyle = '#fde047';
+  ctx.fillText('📋 Tablica (drži Tab)', x + w / 2, y + 24);
+  ctx.font = fontTxt(12, true);
+  ctx.fillStyle = '#94a3b8';
+  const cols = [['Junak', 70], ['Lvl', 190], ['⚔️', 230], ['💀', 270], ['🤝', 310], ['💰', 360], ['Torba', 460]];
+  for(const [t, cx] of cols) ctx.fillText(t, x + cx, y + 52);
+  heroes.forEach((hh, i) => {
+    const ry = y + 70 + i * rowH + rowH / 2;
+    if(hh.isPlayer){
+      ctx.fillStyle = 'rgba(253,224,71,0.12)';
+      ctx.beginPath(); ctx.roundRect(x + 10, ry - rowH / 2 + 2, w - 20, rowH - 4, 8); ctx.fill();
+    }
+    ctx.font = fontEmoji(16);
+    ctx.fillText(hh.emoji, x + 32, ry);
+    ctx.font = fontTxt(13, true);
+    ctx.fillStyle = TEAM_LIGHT[hh.team];
+    ctx.textAlign = 'left';
+    ctx.fillText(hh.name + (hh.dead ? ' 💀' : '') + (hh.aegis ? ' 🛡️' : ''), x + 50, ry);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(hh.level, x + 190, ry);
+    ctx.fillText(hh.kills, x + 230, ry);
+    ctx.fillText(hh.deaths, x + 270, ry);
+    ctx.fillText(hh.assists, x + 310, ry);
+    ctx.fillStyle = '#fde047';
+    ctx.fillText(hh.team === myTeam ? Math.floor(hh.gold) : '?', x + 360, ry);
+    ctx.font = fontEmoji(13);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(hh.items.map(it => it.emoji).join(' '), x + 460, ry);
+  });
+}
+
+function drawMinimap(ms, mx, my){
   uiRects.mini = { x: mx, y: my, w: ms, h: ms };
   const sc = ms / WORLD;
   ctx.fillStyle = 'rgba(126,200,80,0.95)';
@@ -2950,6 +3326,10 @@ function drawHud(){
     if(u.kind === 'tower'){
       ctx.fillStyle = TEAM_COLOR[u.team];
       ctx.fillRect(ux - 3.5, uy - 3.5, 7, 7);
+    } else if(u.kind === 'barracks'){
+      ctx.strokeStyle = TEAM_COLOR[u.team];
+      ctx.lineWidth = 2;
+      ctx.strokeRect(ux - 3.5, uy - 3.5, 7, 7);
     } else if(u.kind === 'ancient'){
       ctx.font = fontEmoji(13);
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -2986,6 +3366,12 @@ function drawHud(){
     ctx.font = fontEmoji(13);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('⭐', mx + runes[0].x * sc, my + runes[0].y * sc);
+  }
+  for(const w of wards){
+    if(w.team !== myTeam) continue;
+    ctx.font = fontEmoji(11);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('👁️', mx + w.x * sc, my + w.y * sc);
   }
   const corners = [
     screenToWorld(0, 0, true), screenToWorld(VW, 0, true),

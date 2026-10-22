@@ -20,22 +20,34 @@
     url('assets/splash.jpg') center/cover no-repeat; }
 
   /* ---------- odabir junaka ---------- */
-  #select h1{ font-size:54px; color:#fde047; text-shadow:0 4px 0 #b45309, 0 8px 18px rgba(0,0,0,.5); margin-bottom:6px; }
-  #select .sub{ color:#d1fae5; font-size:19px; margin-bottom:22px; }
-  .selWrap{ display:flex; gap:22px; align-items:stretch; }
-  #cards{ display:grid; grid-template-columns:repeat(5, 142px); gap:10px; }
-  .card{ background:#fffbeb; border-radius:18px; padding:12px 6px; cursor:pointer;
-    border:4px solid transparent; transition:transform .12s, border-color .12s; box-shadow:0 6px 0 rgba(0,0,0,.25); }
-  .card:hover{ transform:translateY(-4px) scale(1.04); }
+  #select{ justify-content:flex-start; padding:18px 10px 24px; overflow-y:auto; }
+  #select h1{ font-size:46px; color:#fde047; text-shadow:0 4px 0 #b45309, 0 8px 18px rgba(0,0,0,.5); margin-bottom:4px; }
+  #select .sub{ color:#d1fae5; font-size:17px; margin-bottom:12px; }
+  #loadBar{ display:none; margin:-6px 0 10px; color:#fde047; font-size:13px; font-weight:bold;
+    background:rgba(0,0,0,.35); border-radius:10px; padding:4px 14px; }
+  .selWrap{ display:flex; gap:18px; align-items:stretch; }
+  #cards{ display:grid; grid-template-columns:repeat(5, 108px); gap:8px; align-content:start;
+    max-height:min(58vh, 560px); overflow-y:auto; padding:6px 10px 6px 6px; }
+  #cards::-webkit-scrollbar{ width:8px; }
+  #cards::-webkit-scrollbar-thumb{ background:#f59e0b; border-radius:4px; }
+  #cards::-webkit-scrollbar-track{ background:rgba(255,255,255,.08); border-radius:4px; }
+  .card{ background:#fffbeb; border-radius:14px; padding:7px 5px 6px; cursor:pointer;
+    border:3px solid transparent; transition:transform .12s, border-color .12s; box-shadow:0 5px 0 rgba(0,0,0,.25); }
+  .card:hover{ transform:translateY(-3px) scale(1.04); }
   .card.sel{ border-color:#fde047; background:#fef9c3; transform:scale(1.05); }
-  .c-emoji{ font-size:46px; }
-  .c-img{ width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:12px;
+  .c-emoji{ font-size:40px; }
+  .c-img{ width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:10px;
     display:block; box-shadow:0 3px 8px rgba(0,0,0,.25); }
   .d-img{ float:right; width:64px; height:64px; object-fit:cover; border-radius:50%;
     border:3px solid #f59e0b; margin-left:8px; }
-  .c-name{ font-size:19px; font-weight:bold; color:#7c2d12; margin-top:5px; }
-  .c-type{ margin-top:3px; }
-  .c-role{ font-size:11px; color:#92400e; margin-top:4px; min-height:28px; }
+  .c-name{ font-size:14px; font-weight:bold; color:#7c2d12; margin-top:4px; white-space:nowrap; overflow:hidden; }
+  .c-type{ margin-top:2px; }
+  .c-role{ display:none; }
+  .btnRow{ display:flex; gap:12px; align-items:center; margin-top:16px; }
+  .btnRow .bigBtn{ margin-top:0; }
+  .rndBtn{ font-family:inherit; font-size:18px; font-weight:bold; color:#fff; background:linear-gradient(#a855f7,#7c3aed);
+    border:none; border-radius:14px; padding:12px 20px; cursor:pointer; box-shadow:0 5px 0 #5b21b6; transition:transform .1s; }
+  .rndBtn:hover{ transform:scale(1.06); }
   .chip{ display:inline-block; border-radius:8px; padding:1px 8px; font-size:10.5px; font-weight:bold; color:#fff; }
   .chipM{ background:#ea580c; }
   .chipR{ background:#0d9488; }
@@ -136,7 +148,7 @@
   .pauseBox small{ font-size:20px; color:#d1fae5; }
 
   /* ---------- kraj igre ---------- */
-  #end{ background:rgba(8,28,21,.92); }
+  #end{ background:rgba(8,28,21,.8); }   /* prozirnije: iza se vidi pobjednički ples junaka */
   #endEmoji{ font-size:74px; }
   #end h1{ font-size:64px; text-shadow:0 5px 0 rgba(0,0,0,.4); margin:6px 0 16px; }
   #endTable table{ border-collapse:collapse; background:rgba(255,255,255,.07); border-radius:14px; overflow:hidden; }
@@ -161,12 +173,16 @@
 <!-- ODABIR JUNAKA -->
 <div id="select" class="overlay">
   <h1>🏰 DOTA Kids 3D ⚔️</h1>
-  <p class="sub">Odaberi svog junaka! Ti i 2 prijatelja-bota 🔵 protiv 3 protivnika-bota 🔴 — sada u 3D! 🎮 <span style="opacity:.6;font-size:13px">v0.8</span></p>
+  <p class="sub">Odaberi jednog od <b>15 junaka</b>! Ti i 2 prijatelja-bota 🔵 protiv 3 protivnika-bota 🔴 — u 3D! 🎮 <span style="opacity:.6;font-size:13px">v0.9</span></p>
+  <div id="loadBar">⏳ Učitavam 3D modele…</div>
   <div class="selWrap">
     <div id="cards"></div>
     <div id="heroDetail" class="detail">👈 Klikni junaka da vidiš njegove moći!</div>
   </div>
-  <button id="startBtn" class="bigBtn" disabled>▶️ ZAIGRAJ!</button>
+  <div class="btnRow">
+    <button id="startBtn" class="bigBtn" disabled>▶️ ZAIGRAJ!</button>
+    <button id="randomBtn" class="rndBtn" title="Odaberi nasumičnog junaka">🎲 Nasumično</button>
+  </div>
   <div id="mpBox">
     <div class="mpTitle">🌐 MULTIPLAYER — 1 na 1 protiv prijatelja (svaki vodi mid, 2 bota pomažu)</div>
     <div class="mpRow">
@@ -178,7 +194,7 @@
     </div>
     <div id="mpStatus">Igraj solo ili pozovi prijatelja kodom sobe (multiplayer treba internet).</div>
   </div>
-  <p class="hint">🖱️ klik = kreći se / napadni &nbsp;•&nbsp; ⬆️ levelovanjem učiš moći (Q W E, R = ULTI) &nbsp;•&nbsp; 🛒 B = dućan s receptima &nbsp;•&nbsp; 🐻 džungla i 🐲 Zmaj čekaju! &nbsp;•&nbsp; H = pomoć</p>
+  <p class="hint">🖱️ klik = kreći se / napadni &nbsp;•&nbsp; ⬆️ levelovanjem učiš moći (Q W E, R = ULTI) &nbsp;•&nbsp; 🛒 B = dućan, 1–6 = predmeti &nbsp;•&nbsp; 📋 Tab = tablica &nbsp;•&nbsp; 🏚️ vojarne, 💸 otkup (O), 🛡️ Aegis &nbsp;•&nbsp; H = pomoć</p>
 </div>
 
 <!-- POMOĆ -->
@@ -194,7 +210,10 @@
     ⛰️ <b>Visine</b> — rijeka je nizina, baze su platoi: tko puca <b>uzbrdo, promaši 25%</b>!<br>
     🗼 <b>Kule su jake i BRANE svoje junake</b> — napadneš li junaka ispod kule, kula gađa TEBE! (⚠️ upozorenje)<br>
     👻 <b>Nevidljivost</b> (Lunina Mjesečeva sjena) — neprijatelji te ne vide ni ne ciljaju; napad je prekida<br>
-    🛒 <b>B</b> — dućan s <b>receptima</b> • klik na predmet u torbi = <b>prodaja</b> za pola cijene<br>
+    🛒 <b>B</b> — dućan s <b>receptima</b> • <b>aktivni predmeti</b> (🪽 Skokne čizme, 👑 Kraljevski oklop) se koriste tipkama <b>1–6</b> ili lijevim klikom na torbu • <b>desni klik</b> na predmet = prodaja za pola cijene<br>
+    🏚️ <b>Vojarne</b> — iza 2. kule svake staze; sruši li tko vojarnu, njegovi vojnici na toj stazi postaju <b>💪 SUPER vojnici</b>!<br>
+    💸 <b>O — otkup!</b> Kad pogineš, možeš platiti zlatom da se odmah vratiš (puni se 3 min) • 🛡️ Zmaj daje <b>Aegis</b> — jedno besplatno oživljavanje<br>
+    📋 <b>Tab</b> — tablica rezultata (ubojstva, smrti, asistencije, zlato)<br>
     ⚔️/🏹 <b>Blizina i Daljina</b> — značka kaže bori li se junak izbliza ili izdaleka<br>
     🐻 <b>Džungla</b> i 🐲 <b>Veliki Zmaj</b> • ✨ <b>rune</b> svake 2 min • 🌙 dan/noć • 💪 veliki vojnici • ⛲ fontana liječi<br>
     🎥 <b>Razmak</b> — prati junaka • <b>strelice</b> — kamera • <b>kotačić</b> — zum • ⏸️ <b>P</b> pauza • <b>M</b> zvuk • <b>S</b> stani<br>
@@ -207,7 +226,7 @@
 <div id="shop" class="hidden">
   <div class="shopHead"><span>🛒 Dućan</span><span id="shopGold">💰 0</span><button id="shopClose">✖</button></div>
   <div id="shopItems"></div>
-  <p class="shopTip">Kupuješ bilo gdje na mapi! 😊 (tipka B) • Cijena = ono što TI plaćaš (dijelovi koje imaš svijetle ✓) • Prodaja: klik na predmet u torbi</p>
+  <p class="shopTip">Kupuješ bilo gdje na mapi! 😊 (tipka B) • Cijena = ono što TI plaćaš (dijelovi koje imaš svijetle ✓) • Aktivni predmet: tipke 1–6 • Prodaja: desni klik na predmet u torbi</p>
 </div>
 
 <!-- PAUZA -->
