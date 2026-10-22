@@ -260,7 +260,7 @@ function buildSnapshot(){
     z: zones.map(z => ({ i: z.id, x: Math.round(z.x), y: Math.round(z.y), r: z.r, t: +z.t.toFixed(2), dl: z.delay, s: z.started ? 1 : 0, cl: z.color, e: z.emoji, tk: z.ticksLeft })),
     rn: runes.length ? [{ x: runes[0].x, y: runes[0].y, di: RUNE_TYPES.indexOf(runes[0].def) }] : [],
     mk: markers.map(m => ({ x: Math.round(m.x), y: Math.round(m.y), t: +m.t.toFixed(2), r: Math.round(m.r), ir: m.isRing ? 1 : 0, cl: m.color })),
-    ln: lines.map(l => ({ x1: Math.round(l.x1), y1: Math.round(l.y1), x2: Math.round(l.x2), y2: Math.round(l.y2), t: +l.t.toFixed(2), lf: l.life, cl: l.color })),
+    ln: lines.map(l => ({ x1: Math.round(l.x1), y1: Math.round(l.y1), x2: Math.round(l.x2), y2: Math.round(l.y2), t: +l.t.toFixed(2), lf: l.life, cl: l.color, w: l.w })),
     fl: floats.map(f => ({ x: Math.round(f.x), y: Math.round(f.y), hh: Math.round(f.h), tx: f.txt, cl: f.color, sz: f.size, t: +f.t.toFixed(2) })),
     fd: feed.map(f => ({ tx: f.txt, cl: f.color, t: +f.t.toFixed(2) })),
     bn: banner ? { tx: banner.txt, sb: banner.sub, t: banner.t, dr: banner.dur } : 0,
@@ -419,7 +419,14 @@ function applySnapshot(d){
     runes = [{ x: d.rn[0].x, y: d.rn[0].y, def: RUNE_TYPES[d.rn[0].di] || RUNE_TYPES[0], t: 0 }];
   }
   markers = d.mk.map(m => ({ x: m.x, y: m.y, t: m.t, r: m.r, isRing: !!m.ir, color: m.cl }));
-  lines = d.ln.map(l => ({ x1: l.x1, y1: l.y1, x2: l.x2, y2: l.y2, t: l.t, life: l.lf, color: l.cl }));
+  {   // zadrži iste objekte linija (3D cijev munje se gradi samo jednom)
+    const old = lines;
+    lines = d.ln.map(l => {
+      const ex = old.find(o => o.x1 === l.x1 && o.y1 === l.y1 && o.x2 === l.x2 && o.y2 === l.y2 && o.color === l.cl);
+      if(ex){ ex.t = l.t; return ex; }
+      return { x1: l.x1, y1: l.y1, x2: l.x2, y2: l.y2, t: l.t, life: l.lf, color: l.cl, w: l.w || 4 };
+    });
+  }
   floats = d.fl.map(f => ({ x: f.x, y: f.y, h: f.hh, txt: f.tx, color: f.cl, size: f.sz, t: f.t }));
   feed = d.fd.map(f => ({ txt: f.tx, color: f.cl, t: f.t }));
   banner = d.bn ? { txt: d.bn.tx, sub: d.bn.sb, t: d.bn.t, dur: d.bn.dr } : null;

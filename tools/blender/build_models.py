@@ -402,6 +402,19 @@ def biped_anims(m, kind='melee', wings=False, tail=True, arm_wings=False):
         cast['wingL'] = [(0, Z), (5, (40, 0, -20)), (9, (-10, 0, 10)), (18, Z)]
         cast['wingR'] = [(0, Z), (5, (-40, 0, 20)), (9, (10, 0, -10)), (18, Z)]
     m.anim('cast', 18, cast)
+    # ---- CAST2 (16 kadrova): magija s ciljem — zamah pa ispruženom rukom "baci" prema cilju
+    cast2 = {
+        'armR': [(0, Z), (5, (14, -150, 0)), (8, (0, -80, 0)), (12, (0, -84, 0)), (16, Z)],
+        'armL': [(0, Z), (5, (-25, -40, 0)), (8, (-10, 25, 0)), (16, Z)],
+        'body': [(0, Z, Z), (5, (0, -8, 14), (0, 0, 0.02)), (8, (0, 14, -10), (0.06, 0, 0)), (12, (0, 10, -6), (0.04, 0, 0)), (16, Z, Z)],
+        'head': [(0, Z), (5, (0, -8, 6)), (8, (0, 8, -4)), (16, Z)],
+        'legL': [(0, Z), (8, (0, -18, 0)), (16, Z)],
+        'legR': [(0, Z), (8, (0, 12, 0)), (16, Z)],
+    }
+    if wings:
+        cast2['wingL'] = [(0, Z), (5, (30, 0, -14)), (9, (-8, 0, 8)), (16, Z)]
+        cast2['wingR'] = [(0, Z), (5, (-30, 0, 14)), (9, (8, 0, -8)), (16, Z)]
+    m.anim('cast2', 16, cast2)
     # ---- HIT (8 kadrova): trzaj unatrag
     m.anim('hit', 8, {
         'body': [(0, Z, Z), (3, (0, -14, 0), (-0.06, 0, 0)), (8, Z, Z)],
@@ -513,12 +526,24 @@ def quad_anims(m, heavy=1.0, wings=False, bz=0.5, W=0.3, H=0.3, lr=0.08):
 
 
 # ------------------------------------------------------------------ OČI, UŠI, NJUŠKE
-def eyes(p, x, y, z, r=0.07, color='#1b1b2a', glint=True, spread=0.15, big=1.0):
+def eyes(p, x, y, z, r=0.07, color='#1b1b2a', glint=True, spread=0.15, big=1.0, liner='#14141f', lashes=True):
+    """oko: bjeloočnica/osnova, svjetlija šarenica, zjenica, dva odsjaja, tuš-linija i trepavice"""
+    iris_c = '#3a3a5c' if color == '#1b1b2a' else mix(color, '#ffffff', 0.3)
     for s in (1, -1):
-        p.sphere((x, s * spread, z), (r * 0.8 * big, r * big, r * 1.2 * big), color, seg=(12, 8))
+        rx, ry, rz = r * 0.8 * big, r * big, r * 1.2 * big
+        cy = s * spread
+        p.sphere((x, cy, z), (rx, ry, rz), color, seg=(14, 10))
+        p.sphere((x + rx * 0.55, cy, z - rz * 0.06), (rx * 0.5, ry * 0.72, rz * 0.72), iris_c, seg=(12, 8))     # šarenica
+        p.sphere((x + rx * 0.8, cy, z - rz * 0.06), (rx * 0.32, ry * 0.42, rz * 0.46), '#07070d', seg=(10, 7))  # zjenica
         if glint:
-            p.sphere((x + r * 0.55, s * spread + s * 0.03, z + r * 0.45), r * 0.36, '#ffffff', seg=(6, 4))
-            p.sphere((x + r * 0.6, s * spread - s * 0.03, z - r * 0.35), r * 0.16, '#ffffff', seg=(5, 4))
+            p.sphere((x + r * 0.66, cy + s * 0.03, z + r * 0.45), r * 0.34, '#ffffff', seg=(7, 5))
+            p.sphere((x + r * 0.7, cy - s * 0.03, z - r * 0.35), r * 0.15, '#ffffff', seg=(5, 4))
+        if liner:
+            p.arc((x + rx * 0.62, cy, z + rz * 0.02), (ry + rz) * 0.5, 22, 158, 8, r * 0.1, liner, plane='yz', seg=4)
+            if lashes:   # dvije trepavice na vanjskom kutu
+                for k, (dy, dz) in enumerate(((0.95, 0.55), (0.8, 0.82))):
+                    a0 = (x + rx * 0.55, cy + s * ry * dy, z + rz * dz)
+                    p.cyl(a0, (a0[0] + r * 0.05, a0[1] + s * r * 0.32, a0[2] + r * 0.22), r * 0.08, 0.0, liner, seg=4)
 
 
 def on_sphere(center, radii, th, ph, out=0.0):
@@ -551,6 +576,9 @@ def biped(name, c, opts):
         lg = m.part(nm, V(0, side * 0.14, 0.40))
         lg.cyl(V(0, side * 0.14, 0.42), V(0.0, side * 0.15, 0.12), 0.085 * S, 0.075 * S, limb, seg=10, smooth=True)
         lg.sphere(V(0.05, side * 0.15, 0.07), (0.13 * S, 0.09 * S, 0.075 * S), feet)
+        lg.sphere(V(0.05, side * 0.15, 0.022), (0.135 * S, 0.094 * S, 0.026 * S), mix(feet, '#000000', 0.35), seg=(12, 6))   # potplat
+        for k in (-1, 0, 1):   # prstići
+            lg.sphere(V(0.165, side * 0.15 + k * 0.042, 0.06), (0.032 * S, 0.03 * S, 0.034 * S), mix(feet, '#ffffff', 0.08), seg=(7, 5))
         if opts.get('boots'):
             lg.cyl(V(0, side * 0.15, 0.24), V(0, side * 0.15, 0.08), 0.088 * S, 0.092 * S, opts['boots'], seg=10)
     # tijelo
@@ -879,6 +907,29 @@ def biped(name, c, opts):
         for s in (1, -1):
             h.sphere(V(-0.03, s * 0.3, 1.64), (0.07 * S, 0.13 * S, 0.13 * S), opts['earColor'])
 
+    # --- v0.13 detalji: krzno na obrazima, čuperak na prsima, tunika s rubom, naborima, torbicom i ovratnikom ---
+    if snout in ('muzzle', 'long') and opts.get('cheekFluff', True) and not opts.get('trunk'):
+        for s_ in (1, -1):
+            for k in range(3):
+                pt = on_sphere(V(0, 0, hz), (hr[0] * S, hr[1] * S, hr[2] * S), s_ * (68 + k * 11), -22 + k * 9, -0.015 * S)
+                h.sphere(pt, (0.05 * S, 0.06 * S, 0.055 * S), fur if k != 1 else mix(fur, '#ffffff', 0.12), seg=(8, 6))
+    if belly != fur and not opts.get('chest') and not opts.get('armWings'):
+        for k in (-1, 0, 1):
+            b.sphere(V(0.2, k * 0.065, 0.9 - abs(k) * 0.02), (0.05 * S, 0.055 * S, 0.06 * S), belly, seg=(8, 6))
+    if tun:
+        b.cyl(V(0, 0, 0.43), V(0, 0, 0.447), 0.338 * S, 0.336 * S, '#f6c945', seg=18, caps=False)   # zlatni rub
+        for k in range(10):   # nabori tunike
+            deg = k * 36 + 18
+            ca, sa = math.cos(RAD(deg)), math.sin(RAD(deg))
+            b.box(V(ca * 0.318, sa * 0.318, 0.52), (0.02 * S, 0.03 * S, 0.15 * S), '#c8c8c8', mat='team', rot=(0, -6, deg))
+        # torbica na pojasu
+        b.box(V(-0.08, 0.27, 0.6), (0.1 * S, 0.06 * S, 0.1 * S), '#7a4b25', bevel=0.01, rot=(0, 0, 20))
+        b.box(V(-0.07, 0.29, 0.635), (0.1 * S, 0.04 * S, 0.04 * S), '#5b3a1e', bevel=0.006, rot=(0, 0, 20))
+        b.sphere(V(-0.05, 0.31, 0.62), 0.012 * S, '#f6c945', seg=(5, 4))
+        if not (opts.get('scarf') or opts.get('cape') or opts.get('chest') or opts.get('neckFur') or opts.get('armWings')):
+            b.cyl(V(0, 0, 0.9), V(0, 0, 0.955), 0.22 * S, 0.2 * S, '#ffffff', mat='team', seg=16, smooth=True)
+            b.cyl(V(0, 0, 0.95), V(0, 0, 0.962), 0.2 * S, 0.198 * S, '#f6c945', seg=16, caps=False)
+
     # ruke
     arm_wings = opts.get('armWings')
     for side, nm in ((1, 'armL'), (-1, 'armR')):
@@ -894,7 +945,13 @@ def biped(name, c, opts):
                       0.04 * S, 0.01 * S, mix(wc, '#000000', 0.15 * (i % 2)), seg=4)
             continue
         a.cyl(V(0, side * 0.31, 0.88), V(0.02, side * 0.36, 0.62), 0.072 * S, 0.066 * S, limb, seg=10, smooth=True)
-        a.sphere(V(0.04, side * 0.37, 0.57), 0.08 * S, c.get('hand', limb))
+        hc = c.get('hand', limb)
+        a.sphere(V(0.04, side * 0.37, 0.57), 0.08 * S, hc)
+        if not opts.get('flippers'):   # prsti i palac
+            for k in (-1, 0, 1):
+                a.sphere(V(0.1, side * 0.37 + k * 0.032, 0.53), (0.03 * S, 0.026 * S, 0.034 * S), hc, seg=(7, 5))
+            a.sphere(V(0.07, side * 0.32, 0.6), (0.026 * S, 0.026 * S, 0.03 * S), hc, seg=(7, 5))
+            a.sphere(V(0.0, side * 0.375, 0.6), (0.05 * S, 0.06 * S, 0.035 * S), mix(hc, '#ffffff', 0.18), seg=(7, 5))   # jastučić
         if opts.get('bracers'):
             a.cyl(V(0.01, side * 0.335, 0.73), V(0.02, side * 0.35, 0.63), 0.08 * S, 0.076 * S, opts['bracers'], seg=10)
         if opts.get('sleeve'):
@@ -915,6 +972,13 @@ def biped(name, c, opts):
         R.box(bl, (0.68 * S, 0.075 * S, 0.022 * S), '#dfe6ee', rot=(90, -20, 0), bevel=0.008)
         R.box(bl + d * 0.02, (0.6 * S, 0.02 * S, 0.026 * S), '#9fb0c0', rot=(90, -20, 0))
         R.sphere(hR - d * 0.13 * S, 0.035 * S, '#f6c945')
+        # v0.13: dragulj u križnici, krajevi križnice, omotač drške, vrh oštrice
+        R.sphere(hR + d * 0.1 * S + Vector((0.02 * S, 0, 0)), 0.026 * S, '#ef4444', mat='glow', seg=(8, 6))
+        for s_ in (1, -1):
+            R.sphere(hR + d * 0.1 * S + Vector((0, s_ * 0.13 * S, 0)), 0.026 * S, '#f6c945', seg=(7, 5))
+        for k in range(3):
+            R.cyl(hR - d * (0.07 - k * 0.05) * S, hR - d * (0.05 - k * 0.05) * S, 0.034 * S, 0.034 * S, '#3b2414', seg=6, caps=False)
+        R.cyl(bl + d * 0.33 * S, bl + d * 0.42 * S, 0.034 * S, 0.0, '#dfe6ee', seg=4)
     if opts.get('shield'):
         n = Vector((0.55, 0.83, 0)).normalized()
         cc = hL + Vector((0.06, 0.06, 0.04))
@@ -938,20 +1002,36 @@ def biped(name, c, opts):
         else:
             R.sphere(top + Vector((0, 0, 0.1 * S)), 0.1 * S, orb, mat='glow')
             R.cyl(top - Vector((0, 0, 0.02 * S)), top + Vector((0, 0, 0.04 * S)), 0.06 * S, 0.07 * S, '#f6c945', seg=8)
+        if opts.get('orbShape') != 'none':   # v0.13: zlatni prstenovi duž štapa i omotač drške
+            for zz in (0.42, 0.18, -0.2):
+                R.cyl(hR + Vector((0, 0, zz * S)), hR + Vector((0, 0, (zz + 0.035) * S)), 0.04 * S, 0.04 * S, '#f6c945', seg=8)
+            for k in range(3):
+                R.cyl(hR + Vector((0, 0, (-0.08 + k * 0.05) * S)), hR + Vector((0, 0, (-0.06 + k * 0.05) * S)), 0.038 * S, 0.038 * S, '#5b3a1e', seg=6, caps=False)
     if wpn == 'hammer':
         d = Vector((0.9, 0, 0.42)).normalized()
         R.cyl(hR - d * 0.12 * S, hR + d * 0.5 * S, 0.035 * S, 0.035 * S, '#7a4b25', seg=7)
         R.box(hR + d * 0.55 * S, (0.16 * S, 0.3 * S, 0.16 * S), '#9aa3ad', rot=(0, -25, 0), bevel=0.02)
         R.box(hR + d * 0.55 * S, (0.12 * S, 0.34 * S, 0.12 * S), '#d6dde6', rot=(0, -25, 0), bevel=0.01)
+        for s_ in (1, -1):   # v0.13: svjetleće rune na glavi čekića
+            R.box(hR + d * 0.55 * S + Vector((0, s_ * 0.172 * S, 0)), (0.07 * S, 0.006, 0.07 * S), '#7dd3fc', mat='glow', rot=(0, -25, 45))
+        R.cyl(hR + d * 0.47 * S, hR + d * 0.49 * S, 0.045 * S, 0.045 * S, '#f6c945', seg=8)
     if wpn == 'orb':
-        R.sphere(hR + Vector((0.1 * S, 0, 0.1 * S)), 0.11 * S, opts.get('orb', '#fb923c'), mat='glow')
+        oc = hR + Vector((0.1 * S, 0, 0.1 * S))
+        R.sphere(oc, 0.11 * S, opts.get('orb', '#fb923c'), mat='glow')
+        R.sphere(oc + Vector((0.03 * S, 0, 0.03 * S)), 0.06 * S, mix(opts.get('orb', '#fb923c'), '#ffffff', 0.6), mat='glow', seg=(8, 6))
         R.cyl(hR + Vector((0.1 * S, 0, -0.01 * S)), hR + Vector((0.1 * S, 0, 0.03 * S)), 0.07 * S, 0.09 * S, '#f6c945', seg=8)
+        R.arc(tuple(oc), 0.16 * S, 0, 330, 12, 0.01 * S, mix(opts.get('orb', '#fb923c'), '#ffffff', 0.4), plane='xz', mat='glow', seg=4)   # v0.13: čarobni prsten
     if wpn == 'bow':
         bc = opts.get('bowColor', '#8b5a2b')
         ctr = hL + Vector((0.02, 0.02, 0))
         pts = L.arc(ctr + Vector((-0.28 * S, 0, 0)), 0.42 * S, -62, 62, 8, 0.028 * S, bc, plane='xz')
         L.cyl(pts[0], pts[-1], 0.006 * S, 0.006 * S, '#f5f5f5', seg=4)
         L.cyl(ctr + Vector((0.12 * S, 0, -0.06 * S)), ctr + Vector((0.12 * S, 0, 0.06 * S)), 0.035 * S, 0.035 * S, '#f6c945', seg=6)
+        for k in range(4):   # v0.13: kožni omotač i vrhovi luka
+            zz = -0.045 + k * 0.03
+            L.cyl(ctr + Vector((0.12 * S, 0, zz * S)), ctr + Vector((0.12 * S, 0, (zz + 0.015) * S)), 0.038 * S, 0.038 * S, '#5b3a1e', seg=6, caps=False)
+        for pt in (pts[0], pts[-1]):
+            L.sphere(pt, 0.03 * S, '#f6c945', seg=(6, 4))
         # tobolac sa strijelama
         b.cyl(V(-0.26, 0.1, 0.62), V(-0.36, -0.06, 1.08), 0.07 * S, 0.08 * S, '#ffffff', mat='team', seg=8)
         for i in range(3):
@@ -974,6 +1054,10 @@ def biped(name, c, opts):
     if wpn == 'club':
         R.cyl(hR - Vector((0, 0, 0.08 * S)), hR + Vector((0.32 * S, 0, 0.2 * S)), 0.03 * S, 0.075 * S, '#7a4b25', seg=8, smooth=True)
         R.sphere(hR + Vector((0.34 * S, 0, 0.21 * S)), 0.08 * S, '#8b5a2b')
+        for k in range(5):   # v0.13: čavli na batini
+            a = RAD(k * 72)
+            base_ = hR + Vector((0.3 * S, math.cos(a) * 0.06 * S, 0.19 * S + math.sin(a) * 0.06 * S))
+            R.cyl(base_, base_ + Vector((0.02 * S, math.cos(a) * 0.05 * S, math.sin(a) * 0.05 * S)), 0.015 * S, 0.0, '#9aa3ad', seg=4)
     if wpn == 'bamboo':   # panda: bambusov štap s listom
         R.cyl(hR + Vector((0, 0, -0.4 * S)), hR + Vector((0, 0, 0.62 * S)), 0.03 * S, 0.03 * S, '#7ec850', seg=7)
         for zz in (-0.25, 0.05, 0.35):
@@ -1130,6 +1214,20 @@ def build_creeps():
     cc = Vector((0.1, 0.36, 0.5))
     L.cyl(cc - n * 0.025, cc + n * 0.025, 0.18, 0.18, '#7a4b25', seg=12)
     L.cyl(cc + n * 0.02, cc + n * 0.04, 0.15, 0.15, '#ffffff', mat='team', seg=12)
+    # v0.13: metalni umbo štita, zakovice, naramenice, vizir, veća perjanica, kopča pojasa
+    L.sphere(cc + n * 0.05, 0.05, '#c9d3de', seg=(10, 7))
+    for k in range(6):
+        a = RAD(k * 60)
+        off = Vector((-n.y, n.x, 0)) * math.cos(a) * 0.15 + Vector((0, 0, 1)) * math.sin(a) * 0.15
+        L.sphere(cc + n * 0.045 + off, 0.015, '#9aa7b5', seg=(5, 4))
+    for side, nm in ((1, 'armL'), (-1, 'armR')):
+        m[nm].sphere((0.0, side * 0.26, 0.74), (0.09, 0.08, 0.06), '#b8c4d0', seg=(10, 7))
+        m[nm].sphere((0.0, side * 0.26, 0.77), (0.05, 0.05, 0.03), '#ffffff', mat='team', seg=(8, 5))
+    h.box((0.255, 0, 1.06), (0.04, 0.2, 0.025), '#1f2937')
+    h.cyl((-0.08, 0, 1.36), (-0.2, 0, 1.52), 0.07, 0.03, '#ffffff', mat='team', seg=8)
+    h.sphere((-0.21, 0, 1.53), 0.05, '#ffffff', mat='team', seg=(8, 6))
+    b.box((0.25, 0, 0.55), (0.04, 0.08, 0.06), '#f6c945', bevel=0.008)
+    R.sphere(hR + d * 0.06 + Vector((0.01, 0, 0)), 0.02, '#38bdf8', mat='glow', seg=(6, 4))
     biped_anims(m, kind='melee', tail=False)
     m.finish()
 
@@ -1158,6 +1256,17 @@ def build_creeps():
     hR = Vector((0.04, -0.27, 0.42))
     R.cyl(hR - Vector((0, 0, 0.3)), hR + Vector((0, 0, 0.5)), 0.022, 0.026, '#7a4b25', seg=6)
     R.sphere(hR + Vector((0, 0, 0.58)), 0.085, '#ffffff', mat='teamglow')
+    # v0.13: kandže štapa oko kugle, zlatni rubovi rukava, pojas s kopčom, zvjezdice na šeširu
+    for k in range(3):
+        a = RAD(k * 120)
+        R.cyl(hR + Vector((0, 0, 0.5)), hR + Vector((math.cos(a) * 0.08, math.sin(a) * 0.08, 0.64)), 0.012, 0.006, '#f6c945', seg=4)
+    for side, nm in ((1, 'armL'), (-1, 'armR')):
+        m[nm].cyl((0.03, side * 0.26, 0.47), (0.03, side * 0.262, 0.5), 0.074, 0.074, '#f6c945', seg=8, caps=False)
+    b.cyl((0, 0, 0.46), (0, 0, 0.49), 0.235, 0.232, '#5b3a1e', seg=12, caps=False)
+    b.box((0.23, 0, 0.475), (0.03, 0.06, 0.05), '#f6c945', bevel=0.006)
+    for (zz, aa) in ((1.25, 20), (1.38, -40), (1.18, -150)):
+        a = RAD(aa)
+        h.sphere((-0.04 + math.cos(a) * 0.17 * (1.6 - zz) * 1.4, math.sin(a) * 0.17 * (1.6 - zz) * 1.4, zz), 0.022, '#fde047', mat='glow', seg=(5, 4))
     biped_anims(m, kind='mage', tail=False)
     m.finish()
 
@@ -2110,7 +2219,7 @@ def build_runes():
 
 
 # ------------------------------------------------------------------ AMBIJENTALNA OKLUZIJA
-def bake_ao(samples=24):
+def bake_ao(samples=32):
     """Ispeče ambijentalnu okluziju (Cycles) u boje vrhova: udubine, spojevi i
     unutrašnjost krošnje postanu tamniji — modeli dobiju dubinu bez ikakvog
     troška u igri. Svijetleći dijelovi (glow) se preskaču."""
