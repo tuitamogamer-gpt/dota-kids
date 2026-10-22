@@ -1985,7 +1985,21 @@ def build_projectiles():
 
 
 # ------------------------------------------------------------------ EFEKTI MOĆI
+def build_coin():
+    """zlatnik (iskače pri last-hitu) — lice okrenuto duž Y, da se u igri vrti oko uspravne osi"""
+    m = Model('fx_coin')
+    p = m.part('mesh')
+    p.cyl((0, -0.05, 0), (0, 0.05, 0), 0.32, 0.32, '#e0a800', seg=18)
+    p.cyl((0, -0.06, 0), (0, 0.06, 0), 0.25, 0.25, '#ffd54a', seg=18)
+    for s_ in (1, -1):   # zvjezdica na oba lica
+        for k in range(5):
+            a = RAD(90 + k * 72)
+            p.cyl((0, s_ * 0.065, 0), (math.cos(a) * 0.16, s_ * 0.065, math.sin(a) * 0.16), 0.05, 0.0, '#fff3b0', mat='glow', seg=4)
+    m.finish()
+
+
 def build_fx():
+    build_coin()
     # meteor (pada s neba; plamen prema +Z)
     m = Model('fx_meteor')
     p = m.part('mesh')

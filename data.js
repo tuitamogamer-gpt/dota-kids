@@ -55,6 +55,12 @@ const CFG = {
   aegisDuration: 300,       // Zmajev štit (Aegis) traje 5 min
   glyphCd: 300,             // Glif utvrde (F): sve građevine tima neranjive 5 s
   glyphDur: 5,
+  denyHp: 0.5,              // vlastiti vojnik ispod 50% života može se uskratiti (deny)
+  denyTowerHp: 0.1,         // vlastita kula ispod 10%
+  backdoorR: 900,           // zaštita od "backdoora": bez neprijateljskih vojnika u blizini
+  backdoorMul: 0.5,         //   građevina prima pola štete
+  backdoorRegen: 15,        //   i obnavlja 15 života/s
+  shutdownGold: 60,         // prekid niza ubojstava: +60 zlata po ubojstvu u nizu (od 3.)
   creepScaleEvery: 450,     // vojnici jačaju svakih 7.5 min (kao u DotA)
   creepScalePct: 0.12,
   shrineCd: 240,            // svetište: liječi 5 s, puni se 4 min
@@ -1151,6 +1157,15 @@ const ITEMS = [
         if(n === 0 && isHuman(h)) addFloat(h.x, h.y, '🌫️ Nikoga skrivenog…', '#e5e7eb', 13);
         return true;
       } } },
+  { id:'tango',  emoji:'🌿', name:'Tango',          tier:1, cost:90,  desc:'3 komada: pojedi list i 16 s polako vraćaš 115 života (potroši se)', basic:true, charges:3, consume:true, stats:{},
+    active:{ cd:1, mana:0,
+      use(h){ h.tangoT = 16; useCharge(h, 'tango'); burst(h.x, h.y, '#86efac', 10, 120, 4); return true; } } },
+  { id:'clarity', emoji:'💧', name:'Bistrina',      tier:1, cost:60,  desc:'Popij: 20 s polako vraćaš 150 mane — prekida je udarac neprijateljskog junaka (potroši se)', basic:true, charges:1, consume:true, stats:{},
+    active:{ cd:1, mana:0,
+      use(h){ h.clarityT = 20; useCharge(h, 'clarity'); burst(h.x, h.y, '#7dd3fc', 10, 120, 4); return true; } } },
+  { id:'cheese', emoji:'🧀', name:'Zmajev sir',     tier:1, cost:500, desc:'Dar Velikog Zmaja: odmah +1500 života i +800 mane (potroši se)', noShop:true, charges:1, consume:true, stats:{},
+    active:{ cd:1, mana:0,
+      use(h){ heal(h, 1500); h.mp = Math.min(h.maxmp, h.mp + 800); useCharge(h, 'cheese'); burst(h.x, h.y, '#fde047', 26, 240, 6); return true; } } },
   { id:'eye',    emoji:'👁️', name:'Oko',            tier:1, cost:150, desc:'2 oka: postavi oko koje gleda kroz maglu rata 2 min (potroši se)', basic:true, charges:2, consume:true, stats:{},
     active:{ cd:2, mana:0, target:'point', castRange:500,
       use(h, aim){
@@ -1217,7 +1232,7 @@ const ITEM_CATS = [
   { id:'all',   label:'📜 Sve' },
 ];
 const ITEM_CAT_OF = {
-  potion:'cons', bottle:'cons', dust:'cons', eye:'cons',
+  potion:'cons', bottle:'cons', dust:'cons', eye:'cons', tango:'cons', clarity:'cons', cheese:'cons',
   sword:'atk', bigsword:'atk', kingsword:'atk',
   heart:'def', bigheart:'def', titanheart:'def', guard:'def', bkb:'def',
   orb:'mag', staff:'mag', archstaff:'mag',
