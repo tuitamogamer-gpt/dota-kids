@@ -66,7 +66,8 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
 - 🎯 **Indikatori moći**: lebdenje nad gumbom pokazuje domet i krug djelovanja, tooltipi pokazuju štetu za tvoj rang
 - ⬆️ **Poeni vještina**: svaki level (do 18!) = 1 poen — Q/W/E po 3 ranga, ulti 3 ranga (leveli 6/11/16), plus 6 poena za 📊 atribute
 - 💪🤸🧠 **Atributi kao u DotA**: Snaga (život), Okretnost (brzina + brzina napada), Inteligencija (mana) — glavni atribut daje štetu i raste svaki level
-- 🛒 **Dućan s receptima** u 4 tira (osnovno → legendarno), torba sa 6 mjesta, aktivni predmeti, prodaja desnim klikom
+- 🛒 **Dućan s receptima**: kategorije kao u DotA (potrošno, napad, obrana, magija, čizme, legendarno) i **⭐ Preporučeno** — build za tvog junaka s oznakom 🎯 što kupiti sljedeće; torba sa 6 mjesta, aktivni predmeti, prodaja desnim klikom
+- ⚔️ **Auto-napad kao u DotA**: junak koji stoji sam napada neprijatelje u dometu (junaci prvo, pa vojnici) — strijelci više ne čekaju klik
 - 🎯 **DotA ciljanje**: prsten dometa + krug područja prije bacanja moći
 - 🌫️ **Magla rata** — vid po jedinicama, noću kraći; gankovi rade u oba smjera
 - 🏠 **Teleport kući** (T) — kanaliziranje 3 s, prekida se kretanjem/omamom

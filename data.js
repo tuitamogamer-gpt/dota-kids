@@ -1200,6 +1200,52 @@ const ITEM_TIERS = [
 
 const BOT_BUILD = ['boots', 'bigsword', 'bigheart', 'staff', 'crown', 'dragonblade'];
 
+/* kategorije dućana (kao u DotA: potrošno / napad / obrana / magija / čizme / legendarno) */
+const ITEM_CATS = [
+  { id:'rec',   label:'⭐ Preporučeno' },
+  { id:'cons',  label:'🧪 Potrošno' },
+  { id:'atk',   label:'⚔️ Napad' },
+  { id:'def',   label:'❤️ Obrana' },
+  { id:'mag',   label:'🔮 Magija' },
+  { id:'boots', label:'👟 Čizme' },
+  { id:'leg',   label:'💎 Legendarno' },
+  { id:'all',   label:'📜 Sve' },
+];
+const ITEM_CAT_OF = {
+  potion:'cons', bottle:'cons', dust:'cons', eye:'cons',
+  sword:'atk', bigsword:'atk', kingsword:'atk',
+  heart:'def', bigheart:'def', titanheart:'def', guard:'def', bkb:'def',
+  orb:'mag', staff:'mag', archstaff:'mag',
+  boots:'boots', fastboots:'boots', blink:'boots',
+  crown:'leg', dragonblade:'leg', sun:'leg',
+};
+for(const it of ITEMS) it.cat = ITEM_CAT_OF[it.id] || 'atk';
+
+/* preporučeni predmeti po junaku (redoslijed kupnje) — koriste ih i botovi */
+const HERO_BUILDS = {
+  vitez:     ['boots', 'heart', 'guard', 'bigheart', 'bkb', 'titanheart', 'dragonblade'],
+  zarko:     ['boots', 'orb', 'staff', 'archstaff', 'blink', 'sun'],
+  ledena:    ['boots', 'orb', 'guard', 'staff', 'archstaff', 'sun'],
+  strijela:  ['boots', 'sword', 'bigsword', 'fastboots', 'kingsword', 'crown'],
+  listko:    ['boots', 'orb', 'guard', 'staff', 'bigheart', 'archstaff'],
+  munja:     ['boots', 'sword', 'fastboots', 'bigsword', 'kingsword', 'dragonblade'],
+  skokica:   ['boots', 'heart', 'sword', 'bigheart', 'blink', 'crown'],
+  orlina:    ['boots', 'sword', 'bigsword', 'fastboots', 'kingsword', 'crown'],
+  luna:      ['boots', 'sword', 'orb', 'bigsword', 'kingsword', 'crown'],
+  tragac:    ['boots', 'sword', 'fastboots', 'bigsword', 'blink', 'kingsword'],
+  jez:       ['boots', 'heart', 'bigheart', 'guard', 'bkb', 'titanheart'],
+  slon:      ['boots', 'heart', 'guard', 'bigheart', 'bkb', 'dragonblade'],
+  pcela:     ['boots', 'orb', 'staff', 'guard', 'archstaff', 'sun'],
+  sova:      ['boots', 'orb', 'staff', 'archstaff', 'blink', 'sun'],
+  majmun:    ['boots', 'sword', 'fastboots', 'bigsword', 'kingsword', 'crown'],
+  vuk:       ['boots', 'sword', 'heart', 'bigsword', 'bkb', 'dragonblade'],
+  gavran:    ['boots', 'orb', 'staff', 'archstaff', 'blink', 'sun'],
+  hobotnica: ['boots', 'heart', 'guard', 'bigheart', 'bkb', 'titanheart'],
+  nosorog:   ['boots', 'heart', 'bigheart', 'bkb', 'titanheart', 'dragonblade'],
+  panda:     ['boots', 'heart', 'guard', 'bigheart', 'bkb', 'crown'],
+};
+for(const h of HEROES) h.build = HERO_BUILDS[h.id] || BOT_BUILD;
+
 /* ---------------- DŽUNGLA: NEUTRALNI KAMPOVI ---------------- */
 
 const CAMP_TYPES = {
