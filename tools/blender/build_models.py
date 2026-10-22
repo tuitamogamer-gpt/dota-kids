@@ -1659,6 +1659,195 @@ def build_nature():
     m.finish()
 
 
+# ------------------------------------------------------------------ OKOLINA (v0.11): breze, panjevi, cvijeće, trska, lopoči,
+# kristali, logorska vatra, šatori, bačve, sanduci, ograde, baklje, gaz, svetište, veliko kamenje, putokaz
+def build_env():
+    rnd = random.Random(11)
+    # breza: bijelo deblo s crnim prugama, svijetla krošnja
+    for v in range(2):
+        m = Model('tree_birch%d' % v)
+        p = m.part('mesh')
+        p.cyl((0, 0, 0), (0.05, 0, 1.5), 0.13, 0.08, '#f1f5f9', seg=7)
+        for zz in (0.25, 0.6, 0.95, 1.3):
+            p.cyl((0.0, 0, zz), (0.02, 0, zz + 0.06), 0.135, 0.13, '#1f2937', seg=7, caps=False)
+        p.cyl((0.02, 0, 1.0), (0.3, 0.18, 1.45), 0.05, 0.03, '#e5e7eb', seg=5)
+        p.cyl((0.03, 0, 1.2), (-0.28, -0.12, 1.6), 0.05, 0.03, '#e5e7eb', seg=5)
+        blobs = [((0.05, 0, 1.85), 0.5), ((0.35, 0.2, 1.6), 0.36), ((-0.32, -0.15, 1.7), 0.38), ((0.0, 0.3, 2.1), 0.3)]
+        for i, (c0, r) in enumerate(blobs[:3 + v]):
+            p.ico(c0, (r, r, r * 0.9), ['#a3e635', '#bef264', '#84cc16'][i % 3], sub=1, jitter=0.14, seed=120 + v * 10 + i)
+        m.finish()
+    # panj
+    m = Model('stump0')
+    p = m.part('mesh')
+    p.cyl((0, 0, 0), (0, 0, 0.3), 0.26, 0.24, '#7a4b25', seg=9)
+    p.cyl((0, 0, 0.3), (0, 0, 0.32), 0.24, 0.24, '#d6b48c', seg=9)
+    for r in (0.07, 0.14, 0.2):
+        p.arc((0, 0, 0.33), r, 0, 360, 10, 0.008, '#b08a62', plane='xy', seg=4)
+    p.cyl((0.2, 0.1, 0.0), (0.42, 0.2, -0.02), 0.08, 0.04, '#6b3f1f', seg=5)
+    p.ico((-0.18, 0.12, 0.12), (0.1, 0.08, 0.06), '#6aa84f', sub=1, jitter=0.2, seed=131)
+    m.finish()
+    # cvjetne krpice
+    for v in range(2):
+        m = Model('flowers%d' % v)
+        p = m.part('mesh')
+        cols_ = [('#f472b6', '#fde047'), ('#60a5fa', '#ffffff'), ('#fb923c', '#fde68a')]
+        for i in range(6):
+            a = rnd.uniform(0, 6.28); d = rnd.uniform(0.05, 0.4)
+            x, y = math.cos(a) * d, math.sin(a) * d
+            h = rnd.uniform(0.18, 0.3)
+            p.cyl((x, y, 0), (x, y, h), 0.012, 0.01, '#4caf50', seg=4)
+            c1, c2 = cols_[(i + v) % 3]
+            for k in range(5):
+                b = k * 1.2566
+                p.sphere((x + math.cos(b) * 0.04, y + math.sin(b) * 0.04, h), (0.035, 0.035, 0.015), c1, seg=(6, 3))
+            p.sphere((x, y, h + 0.01), 0.022, c2, seg=(5, 3))
+        for i in range(4):
+            a = rnd.uniform(0, 6.28); d = rnd.uniform(0.1, 0.45)
+            p.cyl((math.cos(a) * d, math.sin(a) * d, 0), (math.cos(a) * d + 0.03, math.sin(a) * d, 0.14), 0.012, 0.0, '#66bb6a', seg=3)
+        m.finish()
+    # busen trave
+    m = Model('grass0')
+    p = m.part('mesh')
+    for i in range(9):
+        a = i * 0.7 + 0.2; d = 0.05 + (i % 3) * 0.06
+        x, y = math.cos(a) * d, math.sin(a) * d
+        p.cyl((x, y, 0), (x + math.cos(a) * 0.08, y + math.sin(a) * 0.08, 0.22 + (i % 2) * 0.08), 0.02, 0.0,
+              ['#7ec850', '#66bb6a', '#9ccc65'][i % 3], seg=3)
+    m.finish()
+    # trska (rogoz) uz rijeku
+    m = Model('reeds0')
+    p = m.part('mesh')
+    for i in range(6):
+        a = i * 1.05; d = 0.05 + (i % 3) * 0.07
+        x, y = math.cos(a) * d, math.sin(a) * d
+        h = 0.5 + (i % 3) * 0.12
+        p.cyl((x, y, 0), (x + 0.03, y, h), 0.014, 0.01, '#65a30d', seg=4)
+        if i % 2 == 0:
+            p.cyl((x + 0.03, y, h - 0.12), (x + 0.035, y, h + 0.02), 0.03, 0.03, '#78350f', seg=6)
+        p.cyl((x - 0.02, y + 0.02, 0.05), (x - 0.08, y + 0.06, 0.4), 0.012, 0.0, '#84cc16', seg=3)
+    m.finish()
+    # lopoč s cvijetom
+    m = Model('lilypad0')
+    p = m.part('mesh')
+    p.cyl((0, 0, 0), (0, 0, 0.02), 0.32, 0.32, '#4caf50', seg=14)
+    p.box((0.2, 0.0, 0.0), (0.3, 0.07, 0.03), '#5ab6ee', rot=(0, 0, 20))   # urez
+    for k in range(6):
+        b = k * 1.047
+        p.sphere((-0.08 + math.cos(b) * 0.06, 0.05 + math.sin(b) * 0.06, 0.05), (0.05, 0.05, 0.03), '#f9a8d4', seg=(6, 3))
+    p.sphere((-0.08, 0.05, 0.07), 0.03, '#fde047', seg=(5, 3))
+    m.finish()
+    # kristal (džungla) — svijetli
+    m = Model('crystal0')
+    p = m.part('mesh')
+    p.ico((0, 0, 0.08), (0.3, 0.26, 0.1), '#6b7280', sub=1, jitter=0.2, seed=140)
+    p.ico((0, 0, 0.4), (0.12, 0.12, 0.45), '#a5f3fc', mat='glow', sub=0)
+    p.ico((0.18, 0.1, 0.25), (0.08, 0.08, 0.28), '#67e8f9', mat='glow', sub=0, rot=(0, 25, 0))
+    p.ico((-0.15, 0.12, 0.22), (0.07, 0.07, 0.22), '#cffafe', mat='glow', sub=0, rot=(20, -15, 0))
+    m.finish()
+    # logorska vatra
+    m = Model('campfire0')
+    p = m.part('mesh')
+    for k in range(7):
+        a = k * 0.9
+        p.ico((math.cos(a) * 0.32, math.sin(a) * 0.32, 0.05), (0.09, 0.07, 0.06), '#9ca3af', sub=0, jitter=0.2, seed=150 + k)
+    p.cyl((-0.25, -0.1, 0.06), (0.25, 0.12, 0.06), 0.045, 0.04, '#5b3a1e', seg=6)
+    p.cyl((-0.15, 0.22, 0.06), (0.18, -0.2, 0.06), 0.045, 0.04, '#6b3f1f', seg=6)
+    for z, r, c in ((0.12, 0.17, '#ff7a1a'), (0.3, 0.12, '#ffb020'), (0.44, 0.07, '#ffe26b')):
+        p.sphere((0, 0, z), (r, r, r * 1.5), c, mat='glow', seg=(8, 6))
+    m.finish()
+    # šator (boja tima)
+    m = Model('tent0')
+    p = m.part('mesh')
+    p.poly([(-0.5, -0.45, 0), (0.5, -0.45, 0), (0.5, 0, 0.55), (-0.5, 0, 0.55)], '#ffffff', mat='team', thick=0.03)
+    p.poly([(0.5, 0.45, 0), (-0.5, 0.45, 0), (-0.5, 0, 0.55), (0.5, 0, 0.55)], '#ffffff', mat='team', thick=0.03)
+    p.poly([(0.5, -0.45, 0), (0.5, 0.45, 0), (0.5, 0, 0.55)], '#e5e7eb', thick=0.02)
+    p.poly([(-0.5, 0.45, 0), (-0.5, -0.45, 0), (-0.5, 0, 0.55)], '#e5e7eb', thick=0.02)
+    p.cyl((-0.52, 0, 0.56), (0.52, 0, 0.56), 0.025, 0.025, '#5b3a1e', seg=6)
+    p.cyl((0.5, 0, 0), (0.5, 0, 0.56), 0.025, 0.02, '#5b3a1e', seg=6)
+    p.poly([(0.5, 0, 0.58), (0.5, 0, 0.75), (0.72, 0, 0.68)], '#ffffff', mat='team')
+    m.finish()
+    # bačva i sanduk
+    m = Model('barrel0')
+    p = m.part('mesh')
+    p.cyl((0, 0, 0), (0, 0, 0.5), 0.2, 0.2, '#8b5a2b', seg=10, smooth=True)
+    p.cyl((0, 0, 0.1), (0, 0, 0.14), 0.21, 0.21, '#374151', seg=10, caps=False)
+    p.cyl((0, 0, 0.36), (0, 0, 0.4), 0.21, 0.21, '#374151', seg=10, caps=False)
+    p.cyl((0, 0, 0.5), (0, 0, 0.51), 0.18, 0.18, '#a16207', seg=10)
+    m.finish()
+    m = Model('crate0')
+    p = m.part('mesh')
+    p.box((0, 0, 0.2), (0.4, 0.4, 0.4), '#b08a62', bevel=0.015)
+    for s_ in (1, -1):
+        p.box((s_ * 0.2, 0, 0.2), (0.03, 0.42, 0.06), '#7a4b25')
+        p.box((0, s_ * 0.2, 0.2), (0.42, 0.03, 0.06), '#7a4b25')
+    p.box((0, 0, 0.41), (0.42, 0.42, 0.02), '#7a4b25')
+    m.finish()
+    # drvena ograda (segment duljine 1)
+    m = Model('fence0')
+    p = m.part('mesh')
+    for x in (-0.45, 0.45):
+        p.cyl((x, 0, 0), (x, 0, 0.5), 0.04, 0.035, '#7a4b25', seg=6)
+        p.cyl((x, 0, 0.5), (x, 0, 0.56), 0.04, 0.0, '#5b3a1e', seg=6)
+    for z in (0.2, 0.4):
+        p.box((0, 0, z), (1.0, 0.03, 0.06), '#a16207')
+    m.finish()
+    # baklja (stup s plamenom)
+    m = Model('torch0')
+    p = m.part('mesh')
+    p.cyl((0, 0, 0), (0, 0, 0.1), 0.12, 0.1, '#6b7280', seg=8)
+    p.cyl((0, 0, 0.1), (0, 0, 1.1), 0.035, 0.03, '#5b3a1e', seg=6)
+    p.cyl((0, 0, 1.05), (0, 0, 1.22), 0.07, 0.08, '#374151', seg=8)
+    p.sphere((0, 0, 1.3), (0.09, 0.09, 0.14), '#ff7a1a', mat='glow', seg=(8, 6))
+    p.sphere((0, 0, 1.4), (0.05, 0.05, 0.09), '#ffe26b', mat='glow', seg=(6, 4))
+    m.finish()
+    # gaz: plosnato kamenje preko rijeke (redak od 5 kamena duž +X)
+    m = Model('ford0')
+    p = m.part('mesh')
+    for k in range(5):
+        x = -0.8 + k * 0.4
+        p.ico((x, (k % 2) * 0.12 - 0.06, 0.05), (0.2, 0.17, 0.06), ['#9ca3af', '#a8a29e', '#94a3b8'][k % 3], sub=1, jitter=0.15, seed=160 + k)
+    m.finish()
+    # svetište: kameni podest s kristalnom kuglom koja svijetli (boja tima)
+    m = Model('shrine0')
+    p = m.part('mesh')
+    p.cyl((0, 0, 0), (0, 0, 0.14), 0.7, 0.66, '#a39a88', seg=12)
+    p.cyl((0, 0, 0.14), (0, 0, 0.26), 0.5, 0.46, '#cbc2ae', seg=12)
+    for k in range(4):
+        a = RAD(k * 90 + 45)
+        p.cyl((math.cos(a) * 0.45, math.sin(a) * 0.45, 0.26), (math.cos(a) * 0.45, math.sin(a) * 0.45, 0.9), 0.06, 0.05, '#d8d0bf', seg=7)
+        p.sphere((math.cos(a) * 0.45, math.sin(a) * 0.45, 0.94), 0.07, '#ffffff', mat='team', seg=(7, 5))
+    p.cyl((0, 0, 0.26), (0, 0, 0.55), 0.14, 0.1, '#d8d0bf', seg=8)
+    p.sphere((0, 0, 0.75), 0.22, '#dff6ff', mat='teamglow', seg=(14, 10))
+    p.arc((0, 0, 0.75), 0.3, 0, 360, 14, 0.02, '#fde047', plane='xy', mat='glow')
+    m.finish()
+    # veliko kamenje (jazbina Zmaja)
+    for v in range(2):
+        m = Model('rock_big%d' % v)
+        p = m.part('mesh')
+        p.ico((0, 0, 0.4), (0.8, 0.65, 0.75), ['#6b7280', '#78716c'][v], sub=1, jitter=0.2, seed=170 + v)
+        p.ico((0.5, 0.3, 0.2), (0.35, 0.3, 0.3), '#9ca3af', sub=1, jitter=0.2, seed=172 + v)
+        p.ico((-0.4, -0.3, 0.9), (0.3, 0.3, 0.25), '#4b5563', sub=1, jitter=0.25, seed=174 + v)
+        p.ico((0.1, -0.2, 1.0), (0.35, 0.3, 0.1), '#6aa84f', sub=1, jitter=0.2, seed=176 + v)
+        m.finish()
+    # putokaz
+    m = Model('signpost0')
+    p = m.part('mesh')
+    p.cyl((0, 0, 0), (0, 0, 1.0), 0.04, 0.035, '#7a4b25', seg=6)
+    p.box((0.2, 0, 0.85), (0.5, 0.04, 0.16), '#d6b48c', bevel=0.01)
+    p.cyl((0.45, 0, 0.85), (0.56, 0, 0.85), 0.08, 0.0, '#d6b48c', seg=4, caps=True)
+    p.box((-0.18, 0, 0.62), (0.44, 0.04, 0.14), '#c9a06c', bevel=0.01, rot=(0, 0, 0))
+    m.finish()
+
+
+def build_golem():
+    """Kameni Golem — neutralno čudovište (dvonožac od kamena s kristalnim očima)"""
+    biped('mob_golem', dict(fur='#7d8590', belly='#9aa3ad', muzzle='#7d8590', dark='#3f4752', limb='#6b7380', feet='#4b5563',
+                            inner='#9aa3ad', nose='#3f4752'),
+          dict(ears=None, snout='none', tail=None, tunic=None, weapon='club', atk='melee', scale=1.45,
+               eyes={'color': '#67e8f9', 'size': 1.15}, brows='#3f4752', browAngle=-18, blush=False,
+               headR=(0.4, 0.42, 0.34), shoulders='#4b5563', chest='#6b7380', spots=True))
+
+
 # ------------------------------------------------------------------ PROJEKTILI (lete prema +X)
 def rotx(pt, deg):
     """zarotiraj točku oko osi X (za perje strijele)"""
@@ -2049,6 +2238,8 @@ def main():
     build_tower()
     build_barracks()
     build_nature()
+    build_env()
+    build_golem()
     build_projectiles()
     build_fx()
     build_runes()
@@ -2069,7 +2260,8 @@ def main():
     elif '--preview-fx' in argv:
         preview(os.path.join(HERE, 'preview_fx.png'), only=['proj_', 'fx_', 'rune_'], cols=6)
     elif '--preview-new' in argv:
-        preview(os.path.join(HERE, 'preview_new.png'), only=['hero_vuk', 'hero_gavran', 'hero_hobotnica', 'hero_nosorog', 'hero_panda', 'proj_ink', 'proj_crow'], cols=5)
+        preview(os.path.join(HERE, 'preview_new.png'), only=['tree_birch', 'stump', 'flowers', 'grass0', 'reeds', 'lilypad', 'crystal', 'campfire',
+                                                               'tent', 'barrel', 'crate', 'fence', 'torch', 'ford', 'shrine', 'rock_big', 'signpost', 'mob_golem'], cols=5)
     if '--portraits' in argv:
         render_portraits([('vuk', '#5a6270'), ('gavran', '#2e2a5c'), ('hobotnica', '#4a3a8a'), ('nosorog', '#6a7a6a'), ('panda', '#4a8a5a')])
     if '--portraits-all' in argv:

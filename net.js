@@ -181,6 +181,7 @@ function onNetData(d){
     case 'buyback': if(net.mode === 'host' && remoteHero) buyback(remoteHero); break;
     case 'item': if(net.mode === 'host' && remoteHero) useItem(remoteHero, d.i, d.x != null ? { x: d.x, y: d.y } : null); break;
     case 'glyph': if(net.mode === 'host' && remoteHero) useGlyph(remoteHero.team, remoteHero); break;
+    case 'talent': if(net.mode === 'host' && remoteHero) chooseTalent(remoteHero, d.l, d.p === 'b' ? 'b' : 'a'); break;
   }
 }
 
@@ -196,6 +197,7 @@ function netTp(){ sendNet({ c: 'tp' }); }
 function netBuyback(){ sendNet({ c: 'buyback' }); }
 function netItem(i, aim){ sendNet({ c: 'item', i, x: aim ? Math.round(aim.x) : null, y: aim ? Math.round(aim.y) : null }); }
 function netGlyph(){ sendNet({ c: 'glyph' }); }
+function netTalent(l, p){ sendNet({ c: 'talent', l, p }); }
 
 /* ---------- SNAPSHOT: domaćin → gost ---------- */
 function packStatus(st){
@@ -210,11 +212,12 @@ function heroExtras(h){
     spd: Math.round(h.speed), dm: Math.round(h.dmg), ib: h.itemBonus.dmg,
     tc: +h.tpCd.toFixed(1), tch: +h.tpChannel.toFixed(2), dt2: +h.deadT.toFixed(1),
     as: h.assists, bb: +h.buybackCd.toFixed(1), ag: h.aegis ? 1 : 0, at: Math.round(h.aegisT), ic: h.itemCd, ich: h.itemCharges,
+    tal: h.talents, cdr: h.cdr || 0,
     ab: h.abilities.map(a => [a.rank, +a.cd.toFixed(1)]),
     it: h.items.map(i => i.id),
   };
 }
-const CAMP_KEYS = ['boars', 'wolves', 'bear', 'boss'];
+const CAMP_KEYS = ['boars', 'wolves', 'bear', 'boss', 'golem'];
 function buildSnapshot(){
   const us = [];
   for(const u of units){
@@ -262,6 +265,7 @@ function buildSnapshot(){
     me: remoteHero ? heroExtras(remoteHero) : 0,
     nf: +nightForceT.toFixed(1),
     gl: [Math.round(glyph[0].t * 10), Math.round(glyph[0].cd), Math.round(glyph[1].t * 10), Math.round(glyph[1].cd)],
+    sh: shrines.map(s => [Math.round(s.cd), +s.t.toFixed(1)]),
     wd: wards.map(w => ({ x: Math.round(w.x), y: Math.round(w.y), r: w.r, t: +w.t.toFixed(1), tm: w.team })),
   };
 }
@@ -390,6 +394,7 @@ function applySnapshot(d){
     player.assists = e.as || 0; player.buybackCd = e.bb || 0; player.aegis = !!e.ag; player.aegisT = e.at || 0;
     player.itemCd = e.ic || {};
     player.itemCharges = e.ich || {};
+    player.talents = e.tal || {}; player.cdr = e.cdr || 0;
     e.ab.forEach((a, j) => {
       if(player.abilities[j]){ player.abilities[j].rank = a[0]; player.abilities[j].cd = a[1]; }
     });
@@ -416,6 +421,7 @@ function applySnapshot(d){
   banner = d.bn ? { txt: d.bn.tx, sub: d.bn.sb, t: d.bn.t, dur: d.bn.dr } : null;
   nightForceT = d.nf || 0;
   if(d.gl){ glyph[0].t = d.gl[0] / 10; glyph[0].cd = d.gl[1]; glyph[1].t = d.gl[2] / 10; glyph[1].cd = d.gl[3]; }
+  if(d.sh){ if(shrines.length !== d.sh.length) makeShrines(); d.sh.forEach((v, i) => { shrines[i].cd = v[0]; shrines[i].t = v[1]; }); }
   {   // zadrži iste objekte oka da 3D prikaz ne gradi mrežu iznova svaki snapshot
     const old = wards;
     wards = (d.wd || []).map(w => {
@@ -482,6 +488,7 @@ function resetMatchState(){
   runeTimer = CFG.runeEvery; runeSpotI = 0; isNight = false;
   wards = []; nightForceT = 0; superCreeps = [{}, {}]; winnerTeam = null;
   glyph = [{ t: 0, cd: 0 }, { t: 0, cd: 0 }];
+  makeShrines(); creepTier = 0;
   pendingCast = null;
   gameTime = 0; waveTimer = CFG.firstWave; waveCount = 0;
   firstBlood = false; gameOver = false; paused = false;

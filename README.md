@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.10: 20 junaka, Glif utvrde, Boca/Prašina/Oko, juriš, odbačaj, zamjena mjesta, kletva, tinta i vučji oblik!** 🐺🐦‍⬛🐙🦏🐼
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.11: živa okolina (breze, trska, lopoči, baklje, šatori, gazovi, logorske vatre, kristali), talenti, svetišta, Kameni Golem i vojnici koji jačaju!** 🌳🕊️🗿
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -18,6 +18,14 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- 🌳 **Živa okolina i više složenosti** (v0.11):
+  - 🌲 **novi Blender modeli okoline**: breze, panjevi, cvjetne krpice i busenje trave po cijeloj mapi, trska na obali i lopoči na rijeci, **kameni gazovi** gdje staze prelaze rijeku, **baklje** uz staze kod baza (noću svijetle), **šatori** u boji tima, bačve, sanduci i ograde u bazama, logorske vatre i svjetleći kristali uz kampove, veliko kamenje oko Zmajeve jazbine, putokazi — sve instancirano (jedan draw call po vrsti)
+  - 🎓 **Talenti**: na levelu 10 i 15 biraš jedan od dva bonusa (+30 štete / +300 života, +15% brzine / −20% hlađenja moći) — botovi biraju sami
+  - 🕊️ **Svetišta** (DotA 7): po jedno u džungli svakog tima — ranjen junak stane uz njega i ono 5 s liječi cijeli tim u krugu, puni se 4 min
+  - 🗿 **Kameni Golem**: novi neutralni kamp (po jedan na svakoj strani), svaki treći udarac omamljuje
+  - 💪 **vojnici jačaju** svakih 7.5 min (+12% života i štete), kao u DotA
+  - 🎯 auto-napad besposlenog junaka i dućan s kategorijama i preporukama (v0.10.1)
 
 - 🐺 **Još junaka i DotA detalja** (v0.10):
   - 🐺 **5 novih junaka** (ukupno 20): **Sivko** 🐺 vuk (zavijanje koje jača tim, ugriz s krvarenjem, čopor, **Vučji oblik** — model naraste i zažari se), **Mrak** 🐦‍⬛ gavran (kletva — ukleti primaju više štete, **zamjena mjesta** s neprijateljem, krađa mane, jato gavranova koje ušutkava), **Pipko** 🐙 hobotnica (tinta — pogođeni promašuje, **pipci koji vuku** neprijatelje, sluzava koža, vrtlog dubina), **Rogo** 🦏 nosorog (**juriš** ravno kroz mapu dok ne zakači prvog, udarac rogom s odbačajem, debeli oklop, bijes), **Bambus** 🐼 panda (grom-pljesak, vrtoglavica, bambus, tri male pande)
@@ -71,7 +79,7 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
 - 🎯 **DotA ciljanje**: prsten dometa + krug područja prije bacanja moći
 - 🌫️ **Magla rata** — vid po jedinicama, noću kraći; gankovi rade u oba smjera
 - 🏠 **Teleport kući** (T) — kanaliziranje 3 s, prekida se kretanjem/omamom
-- 🐻 **Džungla**: 5 neutralnih kampova + 🐲 **Veliki Zmaj** (boss — timski plijen i blagoslov)
+- 🐻 **Džungla**: 7 neutralnih kampova (veprići, vukovi, medo, 🗿 golemi) + 🐲 **Veliki Zmaj** (boss — timski plijen, blagoslov i Aegis)
 - ✨ **Rune na rijeci** svake 2 minute • 🌙 **dan/noć ciklus** • 💪 veliki vojnik svaki 3. val
 - 🗼 **Aggro kula**: napadneš li junaka ispod kule — kula gađa tebe!
 - 👑 Pobjeda rušenjem neprijateljskog prijestola (čuvarske kule prvo!)
