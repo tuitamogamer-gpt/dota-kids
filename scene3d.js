@@ -2203,7 +2203,7 @@ function swingFx(u, flip){
 function coinFx(x, y, n){
   const gh = groundHeight(x, y);
   for(let i = 0; i < n; i++){
-    const m = modelInstance('fx_coin', 0, 18);
+    const m = modelInstance('fx_coin', 0, 40);
     if(!m) return;
     const a = Math.random() * TAU, sp = 40 + Math.random() * 50, delay = i * 0.06;
     addFx(m, 0.95 + delay, (o, f) => {
@@ -2212,7 +2212,7 @@ function coinFx(x, y, n){
       const k = Math.min(1, t / 0.95);
       o.position.set(x + Math.cos(a) * sp * k, gh + 20 + 140 * k - 170 * k * k + Math.sin(k * Math.PI) * 30, y + Math.sin(a) * sp * k);
       o.rotation.y = t * 14;
-      const s = 18 * (k < 0.8 ? 1 : 1 - (k - 0.8) * 4);
+      const s = 40 * (k < 0.8 ? 1 : 1 - (k - 0.8) * 4);
       o.scale.setScalar(Math.max(0.1, s));
     });
   }
