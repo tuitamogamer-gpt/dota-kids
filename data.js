@@ -55,6 +55,11 @@ const CFG = {
   aegisDuration: 300,       // Zmajev štit (Aegis) traje 5 min
   glyphCd: 300,             // Glif utvrde (F): sve građevine tima neranjive 5 s
   glyphDur: 5,
+  creepScaleEvery: 450,     // vojnici jačaju svakih 7.5 min (kao u DotA)
+  creepScalePct: 0.12,
+  shrineCd: 240,            // svetište: liječi 5 s, puni se 4 min
+  shrineDur: 5,
+  shrineR: 320,
   // DotA aggro pravila (creep aggro)
   creepAggroRange: 500,     // napad na heroja povlači creepove u ovom radijusu
   creepAggroChase: 2.3,     // koliko dugo ganjaju
@@ -1253,6 +1258,7 @@ const CAMP_TYPES = {
   wolves: { n:2, emoji:'🐺', name:'Vuk',         hp:540,  dmg:34, range:65, atkCd:1.1, speed:135, r:17, gold:55,  xp:60 },
   bear:   { n:1, emoji:'🐻', name:'Medo Brundo', hp:1000, dmg:52, range:75, atkCd:1.2, speed:115, r:22, gold:130, xp:130 },
   boss:   { n:1, emoji:'🐲', name:'Veliki Zmaj', hp:2600, dmg:78, range:95, atkCd:1.3, speed:110, r:34, gold:260, xp:300, boss:true, hpRegen:4 },
+  golem:  { n:1, emoji:'🗿', name:'Kameni Golem', hp:1500, dmg:62, range:85, atkCd:1.4, speed:100, r:27, gold:170, xp:170, stunHit:true, hpRegen:2 },
 };
 const CAMP_SPOTS = [
   { x:850,  y:1300, type:'boars'  },
@@ -1261,6 +1267,17 @@ const CAMP_SPOTS = [
   { x:1700, y:2120, type:'wolves' },
   { x:2100, y:2100, type:'bear'   },
   { x:800,  y:800,  type:'boss'   },
+  { x:500,  y:1800, type:'golem'  },
+  { x:2500, y:1200, type:'golem'  },
+];
+
+/* ---------------- SVETIŠTA (liječe tim, kao u DotA 7) ---------------- */
+const SHRINE_SPOTS = [{ x:1150, y:2250, team:0 }, { x:1850, y:750, team:1 }];
+
+/* ---------------- TALENTI (level 10 i 15: biraš jedno od dva) ---------------- */
+const TALENTS = [
+  { lvl:10, a:{ id:'dmg', emoji:'⚔️', txt:'+30 štete' },        b:{ id:'hp',  emoji:'❤️', txt:'+300 života' } },
+  { lvl:15, a:{ id:'spd', emoji:'🏃', txt:'+15% brzine' },      b:{ id:'cdr', emoji:'⏱️', txt:'−20% hlađenja moći' } },
 ];
 
 /* ---------------- RUNE NA RIJECI ---------------- */

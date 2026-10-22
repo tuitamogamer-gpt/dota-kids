@@ -246,6 +246,57 @@ let superCreeps = [{}, {}];     // [tim][staza] = true kad je protivnička vojar
 let winnerTeam = null;          // tim koji je pobijedio (junaci plešu pobjednički ples)
 let glyph = [{ t: 0, cd: 0 }, { t: 0, cd: 0 }];   // 🛡️ Glif utvrde po timu: t = još aktivan, cd = punjenje
 const glyphAiT = [0, 0];
+let shrines = [];               // 🕊️ svetišta: { x, y, team, cd, t }
+let creepTier = 0;              // koliko su puta vojnici ojačali
+function makeShrines(){ shrines = SHRINE_SPOTS.map(s => ({ x: s.x, y: s.y, team: s.team, cd: 0, t: 0 })); }
+/* svetište se samo upali kad ranjeni junak tima stane uz njega; 5 s liječi sve saveznike u krugu */
+function updateShrines(dt){
+  for(const s of shrines){
+    if(s.cd > 0) s.cd -= dt;
+    if(s.t > 0){
+      s.t -= dt;
+      for(const h of units){
+        if(h.kind !== 'hero' || h.team !== s.team || h.dead || distXY(h.x, h.y, s.x, s.y) > CFG.shrineR) continue;
+        h.hp = Math.min(h.maxhp, h.hp + h.maxhp * 0.05 * dt);
+        h.mp = Math.min(h.maxmp, h.mp + h.maxmp * 0.04 * dt);
+      }
+      if(Math.random() < dt * 4) ring(s.x, s.y, CFG.shrineR * (0.3 + Math.random() * 0.7), TEAM_LIGHT[s.team]);
+      continue;
+    }
+    if(s.cd > 0) continue;
+    for(const h of units){
+      if(h.kind !== 'hero' || h.team !== s.team || h.dead || h.hp > h.maxhp * 0.7) continue;
+      if(distXY(h.x, h.y, s.x, s.y) > 170) continue;
+      s.t = CFG.shrineDur; s.cd = CFG.shrineCd; s.n = (s.n || 0) + 1;
+      feedMsg('🕊️ Svetište liječi tim ' + TEAM_NAME[s.team] + '!', TEAM_COLOR[s.team]);
+      burst(s.x, s.y, TEAM_LIGHT[s.team], 30, 300, 7);
+      if(h.isPlayer) sfx('heal');
+      break;
+    }
+  }
+}
+/* 🎓 talenti: na levelu 10 i 15 junak bira jedan od dva bonusa */
+function chooseTalent(h, lvl, pick){
+  if(!h || h.dead && false) return;
+  const tier = TALENTS.find(t => t.lvl === lvl);
+  if(!tier || h.level < lvl || h.talents[lvl]) return;
+  const t = tier[pick];
+  if(!t) return;
+  h.talents[lvl] = pick;
+  switch(t.id){
+    case 'dmg': h.dmg += 30; break;
+    case 'hp': h.maxhp += 300; h.hp += 300; break;
+    case 'spd': h.speed = Math.round(h.speed * 1.15); break;
+    case 'cdr': h.cdr = 0.2; break;
+  }
+  addFloat(h.x, h.y, '🎓 ' + t.emoji + ' ' + t.txt, '#c4b5fd', 15);
+  burst(h.x, h.y, '#c4b5fd', 16, 200, 5);
+  if(h.isPlayer) sfx('levelup');
+}
+function pendingTalent(h){
+  for(const t of TALENTS) if(h.level >= t.lvl && !h.talents[t.lvl]) return t;
+  return null;
+}
 const LANE_NAME = { top: 'gore', mid: 'sredina', bot: 'dolje' };
 let runeTimer = CFG.runeEvery, runeSpotI = 0;
 let isNight = false;
@@ -315,6 +366,7 @@ function makeHero(def, team, isPlayer, lane){
     kills: 0, deaths: 0, assists: 0, streak: 0, items: [], buildI: 0,
     buybackCd: 0, aegis: false, aegisT: 0, reviveAt: null, itemCd: {}, comboN: 0, hitBy: {},
     itemCharges: {}, howlT: 0, howlDmg: 0, noInvisT: 0, charge: null, burnAcc: 0,
+    talents: {}, cdr: 0,
     itemBonus: { dmg: 0, hp: 0, mp: 0, speed: 0, hpRegen: 0, mpRegen: 0 },
     abilities: def.abilities.map(a => ({ def: a, cd: 0, rank: 0 })),
     isPlayer: !!isPlayer, lane,
@@ -349,6 +401,13 @@ function makeCreep(team, lane, ranged, siege){
 // vojarna srušena → protivnički vojnici na toj stazi postaju SUPER (kao u DotA)
 function makeCreepOnLane(team, lane, ranged, siege){
   const u = makeCreep(team, lane, ranged, siege);
+  const tier = Math.floor(gameTime / CFG.creepScaleEvery);   // vojnici s vremenom jačaju
+  if(tier > 0){
+    const k = 1 + CFG.creepScalePct * tier;
+    u.maxhp = u.hp = Math.round(u.maxhp * k);
+    u.dmg *= k;
+    u.goldValue += 2 * tier;
+  }
   if(superCreeps[team][lane]){
     u.maxhp = u.hp = Math.round(u.maxhp * CFG.superCreepHp);
     u.dmg *= CFG.superCreepDmg;
@@ -415,7 +474,7 @@ function spawnCamp(c){
       dmg: t.dmg, atkRange: t.range, atkCd: t.atkCd, projSpeed: 0, speed: t.speed,
       goldValue: t.gold, xpValue: t.xp,
       emoji: t.emoji, name: t.name, boss: !!t.boss, camp: c, campType: c.type,
-      scanT: rand(0, 0.4),
+      stunHit: !!t.stunHit, scanT: rand(0, 0.4),
     });
     c.units.push(u);
   }
@@ -848,10 +907,15 @@ function levelUp(h){
   h.skillPoints++;
   addFloat(h.x, h.y, 'LEVEL ' + h.level + '! ⬆️', '#fde047', 18);
   burst(h.x, h.y, '#fde047', 18, 200, 6);
-  if(h.bot) botSpendPoints(h);
+  if(h.bot){
+    botSpendPoints(h);
+    const pt = pendingTalent(h);
+    if(pt) chooseTalent(h, pt.lvl, Math.random() < 0.5 ? 'a' : 'b');
+  }
   if(h.isPlayer){
     sfx('levelup');
     if(h.level === CFG.ultLevels[0]) announce('🌟 ULTI dostupan!', 'Pritisni R ili klikni + da ga naučiš!');
+    if(pendingTalent(h)) announce('🎓 Talent!', 'Odaberi jedan od dva bonusa (gumbi gore)');
   }
 }
 
@@ -1088,7 +1152,7 @@ function castAbility(u, i, aim){
     return;
   }
   u.mp -= ab.def.mana;
-  ab.cd = ab.def.cd;
+  ab.cd = ab.def.cd * (1 - (u.cdr || 0));   // 🎓 talent: kraće hlađenje
   u.castFx = u.hero.id + ':' + ab.def.key;   // 3D: efekt moći (scene3d.js)
   u.castN = (u.castN || 0) + 1;              // 3D: animacija čaranja
   if(aim && (Math.abs(aim.x - u.x) + Math.abs(aim.y - u.y) > 4)) u.dir = Math.atan2(aim.y - u.y, aim.x - u.x);
@@ -1340,6 +1404,7 @@ function performAttack(u, t){
   const onHitFx = (tt) => {
     if(crit) addFloat(tt.x, tt.y, 'KRIT! 💥', '#fb923c', 15);
     if(raging && tt.kind !== 'tower') applyStun(tt, u.status.rageStun || 0.3);
+    if(u.stunHit && u.atkN % 3 === 0 && tt.kind !== 'tower'){ applyStun(tt, 0.6); addFloat(tt.x, tt.y, '🗿 Tresak!', '#cbd5e1', 14); }   // Golem
     if(peroProc && tt.maxmp){
       const m = Math.min(tt.mp, 20 + 15 * pero);
       tt.mp -= m; u.mp = Math.min(u.maxmp, u.mp + m);
@@ -2119,6 +2184,11 @@ function update(dt){
 
   if(nightForceT > 0) nightForceT -= dt;
   for(let i = wards.length - 1; i >= 0; i--){ wards[i].t -= dt; if(wards[i].t <= 0) wards.splice(i, 1); }
+  updateShrines(dt);
+  {   // 💪 vojnici jačaju svakih 7.5 min
+    const tier = Math.floor(gameTime / CFG.creepScaleEvery);
+    if(tier > creepTier){ creepTier = tier; announce('💪 Vojnici su ojačali!', '+' + Math.round(CFG.creepScalePct * 100 * tier) + '% života i štete na obje strane'); }
+  }
   // 🛡️ Glif utvrde: odbrojavanje; tim bez čovjeka ga sam koristi kad mu kula pada
   for(let tm = 0; tm < 2; tm++){
     const g = glyph[tm];
@@ -2220,6 +2290,10 @@ function genTrees(){
     if(blocked) continue;
     for(const rs of RUNE_SPOTS){
       if(distXY(x, y, rs.x, rs.y) < 150){ blocked = true; break; }
+    }
+    if(blocked) continue;
+    for(const s of SHRINE_SPOTS){
+      if(distXY(x, y, s.x, s.y) < 230){ blocked = true; break; }
     }
     if(blocked) continue;
     for(const t of trees){
@@ -2365,6 +2439,7 @@ function startGame(heroIdx){
   runeTimer = CFG.runeEvery; runeSpotI = 0; isNight = false;
   wards = []; nightForceT = 0; superCreeps = [{}, {}]; winnerTeam = null;
   glyph = [{ t: 0, cd: 0 }, { t: 0, cd: 0 }];
+  makeShrines(); creepTier = 0;
   pendingCast = null;
   gameTime = 0; waveTimer = CFG.firstWave; waveCount = 0;
   firstBlood = false; gameOver = false; paused = false;
@@ -2596,6 +2671,13 @@ function setupInput(){
         if(net.mode === 'guest') netStats();
         else learnStats(player);
         return;
+      }
+      if(uiRects.talent){
+        for(const k of ['a', 'b']) if(inRect(sx, sy, uiRects.talent[k])){
+          if(net.mode === 'guest') netTalent(uiRects.talent.lvl, k);
+          else chooseTalent(player, uiRects.talent.lvl, k);
+          return;
+        }
       }
       if(uiRects.glyph && inRect(sx, sy, uiRects.glyph)){
         if(net.mode === 'guest') netGlyph();
@@ -3511,6 +3593,31 @@ function drawHud(){
     }
 
     // oživljavanje + otkup (buyback)
+    // 🎓 talent: izbor jednog od dva bonusa (level 10 / 15)
+    uiRects.talent = null;
+    const ptal = !player.dead ? pendingTalent(player) : null;
+    if(ptal){
+      const pw = 470, ph = 62, px0 = VW / 2 - pw / 2, py0 = 76;
+      ctx.fillStyle = 'rgba(30,27,75,0.94)';
+      ctx.beginPath(); ctx.roundRect(px0, py0, pw, ph, 14); ctx.fill();
+      ctx.strokeStyle = '#c4b5fd'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.roundRect(px0, py0, pw, ph, 14); ctx.stroke();
+      ctx.font = fontTxt(13, true); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#e9d5ff';
+      ctx.fillText('🎓 Talent (level ' + ptal.lvl + ') — odaberi jedan bonus:', px0 + pw / 2, py0 + 14);
+      const bw = 215, bh = 30, by = py0 + 27;
+      const ra = { x: px0 + 14, y: by, w: bw, h: bh }, rb = { x: px0 + pw - 14 - bw, y: by, w: bw, h: bh };
+      uiRects.talent = { lvl: ptal.lvl, a: ra, b: rb };
+      for(const [r, t] of [[ra, ptal.a], [rb, ptal.b]]){
+        const hov = inRect(mouse.sx, mouse.sy, r);
+        ctx.fillStyle = hov ? '#7c3aed' : '#4c1d95';
+        ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 9); ctx.fill();
+        ctx.strokeStyle = hov ? '#fde047' : '#a78bfa'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 9); ctx.stroke();
+        ctx.fillStyle = '#fff'; ctx.font = fontTxt(13, true);
+        ctx.fillText(t.emoji + ' ' + t.txt, r.x + r.w / 2, r.y + r.h / 2);
+      }
+    }
     uiRects.buyback = null;
     if(player.dead){
       ctx.fillStyle = 'rgba(15,23,42,0.45)';

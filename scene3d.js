@@ -39,6 +39,7 @@ const markerMeshes = new Map();
 const lineMeshes = new Map();
 const runeMeshes = new Map();
 const wardMeshes = new Map();
+const shrineObjs = [];     // 🕊️ svetišta (model + sjaj)
 const dying = [];          // modeli koji upravo padaju / tonu (smrt)
 
 const geoCache = {};
@@ -562,6 +563,7 @@ function buildTrees3D(){
     const v = Math.floor(r * 3);
     const gh = groundHeight(t.x, t.y);
     if(t.kind === '🌲') add('tree_pine' + v, { x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.68, sy: 0.9 + r * 0.25 });
+    else if(hash01(t.x, t.y, 9) < 0.3 && MODELS.tpl.tree_birch0) add('tree_birch' + (v % 2), { x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.7 });
     else add('tree_oak' + v, { x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.78 });
   }
   // ukrasi: kamenje, grmlje, gljive, panjevi — samo za ljepotu
@@ -596,6 +598,97 @@ function buildTrees3D(){
       add(kind, { x, y, h: groundHeight(x, y) - 1, rot: a, s: kind === 'log0' ? 40 : 34 });
     }
   });
+  if(MODELS.tpl.flowers0){   // ---- v0.11: bogatija okolina ----
+    // panjevi, cvijeće, busenje trave
+    let np = 0;
+    for(let i = 0; i < 600 && np < 24; i++){
+      const x = hash01(i, 31, 7) * WORLD, y = hash01(i, 33, 5) * WORLD;
+      if(!free(x, y, 20)) continue;
+      add('stump0', { x, y, h: groundHeight(x, y) - 1, rot: hash01(i, 35, 5) * 6.28, s: 30 + hash01(i, 36, 2) * 10 });
+      np++;
+    }
+    let nf = 0;
+    for(let i = 0; i < 2600 && nf < 320; i++){
+      const x = hash01(i, 41, 7) * WORLD, y = hash01(i, 43, 5) * WORLD;
+      if(x < 60 || y < 60 || x > WORLD - 60 || y > WORLD - 60) continue;
+      if(Math.abs(x - y) / Math.SQRT2 < 150) continue;
+      if(LANE_LIST.some(l => distToPath(LANE_PTS[l], x, y) < 60)) continue;
+      if(CAMP_SPOTS.some(c => distXY(x, y, c.x, c.y) < 120)) continue;
+      const r = hash01(i, 45, 3);
+      const kind = r < 0.45 ? 'grass0' : (r < 0.75 ? 'flowers0' : 'flowers1');
+      add(kind, { x, y, h: groundHeight(x, y) - 1, rot: hash01(i, 47, 5) * 6.28, s: 28 + hash01(i, 48, 2) * 16 });
+      nf++;
+    }
+    // uz rijeku: trska na obali, lopoči na vodi
+    let nr = 0;
+    for(let i = 0; i < 1500 && nr < 170; i++){
+      const t = 150 + hash01(i, 51, 7) * (WORLD - 300);
+      const bank = hash01(i, 53, 3) < 0.6;
+      const d = bank ? 128 + hash01(i, 55, 5) * 34 : hash01(i, 55, 5) * 85;
+      const sgn = hash01(i, 57, 2) < 0.5 ? 1 : -1;
+      const x = t + sgn * d * Math.SQRT1_2, y = t - sgn * d * Math.SQRT1_2;
+      if(x < 60 || y < 60 || x > WORLD - 60 || y > WORLD - 60) continue;
+      if(LANE_LIST.some(l => distToPath(LANE_PTS[l], x, y) < (bank ? 120 : 170))) continue;
+      if(RUNE_SPOTS.some(rs => distXY(x, y, rs.x, rs.y) < 130)) continue;
+      if(bank) add('reeds0', { x, y, h: groundHeight(x, y) - 1, rot: hash01(i, 59, 5) * 6.28, s: 34 + hash01(i, 60, 2) * 14 });
+      else add('lilypad0', { x, y, h: groundHeight(x, y) + 1.5, rot: hash01(i, 59, 5) * 6.28, s: 22 + hash01(i, 60, 2) * 12 });
+      nr++;
+    }
+    // gazovi (plosnato kamenje) gdje staze prelaze rijeku
+    const crossings = [[1500, 1500], [335, 335], [2665, 2665]];
+    for(const [cx, cy] of crossings){
+      for(let k = -1; k <= 1; k++){
+        const x = cx + k * 90 * Math.SQRT1_2, y = cy - k * 90 * Math.SQRT1_2;
+        add('ford0', { x, y, h: groundHeight(x, y) + 1, rot: Math.PI / 4 + (k ? 0.15 * k : 0), s: 46 });
+      }
+    }
+    // baklje uz staze blizu baza
+    for(let team = 0; team < 2; team++){
+      const a0 = ANCIENT_POS[team];
+      for(const l of LANE_LIST){
+        const pts = LANE_PTS[l];
+        let acc = 0;
+        for(let i = 0; i < pts.length - 1; i++){
+          const [x1, y1] = pts[i], [x2, y2] = pts[i + 1];
+          const L = distXY(x1, y1, x2, y2), ux = (x2 - x1) / L, uy = (y2 - y1) / L;
+          for(let s = acc; s < L; s += 170){
+            const px = x1 + ux * s, py = y1 + uy * s;
+            const dA = distXY(px, py, a0.x, a0.y);
+            if(dA > 820 || dA < 300) continue;
+            if(distXY(px, py, FOUNTAIN[team].x, FOUNTAIN[team].y) < 260) continue;
+            for(const side of [1, -1]){
+              const x = px - uy * side * 100, y = py + ux * side * 100;
+              if(x < 40 || y < 40 || x > WORLD - 40 || y > WORLD - 40) continue;
+              add('torch0', { x, y, h: groundHeight(x, y) - 1, rot: 0, s: 30 });
+            }
+          }
+          acc = (acc - L) % 170; if(acc < 0) acc += 170;
+        }
+      }
+    }
+    // logorske vatre i kristali uz kampove, veliko kamenje oko Zmajeve jazbine
+    CAMP_SPOTS.forEach((c, ci) => {
+      if(c.type === 'boss'){
+        for(let k = 0; k < 7; k++){
+          const a = k / 7 * TAU + 0.3;
+          if(a > 0.6 && a < 1.3) continue;   // ulaz u jazbinu
+          const x = c.x + Math.cos(a) * 230, y = c.y + Math.sin(a) * 230;
+          add('rock_big' + (k % 2), { x, y, h: groundHeight(x, y) - 2, rot: a + 1, s: 60 + hash01(k, 61, 1) * 20 });
+        }
+        return;
+      }
+      const a = ci * 1.3 + 2.2;
+      const x = c.x + Math.cos(a) * 110, y = c.y + Math.sin(a) * 110;
+      add('campfire0', { x, y, h: groundHeight(x, y) - 1, rot: 0, s: 36 });
+      if(c.type === 'wolves' || c.type === 'golem'){
+        const x2 = c.x + Math.cos(a + 2.1) * 150, y2 = c.y + Math.sin(a + 2.1) * 150;
+        add('crystal0', { x: x2, y: y2, h: groundHeight(x2, y2) - 1, rot: a, s: 40 });
+      }
+    });
+    // putokazi na izlazu iz baza
+    add('signpost0', { x: 470, y: 2460, h: groundHeight(470, 2460) - 1, rot: -0.6, s: 40 });
+    add('signpost0', { x: 2530, y: 540, h: groundHeight(2530, 540) - 1, rot: 2.5, s: 40 });
+  }
   // rub šume: gusti borovi i hrastovi oko mape, da se ne vidi "kraj svijeta"
   for(let i = 0; i < 520; i++){
     const side = i % 4, t = hash01(i, 21, 3) * (WORLD + 1200) - 600, depth = 50 + hash01(i, 22, 4) * 560;
@@ -609,6 +702,17 @@ function buildTrees3D(){
   for(const name in buckets){
     const im = instancedFrom(name, buckets[name]);
     if(im) treesGroup.add(im);
+  }
+  // sjaj plamena baklji, logorskih vatri i kristala (sprite — instancirana geometrija ne svijetli)
+  const glows = [];
+  for(const it of buckets.torch0 || []) glows.push({ x: it.x, y: it.y, h: it.h + 42, c: '#ffb020', s: 56 });
+  for(const it of buckets.campfire0 || []) glows.push({ x: it.x, y: it.y, h: it.h + 16, c: '#ff8a3d', s: 90 });
+  for(const it of buckets.crystal0 || []) glows.push({ x: it.x, y: it.y, h: it.h + 28, c: '#a5f3fc', s: 70 });
+  for(const g of glows){
+    const spr = new THREE.Sprite(glowMat(g.c));
+    spr.scale.set(g.s, g.s, 1);
+    spr.position.set(g.x, g.h, g.y);
+    treesGroup.add(spr);
   }
   scene3.add(treesGroup);
 }
@@ -663,6 +767,58 @@ function buildStatic3D(){
         im.castShadow = true;
         staticGroup.add(im);
       }
+    }
+  }
+  shrineObjs.length = 0;
+  if(MODELS.ready && MODELS.tpl.tent0){
+    // baza: šatori (boja tima), bačve, sanduci, ograde uz fontanu i prijestol
+    for(let team = 0; team < 2; team++){
+      const f = FOUNTAIN[team], a0 = ANCIENT_POS[team];
+      const toCenter = Math.atan2(WORLD / 2 - f.y, WORLD / 2 - f.x);
+      const tents = [];
+      for(let k = -1; k <= 1; k++){
+        const a = toCenter + k * 0.55;
+        const x = f.x + Math.cos(a) * 250, y = f.y + Math.sin(a) * 250;
+        tents.push({ x, y, h: groundHeight(x, y) - 1, rot: -a, s: 44 });
+      }
+      const geo = mergedModelGeo('tent0');
+      if(geo){
+        const im = new THREE.InstancedMesh(geo, modelMat('TEAM', team, 'n'), tents.length);
+        tents.forEach((it, i) => {
+          _dummy.position.set(it.x, it.h, it.y); _dummy.rotation.set(0, it.rot, 0); _dummy.scale.setScalar(it.s); _dummy.updateMatrix();
+          im.setMatrixAt(i, _dummy.matrix);
+        });
+        im.castShadow = true;
+        staticGroup.add(im);
+      }
+      const props = [];
+      for(let k = 0; k < 7; k++){
+        const a = toCenter + Math.PI + (k - 3) * 0.32;
+        const x = a0.x + Math.cos(a) * 170, y = a0.y + Math.sin(a) * 170;
+        if(x < 40 || y < 40 || x > WORLD - 40 || y > WORLD - 40) continue;
+        props.push({ kind: k % 2 ? 'crate0' : 'barrel0', x, y, h: groundHeight(x, y) - 1, rot: a, s: 30 + (k % 3) * 4 });
+      }
+      for(let k = 0; k < 5; k++){
+        const a = toCenter + 1.6 + k * 0.1 * 0 + (k - 2) * 0.09;
+        const x = f.x + Math.cos(a) * 330, y = f.y + Math.sin(a) * 330;
+        props.push({ kind: 'fence0', x, y, h: groundHeight(x, y) - 1, rot: -a - Math.PI / 2, s: 38 });
+      }
+      const byKind = {};
+      for(const p of props) (byKind[p.kind] = byKind[p.kind] || []).push(p);
+      for(const kind in byKind){ const im = instancedFrom(kind, byKind[kind]); if(im) staticGroup.add(im); }
+    }
+    // 🕊️ svetišta
+    for(const s of SHRINE_SPOTS){
+      const m = modelInstance('shrine0', s.team, 70);
+      if(!m) continue;
+      const gh = groundHeight(s.x, s.y);
+      m.position.set(s.x, gh - 1, s.y);
+      staticGroup.add(m);
+      const glow = new THREE.Sprite(glowMat(TEAM_LIGHT[s.team]));
+      glow.scale.set(110, 110, 1);
+      glow.position.set(s.x, gh + 52, s.y);
+      staticGroup.add(glow);
+      shrineObjs.push({ m, glow, team: s.team, x: s.x, y: s.y, gh });
     }
   }
   for(let team = 0; team < 2; team++){
@@ -2249,6 +2405,19 @@ function syncScene(tAnim){
     if(w.t < 2) ud.ring.scale.setScalar(Math.max(0.05, w.t / 2));   // pred istek se skuplja
   }, (w, g) => {
     if(w.team === myTeam) burst(g.position.x, g.position.z, '#c4b5fd', 10, 120, 4);
+  });
+
+  // 🕊️ svetišta: sjaj pulsira dok liječe, prigušen dok se pune
+  shrineObjs.forEach((so, i) => {
+    const s = (typeof shrines !== 'undefined' && shrines[i]) || null;
+    const active = s && s.t > 0, ready = !s || s.cd <= 0;
+    const base = active ? 150 + Math.sin(tAnim * 9) * 40 : (ready ? 90 + Math.sin(tAnim * 2) * 10 : 40);
+    so.glow.scale.set(base, base, 1);
+    so.glow.position.y = so.gh + 52 + (active ? Math.sin(tAnim * 6) * 8 : 0);
+    if(active && Math.random() < dt * 40){
+      const a = Math.random() * TAU, d = Math.random() * CFG.shrineR;
+      fxSpawn(so.x + Math.cos(a) * d, so.y + Math.sin(a) * d, groundHeight(so.x, so.y) + 6, i % 2 ? '#bbf7d0' : TEAM_LIGHT[so.team], { spd: 10, up: 110, grav: 0, life: 0.9, size: 20 });
+    }
   });
 
   if(playerRing3 && player){
