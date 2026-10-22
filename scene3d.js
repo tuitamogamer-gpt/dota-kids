@@ -119,8 +119,8 @@ function modelMat(name, team, look){
   } else if(name === 'TEAMGLOW'){
     m = new THREE.MeshBasicMaterial({ color: new THREE.Color(TEAM_LIGHT[team] || '#ffffff').lerp(new THREE.Color('#ffffff'), 0.25) });
   } else {
-    m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0,
-      color: name === 'TEAM' ? tc : 0xffffff });
+    m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.78, metalness: 0,
+      color: name === 'TEAM' ? tc : 0xffffff, envMapIntensity: 0.45 });
     if(look === 'f'){ m.emissive = new THREE.Color(0xffffff); m.emissiveIntensity = 0.32; }
     if(look === 'c') m.color.lerp(new THREE.Color('#5fb8ff'), 0.7);
   }
@@ -390,7 +390,17 @@ function initScene3D(glCanvas){
   scene3.add(skirt);
 
   initFx();
+  initEnvironment(renderer3, scene3);
   loadModels3D();
+}
+/* mekano okolišno svjetlo (studio) — modeli dobiju odsjaj i dubinu */
+function initEnvironment(renderer, scene){
+  if(!THREE.RoomEnvironment || !THREE.PMREMGenerator) return;
+  try {
+    const pm = new THREE.PMREMGenerator(renderer);
+    scene.environment = pm.fromScene(new THREE.RoomEnvironment(), 0.04).texture;
+    pm.dispose();
+  } catch(e){ console.warn('Okolišno svjetlo nije dostupno', e); }
 }
 
 function resize3D(){
@@ -1540,7 +1550,6 @@ function startDying(u, g, now){
   const kind = u.kind;
   if(!g.visible){ scene3.remove(g); disposeGroup(g); return; }
   const ud = g.userData;
-  if(ud.anim) ud.anim.mixer.stopAllAction();
   for(const k of ['ring', 'shield', 'statusSpr', 'glow', 'stars', 'roots', 'aura']) if(ud[k]) ud[k].visible = false;
   const x = g.position.x, y = g.position.z, h = g.position.y;
   if(kind === 'ancient'){
@@ -1553,7 +1562,9 @@ function startDying(u, g, now){
     dying.push({ g, kind, t0: now, y0: h, dur: 4 });
     return;
   }
-  dying.push({ g, kind, t0: now, y0: h, dur: kind === 'tower' ? 1.8 : 1.3 });
+  const dieAnim = !!(ud.anim && ud.anim.acts.die);
+  if(dieAnim) animOnce(ud.anim, 'die', 1.1, now, 0);
+  dying.push({ g, kind, t0: now, y0: h, dur: kind === 'tower' ? 1.8 : (dieAnim ? 2.2 : 1.3), anim: dieAnim ? ud.anim : null });
   const c = kind === 'tower' ? '#d6cbb5' : '#e5e7eb';
   const n = kind === 'tower' ? 26 : 8;
   for(let i = 0; i < n; i++)
@@ -1564,12 +1575,16 @@ function startDying(u, g, now){
     shakeAt(x, y, 1.2, 0.8);
   }
 }
-function updateDying(now){
+function updateDying(now, dt){
   for(let i = dying.length - 1; i >= 0; i--){
     const d = dying[i];
     const t = now - d.t0;
     const m = d.g.userData.model || d.g;
-    if(d.kind === 'tower'){
+    if(d.anim){
+      d.anim.mixer.update(dt);
+      if(t > 1.3) d.g.position.y = d.y0 - (t - 1.3) / (d.dur - 1.3) * 60;
+    }
+    else if(d.kind === 'tower'){
       m.rotation.z = Math.min(1, t / d.dur) * 0.25;
       d.g.position.y = d.y0 - Math.pow(Math.min(1, t / d.dur), 2) * 170;
     } else if(d.kind === 'ancient'){
@@ -1667,11 +1682,14 @@ function syncStatusFx(u, g, tAnim, dt, headH){
   } else if(ud.aura) ud.aura.visible = false;
 }
 /* iskre kad jedinica primi udarac (radi i kod gosta — gleda pad života) */
-function syncHitFx(u, g, bodyH){
+function syncHitFx(u, g, bodyH, tAnim){
   const ud = g.userData;
   if(ud.hp != null && u.hp < ud.hp - 0.5 && g.visible){
     const n = u.kind === 'tower' || u.kind === 'ancient' ? 6 : 4;
     for(let i = 0; i < n; i++) fxSpawn(u.x, u.y, g.position.y + bodyH, i % 2 ? '#fff7c2' : '#ffb347', { spd: 110, up: 60, grav: -80, life: 0.35, size: 16 });
+    // trzaj (ako baš ne napada / ne čara)
+    const a = ud.anim;
+    if(a && a.acts.hit && tAnim >= a.oneEnd && !u.dead) animOnce(a, 'hit', 1.3, tAnim, 0);
   }
   ud.hp = u.hp;
 }
@@ -1784,7 +1802,7 @@ function syncScene(tAnim){
       else { scene3.remove(g); disposeGroup(g); }
     }
   }
-  updateDying(tAnim);
+  updateDying(tAnim, dt);
   for(const u of units){
     if(u.removeMe) continue;
     const g = ensureUnitMesh(u);
@@ -1797,16 +1815,21 @@ function syncScene(tAnim){
         if(ud.deadT0 == null){
           ud.deadT0 = tAnim;
           ud.deadY = gh;
-          if(ud.anim) ud.anim.mixer.stopAllAction();
+          ud.dieAnim = !!(ud.anim && ud.anim.acts.die);
+          if(ud.anim){
+            if(ud.dieAnim) animOnce(ud.anim, 'die', 1.1, tAnim, 0);
+            else ud.anim.mixer.stopAllAction();
+          }
           for(const k of ['ring', 'shield', 'statusSpr', 'stars', 'roots', 'aura']) if(ud[k]) ud[k].visible = false;
           if(seen && MODELS.ready){ ghostFx(u.x, u.y, gh); ud.tomb = tombFx(u.x, u.y, gh); }
         }
         const t = tAnim - ud.deadT0;
         const m = ud.model;
-        g.visible = seen && t < 1.6 && !!m;
+        g.visible = seen && t < 2.4 && !!m;
         if(m){
-          m.rotation.x = Math.min(1, t / 0.35) * 1.45;
-          g.position.y = ud.deadY - Math.max(0, t - 0.7) * 50;
+          if(ud.dieAnim) ud.anim.mixer.update(dt);
+          else m.rotation.x = Math.min(1, t / 0.35) * 1.45;
+          g.position.y = ud.deadY - Math.max(0, t - (ud.dieAnim ? 1.4 : 0.9)) * 60;
         }
         ud.hp = u.hp;
         continue;
@@ -1815,7 +1838,7 @@ function syncScene(tAnim){
         ud.deadT0 = null;
         if(ud.model) ud.model.rotation.x = 0;
         ud.ring.visible = true;
-        if(ud.anim){ ud.anim.cur = null; ud.anim.oneEnd = 0; }
+        if(ud.anim){ ud.anim.mixer.stopAllAction(); ud.anim.cur = null; ud.anim.oneEnd = 0; }
         if(ud.tomb){ ud.tomb.life = 0; ud.tomb = null; }
         if(seen) beamFx(u.x, u.y, '#93c5fd', 0.9);
       }
@@ -1853,7 +1876,7 @@ function syncScene(tAnim){
         ud.body.material = u.flash > 0 ? lambMat('#ffffff') : (invis ? invisMat(u.team) : lambMat(TEAM_LIGHT[u.team]));
         ud.head.material.opacity = invis ? 0.55 : 1;
       }
-      syncHitFx(u, g, 50);
+      syncHitFx(u, g, 50, tAnim);
     }
     else if(u.kind === 'creep' || u.kind === 'neutral'){
       g.visible = seen;
@@ -1869,7 +1892,7 @@ function syncScene(tAnim){
       } else if(ud.body){
         ud.body.material = u.flash > 0 ? lambMat('#ffffff') : lambMat(TEAM_LIGHT[u.kind === 'creep' ? u.team : TEAM_NEUTRAL]);
       }
-      syncHitFx(u, g, u.r + 12);
+      syncHitFx(u, g, u.r + 12, tAnim);
     }
     else if(u.kind === 'ancient'){
       g.position.set(u.x, gh, u.y);
@@ -1882,7 +1905,7 @@ function syncScene(tAnim){
         const s = 1 + Math.sin(tAnim * 3) * 0.03;
         ud.shield.scale.set(s, s, s);
       }
-      syncHitFx(u, g, 90);
+      syncHitFx(u, g, 90, tAnim);
     }
     else if(u.kind === 'tower'){
       g.position.set(u.x, gh, u.y);
@@ -1903,7 +1926,7 @@ function syncScene(tAnim){
       } else if(ud.body){
         ud.body.material = u.flash > 0 ? lambMat('#ffffff') : lambMat('#e8e0cf');
       }
-      syncHitFx(u, g, 90);
+      syncHitFx(u, g, 90, tAnim);
     }
   }
 
@@ -2063,6 +2086,7 @@ function heroPreviewSetup(){
   r.toneMappingExposure = 1.25;
   r.domElement.className = 'd-3d';
   const s = new THREE.Scene();
+  initEnvironment(r, s);
   s.add(new THREE.HemisphereLight(0xffffff, 0x8a6a3a, 0.9));
   const d = new THREE.DirectionalLight(0xfff2d0, 1.2);
   d.position.set(2, 4, 3);

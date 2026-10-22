@@ -14,6 +14,7 @@ Izlaz:
     assets/models.glb   — svi modeli + animacije (idle / walk / attack / cast)
     assets/models.js    — isti GLB kao base64 (da igra radi i s file://)
     --preview           — tools/blender/preview.png (Cycles render svih modela)
+    --no-ao             — preskoči pečenje ambijentalne okluzije (brže iteracije)
 
 Konvencije (čita ih scene3d.js):
   * svaki model je korijenski Empty s imenom npr. "hero_vitez", "tower"
@@ -22,7 +23,7 @@ Konvencije (čita ih scene3d.js):
   * materijali: VC (boje vrhova), TEAM (boje vrhova × boja tima),
     GLOW (svijetli, bez sjene), TEAMGLOW (svijetli u boji tima)
 """
-import bpy, bmesh, math, os, sys, base64, random
+import bpy, bmesh, math, os, sys, base64, random, time
 from mathutils import Vector, Matrix, Euler
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -376,9 +377,32 @@ def biped_anims(m, kind='melee', wings=False, tail=True, arm_wings=False):
         cast['wingL'] = [(0, Z), (5, (40, 0, -20)), (9, (-10, 0, 10)), (18, Z)]
         cast['wingR'] = [(0, Z), (5, (-40, 0, 20)), (9, (10, 0, -10)), (18, Z)]
     m.anim('cast', 18, cast)
+    # ---- HIT (8 kadrova): trzaj unatrag
+    m.anim('hit', 8, {
+        'body': [(0, Z, Z), (3, (0, -14, 0), (-0.06, 0, 0)), (8, Z, Z)],
+        'head': [(0, Z), (3, (0, -18, 0)), (8, Z)],
+        'armL': [(0, Z), (3, (-24, -30, 0)), (8, Z)],
+        'armR': [(0, Z), (3, (24, -30, 0)), (8, Z)],
+    })
+    # ---- DIE (16 kadrova): padne na leđa (zadnji kadar ostaje)
+    die = {
+        'body': [(0, Z, Z), (4, (0, -35, 0), (0, 0, 0.06)), (9, (0, -94, 0), (0, 0, -0.15)),
+                 (12, (0, -84, 0), (0, 0, -0.12)), (16, (0, -90, 0), (0, 0, -0.15))],
+        'head': [(0, Z), (4, (0, -16, 0)), (9, (0, 14, 0)), (16, (0, 10, 0))],
+        'armL': [(0, Z), (5, (-60, -50, 0)), (16, (-75, -20, 0))],
+        'armR': [(0, Z), (5, (60, -50, 0)), (16, (75, -20, 0))],
+        'legL': [(0, Z, Z), (4, (0, -20, 0), (0, 0, -0.02)), (9, (0, -78, 0), (0.02, 0, -0.2)), (16, (0, -72, 0), (0.02, 0, -0.2))],
+        'legR': [(0, Z, Z), (4, (0, -12, 0), (0, 0, -0.02)), (9, (0, -66, 0), (0.02, 0, -0.2)), (16, (0, -62, 0), (0.02, 0, -0.2))],
+    }
+    if tail:
+        die['tail'] = [(0, Z), (9, (0, 40, 20)), (16, (0, 35, 10))]
+    if wings:
+        die['wingL'] = [(0, Z), (9, (60, 0, -30)), (16, (50, 0, -20))]
+        die['wingR'] = [(0, Z), (9, (-60, 0, 30)), (16, (-50, 0, 20))]
+    m.anim('die', 16, die)
 
 
-def quad_anims(m, heavy=1.0, wings=False):
+def quad_anims(m, heavy=1.0, wings=False, bz=0.5, W=0.3, H=0.3, lr=0.08):
     Z = (0, 0, 0)
     m.anim('idle', 48, {
         'body': [(0, Z, Z), (24, (0, -1.5, 0), (0, 0, -0.02 * heavy)), (48, Z, Z)],
@@ -407,14 +431,41 @@ def quad_anims(m, heavy=1.0, wings=False):
         **({'wingL': [(0, Z), (4, (40, 0, 0)), (8, (-10, 0, 0)), (14, Z)],
             'wingR': [(0, Z), (4, (-40, 0, 0)), (8, (10, 0, 0)), (14, Z)]} if wings else {}),
     })
+    m.anim('hit', 8, {
+        'body': [(0, Z, Z), (3, (0, -8, 0), (-0.08, 0, 0)), (8, Z, Z)],
+        'head': [(0, Z), (3, (0, -16, 0)), (8, Z)],
+    })
+    # smrt: prevrne se na bok (trbuh prema +Y), noge polegnu u istom smjeru
+    oy, oz = 0.1, -(bz - W - 0.04)
+    die = {
+        'body': [(0, Z, Z), (4, (40, 0, 0), (0, oy * 0.4, oz * 0.3)), (9, (92, 0, 0), (0, oy, oz)),
+                 (12, (86, 0, 0), (0, oy, oz + 0.03)), (16, (90, 0, 0), (0, oy, oz))],
+        'head': [(0, Z), (5, (0, -14, 0)), (16, (0, 8, 0))],
+        'tail': [(0, Z), (9, (0, 0, 30)), (16, (0, 0, 25))],
+    }
+    for nm, y in (('legFL', W * 0.62), ('legFR', -W * 0.62), ('legBL', W * 0.62), ('legBR', -W * 0.62)):
+        off = (0, bz - H - 0.05 + oy - y, y + bz + oz - (H + 0.05))
+        die[nm] = [(0, Z, Z), (4, (40, 0, 0), tuple(v * 0.4 for v in off)), (9, (92, 0, 0), off), (16, (90, 0, 0), off)]
+    if wings:
+        die['wingL'] = [(0, Z), (9, (50, 0, 0)), (16, (45, 0, 0))]
+        die['wingR'] = [(0, Z), (9, (-30, 0, 0)), (16, (-25, 0, 0))]
+    m.anim('die', 16, die)
 
 
 # ------------------------------------------------------------------ OČI, UŠI, NJUŠKE
 def eyes(p, x, y, z, r=0.07, color='#1b1b2a', glint=True, spread=0.15, big=1.0):
     for s in (1, -1):
-        p.sphere((x, s * spread, z), (r * 0.8 * big, r * big, r * 1.2 * big), color, seg=(10, 7))
+        p.sphere((x, s * spread, z), (r * 0.8 * big, r * big, r * 1.2 * big), color, seg=(12, 8))
         if glint:
-            p.sphere((x + r * 0.55, s * spread + s * 0.02, z + r * 0.45), r * 0.33, '#ffffff', seg=(6, 4))
+            p.sphere((x + r * 0.55, s * spread + s * 0.03, z + r * 0.45), r * 0.36, '#ffffff', seg=(6, 4))
+            p.sphere((x + r * 0.6, s * spread - s * 0.03, z - r * 0.35), r * 0.16, '#ffffff', seg=(5, 4))
+
+
+def on_sphere(center, radii, th, ph, out=0.0):
+    """točka na površini elipsoida (kutovi u stupnjevima) — za pjege, znakove..."""
+    th, ph = RAD(th), RAD(ph)
+    d = Vector((math.cos(ph) * math.cos(th), math.cos(ph) * math.sin(th), math.sin(ph)))
+    return (center[0] + d.x * (radii[0] + out), center[1] + d.y * (radii[1] + out), center[2] + d.z * (radii[2] + out))
 
 
 def brows(p, x, y, z, color, angle=12, spread=0.15):
@@ -444,8 +495,8 @@ def biped(name, c, opts):
             lg.cyl(V(0, side * 0.15, 0.24), V(0, side * 0.15, 0.08), 0.088 * S, 0.092 * S, opts['boots'], seg=10)
     # tijelo
     b = m.part('body', V(0, 0, 0.42))
-    b.sphere(V(0, 0, 0.70), (0.27 * S, 0.29 * S, 0.33 * S), fur)
-    b.sphere(V(0.10, 0, 0.68), (0.19 * S, 0.22 * S, 0.25 * S), belly)
+    b.sphere(V(0, 0, 0.70), (0.27 * S, 0.29 * S, 0.33 * S), fur, seg=(18, 12))
+    b.sphere(V(0.10, 0, 0.68), (0.19 * S, 0.22 * S, 0.25 * S), belly, seg=(16, 10))
     tun = opts.get('tunic', 'team')
     if tun:
         b.cyl(V(0, 0, 0.40), V(0, 0, 0.64), 0.335 * S, 0.29 * S, '#ffffff', mat='team', seg=14)
@@ -479,7 +530,12 @@ def biped(name, c, opts):
         elif tk == 'long':
             t.cyl(V(-0.22, 0, 0.55), V(-0.5, 0, 0.5), 0.09 * S, 0.06 * S, fur, seg=10, smooth=True)
             t.cyl(V(-0.5, 0, 0.5), V(-0.74, 0, 0.62), 0.06 * S, 0.03 * S, fur, seg=10, smooth=True)
-            t.cyl(V(-0.74, 0, 0.62), V(-0.84, 0, 0.72), 0.06 * S, 0.0, opts.get('tuft', dark), seg=4)
+            if opts.get('tailFlame'):
+                t.sphere(V(-0.8, 0, 0.7), 0.075 * S, '#ff7a1a', mat='glow')
+                t.sphere(V(-0.86, 0, 0.8), 0.055 * S, '#ffb020', mat='glow')
+                t.sphere(V(-0.9, 0, 0.88), 0.035 * S, '#ffe26b', mat='glow')
+            else:
+                t.cyl(V(-0.74, 0, 0.62), V(-0.84, 0, 0.72), 0.06 * S, 0.0, opts.get('tuft', dark), seg=4)
         elif tk == 'ringed':
             pts = [V(-0.24, 0, 0.55), V(-0.4, 0, 0.6), V(-0.54, 0, 0.72), V(-0.62, 0, 0.88), V(-0.64, 0, 1.0)]
             for i in range(len(pts) - 1):
@@ -495,36 +551,42 @@ def biped(name, c, opts):
     # krila na leđima
     if opts.get('wings'):
         wc = opts['wings']
+        ws = opts.get('wingScale', 1.0)
         for side, nm in ((1, 'wingL'), (-1, 'wingR')):
+            P = lambda x, y, z: V(-0.2 + (x + 0.2) * ws, side * (0.12 + (y - 0.12) * ws), 0.92 + (z - 0.92) * ws)
             w = m.part(nm, V(-0.2, side * 0.12, 0.92), 'body')
-            w.cyl(V(-0.2, side * 0.12, 0.92), V(-0.36, side * 0.5, 1.22), 0.03 * S, 0.02 * S, dark, seg=6)
-            w.cyl(V(-0.36, side * 0.5, 1.22), V(-0.42, side * 0.78, 1.0), 0.02 * S, 0.012 * S, dark, seg=6)
-            w.poly([V(-0.2, side * 0.12, 0.92), V(-0.36, side * 0.5, 1.22), V(-0.42, side * 0.78, 1.0),
-                    V(-0.36, side * 0.62, 0.86), V(-0.3, side * 0.42, 0.76)], wc, thick=0.012)
+            w.cyl(P(-0.2, 0.12, 0.92), P(-0.36, 0.5, 1.22), 0.03 * S, 0.02 * S, dark, seg=6)
+            w.cyl(P(-0.36, 0.5, 1.22), P(-0.42, 0.78, 1.0), 0.02 * S, 0.012 * S, dark, seg=6)
+            w.cyl(P(-0.36, 0.5, 1.22), P(-0.36, 0.62, 0.86), 0.014 * S, 0.008 * S, dark, seg=4)
+            w.poly([P(-0.2, 0.12, 0.92), P(-0.36, 0.5, 1.22), P(-0.42, 0.78, 1.0),
+                    P(-0.36, 0.62, 0.86), P(-0.3, 0.42, 0.76)], wc, thick=0.012)
     # glava
     h = m.part('head', V(0, 0, 0.98), 'body')
     hr = opts.get('headR', (0.40, 0.42, 0.37))
     hz = 1.30
-    h.sphere(V(0, 0, hz), (hr[0] * S, hr[1] * S, hr[2] * S), fur, seg=(18, 12))
+    h.sphere(V(0, 0, hz), (hr[0] * S, hr[1] * S, hr[2] * S), fur, seg=(26, 18))
     snout = opts.get('snout', 'muzzle')
     mz = c.get('muzzle', belly)
     if snout == 'muzzle':
-        h.sphere(V(0.32, 0, 1.19), (0.14 * S, 0.19 * S, 0.12 * S), mz)
+        h.sphere(V(0.32, 0, 1.19), (0.14 * S, 0.19 * S, 0.12 * S), mz, seg=(14, 10))
         h.sphere(V(0.45, 0, 1.24), (0.05 * S, 0.065 * S, 0.045 * S), c.get('nose', '#2b1d1a'))
-        h.box(V(0.43, 0, 1.13), (0.02 * S, 0.08 * S, 0.012 * S), '#5a2a2a')
+        h.arc(V(0.445, 0, 1.175), 0.06 * S, 205, 335, 6, 0.011 * S, '#5a2a2a', plane='yz', seg=5)   # smiješak
     elif snout == 'long':
-        h.sphere(V(0.36, 0, 1.18), (0.22 * S, 0.14 * S, 0.11 * S), mz)
+        h.sphere(V(0.36, 0, 1.18), (0.22 * S, 0.14 * S, 0.11 * S), mz, seg=(14, 10))
         h.sphere(V(0.57, 0, 1.21), (0.05 * S, 0.06 * S, 0.045 * S), c.get('nose', '#1f1a1a'))
+        h.arc(V(0.53, 0, 1.15), 0.05 * S, 205, 335, 6, 0.01 * S, '#5a2a2a', plane='yz', seg=5)
     elif snout == 'beak':
         h.cyl(V(0.30, 0, 1.24), V(0.62, 0, 1.18), 0.11 * S, 0.0, c.get('beak', '#f5b324'), seg=8)
         h.sphere(V(0.58, 0, 1.15), (0.06 * S, 0.04 * S, 0.05 * S), c.get('beak', '#f5b324'))
     elif snout == 'flatbeak':
         h.sphere(V(0.36, 0, 1.2), (0.17 * S, 0.12 * S, 0.06 * S), c.get('beak', '#f59e0b'))
     elif snout == 'dragon':
-        h.sphere(V(0.36, 0, 1.18), (0.24 * S, 0.19 * S, 0.14 * S), fur)
+        h.sphere(V(0.36, 0, 1.18), (0.24 * S, 0.19 * S, 0.14 * S), fur, seg=(14, 10))
         h.sphere(V(0.4, 0, 1.12), (0.19 * S, 0.17 * S, 0.08 * S), belly)
         for s in (1, -1):
             h.sphere(V(0.58, s * 0.06, 1.24), 0.025 * S, dark)
+            h.cyl(V(0.54, s * 0.09, 1.1), V(0.55, s * 0.095, 1.04), 0.018 * S, 0.0, '#ffffff', seg=4)   # očnjaci
+        h.arc(V(0.56, 0, 1.1), 0.09 * S, 210, 330, 6, 0.011 * S, '#7a1f1f', plane='yz', seg=5)
     elif snout == 'frog':
         h.box(V(0.3, 0, 1.14), (0.06 * S, 0.5 * S, 0.02 * S), '#c2185b', bevel=0.008)
         h.sphere(V(0.33, 0, 1.11), (0.08 * S, 0.12 * S, 0.03 * S), '#f48fb1')
@@ -540,10 +602,11 @@ def biped(name, c, opts):
         if ey.get('white'):
             for s in (1, -1):
                 h.sphere(V(0.3, s * 0.15, 1.36), (0.06 * S, 0.095 * S, 0.11 * S), '#ffffff', seg=(10, 7))
-        eyes(h, 0.335 * S, 0, 1.36 * S, r=0.07 * S * ey.get('size', 1), color=ey.get('color', '#1b1b2a'),
+        eyes(h, 0.335 * S, 0, 1.36 * S, r=0.078 * S * ey.get('size', 1), color=ey.get('color', '#1b1b2a'),
              spread=0.15 * S)
-        if opts.get('brows'):
-            brows(h, 0.36 * S, 0, 1.47 * S, opts['brows'], spread=0.15 * S)
+        bc = opts.get('brows', dark)
+        if bc:
+            brows(h, 0.355 * S, 0, 1.47 * S, bc, angle=opts.get('browAngle', 12), spread=0.15 * S)
         if opts.get('blush', True):
             for s in (1, -1):
                 h.sphere(V(0.3, s * 0.27, 1.22), (0.03 * S, 0.06 * S, 0.035 * S), '#f49ab0', seg=(8, 5))
@@ -571,6 +634,10 @@ def biped(name, c, opts):
             z = 1.3 + math.sin(a) * 0.42
             h.sphere(V(-0.1, y, z), (0.16 * S, 0.15 * S, 0.15 * S), mc if i % 2 else mix(mc, '#000000', 0.15), seg=(10, 7))
         h.sphere(V(-0.2, 0, 1.3), (0.2 * S, 0.42 * S, 0.44 * S), mc)
+        for i in range(8):
+            a = RAD(-110 + i * (220 / 7))
+            h.sphere(V(-0.26, math.cos(a) * 0.5, 1.3 + math.sin(a) * 0.5), (0.14 * S, 0.15 * S, 0.15 * S),
+                     mix(mc, '#000000', 0.22), seg=(9, 6))
     if opts.get('horns'):
         hc = opts['horns']
         for s in (1, -1):
@@ -609,6 +676,62 @@ def biped(name, c, opts):
         h.sphere(V(-0.13, 0, 1.39), (0.4 * S, 0.45 * S, 0.38 * S), '#ffffff', mat='team', seg=(16, 10))
         h.cyl(V(-0.32, 0, 1.12), V(-0.46, 0, 0.92), 0.1 * S, 0.0, '#d0d0d0', mat='team', seg=6)
 
+    # potpisni detalji junaka
+    if opts.get('shoulders'):
+        for s in (1, -1):
+            b.sphere(V(0.0, s * 0.3, 0.93), (0.1 * S, 0.11 * S, 0.08 * S), opts['shoulders'], seg=(10, 7))
+            b.sphere(V(0.0, s * 0.3, 0.97), 0.03 * S, '#f6c945', seg=(6, 4))
+    if opts.get('bellyPlates'):
+        for i in range(4):
+            b.box(V(0.215 - i * 0.012, 0, 0.5 + i * 0.1), (0.05 * S, (0.24 - i * 0.03) * S, 0.045 * S), mix(belly, '#000000', 0.12), bevel=0.01)
+    if opts.get('headFeather'):
+        fc = opts['headFeather']
+        h.cyl(V(-0.02, 0.3, 1.52), V(-0.3, 0.36, 1.9), 0.012 * S, 0.008 * S, '#fff7ed', seg=4)
+        h.poly([V(-0.06, 0.31, 1.58), V(-0.2, 0.38, 1.86), V(-0.36, 0.34, 1.92), V(-0.3, 0.3, 1.72)], fc, thick=0.012)
+        h.poly([V(-0.06, 0.29, 1.58), V(-0.14, 0.3, 1.8), V(-0.3, 0.33, 1.9), V(-0.26, 0.37, 1.7)], mix(fc, '#000000', 0.2), thick=0.012)
+    if opts.get('flowerHat'):
+        h.cyl(V(0.0, 0.1, 1.64), V(0.02, 0.12, 1.8), 0.012 * S, 0.01 * S, '#4caf50', seg=4)
+        for k in range(5):
+            a = RAD(k * 72)
+            h.sphere(V(0.02 + math.cos(a) * 0.05, 0.12 + math.sin(a) * 0.05, 1.81), (0.035 * S, 0.035 * S, 0.02 * S), '#f9a8d4', seg=(7, 5))
+        h.sphere(V(0.02, 0.12, 1.82), 0.025 * S, '#fde047', seg=(7, 5))
+    if opts.get('boltMark'):
+        h.box(V(0.34, 0.015, 1.5), (0.02 * S, 0.035 * S, 0.09 * S), '#fde047', mat='glow', rot=(28, 0, 0))
+        h.box(V(0.375, -0.02, 1.425), (0.02 * S, 0.035 * S, 0.09 * S), '#fde047', mat='glow', rot=(28, 0, 0))
+    if opts.get('fangs'):
+        for s in (1, -1):
+            h.cyl(V(0.44, s * 0.06, 1.14), V(0.45, s * 0.065, 1.08), 0.016 * S, 0.0, '#ffffff', seg=4)
+    if opts.get('spots'):
+        for (th, ph) in ((150, 35), (-140, 45), (180, 10), (120, 60)):
+            h.sphere(on_sphere(V(0, 0, hz), (hr[0] * S, hr[1] * S, hr[2] * S), th, ph), 0.05 * S, dark, seg=(7, 5))
+        for (th, ph) in ((160, 20), (-150, 0), (175, -30)):
+            b.sphere(on_sphere(V(0, 0, 0.70), (0.27 * S, 0.29 * S, 0.33 * S), th, ph), 0.045 * S, dark, seg=(7, 5))
+    if opts.get('goggles'):
+        for s in (1, -1):
+            h.arc(V(0.26, s * 0.12, 1.55), 0.075 * S, 0, 360, 10, 0.018 * S, '#5b3a1e', plane='yz', seg=5)
+            h.cyl(V(0.245, s * 0.12, 1.55), V(0.275, s * 0.12, 1.55), 0.065 * S, 0.065 * S, '#9ae6ff', mat='glow', seg=10)
+        h.arc(V(0, 0, 1.55), 0.3 * S, 50, 310, 12, 0.02 * S, '#5b3a1e', plane='xy', seg=5)
+    if opts.get('tailFeathers'):
+        for k, s in enumerate((-1, 0, 1)):
+            b.poly([V(-0.26, s * 0.05, 0.6), V(-0.52, s * 0.16, 0.5), V(-0.62, s * 0.08, 0.44), V(-0.5, -s * 0.02, 0.5)],
+                   '#6b3f22' if k % 2 == 0 else '#f3efe4', thick=0.02)
+    if opts.get('capeStars'):
+        for (x, y, z) in ((-0.3, 0.12, 0.7), (-0.33, -0.16, 0.55), (-0.28, -0.04, 0.86), (-0.35, 0.22, 0.48)):
+            b.sphere(V(x, y, z), 0.025 * S, '#fff3b0', mat='glow', seg=(6, 4))
+    if opts.get('beltStar'):
+        sc0 = V(0.3, 0.12, 0.62)
+        for k in range(4):
+            a = RAD(k * 90 + 45)
+            b.cyl(sc0, (sc0[0], sc0[1] + math.cos(a) * 0.07 * S, sc0[2] + math.sin(a) * 0.07 * S), 0.02 * S, 0.0, '#d6dde6', seg=4)
+    if opts.get('scarfStripes'):
+        for zz in (0.95, 0.99):
+            b.cyl(V(0, 0, zz), V(0, 0, zz + 0.015), 0.245 * S, 0.24 * S, '#ffffff', seg=14, caps=False)
+    if opts.get('beanieStar'):
+        for k in range(3):
+            a = RAD(k * 60)
+            h.cyl(V(0.3, 0.14 + math.cos(a) * 0.05, 1.62 + math.sin(a) * 0.05),
+                  V(0.3, 0.14 - math.cos(a) * 0.05, 1.62 - math.sin(a) * 0.05), 0.008 * S, 0.008 * S, '#ffffff', seg=4)
+
     # ruke
     arm_wings = opts.get('armWings')
     for side, nm in ((1, 'armL'), (-1, 'armR')):
@@ -625,6 +748,8 @@ def biped(name, c, opts):
             continue
         a.cyl(V(0, side * 0.31, 0.88), V(0.02, side * 0.36, 0.62), 0.072 * S, 0.066 * S, limb, seg=10, smooth=True)
         a.sphere(V(0.04, side * 0.37, 0.57), 0.08 * S, c.get('hand', limb))
+        if opts.get('bracers'):
+            a.cyl(V(0.01, side * 0.335, 0.73), V(0.02, side * 0.35, 0.63), 0.08 * S, 0.076 * S, opts['bracers'], seg=10)
         if opts.get('sleeve'):
             a.cyl(V(0, side * 0.31, 0.9), V(0.01, side * 0.335, 0.76), 0.085 * S, 0.08 * S, '#ffffff', mat='team', seg=10)
         if opts.get('flippers'):
@@ -713,37 +838,40 @@ def biped(name, c, opts):
 HEROES = {
     'vitez': (dict(fur='#e9a93b', belly='#f9e3ad', muzzle='#fbe8bb', nose='#4a2a1a', dark='#9c5a1c'),
               dict(ears='round', mane='#b5541e', tail='thin', tuft='#b5541e', weapon='sword', shield=True,
-                   crown=True, brows='#7a3b12', chest='#cfd8e3', atk='melee')),
+                   crown=True, brows='#7a3b12', chest='#cfd8e3', shoulders='#cfd8e3', boots='#5b3a1e', atk='melee')),
     'zarko': (dict(fur='#e4572e', belly='#ffcf56', dark='#8f2414', inner='#ffcf56'),
-              dict(snout='dragon', horns='#fff1c9', wings='#ff8a4c', tail='long', tuft='#ffcf56', weapon='orb',
-                   orb='#ffb020', crest='#ffcf56', scarf=True, atk='mage')),
-    'ledena': (dict(fur='#26324f', belly='#f4f8ff', muzzle='#f4f8ff', beak='#f59e0b', feet='#f59e0b', limb='#26324f'),
+              dict(snout='dragon', horns='#fff1c9', wings='#ff8a4c', wingScale=1.25, tail='long', tailFlame=True,
+                   weapon='orb', orb='#ffb020', crest='#ffcf56', scarf=True, bellyPlates=True, atk='mage')),
+    'ledena': (dict(fur='#26324f', belly='#f4f8ff', muzzle='#f4f8ff', beak='#f59e0b', feet='#f59e0b', limb='#26324f',
+                    hand='#ef4444'),
                dict(snout='flatbeak', hat='beanie', weapon='staff', orb='#9ae6ff', orbShape='crystal',
-                    staffWood='#cbd5e1', flippers=True, tunic=None, scarf=True, atk='mage', blush=True,
-                    headR=(0.4, 0.4, 0.4))),
+                    staffWood='#cbd5e1', flippers=True, tunic=None, scarf=True, scarfStripes=True, beanieStar=True,
+                    atk='mage', blush=True, brows='#0f172a', browAngle=16, headR=(0.4, 0.4, 0.4))),
     'strijela': (dict(fur='#f07c2b', belly='#fff3e3', muzzle='#fff3e3', dark='#8a3a0e', eartip='#3b2414',
                       limb='#3b2414', hand='#3b2414'),
                  dict(ears='bigpointy', snout='long', tail='bushy', tuft='#ffffff', weapon='bow', atk='bow',
-                      sleeve=False)),
+                      sleeve=False, headFeather='#ef4444', bracers='#5b3a1e')),
     'listko': (dict(fur='#80c96d', belly='#f4e6a1', muzzle='#a7dc8f', dark='#3f7a2d'),
                dict(shell=('#5e8a35', '#7aa846', '#3e5f22'), headband=True, weapon='staff', orb='#86efac',
-                    orbShape='leaf', staffWood='#7a4b25', tail='stub', atk='mage', tunic='team')),
+                    orbShape='leaf', staffWood='#7a4b25', tail='stub', atk='mage', tunic='team', flowerHat=True)),
     'munja': (dict(fur='#f39a2b', belly='#fff6e8', muzzle='#fff6e8', dark='#2b1a10'),
               dict(ears='round', stripesHead=True, stripesBody=True, tail='ringed', weapon='claws',
-                   clawColor='#fde047', atk='claws', brows='#2b1a10')),
+                   clawColor='#fde047', atk='claws', brows='#2b1a10', browAngle=-6, boltMark=True, fangs=True)),
     'skokica': (dict(fur='#5cc04f', belly='#f4f19b', dark='#2f7a2a', feet='#4aa63f'),
                 dict(snout='frog', bandana=True, weapon='club', lilypad=True, atk='melee', blush=False,
-                     headR=(0.42, 0.46, 0.33))),
+                     headR=(0.42, 0.46, 0.33), spots=True, brows=None)),
     'orlina': (dict(fur='#7a4a2a', belly='#efe7d6', muzzle='#ffffff', beak='#f5b324', feet='#f5b324', limb='#f5b324'),
                dict(snout='beak', armWings='#6b3f22', tail=None, atk='wing', eyes={'color': '#3b1d08'},
-                    brows='#3b2414', headR=(0.38, 0.38, 0.38), whiteHead=True)),
+                    brows='#3b2414', browAngle=-14, headR=(0.38, 0.38, 0.38), whiteHead=True, goggles=True,
+                    tailFeathers=True)),
     'luna': (dict(fur='#d7cdf0', belly='#ffffff', muzzle='#ffffff', dark='#6d5aa8', inner='#f9b4d0',
                   limb='#d7cdf0'),
              dict(ears='pointy', snout='muzzle', tail='catlong', tuft='#6d5aa8', weapon='bow', atk='bow',
-                  bowColor='#e5e7eb', crescent=True, cape=True, eyes={'color': '#4c1d95'})),
+                  bowColor='#e5e7eb', crescent=True, cape=True, capeStars=True, eyes={'color': '#4c1d95'},
+                  brows='#6d5aa8')),
     'tragac': (dict(fur='#8e93a0', belly='#e7e9ee', muzzle='#eef0f4', dark='#2d2f36', nose='#111111'),
                dict(ears='round', snout='muzzle', mask='#2a2c33', tail='ringed', weapon='shuriken', atk='claws',
-                    hood='#ffffff', eyes={'white': True})),
+                    hood='#ffffff', eyes={'white': True}, beltStar=True, scarf=True, brows='#111111', browAngle=-8)),
 }
 
 
@@ -885,8 +1013,8 @@ def quad(name, c, o):
         lg.sphere((x + 0.04, y, 0.05), (o.get('legR', 0.08) * 1.25, o.get('legR', 0.08), 0.055), c.get('paw', dark))
     b = m.part('body', (0, 0, bz))
     br = o.get('bodyR', 0.3)
-    b.sphere((0, 0, bz), (0.5 * L, W, br), fur, seg=(16, 10))
-    b.sphere((0.05, 0, bz - br * 0.35), (0.42 * L, W * 0.8, br * 0.6), belly, seg=(14, 8))
+    b.sphere((0, 0, bz), (0.5 * L, W, br), fur, seg=(20, 14))
+    b.sphere((0.05, 0, bz - br * 0.35), (0.42 * L, W * 0.8, br * 0.6), belly, seg=(16, 10))
     if o.get('bristle'):
         for i in range(6):
             x = 0.3 * L - i * 0.12 * L
@@ -898,13 +1026,15 @@ def quad(name, c, o):
     if o.get('hump'):
         b.sphere((0.22 * L, 0, bz + br * 0.55), (0.3 * L, W * 0.85, br * 0.6), fur)
     if o.get('wings'):
+        ws = o.get('wingScale', 1.0)
         for side, nm in ((1, 'wingL'), (-1, 'wingR')):
             w = m.part(nm, (0.1 * L, side * W * 0.6, bz + br * 0.7), 'body')
             p0 = (0.1 * L, side * W * 0.6, bz + br * 0.7)
-            p1 = (-0.05 * L, side * (W + 0.7), bz + br * 0.7 + 0.55)
-            p2 = (-0.35 * L, side * (W + 1.0), bz + br * 0.7 + 0.15)
-            p3 = (-0.4 * L, side * (W + 0.55), bz + br * 0.7 - 0.12)
-            p4 = (-0.25 * L, side * (W * 0.7), bz + br * 0.6)
+            P = lambda p: tuple(p0[i] + (p[i] - p0[i]) * ws for i in range(3))
+            p1 = P((-0.05 * L, side * (W + 0.7), bz + br * 0.7 + 0.55))
+            p2 = P((-0.35 * L, side * (W + 1.0), bz + br * 0.7 + 0.15))
+            p3 = P((-0.4 * L, side * (W + 0.55), bz + br * 0.7 - 0.12))
+            p4 = P((-0.25 * L, side * (W * 0.7), bz + br * 0.6))
             w.cyl(p0, p1, 0.05, 0.03, dark, seg=6)
             w.cyl(p1, p2, 0.03, 0.015, dark, seg=6)
             w.poly([p0, p1, p2, p3, p4], o['wings'], thick=0.015)
@@ -917,7 +1047,7 @@ def quad(name, c, o):
         hx += 0.28
         hz += 0.38
     hr = o.get('headR', 0.22)
-    h.sphere((hx + 0.08, 0, hz + 0.04), (hr * 1.05, hr, hr * 0.95), fur, seg=(14, 10))
+    h.sphere((hx + 0.08, 0, hz + 0.04), (hr * 1.05, hr, hr * 0.95), fur, seg=(18, 12))
     sn = o.get('snout', 'pig')
     if sn == 'pig':
         h.cyl((hx + 0.18, 0, hz - 0.02), (hx + 0.38, 0, hz - 0.03), hr * 0.55, hr * 0.5, c.get('snoutC', '#e9a3a0'), seg=10)
@@ -943,6 +1073,25 @@ def quad(name, c, o):
         if not o.get('glowEyes'):
             h.sphere((hx + hr * 0.85, s * hr * 0.52, hz + hr * 0.38), 0.014, '#ffffff', seg=(5, 4))
         h.box((hx + hr * 0.8, s * hr * 0.55, hz + hr * 0.6), (0.03, 0.1, 0.025), dark, rot=(s * -18, 0, 0))
+    if o.get('fangs'):
+        for s in (1, -1):
+            h.cyl((hx + 0.38, s * 0.05, hz - 0.08), (hx + 0.39, s * 0.055, hz - 0.15), 0.02, 0.0, '#ffffff', seg=4)
+    if o.get('ruff'):
+        h.sphere((hx - 0.12, 0, hz - 0.02), (hr * 0.9, hr * 1.3, hr * 1.15), mix(fur, '#ffffff', 0.18), seg=(12, 8))
+    if sn in ('bear', 'pig'):
+        h.arc((hx + (0.3 if sn == 'bear' else 0.27), 0, hz - (0.13 if sn == 'bear' else 0.11)), 0.05, 205, 335, 6, 0.01,
+              '#5a2a2a', plane='yz', seg=4)
+    if o.get('claws'):
+        lr = o.get('legR', 0.08)
+        for nm2 in ('legFL', 'legFR', 'legBL', 'legBR'):
+            lg = m[nm2]
+            px, py = lg.pivot.x, lg.pivot.y
+            for k in (-1, 0, 1):
+                lg.cyl((px + 0.04 + lr * 1.0, py + k * lr * 0.5, 0.05), (px + 0.04 + lr * 1.6, py + k * lr * 0.55, 0.03),
+                       0.022, 0.0, '#f5f5f4', seg=4)
+    if o.get('bellyPlates'):
+        for i in range(5):
+            b.box((0.33 * L - i * 0.16 * L, 0, bz - br * 0.78), (0.1 * L, W * 0.75, 0.05), mix(belly, '#000000', 0.12), bevel=0.01)
     ears = o.get('ears', 'round')
     for s in (1, -1):
         if ears == 'round':
@@ -971,7 +1120,7 @@ def quad(name, c, o):
         for i in range(3):
             t.cyl(pts[i], pts[i + 1], rr[i], rr[i + 1], fur, seg=10, smooth=True)
         t.cyl(pts[-1], (-1.45 * L, 0, bz + 0.18), 0.12, 0.0, o.get('spikes', dark), seg=4)
-    quad_anims(m, heavy=o.get('heavy', 1.0), wings=bool(o.get('wings')))
+    quad_anims(m, heavy=o.get('heavy', 1.0), wings=bool(o.get('wings')), bz=bz, W=W, H=H, lr=o.get('legR', 0.08))
     return m.finish()
 
 
@@ -981,17 +1130,21 @@ def build_neutrals():
               headR=0.22, legR=0.07))
     quad('mob_wolves', dict(fur='#8f96a3', belly='#d9dde3', dark='#4b5160', tip='#ffffff'),
          dict(len=1.25, legH=0.34, wid=0.26, bodyR=0.25, snout='wolf', ears='pointy', tail='bushy',
-              headR=0.2, legR=0.065, eyeColor='#f6c945', glowEyes=False))
+              headR=0.2, legR=0.065, eyeColor='#f6c945', glowEyes=False, fangs=True, ruff=True))
     quad('mob_bear', dict(fur='#7b4a2a', belly='#a8774f', dark='#3d2414', snoutC='#d6b48c'),
          dict(len=1.25, legH=0.32, wid=0.42, bodyR=0.4, snout='bear', ears='round', tail='stub', hump=True,
-              headR=0.27, legR=0.12, heavy=1.6))
+              headR=0.27, legR=0.12, heavy=1.6, claws=True))
     quad('mob_boss', dict(fur='#5b8c3a', belly='#e9d27a', dark='#2f4f1f', paw='#2f4f1f'),
          dict(len=1.5, legH=0.42, wid=0.45, bodyR=0.42, snout='dragon', ears='horns', hornC='#fff1c9',
-              tail='dragon', spikes='#c2410c', wings='#6b9e34', neck=True, neckUp=0.2, headR=0.26,
-              legR=0.12, glowEyes=True, eyeColor='#fde047', heavy=2.0))
+              tail='dragon', spikes='#c2410c', wings='#6b9e34', wingScale=1.3, neck=True, neckUp=0.2, headR=0.26,
+              legR=0.12, glowEyes=True, eyeColor='#fde047', heavy=2.0, bellyPlates=True))
 
 
 # ------------------------------------------------------------------ GRAĐEVINE
+# prozori kule: strana -Y u Blenderu gleda prema kameri u igri (three.js +Z)
+WINDOWS = {3: (-35, -90, -145), 5: (-60, -120)}
+
+
 def build_tower():
     m = Model('tower')
     b = m.part('base', (0, 0, 0))
@@ -1002,12 +1155,24 @@ def build_tower():
         r0 = 0.8 - i * 0.035
         b.cyl((0, 0, z0), (0, 0, z0 + 0.4), r0, r0 - 0.03, stones[i % 3], seg=10)
         b.cyl((0, 0, z0 + 0.38), (0, 0, z0 + 0.44), r0 + 0.02, r0 + 0.01, '#b5ab97', seg=10)
-    # vrata i prozori
+        # istaknute cigle (svaki red pomaknut za pola cigle)
+        for k in range(8):
+            deg = k * 45 + (22.5 if i % 2 else 0)
+            if i == 0 and abs(((deg + 180) % 360) - 180) < 35:
+                continue   # ovdje su vrata
+            if i in (3, 5) and any(abs(((deg - a + 180) % 360) - 180) < 32 for a in WINDOWS[i]):
+                continue   # ovdje su prozori
+            b.box((math.cos(RAD(deg)) * r0, math.sin(RAD(deg)) * r0, z0 + 0.2), (0.07, 0.16, 0.12),
+                  mix(stones[(i + k) % 3], '#000000', 0.06 if k % 2 else 0.0), rot=(0, 0, deg), bevel=0.01)
+    # vrata i prozori (prozori svijetle — noću izgledaju upaljeno)
     b.box((0.72, 0, 0.55), (0.12, 0.34, 0.5), '#5b3a1e', bevel=0.03)
     b.cyl((0.75, 0, 0.8), (0.79, 0, 0.8), 0.17, 0.17, '#5b3a1e', seg=10)
-    for a in (40, -40, 180):
-        x, y = math.cos(RAD(a)) * 0.68, math.sin(RAD(a)) * 0.68
-        b.box((x, y, 1.6), (0.1, 0.12, 0.26), '#2a2420', rot=(0, 0, a), bevel=0.02)
+    for i, zz, rr in ((3, 1.76, 0.69), (5, 2.6, 0.62)):
+        for a in WINDOWS[i]:
+            x, y = math.cos(RAD(a)) * rr, math.sin(RAD(a)) * rr
+            b.box((x * 0.97, y * 0.97, zz), (0.08, 0.24, 0.42), '#4a3a2a', rot=(0, 0, a), bevel=0.02)
+            b.box((x * 1.04, y * 1.04, zz), (0.06, 0.17, 0.34), '#ffd166', mat='glow', rot=(0, 0, a))
+            b.box((x * 1.06, y * 1.06, zz), (0.04, 0.17, 0.03), '#6b4a2a', rot=(0, 0, a))   # prečka
     # trak u boji tima
     b.cyl((0, 0, 1.95), (0, 0, 2.15), 0.73, 0.73, '#ffffff', mat='team', seg=10)
     # platforma + zupci
@@ -1353,6 +1518,67 @@ def build_runes():
     m.finish()
 
 
+# ------------------------------------------------------------------ AMBIJENTALNA OKLUZIJA
+def bake_ao(samples=24):
+    """Ispeče ambijentalnu okluziju (Cycles) u boje vrhova: udubine, spojevi i
+    unutrašnjost krošnje postanu tamniji — modeli dobiju dubinu bez ikakvog
+    troška u igri. Svijetleći dijelovi (glow) se preskaču."""
+    sc = bpy.context.scene
+    roots = [o for o in sc.objects if o.parent is None and o.type == 'EMPTY']
+    for i, r in enumerate(roots):   # razmakni modele da se međusobno ne zasjenjuju
+        r.location = ((i % 10) * 14.0, (i // 10) * 14.0, 0.0)
+    meshes = [o for o in sc.objects if o.type == 'MESH']
+    for ob in meshes:
+        if ob.animation_data:
+            for tr in ob.animation_data.nla_tracks:
+                tr.mute = True
+    bpy.context.view_layer.update()
+    sc.render.engine = 'CYCLES'
+    sc.cycles.device = 'CPU'
+    sc.cycles.samples = samples
+    sc.render.bake.target = 'VERTEX_COLORS'
+    sc.render.bake.use_selected_to_active = False
+    t0 = time.time()
+    n = 0
+    for ob in meshes:
+        me = ob.data
+        if not me.polygons:
+            continue
+        ao = me.color_attributes.new('AO', 'FLOAT_COLOR', 'CORNER')
+        me.color_attributes.active_color = ao
+        bpy.ops.object.select_all(action='DESELECT')
+        ob.select_set(True)
+        bpy.context.view_layer.objects.active = ob
+        try:
+            bpy.ops.object.bake(type='AO')
+        except RuntimeError as e:
+            print('AO nije uspio za', ob.name, e)
+            me.color_attributes.remove(ao)
+            continue
+        col = me.color_attributes['Col']
+        for poly in me.polygons:
+            if poly.material_index in (SLOT['glow'], SLOT['teamglow']):
+                continue
+            for li in poly.loop_indices:
+                a = ao.data[li].color[0]
+                k = 0.5 + 0.5 * min(1.0, a * 1.15)
+                c = col.data[li].color
+                col.data[li].color = (c[0] * k, c[1] * k, c[2] * k, c[3])
+        me.color_attributes.remove(ao)
+        col = me.color_attributes['Col']
+        me.color_attributes.active_color = col
+        me.color_attributes.render_color_index = me.color_attributes.find('Col')
+        n += 1
+    for ob in meshes:
+        if ob.animation_data:
+            for tr in ob.animation_data.nla_tracks:
+                tr.mute = False
+    for r in roots:
+        r.location = (0.0, 0.0, 0.0)
+    bpy.context.view_layer.update()
+    print('AO: %d objekata, %.0f s' % (n, time.time() - t0))
+
+
 # ------------------------------------------------------------------ IZVOZ
 def export(path):
     bpy.ops.export_scene.gltf(
@@ -1436,6 +1662,8 @@ def main():
     build_projectiles()
     build_fx()
     build_runes()
+    if '--no-ao' not in argv:
+        bake_ao()
     os.makedirs(ASSETS, exist_ok=True)
     glb = os.path.join(ASSETS, 'models.glb')
     export(glb)

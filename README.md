@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.7: sve čarolije, projektili i efekti u pravom 3D-u!** 🔥🏹🌊
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.8: ljepši junaci — lica, detalji, sjenčanje i animacije pogibije!** 🦁✨
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -18,6 +18,11 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- 🦁 **Ljepši modeli** (v0.8): svi junaci imaju lica s osmijehom, obrvama i velikim očima; svaki ima svoj potpis — Lavko ramene štitnike i veću grivu, Žarko veća krila, plamen na repu i trbušne ploče, Ledena pahuljicu na kapi i rukavice, Strijela pero u kosi, Listko cvijet na glavi, Munja munju na čelu i očnjake, Skokica pjege, Orlina naočale za nišanjenje i repna pera, Luna zvjezdani plašt, Tragač šuriken na remenu; vuk ima očnjake i krzneni ovratnik, medo kandže, Zmaj veća krila
+  - 🌗 **Ambijentalna okluzija ispečena u Blenderu** (Cycles → boje vrhova): udubine, spojevi i krošnje su tamniji, pa svi modeli dobivaju dubinu bez ikakvog troška u igri; uz to i mekano studijsko osvjetljenje u three.js-u
+  - 🎬 nove animacije: **trzaj** kad primiš udarac i **pogibija** (dvonošci padnu na leđa, četveronošci na bok) umjesto starog prevrtanja
+  - 🏰 kule imaju istaknute cigle i prozore koji svijetle (noću izgledaju upaljeno)
 
 - 🔥 **Čarolije u 3D-u** (v0.7): strijele, vatrene kugle, ledene strijele, pera, šurikeni, žirevi, mjesečeve strijele i sokoli su Blender modeli koji lete, vrte se i ostavljaju trag; žablji jezik se stvarno rasteže do mete
   - ☄️ **Meteor** pada s neba i ostavlja krater, 🌱 **korijenje** i 🧊 **ledeni kristali** izbijaju iz tla, 🏹 **kiša strijela** stvarno pada, 🌊 **val** se širi s pjenom, ⭐ zvijezde padaju, 💚 srca lebde pri liječenju
@@ -66,20 +71,20 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
 
 ## Tehnologija
 
-Čisti JavaScript + [Three.js](https://threejs.org/) (r149, vendoran u `lib/` zajedno s GLTFLoaderom) — bez build koraka.
+Čisti JavaScript + [Three.js](https://threejs.org/) (r149, vendoran u `lib/` zajedno s GLTFLoaderom i RoomEnvironmentom) — bez build koraka.
 `data.js` (junaci, predmeti, konfiguracija) • `game.js` (logika, AI, HUD) • `scene3d.js` (3D prikaz, modeli, animacije, čestice) • `net.js` (multiplayer) • `2d-verzija/` (originalna 2D verzija).
 
 ### 🧸 3D modeli (Blender)
 
 ![Svi modeli iz Blendera](tools/blender/preview.jpg)
 
-Svi modeli nastaju iz jedne skripte: [`tools/blender/build_models.py`](tools/blender/build_models.py). Ona u Blenderu slaže modele od jednostavnih oblika (kugle, valjci, stošci, kocke s obrubom), boji ih bojama vrhova, slaže dijelove u hijerarhiju (noge, tijelo, glava, ruke, rep, krila) i animira ih (`idle`, `walk`, `attack`, `cast`), pa sve izveze u **`assets/models.glb`**. Uz jedinice i građevine tu su i projektili (`proj_*`), efekti moći (`fx_*`: meteor, korijenje, led, val, zvijezda, srce, duh, nadgrobni kamen) i rune (`rune_*`). Three.js ga učita, klonira model za svaku jedinicu i pušta animacije preko `AnimationMixer`-a; efekti koji se pojavljuju u velikom broju (kiša strijela, korijenje, srca) idu kao `InstancedMesh` — jedan draw call za sve primjerke.
+Svi modeli nastaju iz jedne skripte: [`tools/blender/build_models.py`](tools/blender/build_models.py). Ona u Blenderu slaže modele od jednostavnih oblika (kugle, valjci, stošci, kocke s obrubom), boji ih bojama vrhova, slaže dijelove u hijerarhiju (noge, tijelo, glava, ruke, rep, krila) i animira ih (`idle`, `walk`, `attack`, `cast`), pa sve izveze u **`assets/models.glb`**. Uz jedinice i građevine tu su i projektili (`proj_*`), efekti moći (`fx_*`: meteor, korijenje, led, val, zvijezda, srce, duh, nadgrobni kamen) i rune (`rune_*`). Prije izvoza skripta **ispeče ambijentalnu okluziju** (Cycles, 24 uzorka, ~12 s za 157 objekata) izravno u boje vrhova, pa modeli imaju sjene u udubinama bez tekstura. Three.js ga učita, klonira model za svaku jedinicu i pušta animacije preko `AnimationMixer`-a (`idle`, `walk`, `attack`, `cast`, `hit`, `die`); efekti koji se pojavljuju u velikom broju (kiša strijela, korijenje, srca) idu kao `InstancedMesh` — jedan draw call za sve primjerke.
 
 ```bash
 # Blender 4.2+ / 5.x
 blender -b -P tools/blender/build_models.py
 # ili Blender kao Python modul (Python 3.13):  pip install bpy==5.2.2
-python tools/blender/build_models.py            # dodaj --preview za render svih modela
+python tools/blender/build_models.py            # --preview za render svih modela, --no-ao za brže iteracije
 ```
 
 Skripta napravi i `assets/models.js` (isti GLB kao base64) da igra radi i kad otvoriš `index.html` dvoklikom (`file://`). Ako se modeli ne učitaju, igra se vraća na jednostavne oblike i AI portrete.
