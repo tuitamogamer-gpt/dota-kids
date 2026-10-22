@@ -2064,7 +2064,7 @@ def main():
     if WANT_PREVIEW:
         preview(os.path.join(HERE, 'preview.png'), cols=10)
     elif '--preview-heroes' in argv:
-        preview(os.path.join(HERE, 'preview_heroes.png'), only=['hero_', 'creep_'], cols=5)
+        preview(os.path.join(HERE, 'preview_heroes.png'), only=['hero_', 'creep_'], cols=4)
     elif '--preview-fx' in argv:
         preview(os.path.join(HERE, 'preview_fx.png'), only=['proj_', 'fx_', 'rune_'], cols=6)
     elif '--preview-new' in argv:
