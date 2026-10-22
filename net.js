@@ -180,6 +180,7 @@ function onNetData(d){
     case 'tp': if(net.mode === 'host' && remoteHero) startTeleport(remoteHero); break;
     case 'buyback': if(net.mode === 'host' && remoteHero) buyback(remoteHero); break;
     case 'item': if(net.mode === 'host' && remoteHero) useItem(remoteHero, d.i, d.x != null ? { x: d.x, y: d.y } : null); break;
+    case 'glyph': if(net.mode === 'host' && remoteHero) useGlyph(remoteHero.team, remoteHero); break;
   }
 }
 
@@ -194,11 +195,12 @@ function netSell(i){ sendNet({ c: 'sell', i }); }
 function netTp(){ sendNet({ c: 'tp' }); }
 function netBuyback(){ sendNet({ c: 'buyback' }); }
 function netItem(i, aim){ sendNet({ c: 'item', i, x: aim ? Math.round(aim.x) : null, y: aim ? Math.round(aim.y) : null }); }
+function netGlyph(){ sendNet({ c: 'glyph' }); }
 
 /* ---------- SNAPSHOT: domaćin → gost ---------- */
 function packStatus(st){
   return [st.slowT, st.stun, st.rootT, st.shieldT, st.hasteT, st.invisT, st.trackT, st.dmgMulT,
-    st.silenceT, st.immuneT, st.poisonT].map(v => Math.round(v * 10));
+    st.silenceT, st.immuneT, st.poisonT, st.curseT, st.blindT, st.formT, st.rageT].map(v => Math.round(v * 10));
 }
 function heroExtras(h){
   return {
@@ -207,7 +209,7 @@ function heroExtras(h){
     hr: +h.hpRegen.toFixed(2), mr: +h.mpRegen.toFixed(2),
     spd: Math.round(h.speed), dm: Math.round(h.dmg), ib: h.itemBonus.dmg,
     tc: +h.tpCd.toFixed(1), tch: +h.tpChannel.toFixed(2), dt2: +h.deadT.toFixed(1),
-    as: h.assists, bb: +h.buybackCd.toFixed(1), ag: h.aegis ? 1 : 0, at: Math.round(h.aegisT), ic: h.itemCd,
+    as: h.assists, bb: +h.buybackCd.toFixed(1), ag: h.aegis ? 1 : 0, at: Math.round(h.aegisT), ic: h.itemCd, ich: h.itemCharges,
     ab: h.abilities.map(a => [a.rank, +a.cd.toFixed(1)]),
     it: h.items.map(i => i.id),
   };
@@ -225,6 +227,8 @@ function buildSnapshot(){
     };
     if(u.atkN) b.an = u.atkN % 1000;     // 3D animacije napada i čaranja
     if(u.castN){ b.cn = u.castN % 1000; b.cf = u.castFx; }
+    if(u.knockN) b.kn = u.knockN % 1000;   // odbačaj
+    if(u.charge) b.ch = 1;                 // juriš
     if(u.kind === 'hero'){
       b.hi = HEROES.indexOf(u.hero);
       b.l = u.level; b.dd = u.dead ? 1 : 0;
@@ -257,6 +261,7 @@ function buildSnapshot(){
     bn: banner ? { tx: banner.txt, sb: banner.sub, t: banner.t, dr: banner.dur } : 0,
     me: remoteHero ? heroExtras(remoteHero) : 0,
     nf: +nightForceT.toFixed(1),
+    gl: [Math.round(glyph[0].t * 10), Math.round(glyph[0].cd), Math.round(glyph[1].t * 10), Math.round(glyph[1].cd)],
     wd: wards.map(w => ({ x: Math.round(w.x), y: Math.round(w.y), r: w.r, t: +w.t.toFixed(1), tm: w.team })),
   };
 }
@@ -273,6 +278,7 @@ function unpackStatus(st, arr){
   st.shieldT = arr[3] / 10; st.hasteT = arr[4] / 10; st.invisT = arr[5] / 10;
   st.trackT = arr[6] / 10; st.dmgMulT = arr[7] / 10;
   st.silenceT = (arr[8] || 0) / 10; st.immuneT = (arr[9] || 0) / 10; st.poisonT = (arr[10] || 0) / 10;
+  st.curseT = (arr[11] || 0) / 10; st.blindT = (arr[12] || 0) / 10; st.formT = (arr[13] || 0) / 10; st.rageT = (arr[14] || 0) / 10;
   if(st.slowT > 0 && st.slowF <= 0) st.slowF = 0.3;
   st.dmgMulF = st.dmgMulT > 0 ? 2 : 1;
   st.hasteF = st.hasteT > 0 ? 1.3 : 1;
@@ -353,6 +359,7 @@ function applySnapshot(d){
     if(Math.abs(b.x - u.x) > 260 || Math.abs(b.y - u.y) > 260){ u.x = b.x; u.y = b.y; }
     u.hp = b.h; u.maxhp = b.m;
     u.atkN = b.an || 0; u.castN = b.cn || 0; if(b.cf) u.castFx = b.cf;
+    u.knockN = b.kn || 0; u.charge = b.ch ? { net: true } : null;
     if(u.kind === 'hero'){
       u.level = b.l; u.dead = !!b.dd;
       u.mp = b.mp; u.maxmp = b.mm;
@@ -382,6 +389,7 @@ function applySnapshot(d){
     player.tpCd = e.tc; player.tpChannel = e.tch; player.deadT = e.dt2;
     player.assists = e.as || 0; player.buybackCd = e.bb || 0; player.aegis = !!e.ag; player.aegisT = e.at || 0;
     player.itemCd = e.ic || {};
+    player.itemCharges = e.ich || {};
     e.ab.forEach((a, j) => {
       if(player.abilities[j]){ player.abilities[j].rank = a[0]; player.abilities[j].cd = a[1]; }
     });
@@ -407,6 +415,7 @@ function applySnapshot(d){
   feed = d.fd.map(f => ({ txt: f.tx, color: f.cl, t: f.t }));
   banner = d.bn ? { txt: d.bn.tx, sub: d.bn.sb, t: d.bn.t, dur: d.bn.dr } : null;
   nightForceT = d.nf || 0;
+  if(d.gl){ glyph[0].t = d.gl[0] / 10; glyph[0].cd = d.gl[1]; glyph[1].t = d.gl[2] / 10; glyph[1].cd = d.gl[3]; }
   {   // zadrži iste objekte oka da 3D prikaz ne gradi mrežu iznova svaki snapshot
     const old = wards;
     wards = (d.wd || []).map(w => {
@@ -472,6 +481,7 @@ function resetMatchState(){
   camps = []; runes = [];
   runeTimer = CFG.runeEvery; runeSpotI = 0; isNight = false;
   wards = []; nightForceT = 0; superCreeps = [{}, {}]; winnerTeam = null;
+  glyph = [{ t: 0, cd: 0 }, { t: 0, cd: 0 }];
   pendingCast = null;
   gameTime = 0; waveTimer = CFG.firstWave; waveCount = 0;
   firstBlood = false; gameOver = false; paused = false;

@@ -364,6 +364,31 @@ def biped_anims(m, kind='melee', wings=False, tail=True, arm_wings=False):
             'head': [(0, Z), (7, (0, 6, 0)), (14, Z)],
         }
     m.anim('attack', 14, atk)
+    # ---- ATTACK2 (14 kadrova): drugi zamah — s druge strane / s obje ruke
+    if kind in ('melee', 'claws'):
+        atk2 = {
+            'armR': [(0, Z), (4, (-40, -150, 0)), (7, (30, -40, 0)), (10, (10, -20, 0)), (14, Z)],
+            'armL': [(0, Z), (4, (40, -120, 0)), (7, (-20, -60, 0)), (14, Z)],
+            'body': [(0, Z, Z), (4, (0, -8, -14), Z), (7, (0, 12, 16), (0.07, 0, 0)), (14, Z, Z)],
+            'head': [(0, Z), (4, (0, 2, -8)), (7, (0, -6, 8)), (14, Z)],
+            'legL': [(0, Z), (7, (0, -10, 0)), (14, Z)],
+            'legR': [(0, Z), (7, (0, 10, 0)), (14, Z)],
+        }
+    elif kind == 'wing':
+        atk2 = {
+            'armR': [(0, Z), (3, (80, -20, 0)), (6, (-30, -110, 0)), (9, (60, -30, 0)), (14, Z)],
+            'armL': [(0, Z), (3, (-80, -20, 0)), (6, (30, -110, 0)), (9, (-60, -30, 0)), (14, Z)],
+            'body': [(0, Z, Z), (6, (0, 10, 0), (0, 0, 0.1)), (14, Z, Z)],
+            'head': [(0, Z), (6, (0, 10, 0)), (14, Z)],
+        }
+    else:
+        atk2 = {
+            'armR': [(0, Z), (4, (30, -120, 0)), (7, (-10, -100, 0)), (14, Z)],
+            'armL': [(0, Z), (4, (-30, -120, 0)), (7, (10, -100, 0)), (14, Z)],
+            'body': [(0, Z, Z), (4, (0, -8, 0), (0, 0, 0.05)), (7, (0, 8, 0), (0.05, 0, 0)), (14, Z, Z)],
+            'head': [(0, Z), (7, (0, 6, 0)), (14, Z)],
+        }
+    m.anim('attack2', 14, atk2)
     # ---- CAST (18 kadrova)
     cast = {
         'armR': [(0, Z), (6, (14, -170, 0)), (10, (0, -80, 0)), (18, Z)],
@@ -811,6 +836,48 @@ def biped(name, c, opts):
             a = RAD(k * 60)
             h.cyl(V(0.3, 0.14 + math.cos(a) * 0.05, 1.62 + math.sin(a) * 0.05),
                   V(0.3, 0.14 - math.cos(a) * 0.05, 1.62 - math.sin(a) * 0.05), 0.008 * S, 0.008 * S, '#ffffff', seg=4)
+    # --- v0.10 dodaci ---
+    if opts.get('neckFur'):   # vuk: krzneni ovratnik
+        for i in range(10):
+            a = RAD(i * 36)
+            b.sphere(V(math.cos(a) * 0.26 - 0.02, math.sin(a) * 0.3, 0.98), (0.1 * S, 0.1 * S, 0.08 * S), opts['neckFur'] if i % 2 else mix(opts['neckFur'], '#000000', 0.12), seg=(8, 6))
+    if opts.get('hat') == 'cone':   # gavran: čarobnjački šešir
+        hc = opts.get('hatColor', '#312e81')
+        h.cyl(V(-0.02, 0, 1.56), V(-0.02, 0, 1.6), 0.46 * S, 0.44 * S, hc, seg=18)
+        h.cyl(V(-0.02, 0, 1.58), V(-0.14, 0, 2.2), 0.3 * S, 0.0, hc, seg=14, smooth=True)
+        h.cyl(V(-0.02, 0, 1.62), V(-0.02, 0, 1.7), 0.31 * S, 0.3 * S, '#ffffff', mat='team', seg=14, caps=False)
+        h.sphere(V(0.24, 0, 1.66), 0.04 * S, '#fde047', mat='glow', seg=(6, 4))
+    if opts.get('tailFeatherColors'):
+        fc = opts['tailFeatherColors']
+        for k, s in enumerate((-1, 0, 1)):
+            b.poly([V(-0.26, s * 0.05, 0.6), V(-0.52, s * 0.16, 0.5), V(-0.62, s * 0.08, 0.44), V(-0.5, -s * 0.02, 0.5)],
+                   fc[k % len(fc)], thick=0.02)
+    if opts.get('tentacles'):   # hobotnica: pipci vise ispod tijela
+        tc = opts['tentacles']
+        for i in range(8):
+            a = RAD(i * 45 + 22)
+            ca, sa = math.cos(a), math.sin(a)
+            p0 = V(ca * 0.2, sa * 0.22, 0.42)
+            p1 = V(ca * 0.34, sa * 0.36, 0.22)
+            p2 = V(ca * 0.44, sa * 0.46, 0.06)
+            p3 = V(ca * 0.56, sa * 0.58, 0.04)
+            b.cyl(p0, p1, 0.07 * S, 0.055 * S, tc, seg=8, smooth=True)
+            b.sphere(p1, 0.055 * S, tc, seg=(8, 6))
+            b.cyl(p1, p2, 0.055 * S, 0.04 * S, tc, seg=8, smooth=True)
+            b.sphere(p2, 0.04 * S, tc, seg=(8, 6))
+            b.cyl(p2, p3, 0.04 * S, 0.02 * S, tc, seg=6, smooth=True)
+            for q, pp in ((0.5, p1), (0.5, p2)):
+                b.sphere((pp[0] * 1.02, pp[1] * 1.02, pp[2] + 0.03 * S), 0.022 * S, mix(tc, '#ffffff', 0.5), seg=(6, 4))
+    if opts.get('noseHorn'):   # nosorog: rog na njušci
+        hc = opts['noseHorn']
+        h.cyl(V(0.5, 0, 1.24), V(0.66, 0, 1.56), 0.07 * S, 0.0, hc, seg=8)
+        h.cyl(V(0.36, 0, 1.3), V(0.42, 0, 1.46), 0.045 * S, 0.0, hc, seg=8)
+    if opts.get('eyePatches'):   # panda: tamne mrlje oko očiju
+        for s in (1, -1):
+            h.sphere(V(0.3, s * 0.16, 1.37), (0.06 * S, 0.13 * S, 0.15 * S), opts['eyePatches'], seg=(10, 7), rot=(s * 20, 0, 0))
+    if opts.get('earColor'):   # obojene okrugle uši (panda)
+        for s in (1, -1):
+            h.sphere(V(-0.03, s * 0.3, 1.64), (0.07 * S, 0.13 * S, 0.13 * S), opts['earColor'])
 
     # ruke
     arm_wings = opts.get('armWings')
@@ -907,6 +974,11 @@ def biped(name, c, opts):
     if wpn == 'club':
         R.cyl(hR - Vector((0, 0, 0.08 * S)), hR + Vector((0.32 * S, 0, 0.2 * S)), 0.03 * S, 0.075 * S, '#7a4b25', seg=8, smooth=True)
         R.sphere(hR + Vector((0.34 * S, 0, 0.21 * S)), 0.08 * S, '#8b5a2b')
+    if wpn == 'bamboo':   # panda: bambusov štap s listom
+        R.cyl(hR + Vector((0, 0, -0.4 * S)), hR + Vector((0, 0, 0.62 * S)), 0.03 * S, 0.03 * S, '#7ec850', seg=7)
+        for zz in (-0.25, 0.05, 0.35):
+            R.cyl(hR + Vector((0, 0, zz * S)), hR + Vector((0, 0, (zz + 0.03) * S)), 0.036 * S, 0.036 * S, '#4f8a2f', seg=7)
+        R.sphere(hR + Vector((0.02, 0, 0.66 * S)), (0.04 * S, 0.1 * S, 0.12 * S), '#86efac', rot=(20, 0, 0))
     if opts.get('lilypad'):
         cc = hL + Vector((0.06, 0.08, 0.02))
         n = Vector((0.5, 0.86, 0)).normalized()
@@ -977,6 +1049,27 @@ HEROES = {
     'tragac': (dict(fur='#8e93a0', belly='#e7e9ee', muzzle='#eef0f4', dark='#2d2f36', nose='#111111'),
                dict(ears='round', snout='muzzle', mask='#2a2c33', tail='ringed', weapon='shuriken', atk='claws',
                     hood='#ffffff', eyes={'white': True}, beltStar=True, scarf=True, brows='#111111', browAngle=-8)),
+    # ---- v0.10 ----
+    'vuk': (dict(fur='#8a8f98', belly='#e5e7eb', muzzle='#e5e7eb', dark='#3b3f47', nose='#1f1a17', inner='#d1d5db'),
+            dict(ears='pointy', snout='long', tail='bushy', tuft='#e5e7eb', weapon='claws', clawColor='#e5e7eb',
+                 atk='claws', fangs=True, neckFur='#d1d5db', brows='#3b3f47', browAngle=-12, eyes={'color': '#fbbf24'})),
+    'gavran': (dict(fur='#2b2f3a', belly='#3f4452', muzzle='#3f4452', beak='#f59e0b', feet='#f59e0b', limb='#f59e0b',
+                    dark='#14161c'),
+               dict(snout='beak', armWings='#1f2430', tail=None, atk='wing', eyes={'white': True, 'color': '#a78bfa', 'size': 1.1},
+                    hat='cone', hatColor='#312e81', tailFeatherColors=('#1f2430', '#3f4452'), brows='#14161c', browAngle=-10,
+                    blush=False, headR=(0.38, 0.38, 0.38))),
+    'hobotnica': (dict(fur='#8b5cf6', belly='#c4b5fd', muzzle='#c4b5fd', dark='#5b21b6', limb='#8b5cf6'),
+                  dict(ears=None, snout='muzzle', tail=None, tentacles='#7c3aed', atk='melee', tunic='team',
+                       eyes={'white': True, 'size': 1.25}, brows='#5b21b6', browAngle=-4, headR=(0.44, 0.46, 0.42),
+                       blush=True)),
+    'nosorog': (dict(fur='#7d8a96', belly='#b8c2cc', muzzle='#9aa6b2', dark='#4a5560', inner='#d8c0c8', nose='#3b4450'),
+                dict(ears='round', earScale=0.7, snout='long', tail='thin', tuft='#4a5560', atk='melee', scale=1.1,
+                     noseHorn='#f1e9d6', chest='#9aa3ad', shoulders='#9aa3ad', brows='#4a5560', browAngle=-16,
+                     headR=(0.42, 0.44, 0.38))),
+    'panda': (dict(fur='#f3f4f6', belly='#ffffff', muzzle='#ffffff', dark='#1f2328', nose='#1f2328', limb='#1f2328',
+                   inner='#1f2328'),
+              dict(ears=None, earColor='#1f2328', eyePatches='#1f2328', snout='muzzle', tail='stub', atk='melee',
+                   weapon='bamboo', tunic='team', brows=None, blush=True, headR=(0.42, 0.44, 0.4))),
 }
 
 
@@ -1674,6 +1767,26 @@ def build_projectiles():
     p.cyl((-0.3, 0, 0), (0.1, 0, 0), 0.045, 0.045, '#4a3728', seg=5)
     p.cyl((0.1, 0, 0), (0.42, 0, 0), 0.045, 0.0, '#e8d5b5', seg=5)
     m.finish()
+    # mlaz tinte (Pipko Q): tamna kapljica s repom
+    m = Model('proj_ink')
+    p = m.part('mesh')
+    p.sphere((0, 0, 0), (0.26, 0.2, 0.2), '#312e81', seg=(12, 8))
+    p.sphere((0.12, 0.06, 0.08), 0.07, '#4338ca', seg=(8, 6))
+    p.cyl((-0.2, 0, 0), (-0.5, 0, 0.04), 0.12, 0.0, '#1e1b4b', seg=8)
+    for s_ in (1, -1):
+        p.sphere((-0.1, s_ * 0.2, -0.05), 0.07, '#1e1b4b', seg=(7, 5))
+    m.finish()
+    # gavran (Mrak R): mala crna ptica — instancirana kruži nad zonom
+    m = Model('proj_crow')
+    p = m.part('mesh')
+    p.sphere((0, 0, 0), (0.3, 0.14, 0.14), '#1f2430', seg=(12, 8))
+    p.sphere((0.26, 0, 0.06), 0.11, '#2b2f3a', seg=(10, 7))
+    p.cyl((0.34, 0, 0.05), (0.5, 0, 0.03), 0.04, 0.0, '#f59e0b', seg=6)
+    p.cyl((-0.26, 0, 0), (-0.46, 0, 0.03), 0.06, 0.0, '#1f2430', seg=5)
+    for s_ in (1, -1):
+        p.poly([(0.04, s_ * 0.06, 0.08), (-0.1, s_ * 0.38, 0.22), (-0.3, s_ * 0.42, 0.14), (-0.2, s_ * 0.1, 0.06)], '#2b2f3a', thick=0.02)
+        p.sphere((0.32, s_ * 0.06, 0.1), 0.025, '#a78bfa', mat='glow', seg=(5, 4))
+    m.finish()
     # vrh jezika (Skokica) — tijelo jezika rasteže three.js
     m = Model('proj_tongue')
     p = m.part('mesh')
@@ -1885,7 +1998,8 @@ def preview(path, only=None, cols=8):
     cam = bpy.data.objects.new('cam', bpy.data.cameras.new('cam'))
     sc.collection.objects.link(cam)
     cam.data.type = 'ORTHO'
-    cam.data.ortho_scale = cols * 2.7
+    # mreža je zarotirana 45° prema kameri: pokrij dijagonalu (širina + visina mreže)
+    cam.data.ortho_scale = (cols * 2.6 + rows * 3.2) * 0.72 + 3
     cam.location = (cx + 14, cy - 14, 14)
     cam.rotation_euler = (RAD(58), 0, RAD(45))
     # usmjeri kameru u središte
@@ -1921,7 +2035,7 @@ def preview(path, only=None, cols=8):
     sc.cycles.samples = 24
     sc.cycles.use_denoising = False
     sc.render.resolution_x = 1800
-    sc.render.resolution_y = int(1800 * rows * 3.2 / (cols * 2.7) * 1.15) + 200
+    sc.render.resolution_y = 1800
     sc.render.filepath = path
     bpy.ops.render.render(write_still=True)
 
@@ -1951,13 +2065,16 @@ def main():
     if WANT_PREVIEW:
         preview(os.path.join(HERE, 'preview.png'), cols=10)
     elif '--preview-heroes' in argv:
-        preview(os.path.join(HERE, 'preview_heroes.png'), only=['hero_', 'creep_'], cols=5)
+        preview(os.path.join(HERE, 'preview_heroes.png'), only=['hero_', 'creep_'], cols=4)
     elif '--preview-fx' in argv:
         preview(os.path.join(HERE, 'preview_fx.png'), only=['proj_', 'fx_', 'rune_'], cols=6)
     elif '--preview-new' in argv:
-        preview(os.path.join(HERE, 'preview_new.png'), only=['hero_jez', 'hero_slon', 'hero_pcela', 'hero_sova', 'hero_majmun', 'barracks', 'wall', 'proj_bee', 'proj_slime', 'proj_quill'], cols=5)
+        preview(os.path.join(HERE, 'preview_new.png'), only=['hero_vuk', 'hero_gavran', 'hero_hobotnica', 'hero_nosorog', 'hero_panda', 'proj_ink', 'proj_crow'], cols=5)
     if '--portraits' in argv:
-        render_portraits([('jez', '#8a9a4a'), ('slon', '#5a6a8a'), ('pcela', '#b8860b'), ('sova', '#3b2f5c'), ('majmun', '#7a5a2a')])
+        render_portraits([('vuk', '#5a6270'), ('gavran', '#2e2a5c'), ('hobotnica', '#4a3a8a'), ('nosorog', '#6a7a6a'), ('panda', '#4a8a5a')])
+    if '--portraits-all' in argv:
+        render_portraits([('jez', '#8a9a4a'), ('slon', '#5a6a8a'), ('pcela', '#b8860b'), ('sova', '#3b2f5c'), ('majmun', '#7a5a2a'),
+                          ('vuk', '#5a6270'), ('gavran', '#2e2a5c'), ('hobotnica', '#4a3a8a'), ('nosorog', '#6a7a6a'), ('panda', '#4a8a5a')])
 
 
 main()

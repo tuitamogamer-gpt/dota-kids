@@ -133,6 +133,9 @@ function modelMat(name, team, look){
     if(look === 'f'){ m.emissive = new THREE.Color(0xffffff); m.emissiveIntensity = 0.32; }
     if(look === 'c') m.color.lerp(new THREE.Color('#5fb8ff'), 0.7);
     if(look === 'p') m.color.lerp(new THREE.Color('#86efac'), 0.6);
+    if(look === 'k') m.color.lerp(new THREE.Color('#a78bfa'), 0.55);                                   // 🌀 kletva
+    if(look === 'w'){ m.emissive = new THREE.Color('#ff6a3d'); m.emissiveIntensity = 0.22; }          // 🐺 vučji oblik
+    if(look === 'r'){ m.emissive = new THREE.Color('#ef4444'); m.emissiveIntensity = 0.3; }           // 😡 bijes
   }
   if(look === 'g'){ m.transparent = true; m.opacity = 0.32; m.depthWrite = false; }
   m.userData.shared = true;
@@ -1284,7 +1287,7 @@ function ensureUnitMesh(u){
 
 /* ---------- zone, projektili, oznake, munje, rune ---------- */
 /* zone moći: po emojiju moći biramo 3D efekt */
-const ZONE_FX = { '☄️': 'meteor', '❄️': 'snow', '🏹': 'arrows', '🌱': 'roots', '🥶': 'ice', '🌊': 'wave', '🍯': 'swarm', '🏺': 'swarm' };
+const ZONE_FX = { '☄️': 'meteor', '❄️': 'snow', '🏹': 'arrows', '🌱': 'roots', '🥶': 'ice', '🌊': 'wave', '🍯': 'swarm', '🏺': 'swarm', '🐦‍⬛': 'crows' };
 function buildZoneMesh(z){
   const g = new THREE.Group();
   const ud = g.userData;
@@ -1310,9 +1313,9 @@ function buildZoneMesh(z){
     g.add(m);
     ud.meteor = m;
   }
-  if(ud.kind === 'swarm'){   // roj pčela kruži nad zonom
+  if(ud.kind === 'swarm' || ud.kind === 'crows'){   // roj pčela / jato gavranova kruži nad zonom
     const n = Math.min(14, Math.max(6, Math.round(z.r / 25)));
-    const im = instancedFx('proj_bee', n, false);
+    const im = instancedFx(ud.kind === 'crows' ? 'proj_crow' : 'proj_bee', n, false);
     if(im){
       ud.bees = im; ud.beeN = n;
       ud.beeSeed = Math.random() * 10;
@@ -1422,14 +1425,14 @@ function syncZone(z, g, tAnim, dt){
         const r = z.r * (0.35 + 0.55 * ((i * 7) % 10) / 10);
         _dummy.position.set(Math.cos(a) * r, 40 + Math.sin(tAnim * 5 + i) * 14 + (i % 4) * 8, Math.sin(a) * r);
         _dummy.rotation.set(0, -a - Math.PI / 2, 0);
-        _dummy.scale.setScalar(22);
+        _dummy.scale.setScalar(ud.kind === 'crows' ? 34 : 22);
         _dummy.updateMatrix();
         ud.bees.setMatrixAt(i, _dummy.matrix);
       }
       ud.bees.instanceMatrix.needsUpdate = true;
       if(Math.random() < dt * 20){
         const a = Math.random() * TAU, d = Math.random() * z.r;
-        fxSpawn(z.x + Math.cos(a) * d, z.y + Math.sin(a) * d, g.position.y + 20, '#fbbf24', { spd: 20, up: 30, grav: 0, life: 0.6, size: 14 });
+        fxSpawn(z.x + Math.cos(a) * d, z.y + Math.sin(a) * d, g.position.y + 20, ud.kind === 'crows' ? '#312e81' : '#fbbf24', { spd: 20, up: 30, grav: 0, life: 0.6, size: 14 });
       }
     }
     if(ud.kind === 'snow'){
@@ -1456,12 +1459,12 @@ function syncZone(z, g, tAnim, dt){
 
 /* projektili: Blender model po emojiju moći ili vrsti napada (hero.shot) */
 const PROJ_BY_EMOJI = { '🔥': 'proj_fireball', '🧊': 'proj_ice', '🎯': 'proj_arrow', '🪶': 'proj_feather', '💫': 'proj_star',
-  '🌰': 'proj_acorn', '🌠': 'proj_moon', '👅': 'proj_tongue', '🦅': 'proj_hawk', '🐝': 'proj_bee', '🟢': 'proj_slime', '🌵': 'proj_quill' };
+  '🌰': 'proj_acorn', '🌠': 'proj_moon', '👅': 'proj_tongue', '🦅': 'proj_hawk', '🐝': 'proj_bee', '🟢': 'proj_slime', '🌵': 'proj_quill', '🖤': 'proj_ink' };
 const PROJ_BY_SHOT = { arrow: 'proj_arrow', feather: 'proj_feather', fire: 'proj_fireball', ice: 'proj_ice', leaf: 'proj_acorn',
   bolt: 'proj_bolt', tower: 'proj_bolt' };
 const PROJ_TRAIL = { proj_fireball: ['#ff7a1a', '#ffe26b'], proj_ice: ['#bfe6ff', '#ffffff'], proj_moon: ['#c4b5fd', '#fff7d6'],
   proj_star: ['#fde68a'], proj_bolt: ['#ffffff'], proj_hawk: ['#fde68a'], proj_acorn: ['#bef264'], proj_feather: ['#f8fafc'], proj_arrow: [],
-  proj_bee: ['#fde68a'], proj_slime: ['#bef264'], proj_quill: [] };
+  proj_bee: ['#fde68a'], proj_slime: ['#bef264'], proj_quill: [], proj_ink: ['#312e81', '#1e1b4b'] };
 function projModelName(p){
   return (p.emoji && PROJ_BY_EMOJI[p.emoji]) || (p.shot && PROJ_BY_SHOT[p.shot]) || null;
 }
@@ -1480,6 +1483,7 @@ function projScale(name, p){
     case 'proj_bee': return 34;
     case 'proj_slime': return 36;
     case 'proj_quill': return 28;
+    case 'proj_ink': return 36;
   }
   return 30;
 }
@@ -1890,6 +1894,37 @@ function castFx(u, g, key){
     }
     case 'majmun:R': for(let i = 0; i < 24; i++) fxSpawn(u.x + (Math.random() - 0.5) * 120, u.y + (Math.random() - 0.5) * 120, gh + 20, '#f59e0b', { spd: 40, up: 50, grav: 0, life: 0.8, size: 26 }); break;
     case 'item:bkb': for(let i = 0; i < 24; i++) fxSpawn(u.x, u.y, gh + 30, '#fde047', { spd: 120, up: 70, grav: -20, life: 0.7, size: 20 }); break;
+    case 'item:dust': for(let i = 0; i < 30; i++) fxSpawn(u.x, u.y, gh + 30, '#e5e7eb', { spd: 320, up: 20, grav: 0, life: 0.9, size: 30 }); break;
+    case 'item:bottle': for(let i = 0; i < 12; i++) fxSpawn(u.x + (Math.random() - 0.5) * 40, u.y + (Math.random() - 0.5) * 40, gh + 20, '#7dd3fc', { spd: 10, up: 80, grav: 0, life: 0.8, size: 16 }); break;
+    case 'vuk:Q':   // Zavijanje: zvučni krugovi
+      for(let k = 0; k < 3; k++) for(let i = 0; i < 20; i++){ const a = i / 20 * TAU; fxSpawn(u.x + Math.cos(a) * (60 + k * 110), u.y + Math.sin(a) * (60 + k * 110), gh + 50, '#e2e8f0', { spd: 60, up: 10, grav: 0, life: 0.5 + k * 0.15, size: 18 }); }
+      break;
+    case 'vuk:R': shakeAt(u.x, u.y, 0.6, 0.4); for(let i = 0; i < 30; i++) fxSpawn(u.x, u.y, gh + 40, i % 2 ? '#94a3b8' : '#ff6a3d', { spd: 200, up: 90, grav: -20, life: 0.8, size: 24 }); break;
+    case 'gavran:Q': break;
+    case 'gavran:W': for(let i = 0; i < 20; i++) fxSpawn(u.x, u.y, gh + 40, '#c4b5fd', { spd: 140, up: 80, grav: 0, life: 0.6, size: 20 }); break;
+    case 'gavran:R': for(let i = 0; i < 16; i++) fxSpawn(u.x, u.y, gh + 60, '#1f2430', { spd: 200, up: 120, grav: 0, life: 0.8, size: 22 }); break;
+    case 'hobotnica:W': {   // Pipci: pipak se ispruži
+      const geo = cachedGeo('staffGeo', () => { const c = new THREE.CylinderGeometry(1, 1, 1, 8); c.rotateZ(-Math.PI / 2); return c; });
+      const m = new THREE.Mesh(geo, lambMat('#7c6fd6'));
+      const yaw = -(u.dir || 0);
+      addFx(m, 0.4, (o, f) => {
+        const L = 380 * Math.sin(Math.min(1, f * 1.2) * Math.PI);
+        o.position.set(u.x + Math.cos(u.dir || 0) * L / 2, gh + 30, u.y + Math.sin(u.dir || 0) * L / 2);
+        o.rotation.y = yaw;
+        o.scale.set(Math.max(1, L), 12, 12);
+      });
+      break;
+    }
+    case 'hobotnica:R':   // Vrtlog dubina: spirala vode
+      shakeAt(u.x, u.y, 0.9, 0.6);
+      for(let i = 0; i < 40; i++){ const a = i / 40 * TAU, r = 380 * (0.3 + 0.7 * (i % 5) / 5); fxSpawn(u.x + Math.cos(a) * r, u.y + Math.sin(a) * r, gh + 10, i % 2 ? '#4f46e5' : '#a5b4fc', { spd: 120, up: 90, grav: -40, life: 0.9, size: 26 }); }
+      break;
+    case 'nosorog:Q': dust(12); break;
+    case 'nosorog:W': shakeAt(u.x, u.y, 0.6, 0.35); dust(16); break;
+    case 'nosorog:R': shakeAt(u.x, u.y, 0.5, 0.4); for(let i = 0; i < 26; i++) fxSpawn(u.x, u.y, gh + 50, '#ef4444', { spd: 200, up: 100, grav: -20, life: 0.7, size: 24 }); break;
+    case 'panda:Q': shakeAt(u.x, u.y, 0.8, 0.45); dust(18); for(let i = 0; i < 16; i++){ const a = i / 16 * TAU; fxSpawn(u.x + Math.cos(a) * 120, u.y + Math.sin(a) * 120, gh + 30, '#fde68a', { spd: 100, up: 40, grav: 0, life: 0.5, size: 22 }); } break;
+    case 'panda:W': break;
+    case 'panda:R': for(let i = 0; i < 24; i++) fxSpawn(u.x + (Math.random() - 0.5) * 120, u.y + (Math.random() - 0.5) * 120, gh + 20, i % 3 === 0 ? '#86efac' : (i % 3 === 1 ? '#7dd3fc' : '#fb923c'), { spd: 40, up: 60, grav: 0, life: 0.8, size: 26 }); break;
     case 'vitez:Q':   // Vrtlog: junak se zavrti
       g.userData.spin = TAU * 2;
       for(let i = 0; i < 18; i++) fxSpawn(u.x, u.y, gh + 30 + Math.random() * 30, '#fde68a', { spd: 220, up: 20, grav: 0, life: 0.45, size: 20 });
@@ -1932,6 +1967,9 @@ function castFx(u, g, key){
 function pickStatusEmoji(u){
   if(u.status.stun > 0) return '⭐';
   if(u.status.immuneT > 0) return '👑';
+  if(u.status.rageT > 0) return '😡';
+  if(u.status.blindT > 0) return '😵';
+  if(u.status.curseT > 0) return '🌀';
   if(u.status.trackT > 0) return '💰';
   if(u.status.silenceT > 0) return '🤐';
   if(u.status.poisonT > 0) return '🤢';
@@ -1956,7 +1994,8 @@ function animateUnit(u, g, now, dt){
   if((u.atkN || 0) !== ud.atkN){
     ud.atkN = u.atkN || 0;
     const cd = u.atkCd || 1;
-    animOnce(a, 'attack', Math.max(1, 0.62 / cd), now, u.projSpeed ? 0.1 : 0.04);
+    const nm = a.acts.attack2 && (ud.atkN % 3 === 2) ? 'attack2' : 'attack';   // svaki treći udarac drukčiji zamah
+    animOnce(a, nm, Math.max(1, 0.62 / cd), now, u.projSpeed ? 0.1 : 0.04);
   }
   if((u.castN || 0) !== ud.castN){
     ud.castN = u.castN || 0;
@@ -1981,14 +2020,15 @@ function animateUnit(u, g, now, dt){
 }
 /* skokovi (Junački skok, Žablji skok, Obrušavanje, Mjesečev skok, Majmunski skok, Skokne čizme):
    logika premjesti junaka odmah, a model preleti lukom */
-const LEAP_KEYS = { 'vitez:E': 1, 'skokica:W': 1, 'orlina:E': 1, 'luna:E': 1, 'majmun:W': 1, 'munja:W': 1, 'item:blink': 1 };
-function startLeap(u, g, now){
+const LEAP_KEYS = { 'vitez:E': 1, 'skokica:W': 1, 'orlina:E': 1, 'luna:E': 1, 'majmun:W': 1, 'munja:W': 1, 'item:blink': 1, 'vuk:W': 1 };
+function startLeap(u, g, now, maxH){
   const ud = g.userData;
   if(ud.lastX == null) return;
   const d = distXY(ud.lastX, ud.lastY, u.x, u.y);
   if(d < 40) return;
-  ud.leap = { x0: ud.lastX, y0: ud.lastY, t0: now, dur: Math.min(0.5, 0.22 + d / 1400), h: Math.min(170, 60 + d * 0.25) };
-  if(ud.anim && ud.anim.acts.jump) animOnce(ud.anim, 'jump', 14 / 24 / ud.leap.dur, now, 0);
+  ud.leap = { x0: ud.lastX, y0: ud.lastY, t0: now, dur: Math.min(0.5, 0.22 + d / 1400), h: Math.min(maxH || 170, 60 + d * 0.25) };
+  if(!maxH && ud.anim && ud.anim.acts.jump) animOnce(ud.anim, 'jump', 14 / 24 / ud.leap.dur, now, 0);
+  else if(maxH && ud.anim && ud.anim.acts.hit) animOnce(ud.anim, 'hit', 0.8, now, 0);
 }
 
 function syncScene(tAnim){
@@ -2052,6 +2092,10 @@ function syncScene(tAnim){
       }
       g.visible = seen;
       g.position.set(u.x, gh, u.y);
+      if((u.knockN || 0) !== (ud.knockN || 0)){   // odbačaj: kratki luk
+        ud.knockN = u.knockN || 0;
+        startLeap(u, g, tAnim, 50);
+      }
       if(ud.leap){   // luk skoka: model preleti sa stare na novu poziciju
         const f = Math.min(1, (tAnim - ud.leap.t0) / ud.leap.dur);
         const lx = lerp(ud.leap.x0, u.x, f), ly = lerp(ud.leap.y0, u.y, f);
@@ -2075,7 +2119,21 @@ function syncScene(tAnim){
       if(ud.statusSpr.visible) ud.statusSpr.position.y = 88 + Math.sin(tAnim * 6) * 4;
       const invis = u.status.invisT > 0;
       if(ud.model){
-        setModelLook(ud.model, u.flash > 0 ? 'f' : (invis ? 'g' : (u.status.slowT > 0 ? 'c' : (u.status.poisonT > 0 ? 'p' : 'n'))));
+        const st = u.status;
+        setModelLook(ud.model, u.flash > 0 ? 'f' : (invis ? 'g' : (st.rageT > 0 ? 'r' : (st.formT > 0 ? 'w' : (st.curseT > 0 ? 'k' : (st.slowT > 0 ? 'c' : (st.poisonT > 0 ? 'p' : 'n')))))));
+        // 🐺 vučji oblik: model naraste
+        if(ud.baseScale == null) ud.baseScale = ud.model.scale.x;
+        const want = ud.baseScale * (st.formT > 0 ? 1.32 : 1);
+        if(Math.abs(ud.model.scale.x - want) > 0.01) ud.model.scale.setScalar(lerp(ud.model.scale.x, want, Math.min(1, dt * 6)));
+        if(st.formT > 0 && Math.random() < dt * 10) fxSpawn(u.x + (Math.random() - 0.5) * 50, u.y + (Math.random() - 0.5) * 50, gh + 20, '#cbd5e1', { spd: 10, up: 60, grav: 0, life: 0.6, size: 16 });
+        if(st.rageT > 0 && Math.random() < dt * 14) fxSpawn(u.x + (Math.random() - 0.5) * 40, u.y + (Math.random() - 0.5) * 40, gh + 70, '#ef4444', { spd: 20, up: 70, grav: 0, life: 0.5, size: 16 });
+        // 🏃 juriš: prašina za petama
+        if(u.charge && Math.random() < dt * 40) fxSpawn(u.x, u.y, gh + 4, '#c9b48c', { spd: 90, up: 40, grav: -30, life: 0.6, size: 24 });
+        // ☀️ Sunčev kamen: plamenčići kruže
+        if(u.items && u.items.some(i => i.burn || i.emoji === '☀️') && Math.random() < dt * 24){
+          const a = Math.random() * TAU;
+          fxSpawn(u.x + Math.cos(a) * 70, u.y + Math.sin(a) * 70, gh + 10 + Math.random() * 40, Math.random() < 0.5 ? '#ff7a1a' : '#ffe26b', { spd: 10, up: 50, grav: 0, life: 0.5, size: 18 });
+        }
         animateUnit(u, g, tAnim, dt);
         syncStatusFx(u, g, tAnim, dt, 100);
         syncSteps(u, g, dt);
@@ -2092,6 +2150,14 @@ function syncScene(tAnim){
     else if(u.kind === 'creep' || u.kind === 'neutral'){
       g.visible = seen;
       g.position.set(u.x, gh, u.y);
+      if((u.knockN || 0) !== (ud.knockN || 0)){ ud.knockN = u.knockN || 0; startLeap(u, g, tAnim, 40); }
+      if(ud.leap){
+        const f = Math.min(1, (tAnim - ud.leap.t0) / ud.leap.dur);
+        const lx = lerp(ud.leap.x0, u.x, f), ly = lerp(ud.leap.y0, u.y, f);
+        g.position.set(lx, groundHeight(lx, ly) + Math.sin(f * Math.PI) * ud.leap.h, ly);
+        if(f >= 1) ud.leap = null;
+      }
+      ud.lastX = u.x; ud.lastY = u.y;
       if(!seen){ ud.hp = u.hp; continue; }
       ud.yaw = angleLerp(ud.yaw, -(u.dir || 0), Math.min(1, dt * 12));
       g.rotation.y = ud.yaw;
@@ -2121,10 +2187,12 @@ function syncScene(tAnim){
     else if(u.kind === 'barracks'){
       g.position.set(u.x, gh, u.y);
       if(ud.model) setModelLook(ud.model, u.flash > 0 ? 'f' : 'n');
+      if(glyph[u.team].t > 0 && Math.random() < dt * 14) fxSpawn(u.x + (Math.random() - 0.5) * 110, u.y + (Math.random() - 0.5) * 90, gh + 10, '#fde047', { spd: 6, up: 90, grav: 0, life: 0.8, size: 22 });
       syncHitFx(u, g, 70, tAnim);
     }
     else if(u.kind === 'tower'){
       g.position.set(u.x, gh, u.y);
+      if(glyph[u.team].t > 0 && Math.random() < dt * 14) fxSpawn(u.x + (Math.random() - 0.5) * 80, u.y + (Math.random() - 0.5) * 80, gh + 10, '#fde047', { spd: 6, up: 110, grav: 0, life: 0.9, size: 22 });
       if(ud.model){
         const cr = ud.model.userData.parts.crystal;
         if(cr) cr.rotation.y = tAnim * 1.5;
