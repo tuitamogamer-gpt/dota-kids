@@ -2051,6 +2051,9 @@ function castFx(u, g, key){
     case 'majmun:R': for(let i = 0; i < 24; i++) fxSpawn(u.x + (Math.random() - 0.5) * 120, u.y + (Math.random() - 0.5) * 120, gh + 20, '#f59e0b', { spd: 40, up: 50, grav: 0, life: 0.8, size: 26 }); break;
     case 'item:bkb': for(let i = 0; i < 24; i++) fxSpawn(u.x, u.y, gh + 30, '#fde047', { spd: 120, up: 70, grav: -20, life: 0.7, size: 20 }); break;
     case 'item:dust': for(let i = 0; i < 30; i++) fxSpawn(u.x, u.y, gh + 30, '#e5e7eb', { spd: 320, up: 20, grav: 0, life: 0.9, size: 30 }); break;
+    case 'item:tango': for(let i = 0; i < 12; i++) fxSpawn(u.x + (Math.random() - 0.5) * 40, u.y + (Math.random() - 0.5) * 40, gh + 30, i % 2 ? '#86efac' : '#4ade80', { spd: 30, up: 50, grav: -20, life: 0.8, size: 16 }); break;
+    case 'item:clarity': for(let i = 0; i < 12; i++) fxSpawn(u.x + (Math.random() - 0.5) * 40, u.y + (Math.random() - 0.5) * 40, gh + 20, '#7dd3fc', { spd: 10, up: 90, grav: 0, life: 0.9, size: 16 }); break;
+    case 'item:cheese': beamFx(u.x, u.y, '#fde047', 1); for(let i = 0; i < 24; i++) fxSpawn(u.x, u.y, gh + 40, '#fde047', { spd: 160, up: 90, grav: -40, life: 0.8, size: 20 }); break;
     case 'item:bottle': for(let i = 0; i < 12; i++) fxSpawn(u.x + (Math.random() - 0.5) * 40, u.y + (Math.random() - 0.5) * 40, gh + 20, '#7dd3fc', { spd: 10, up: 80, grav: 0, life: 0.8, size: 16 }); break;
     case 'vuk:Q':   // Zavijanje: zvučni krugovi
       for(let k = 0; k < 3; k++) for(let i = 0; i < 20; i++){ const a = i / 20 * TAU; fxSpawn(u.x + Math.cos(a) * (60 + k * 110), u.y + Math.sin(a) * (60 + k * 110), gh + 50, '#e2e8f0', { spd: 60, up: 10, grav: 0, life: 0.5 + k * 0.15, size: 18 }); }
@@ -2152,6 +2155,7 @@ function animateUnit(u, g, now, dt){
     const cd = u.atkCd || 1;
     const nm = a.acts.attack2 && (ud.atkN % 3 === 2) ? 'attack2' : 'attack';   // svaki treći udarac drukčiji zamah
     animOnce(a, nm, Math.max(1, 0.62 / cd), now, u.projSpeed ? 0.1 : 0.04);
+    if(u.kind === 'hero' && !u.projSpeed && g.visible) swingFx(u, nm === 'attack2');   // trag zamaha oružja
   }
   if((u.castN || 0) !== ud.castN){
     ud.castN = u.castN || 0;
@@ -2173,6 +2177,46 @@ function animateUnit(u, g, now, dt){
     animBase(a, 'idle', stunned ? 0.4 : 1, now);
   }
   a.mixer.update(dt);
+}
+/* ⚔️ trag zamaha: svijetli luk ispred junaka koji se proteže preko zamaha (blizinski napad) */
+function swingFx(u, flip){
+  const geo = cachedGeo('swingArc', () => new THREE.RingGeometry(24, 62, 22, 1, -0.95, 1.9));
+  const col = new THREE.Color((u.hero && u.hero.abilities[0].color) || '#ffffff').lerp(new THREE.Color('#ffffff'), 0.55);
+  const mat = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0, side: THREE.DoubleSide,
+    depthWrite: false, blending: THREE.AdditiveBlending });
+  const inner = new THREE.Mesh(geo, mat);
+  inner.rotation.x = -Math.PI / 2;
+  const holder = new THREE.Group();
+  holder.add(inner);
+  const dir = u.dir || 0;
+  addFx(holder, 0.3, (o, f) => {
+    const gh = groundHeight(u.x, u.y);
+    o.position.set(u.x, gh + 34 + (flip ? 10 : 0), u.y);
+    o.rotation.set(flip ? 0.35 : -0.25, -dir, 0);
+    inner.rotation.z = (flip ? 1 : -1) * (0.9 - 1.8 * f);   // luk "prebriše" od jedne strane do druge
+    mat.opacity = Math.sin(Math.min(1, f * 1.4) * Math.PI) * 0.7;
+    const s = 0.85 + f * 0.3;
+    o.scale.set(s, s, s);
+  });
+}
+/* 💰 zlatnici iskoče iz ubijenog vojnika i odlete prema junaku */
+function coinFx(x, y, n){
+  const gh = groundHeight(x, y);
+  for(let i = 0; i < n; i++){
+    const m = modelInstance('fx_coin', 0, 18);
+    if(!m) return;
+    const a = Math.random() * TAU, sp = 40 + Math.random() * 50, delay = i * 0.06;
+    addFx(m, 0.95 + delay, (o, f) => {
+      const t = Math.max(0, f * (0.95 + delay) - delay);
+      o.visible = t > 0;
+      const k = Math.min(1, t / 0.95);
+      o.position.set(x + Math.cos(a) * sp * k, gh + 20 + 140 * k - 170 * k * k + Math.sin(k * Math.PI) * 30, y + Math.sin(a) * sp * k);
+      o.rotation.y = t * 14;
+      const s = 18 * (k < 0.8 ? 1 : 1 - (k - 0.8) * 4);
+      o.scale.setScalar(Math.max(0.1, s));
+    });
+  }
+  for(let i = 0; i < 6; i++) fxSpawn(x, y, gh + 30, '#fde047', { spd: 70, up: 60, grav: -40, life: 0.5, size: 14 });
 }
 /* skokovi (Junački skok, Žablji skok, Obrušavanje, Mjesečev skok, Majmunski skok, Skokne čizme):
    logika premjesti junaka odmah, a model preleti lukom */
@@ -2348,6 +2392,10 @@ function syncScene(tAnim){
     }
     else if(u.kind === 'tower'){
       g.position.set(u.x, gh, u.y);
+      if(u.bdT != null && gameTime - u.bdT < 0.4 && Math.random() < dt * 30){   // 🛡️ backdoor zaštita: plavi štit iskri
+        const a = Math.random() * TAU;
+        fxSpawn(u.x + Math.cos(a) * 46, u.y + Math.sin(a) * 46, gh + 20 + Math.random() * 90, '#93c5fd', { spd: 10, up: 30, grav: 0, life: 0.5, size: 18 });
+      }
       if(glyph[u.team].t > 0 && Math.random() < dt * 14) fxSpawn(u.x + (Math.random() - 0.5) * 80, u.y + (Math.random() - 0.5) * 80, gh + 10, '#fde047', { spd: 6, up: 110, grav: 0, life: 0.9, size: 22 });
       if(ud.model){
         const cr = ud.model.userData.parts.crystal;
@@ -2407,6 +2455,11 @@ function syncScene(tAnim){
     if(w.team === myTeam) burst(g.position.x, g.position.z, '#c4b5fd', 10, 120, 4);
   });
 
+  // 💰 zlatnici pri last-hitu
+  if(typeof coinDrops !== 'undefined' && coinDrops.length){
+    if(MODELS.ready) for(const c of coinDrops) coinFx(c.x, c.y, c.n);
+    coinDrops.length = 0;
+  }
   // 🕊️ svetišta: sjaj pulsira dok liječe, prigušen dok se pune
   shrineObjs.forEach((so, i) => {
     const s = (typeof shrines !== 'undefined' && shrines[i]) || null;

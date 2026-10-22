@@ -238,12 +238,14 @@ function buildSnapshot(){
       b.mp = Math.round(u.mp); b.mm = u.maxmp;
       b.st = packStatus(u.status);
       b.k2 = u.kills; b.d2 = u.deaths; b.a2 = u.assists; b.gd2 = Math.floor(u.gold);
+      b.lh = u.lastHits || 0; b.dn = u.denies || 0;
       b.pl = u.isPlayer ? 1 : (u.human ? 2 : 0);
       if(u.aegis) b.ag = 1;
       b.it2 = u.items.map(i => i.emoji).join('');
     }
     else if(u.kind === 'creep'){ if(u.rangedCreep) b.rc = 1; if(u.siege) b.sg = 1; if(u.summonModel) b.sm = u.summonModel; if(u.superCreep) b.su = 1; }
     else if(u.kind === 'barracks'){ b.iv = u.invuln ? 1 : 0; b.ln = u.lane; }
+    if(u.bdT != null && gameTime - u.bdT < 0.5) b.bd = 1;   // 🛡️ backdoor zaštita upravo radi
     else if(u.kind === 'neutral'){ b.ct = CAMP_KEYS.indexOf(u.camp.type); }
     else if(u.kind === 'tower'){ if(u.isGuard) b.gd = 1; }
     else if(u.kind === 'ancient'){ b.iv = u.invuln ? 1 : 0; }
@@ -369,11 +371,13 @@ function applySnapshot(d){
       u.mp = b.mp; u.maxmp = b.mm;
       unpackStatus(u.status, b.st);
       u.kills = b.k2; u.deaths = b.d2; u.assists = b.a2 || 0; u.gold = b.gd2;
+      u.lastHits = b.lh || 0; u.denies = b.dn || 0;
       u.aegis = !!b.ag;
       if(!u.isPlayer) u.items = (b.it2 || '').split('').map(e => ({ emoji: e, name: '' })).filter(i => i.emoji.trim());
       if(b.pl === 2 && !u.isPlayer){ u.isPlayer = true; }
     }
     if(u.kind === 'ancient' || u.kind === 'barracks') u.invuln = !!b.iv;
+    if(b.bd) u.bdT = gameTime;
   }
   for(const id of [...net.guestUnits.keys()]){
     if(!seen.has(id)) net.guestUnits.delete(id);
@@ -488,7 +492,7 @@ function resetMatchState(){
   runeTimer = CFG.runeEvery; runeSpotI = 0; isNight = false;
   wards = []; nightForceT = 0; superCreeps = [{}, {}]; winnerTeam = null;
   glyph = [{ t: 0, cd: 0 }, { t: 0, cd: 0 }];
-  makeShrines(); creepTier = 0;
+  makeShrines(); creepTier = 0; bossKills = 0; coinDrops = [];
   pendingCast = null;
   gameTime = 0; waveTimer = CFG.firstWave; waveCount = 0;
   firstBlood = false; gameOver = false; paused = false;
