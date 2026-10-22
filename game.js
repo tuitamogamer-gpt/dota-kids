@@ -1718,8 +1718,9 @@ function firstMissingLeaf(h, item){
 }
 function botShopping(u){
   let guard = 0;
-  while(guard++ < 5 && u.buildI < BOT_BUILD.length){
-    const target = ITEM_BY_ID[BOT_BUILD[u.buildI]];
+  const build = (u.hero && u.hero.build) || BOT_BUILD;
+  while(guard++ < 5 && u.buildI < build.length){
+    const target = ITEM_BY_ID[build[u.buildI]];
     const plan = planPurchase(u, target);
     if(plan.ok && u.gold >= plan.cost){
       doPurchase(u, target, plan);
@@ -1922,6 +1923,10 @@ function updateUnit(u, dt){
     if(u.bot.thinkT <= 0){ u.bot.thinkT = rand(0.4, 0.6); botThink(u); }
   }
 
+  if(u.kind === 'hero' && isHuman(u) && !u.attackTarget && !u.moveTarget && !u.charge){
+    u.acqT = (u.acqT || 0) - dt;
+    if(u.acqT <= 0){ u.acqT = 0.25; autoAcquire(u); }
+  }
   if(u.attackTarget){
     const t = u.attackTarget;
     // magla rata / nevidljivost: junak gubi metu koja nestane (osim ucijenjene 💰)
@@ -2501,9 +2506,18 @@ function pickEnemyAt(wx, wy, team){
       if(!isVisibleTo(team, e)) continue;
     }
     const d = distXY(wx, wy, e.x, e.y);
-    if(d < e.r + 26 && d < bd){ bd = d; best = e; }
+    if(d < e.r + 34 && d < bd){ bd = d; best = e; }
   }
   return best;
+}
+/* DotA auto-napad: junak koji stoji besposlen sam napada neprijatelje u dometu
+   (junaci prvo, pa vojnici i čudovišta; građevine samo na izričit klik) */
+function autoAcquire(u){
+  const R = u.atkRange + 70;
+  const vis = e => isVisibleTo(u.team, e);
+  const t = nearestEnemyOf(u, R, e => e.kind === 'hero' && vis(e)) ||
+            nearestEnemyOf(u, R, e => (e.kind === 'creep' || (e.kind === 'neutral' && !e.returning && e.attackTarget)) && vis(e));
+  if(t) u.attackTarget = t;
 }
 function playerCommandFor(h, wx, wy){
   if(!h || h.dead || gameOver) return;
@@ -2701,7 +2715,7 @@ function setupInput(){
 function toggleShop(){
   shopOpen = !shopOpen;
   document.getElementById('shop').classList.toggle('hidden', !shopOpen);
-  if(shopOpen) refreshShop();
+  if(shopOpen) setShopTab(shopTab);   // ponovno složi preporuke za trenutnog junaka
 }
 function toggleHelp(){
   document.getElementById('help').classList.toggle('hidden');
@@ -2721,7 +2735,17 @@ function statChipsHtml(item){
 function refreshShop(){
   if(!player) return;
   document.getElementById('shopGold').textContent = '💰 ' + Math.floor(player.gold);
+  // 🎯 sljedeći preporučeni predmet (prvi iz builda koji još nemaš ni ugrađen)
+  const build = (player.hero && player.hero.build) || BOT_BUILD;
+  const nextId = build.find(id => !ownsOrUsed(player, id)) || null;
   for(const item of ITEMS){
+    const el = document.getElementById('si-' + item.id);
+    if(el){
+      const isNext = shopTab === 'rec' && item.id === nextId;
+      el.classList.toggle('next', isNext);
+      const ne = document.getElementById('next-' + item.id);
+      if(ne) ne.style.display = isNext ? 'inline-block' : 'none';
+    }
     const btn = document.getElementById('buy-' + item.id);
     if(!btn) continue;
     // koliko ih već imaš u torbi
@@ -2757,32 +2781,66 @@ function refreshShop(){
     }
   }
 }
+/* ima li junak predmet — ili ga je već ugradio u veći recept */
+function ownsOrUsed(h, id){
+  const has = (it) => it.id === id || (it.components || []).some(c => has(ITEM_BY_ID[c]));
+  return h.items.some(has);
+}
+/* preporučeni redoslijed: potrošno za početak + build junaka */
+function recommendedFor(h){
+  const build = (h.hero && h.hero.build) || BOT_BUILD;
+  return ['potion', 'bottle'].concat(build.filter(id => id !== 'potion' && id !== 'bottle'));
+}
+let shopTab = 'rec';
+function setShopTab(id){
+  shopTab = id;
+  document.querySelectorAll('#shopTabs button').forEach(b => b.classList.toggle('on', b.dataset.cat === id));
+  const rec = player ? recommendedFor(player) : [];
+  for(const item of ITEMS){
+    const el = document.getElementById('si-' + item.id);
+    let show, order;
+    if(id === 'rec'){ order = rec.indexOf(item.id); show = order >= 0; }
+    else if(id === 'all'){ show = true; order = item.tier * 100 + ITEMS.indexOf(item); }
+    else { show = item.cat === id; order = item.tier * 100 + ITEMS.indexOf(item); }
+    el.classList.toggle('hid', !show);
+    el.style.order = order;
+  }
+  document.querySelectorAll('#shopItems .shopSec').forEach(s => s.classList.toggle('hid', id !== 'all'));
+  const info = document.getElementById('shopInfo');
+  if(info) info.textContent = id === 'rec' && player ? '⭐ Kupuj redom — zeleno 🎯 je sljedeće za ' + player.name + '!' : '';
+  refreshShop();
+}
 function buildShopDom(){
   const wrap = document.getElementById('shopItems');
   let html = '';
-  for(const tg of ITEM_TIERS){
-    html += `<div class="shopSec t${tg.tier}">${tg.label}</div>`;
-    for(const item of ITEMS){
-      if(item.tier !== tg.tier) continue;
-      let rec = '';
-      if(item.components){
-        const comps = item.components.map((c, i) =>
-          `<span class="ce" id="ce-${item.id}-${i}" title="${ITEM_BY_ID[c].name}">${ITEM_BY_ID[c].emoji}</span>`
-        ).join('<span class="plus">+</span>');
-        rec = `<div class="si-rec">${comps}<span class="plus">+</span><span class="rcost">${item.cost}💰</span><span class="rarr">➜</span><span class="res">${item.emoji}</span></div>`;
-      }
-      html += `<div class="shopItem tier${item.tier}">
-        <div class="si-top">
-          <span class="si-emoji">${item.emoji}</span>
-          <span class="si-name"><b>${item.name}</b><span class="own" id="own-${item.id}"></span></span>
-          <button id="buy-${item.id}">${item.cost} 💰</button>
-        </div>
-        <div class="si-stats">${statChipsHtml(item)}</div>
-        ${rec}
-      </div>`;
+  for(const tg of ITEM_TIERS) html += `<div class="shopSec t${tg.tier}" style="order:${tg.tier * 100 - 1}">${tg.label}</div>`;
+  for(const item of ITEMS){
+    let rec = '';
+    if(item.components){
+      const comps = item.components.map((c, i) =>
+        `<span class="ce" id="ce-${item.id}-${i}" title="${ITEM_BY_ID[c].name}">${ITEM_BY_ID[c].emoji}</span>`
+      ).join('<span class="plus">+</span>');
+      rec = `<div class="si-rec">${comps}<span class="plus">+</span><span class="rcost">${item.cost}💰</span><span class="rarr">➜</span><span class="res">${item.emoji}</span></div>`;
     }
+    const catLbl = (ITEM_CATS.find(c => c.id === item.cat) || {}).label || '';
+    html += `<div class="shopItem tier${item.tier}" id="si-${item.id}">
+      <div class="si-top">
+        <span class="si-emoji">${item.emoji}</span>
+        <span class="si-name"><b>${item.name}</b><span class="own" id="own-${item.id}"></span><span class="si-cat">${catLbl}</span></span>
+        <span class="si-next" id="next-${item.id}">🎯 sljedeće</span>
+        <button id="buy-${item.id}">${item.cost} 💰</button>
+      </div>
+      <div class="si-desc">${item.desc}</div>
+      <div class="si-stats">${statChipsHtml(item)}</div>
+      ${rec}
+    </div>`;
   }
   wrap.innerHTML = html;
+  const tabs = document.getElementById('shopTabs');
+  if(tabs){
+    tabs.innerHTML = ITEM_CATS.map(c => `<button data-cat="${c.id}" title="${c.label}">${c.label}</button>`).join('');
+    tabs.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { setShopTab(b.dataset.cat); sfx('click'); }));
+  }
   for(const item of ITEMS){
     document.getElementById('buy-' + item.id).addEventListener('click', () => {
       if(net.mode === 'guest') netBuy(item.id);
@@ -2790,6 +2848,7 @@ function buildShopDom(){
     });
   }
   document.getElementById('shopClose').addEventListener('click', toggleShop);
+  setShopTab('rec');
 }
 function buildSelectScreen(){
   const cards = document.getElementById('cards');
