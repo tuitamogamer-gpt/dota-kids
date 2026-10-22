@@ -119,6 +119,18 @@ function indexModels(gltf){
 /* materijali modela: VC = boje vrhova, TEAM = boje vrhova × boja tima,
    GLOW = svijetli (bez sjene), TEAMGLOW = svijetli u boji tima.
    look: 'n' normalno, 'f' bljesak pogotka, 'g' prozirno (nevidljivost), 'c' smrznuto (usporen) */
+/* rubno (fresnel) svjetlo dodano u MeshStandardMaterial — obrisi modela lagano svijetle, bez dodatnih draw callova */
+const RIM = { color: { value: new THREE.Color('#e0ecff') }, strength: { value: 0.3 } };
+function addRim(m){
+  m.onBeforeCompile = sh => {
+    sh.uniforms.rimColor = RIM.color;
+    sh.uniforms.rimStrength = RIM.strength;
+    sh.fragmentShader = 'uniform vec3 rimColor;\nuniform float rimStrength;\n' + sh.fragmentShader.replace('#include <output_fragment>',
+      'float rimF = pow(1.0 - clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0), 2.6);\n' +
+      'outgoingLight += rimColor * rimF * rimStrength;\n#include <output_fragment>');
+  };
+  m.customProgramCacheKey = () => 'rim1';
+}
 function modelMat(name, team, look){
   const key = 'M' + name + '|' + team + '|' + look;
   if(matCache[key]) return matCache[key];
@@ -134,6 +146,7 @@ function modelMat(name, team, look){
     if(look === 'f'){ m.emissive = new THREE.Color(0xffffff); m.emissiveIntensity = 0.32; }
     if(look === 'c') m.color.lerp(new THREE.Color('#5fb8ff'), 0.7);
     if(look === 'p') m.color.lerp(new THREE.Color('#86efac'), 0.6);
+    addRim(m);   // rubno svjetlo: obrisi modela se ističu (noću jače)
     if(look === 'k') m.color.lerp(new THREE.Color('#a78bfa'), 0.55);                                   // 🌀 kletva
     if(look === 'w'){ m.emissive = new THREE.Color('#ff6a3d'); m.emissiveIntensity = 0.22; }          // 🐺 vučji oblik
     if(look === 'r'){ m.emissive = new THREE.Color('#ef4444'); m.emissiveIntensity = 0.3; }           // 😡 bijes
@@ -404,6 +417,7 @@ function initScene3D(glCanvas){
   scene3.add(skirt);
 
   initFx();
+  initSpellLights();
   initEnvironment(renderer3, scene3);
   loadModels3D();
 }
@@ -447,7 +461,145 @@ function applyDayNight(gt){
   scene3.fog.color.copy(scene3.background);
   sunLight.color.copy(DAY_SKY.sunNight).lerp(DAY_SKY.sunDay, k);
   if(waterMesh) waterMesh.material.uniforms.night.value = 1 - k;
+  RIM.strength.value = 0.26 + 0.24 * (1 - k);   // noću obrisi jače svijetle (mjesečina)
+  RIM.color.value.setRGB(0.88 - 0.25 * (1 - k), 0.92 - 0.1 * (1 - k), 1.0);
 }
+
+/* ================= SVJETLA MAGIJA =================
+   mali bazen točkastih svjetala: bljesnu pri bacanju, udaru projektila i zonama
+   (stalno su u sceni s intenzitetom 0, da se shaderi ne prevode ponovno) */
+const spellLights = [];
+function initSpellLights(){
+  for(let i = 0; i < 4; i++){
+    const L = new THREE.PointLight(0xffffff, 0, 460, 2);
+    L.castShadow = false;
+    scene3.add(L);
+    spellLights.push({ L, t: 0, life: 1, peak: 0 });
+  }
+}
+function spellLight(x, y, h, color, peak, life, dist){
+  if(!spellLights.length) return;
+  let best = spellLights[0], bestRem = 1e9;
+  for(const s of spellLights){
+    const rem = s.peak * Math.max(0, 1 - s.t / s.life);
+    if(rem < bestRem){ bestRem = rem; best = s; }
+  }
+  best.L.color.set(color);
+  best.L.position.set(x, h, y);
+  best.L.distance = dist || 460;
+  best.t = 0; best.life = life || 0.6; best.peak = peak || 2.2;
+}
+function updateSpellLights(dt){
+  for(const s of spellLights){
+    if(s.peak <= 0) continue;
+    s.t += dt;
+    const f = s.t / s.life;
+    if(f >= 1){ s.L.intensity = 0; s.peak = 0; continue; }
+    s.L.intensity = s.peak * (f < 0.12 ? f / 0.12 : 1 - (f - 0.12) / 0.88);
+  }
+}
+
+/* ---------- čarobni krug (runski krug pod junakom dok baca magiju) ---------- */
+let runeTex = null;
+function runeCircleTexture(){
+  if(runeTex) return runeTex;
+  const c = document.createElement('canvas');
+  c.width = c.height = 512;
+  const g = c.getContext('2d');
+  g.translate(256, 256);
+  g.strokeStyle = '#fff'; g.fillStyle = '#fff'; g.lineCap = 'round'; g.lineJoin = 'round';
+  const ring = (r, w) => { g.lineWidth = w; g.beginPath(); g.arc(0, 0, r, 0, TAU); g.stroke(); };
+  g.shadowColor = '#fff'; g.shadowBlur = 12;
+  ring(236, 9); ring(212, 3); ring(150, 6); ring(124, 2.5); ring(56, 4);
+  // runski znakovi između vanjskih prstenova
+  for(let i = 0; i < 18; i++){
+    g.save(); g.rotate(i / 18 * TAU); g.translate(0, -182);
+    g.lineWidth = 4; g.beginPath();
+    switch(i % 4){
+      case 0: g.moveTo(0, -16); g.lineTo(11, 0); g.lineTo(0, 16); g.lineTo(-11, 0); g.closePath(); break;   // romb
+      case 1: g.arc(0, 0, 10, 0, TAU); g.moveTo(0, -18); g.lineTo(0, 18); break;                            // krug s crtom
+      case 2: g.moveTo(-12, 12); g.lineTo(0, -14); g.lineTo(12, 12); g.closePath(); break;                   // trokut
+      default: g.moveTo(-12, -12); g.lineTo(12, 12); g.moveTo(12, -12); g.lineTo(-12, 12); break;            // križ
+    }
+    g.stroke(); g.restore();
+  }
+  // heksagram i žbice
+  g.lineWidth = 5;
+  for(const off of [0, Math.PI]){
+    g.beginPath();
+    for(let k = 0; k < 3; k++){
+      const a = off + k / 3 * TAU - Math.PI / 2;
+      const x = Math.cos(a) * 150, y = Math.sin(a) * 150;
+      if(k) g.lineTo(x, y); else g.moveTo(x, y);
+    }
+    g.closePath(); g.stroke();
+  }
+  g.lineWidth = 2.5;
+  for(let i = 0; i < 12; i++){
+    const a = i / 12 * TAU;
+    g.beginPath(); g.moveTo(Math.cos(a) * 56, Math.sin(a) * 56); g.lineTo(Math.cos(a) * 124, Math.sin(a) * 124); g.stroke();
+  }
+  // točkice na unutarnjem prstenu
+  for(let i = 0; i < 24; i++){ const a = i / 24 * TAU; g.beginPath(); g.arc(Math.cos(a) * 224, Math.sin(a) * 224, 3.5, 0, TAU); g.fill(); }
+  runeTex = new THREE.CanvasTexture(c);
+  return runeTex;
+}
+function magicCircle(x, y, r, color, life, big){
+  const geo = cachedGeo('runePlane', () => { const p = new THREE.PlaneGeometry(2, 2); p.rotateX(-Math.PI / 2); return p; });
+  const gh = groundHeight(x, y);
+  const mk = (rr, spin, h, op) => {
+    const mat = new THREE.MeshBasicMaterial({ map: runeCircleTexture(), color, transparent: true, opacity: 0,
+      depthWrite: false, blending: THREE.AdditiveBlending });
+    const m = new THREE.Mesh(geo, mat);
+    m.renderOrder = 3;
+    addFx(m, life, (o, f) => {
+      const grow = Math.min(1, f * 4);
+      const s = rr * (0.4 + 0.6 * (1 - Math.pow(1 - grow, 3)));
+      o.scale.set(s, 1, s);
+      o.position.set(x, gh + h, y);
+      o.rotation.y = spin * f * 3;
+      o.material.opacity = op * (f < 0.7 ? 1 : 1 - (f - 0.7) / 0.3);
+    });
+  };
+  mk(r, 1, 2.8, 0.95);
+  if(big){
+    mk(r * 0.62, -1.6, 3.2, 0.8);    // drugi krug se vrti suprotno
+    mk(r * 1.25, 0.5, 2.4, 0.45);
+  }
+  // iskre koje se dižu s ruba kruga
+  for(let i = 0; i < (big ? 26 : 14); i++){
+    const a = Math.random() * TAU;
+    fxSpawn(x + Math.cos(a) * r * 0.9, y + Math.sin(a) * r * 0.9, gh + 6, color, { spd: 6, up: 70 + Math.random() * 60, grav: 0, life: 0.7 + Math.random() * 0.4, size: 14 });
+  }
+}
+/* ---------- udarni val (AoE): prsten koji se širi + prozirni zid koji se diže ---------- */
+function shockwave(x, y, r, color){
+  const gh = groundHeight(x, y);
+  const ringGeo = cachedGeo('shockRing', () => { const g = new THREE.RingGeometry(0.82, 1, 48); g.rotateX(-Math.PI / 2); return g; });
+  const rm = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.75, depthWrite: false,
+    side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
+  addFx(rm, 0.45, (o, f) => {
+    const s = r * (0.15 + 0.85 * Math.sqrt(f));
+    o.scale.set(s, 1, s);
+    o.position.set(x, gh + 3, y);
+    o.material.opacity = 0.75 * (1 - f) * (1 - f * 0.3);
+  });
+  const wallGeo = cachedGeo('shockWall', () => new THREE.CylinderGeometry(1, 1, 1, 40, 1, true));
+  const wm = new THREE.Mesh(wallGeo, new THREE.MeshBasicMaterial({ map: beamTexture(), color, transparent: true, opacity: 0.7,
+    depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
+  addFx(wm, 0.5, (o, f) => {
+    const s = r * (0.2 + 0.8 * Math.sqrt(f)), hh = 70 * (1 - f) + 6;
+    o.scale.set(s, hh, s);
+    o.position.set(x, gh + hh / 2, y);
+    o.rotation.x = Math.PI;   // svjetliji dio pri tlu
+    o.material.opacity = 0.42 * (1 - f);
+  });
+  for(let i = 0; i < 20; i++){
+    const a = i / 20 * TAU;
+    fxSpawn(x + Math.cos(a) * r * 0.3, y + Math.sin(a) * r * 0.3, gh + 8, i % 3 ? color : '#c9b48c', { spd: r * 1.6, up: 30, grav: -40, life: 0.5, size: 20 });
+  }
+}
+const HERO_BY_ID3 = {};
 
 /* ---------- teren s VISINAMA ---------- */
 function setGround(terrainCv){
@@ -1493,6 +1645,7 @@ function buildZoneMesh(z){
 function zoneTickFx(z, g){
   const k = g.userData.kind;
   const gh = groundHeight(z.x, z.y);
+  if(g.visible) spellLight(z.x, z.y, gh + 60, z.color || '#ffffff', 1.7, 0.45, z.r * 1.8 + 120);
   if(k === 'arrows') fxRain('proj_arrow', z.x, z.y, z.r, 12, { scale: 40, pointDown: true, fall: 0.3, hold: 0.9, rest: 12, height: 380 });
   else if(k === 'snow'){
     for(let i = 0; i < 14; i++){
@@ -1512,6 +1665,8 @@ function zoneEndFx(z, g){
         { spd: 160, up: 90 + Math.random() * 120, grav: -60, life: 0.9, size: 34 });
     }
     for(let i = 0; i < 16; i++) fxSpawn(z.x, z.y, gh + 20, '#6b7280', { spd: 90, up: 50, grav: -5, life: 1.6, size: 48 });
+    spellLight(z.x, z.y, gh + 50, '#ff7a1a', 4, 1.0, z.r * 3 + 200);
+    shockwave(z.x, z.y, z.r * 1.3, '#ffb020');
     scorchFx(z.x, z.y, z.r * 0.8, '#1f1a17', 7);
     shakeAt(z.x, z.y, 1.1, 0.6);
   }
@@ -1743,6 +1898,11 @@ function projEndFx(p, g){
   if(ud.tongue){ scene3.remove(ud.tongue); ud.tongue = null; }
   const h = g.position.y;
   const n = ud.name;
+  if(p.emoji && g.visible){   // udar magije: bljesak svjetla i mali udarni val
+    const col = (PROJ_TRAIL[n] && PROJ_TRAIL[n][0]) || p.color || '#ffffff';
+    spellLight(p.x, p.y, h + 10, col, 2.0, 0.45, 380);
+    shockwave(p.x, p.y, 55 + (p.r || 10) * 1.5, col);
+  }
   if(n === 'proj_fireball') for(let i = 0; i < 12; i++) fxSpawn(p.x, p.y, h, i % 2 ? '#ff7a1a' : '#ffe26b', { spd: 90, up: 40, grav: -40, life: 0.5, size: 26 });
   else if(n === 'proj_ice') for(let i = 0; i < 10; i++) fxSpawn(p.x, p.y, h, '#dff6ff', { spd: 80, up: 50, grav: -60, life: 0.5, size: 18 });
   else if(n === 'proj_moon') for(let i = 0; i < 12; i++) fxSpawn(p.x, p.y, h, '#e9d5ff', { spd: 70, up: 60, grav: -20, life: 0.6, size: 20 });
@@ -1758,27 +1918,46 @@ function buildMarkerMesh(m){
   mesh.position.set(m.x, groundHeight(m.x, m.y) + 2.6, m.y);
   return mesh;
 }
+/* munje i zrake: debela svijetleća cijev (vanjski sjaj + bijela jezgra) umjesto tanke linije;
+   munje (kind 'bolt' ili žute/bijele) su izlomljene */
 function buildLineMesh(l){
-  const pts = [];
-  const n = 8;
+  const bolt = l.kind === 'bolt' || /^#(fde047|ffffff|fef08a)$/i.test(l.color || '');
+  const n = bolt ? 10 : 6;
   const dx = l.x2 - l.x1, dy = l.y2 - l.y1;
   const L = Math.hypot(dx, dy) || 1;
   const px = -dy / L, py = dx / L;
+  const pts = [];
   for(let i = 0; i <= n; i++){
     const t = i / n;
-    const off = (i === 0 || i === n) ? 0 : (Math.random() - 0.5) * 36;
+    const edge = i === 0 || i === n;
+    const off = edge ? 0 : (Math.random() - 0.5) * (bolt ? Math.min(60, L * 0.12) : 10);
     const wx = l.x1 + dx * t + px * off;
     const wy = l.y1 + dy * t + py * off;
-    pts.push(new THREE.Vector3(wx, groundHeight(wx, wy) + 38 + Math.random() * 14, wy));
+    pts.push(new THREE.Vector3(wx, groundHeight(wx, wy) + 40 + (edge ? 0 : (Math.random() - 0.5) * (bolt ? 22 : 6)), wy));
   }
-  const geo = new THREE.BufferGeometry().setFromPoints(pts);
-  const mat = new THREE.LineBasicMaterial({ color: l.color, transparent: true, opacity: 1 });
-  // iskre duž munje / jezika
-  for(let i = 0; i < 6; i++){
+  let path;
+  if(bolt){ path = new THREE.CurvePath(); for(let i = 0; i < n; i++) path.add(new THREE.LineCurve3(pts[i], pts[i + 1])); }
+  else path = new THREE.CatmullRomCurve3(pts);
+  const w = Math.max(2.5, (l.w || 4) * 1.05);
+  const g = new THREE.Group();
+  const m1 = new THREE.MeshBasicMaterial({ color: l.color, transparent: true, opacity: 0.75, depthWrite: false, blending: THREE.AdditiveBlending });
+  const m2 = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 1, depthWrite: false, blending: THREE.AdditiveBlending });
+  g.add(new THREE.Mesh(new THREE.TubeGeometry(path, n * 3, w, 6, false), m1));
+  g.add(new THREE.Mesh(new THREE.TubeGeometry(path, n * 3, w * 0.32, 4, false), m2));
+  for(const p of [pts[0], pts[n]]){
+    const s = new THREE.Sprite(glowMat(l.color));
+    s.scale.set(w * 9, w * 9, 1);
+    s.position.copy(p);
+    g.add(s);
+  }
+  g.userData.mats = [m1, m2];
+  if(bolt) spellLight((l.x1 + l.x2) / 2, (l.y1 + l.y2) / 2, pts[n >> 1].y + 10, l.color, 1.6, Math.min(0.5, l.life || 0.3), 380);
+  // iskre duž munje / zrake
+  for(let i = 0; i < 8; i++){
     const p = pts[Math.floor(Math.random() * pts.length)];
     fxSpawn(p.x, p.z, p.y, l.color, { spd: 60, up: 20, life: 0.35, size: 16 });
   }
-  return new THREE.Line(geo, mat);
+  return g;
 }
 function buildRuneMesh(rn){
   const g = new THREE.Group();
@@ -2022,6 +2201,21 @@ function syncSteps(u, g, dt){
 /* efekt pri bacanju moći — ključ je "junak:tipka" (game.js: u.castFx) */
 function castFx(u, g, key){
   const gh = groundHeight(u.x, u.y);
+  {   // zajedničko za sve magije: runski krug, bljesak svjetla, udarni val za AoE oko junaka, stup svjetla za ulti
+    const [hid, k] = key.split(':');
+    let col = '#bae6fd', ult = false, self = 0;
+    if(hid !== 'item'){
+      if(!HERO_BY_ID3[hid]) HERO_BY_ID3[hid] = HEROES.find(h => h.id === hid);
+      const ab = HERO_BY_ID3[hid] && HERO_BY_ID3[hid].abilities.find(a => a.key === k);
+      if(ab){ col = ab.color || col; ult = !!ab.ult; self = (ab.bot && ab.bot.type === 'chain') ? 0 : Math.min(360, ab.selfAoe || 0); }
+    }
+    if(g.visible){
+      magicCircle(u.x, u.y, ult ? 125 : (hid === 'item' ? 55 : 80), col, ult ? 1.35 : 0.85, ult);
+      spellLight(u.x, u.y, gh + 70, col, ult ? 3.4 : 2.1, ult ? 1.0 : 0.6, ult ? 700 : 430);
+      if(self) shockwave(u.x, u.y, self, col);
+      if(ult){ beamFx(u.x, u.y, col, 1.25); shakeAt(u.x, u.y, 0.35, 0.3); }
+    }
+  }
   const dust = (n, c) => { for(let i = 0; i < n; i++) fxSpawn(u.x, u.y, gh + 4, c || '#c9b48c', { spd: 120, up: 30, grav: -30, life: 0.6, size: 22 }); };
   if(LEAP_KEYS[key]) startLeap(u, g, lastAnimT);
   switch(key){
@@ -2159,7 +2353,14 @@ function animateUnit(u, g, now, dt){
   }
   if((u.castN || 0) !== ud.castN){
     ud.castN = u.castN || 0;
-    animOnce(a, 'cast', 1.25, now, 0);
+    // magije s ciljem: "bacanje" prema cilju (cast2); oko sebe i ulti: obje ruke uvis (cast)
+    let nm = 'cast';
+    if(u.castFx && a.acts.cast2 && u.hero){
+      const k = u.castFx.split(':')[1];
+      const ab = u.hero.abilities.find(x => x.key === k);
+      if(ab && ab.target === 'point' && !ab.ult) nm = 'cast2';
+    }
+    animOnce(a, nm, nm === 'cast2' ? 1.15 : 1.25, now, 0);
     if(u.castFx) castFx(u, g, u.castFx);
   }
   const moving = gameTime - (u.lastMoveT == null ? -9 : u.lastMoveT) < 0.15;
@@ -2429,7 +2630,9 @@ function syncScene(tAnim){
   });
 
   syncMapped(lines, lineMeshes, buildLineMesh, (l, mesh) => {
-    mesh.material.opacity = Math.max(0, 1 - l.t / l.life);
+    const k = Math.max(0, 1 - l.t / l.life);
+    if(mesh.userData.mats){ mesh.userData.mats[0].opacity = 0.75 * k; mesh.userData.mats[1].opacity = k; }
+    else if(mesh.material) mesh.material.opacity = k;
   });
 
   syncMapped(runes, runeMeshes, buildRuneMesh, (rn, g) => {
@@ -2488,6 +2691,7 @@ function syncScene(tAnim){
     fxSpawn(x, y, groundHeight(x, y) + 140, '#fbcfe8', { spd: 25, up: -30, grav: 0, life: 3, size: 8 });
   }
   updateFxObjs(dt);
+  updateSpellLights(dt);
   updateFx(dt);
   syncCastIndicator();
 }
@@ -2566,6 +2770,7 @@ function clearScene3D(){
   for(const f of fxObjs){ scene3.remove(f.obj); disposeGroup(f.obj); }
   fxObjs.length = 0;
   shake.amp = 0; shake.t = 0; cine.on = false;
+  for(const s of spellLights){ s.L.intensity = 0; s.peak = 0; }
   if(playerRing3){ scene3.remove(playerRing3); playerRing3 = null; }
   if(castInd){
     castInd.ring.visible = castInd.aoe.visible = castInd.line.visible = false;
