@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.18: jednostavniji početni ekran — filtri Blizina/Daljina, 3D model junaka i pločice moći (urođena pasiva + Q W E R) s opisom jedne po jednoj, multiplayer iza jednog gumba.**
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.19: veća mapa (+45%), pravi Sentinel i Scourge (tamne zgrade s kostima, mrtva šuma, pokvarena zemlja), brda i planine oko mape i filmski izgled — sjaj (bloom), boje i vinjeta!** 🏔️☠️✨
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -18,6 +18,13 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- 🏔️ **3D dorada, 1. dio** (v0.19):
+  - 🗺️ **mapa je 45% veća** (4350×4350): baze, staze, kule, kampovi, rune i svetišta raspoređeni po istom planu, ali je svijet veći u odnosu na junake (kao u DotA); džungla je gušća (oko 270 stabala)
+  - ☠️ **Sentinel i Scourge**: crveni tim ima vlastite Blender zgrade — šiljati tamni tornjevi s koštanim rebrima i kandžama oko kristala, prijestol okružen golemim koštanim šiljcima i lubanjama, fontana s ljubičastom tekućinom, kripte umjesto kućica i zidine sa šiljcima; na njegovoj strani mape zemlja potamni i izgubi boju, šuma je mrtva (uvijena stabla s tamnocrvenim lišćem, pepeljasti borovi), umjesto cvijeća leže kosti, a zrakom lebde ljubičaste iskrice
+  - 🏞️ **rub svijeta**: izvan mape teren se diže u šumovita brda i stjenovite planine sa snijegom na vrhovima, s velikim stijenama i šumom koja stoji na brdima
+  - ✨ **post-processing**: HDR render s MSAA, sjaj (bloom) na magijama, kristalima, bakljama i prozorima, malo jače boje i kontrast, vinjeta i hladniji ton noću; tipka **K** pali/gasi, a na sporim uređajima se samo isključi
+  - ⚡ ukrasi se crtaju po komadima mape — samo ono što kamera vidi (manje trokuta na većoj mapi)
 
 - 🧭 **Jasniji izbor junaka** (v0.18): kratak naslov i jedna rečenica o igri; kartice samo sa slikom, imenom i ikonom ⚔️/🏹; filtri *Svi / Blizina / Daljina*; desno 3D model, uloga i 5 pločica (✨ urođena pasiva + Q W E R) — prijeđi ili klikni pločicu za opis; prvi junak je odmah odabran pa je dovoljno pritisnuti **ZAIGRAJ**; multiplayer se otvara gumbom 👥; na mobitelu su gumbi uvijek pri dnu ekrana
 

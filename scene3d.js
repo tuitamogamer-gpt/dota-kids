@@ -425,12 +425,7 @@ function initScene3D(glCanvas){
   scene3.add(sunLight);
   scene3.add(sunLight.target);
 
-  const skirt = new THREE.Mesh(
-    cachedGeo('skirt', () => new THREE.PlaneGeometry(18000, 18000)),
-    lambMat('#2f5d23'));
-  skirt.rotation.x = -Math.PI / 2;
-  skirt.position.set(WORLD / 2, -4, WORLD / 2);
-  scene3.add(skirt);
+  buildBorderLand();
 
   initFx();
   initSpellLights();
@@ -684,6 +679,42 @@ function shockwave(x, y, r, color){
   }
 }
 const HERO_BY_ID3 = {};
+
+/* ---------- rub svijeta: izvan mape se teren diže u šumovita brda i stjenovite planine ---------- */
+function borderHeight(x, y){
+  const cx = clamp(x, 0, WORLD), cy = clamp(y, 0, WORLD);
+  const d = Math.hypot(x - cx, y - cy);
+  const base = groundHeight(cx, cy);
+  if(d <= 0) return base - 3;   // ispod terena mape (ne vidi se)
+  const n = Math.sin(x * 0.004 + Math.cos(y * 0.003) * 2) * 0.5 + Math.sin(y * 0.0055 + x * 0.0021) * 0.5;
+  return base - 3 + smoothstep(0, 650, d) * (150 + 80 * n) + smoothstep(650, 2400, d) * (320 + 160 * n);
+}
+function buildBorderLand(){
+  const E = 3200, seg = 120, size = WORLD + 2 * E;
+  const geo = new THREE.PlaneGeometry(size, size, seg, seg);
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position, cols = new Float32Array(pos.count * 3);
+  const cGrass = new THREE.Color('#6aa844'), cForest = new THREE.Color('#2f5726'), cRock = new THREE.Color('#77706a'),
+    cSnow = new THREE.Color('#d9dde3'), cDire = new THREE.Color('#3b3045'), tmp = new THREE.Color();
+  for(let i = 0; i < pos.count; i++){
+    const x = WORLD / 2 + pos.getX(i), y = WORLD / 2 + pos.getZ(i);
+    const h = borderHeight(x, y);
+    pos.setY(i, h);
+    const d = Math.hypot(x - clamp(x, 0, WORLD), y - clamp(y, 0, WORLD));
+    tmp.copy(cGrass).lerp(cForest, smoothstep(60, 520, d)).lerp(cRock, smoothstep(520, 1300, d) * 0.85);
+    if(h > 520) tmp.lerp(cSnow, smoothstep(520, 700, h) * 0.8);
+    const sd = (x - y) / Math.SQRT2;
+    if(sd > 0) tmp.lerp(cDire, smoothstep(0, 1400, sd) * 0.6);
+    tmp.multiplyScalar(0.92 + 0.16 * hash01(Math.round(x / 37), Math.round(y / 37), 3));
+    cols[i * 3] = tmp.r; cols[i * 3 + 1] = tmp.g; cols[i * 3 + 2] = tmp.b;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+  geo.computeVertexNormals();
+  const land = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true }));
+  land.position.set(WORLD / 2, 0, WORLD / 2);
+  land.receiveShadow = true;
+  scene3.add(land);
+}
 
 /* ---------- teren s VISINAMA ---------- */
 function setGround(terrainCv){
@@ -967,7 +998,15 @@ function buildTrees3D(){
     const r = hash01(i, 23, 5);
     const dire = scourgeSide(x, y) > 0 && MODELS.tpl.tree_dpine0;
     const kind = r < 0.7 ? (dire ? 'tree_dpine' : 'tree_pine') + (i % 3) : (dire ? 'tree_dead' : 'tree_oak') + (i % 3);
-    add(kind, { x, y, h: -6, rot: r * 6.28, s: (r < 0.7 ? 48 : 52) + hash01(i, 24, 6) * 34 });
+    add(kind, { x, y, h: borderHeight(x, y) - 4, rot: r * 6.28, s: (r < 0.7 ? 48 : 52) + hash01(i, 24, 6) * 34 });
+  }
+  // velike stijene i litice na brdima oko mape
+  if(MODELS.tpl.rock_big0) for(let i = 0; i < Math.round(170 * MAP_S); i++){
+    const side = i % 4, t = hash01(i, 71, 3) * (WORLD + 1600) - 800, depth = 420 + hash01(i, 72, 4) * 1000;
+    let x, y;
+    if(side === 0){ x = t; y = -depth; } else if(side === 1){ x = t; y = WORLD + depth; }
+    else if(side === 2){ x = -depth; y = t; } else { x = WORLD + depth; y = t; }
+    add('rock_big' + (i % 2), { x, y, h: borderHeight(x, y) - 12, rot: hash01(i, 73, 5) * 6.28, s: 60 + hash01(i, 74, 6) * 80 });
   }
   for(const name in buckets) instancedChunks(name, buckets[name], treesGroup);
   // sjaj plamena baklji, logorskih vatri i kristala (sprite — instancirana geometrija ne svijetli)
@@ -3090,8 +3129,13 @@ function syncScene(tAnim){
   }
 
   if(waterMesh) waterMesh.material.uniforms.t.value = tAnim;
-  // ambijent: krijesnice noću, latice danju
-  if(dayK < 0.4 && Math.random() < dt * 10){
+  // ambijent: na Scourge strani ljubičaste iskrice i pepeo, inače krijesnice noću i latice danju
+  if(scourgeSide(cam.x, cam.y) > 260 * MAP_S){
+    if(Math.random() < dt * 9){
+      const x = cam.x + (Math.random() - 0.5) * 1400, y = cam.y + (Math.random() - 0.5) * 900;
+      if(scourgeSide(x, y) > 200) fxSpawn(x, y, groundHeight(x, y) + 10 + Math.random() * 40, Math.random() < 0.6 ? '#c084fc' : '#9ca3af', { spd: 10, up: 22, grav: 0, life: 2.6, size: Math.random() < 0.6 ? 8 : 11 });
+    }
+  } else if(dayK < 0.4 && Math.random() < dt * 10){
     const x = cam.x + (Math.random() - 0.5) * 1400, y = cam.y + (Math.random() - 0.5) * 900;
     fxSpawn(x, y, groundHeight(x, y) + 25 + Math.random() * 60, Math.random() < 0.5 ? '#d9f99d' : '#fef08a', { spd: 14, up: 6, grav: 0, life: 2.5, size: 9 });
   } else if(dayK > 0.6 && Math.random() < dt * 3){
