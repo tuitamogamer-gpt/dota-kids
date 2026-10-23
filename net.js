@@ -539,6 +539,7 @@ function resetMatchState(){
   pendingCast = null;
   gameTime = 0; waveTimer = CFG.firstWave; waveCount = 0;
   firstBlood = false; gameOver = false; paused = false;
+  quickBuy = null; shopSel = null; invDrag = null; hideItemTip();   // nova igra: bez stare brze kupnje i opisa
   banner = null;
   remoteHero = null;
   net.guestUnits.clear();

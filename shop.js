@@ -17,7 +17,8 @@ function hexA(hex, a){
 function itemIconCanvas(it){
   if(ITEM_ICON[it.id]) return ITEM_ICON[it.id];
   const c = document.createElement('canvas'); c.width = ICON_W; c.height = ICON_H;
-  const g = c.getContext('2d');
+  // softversko platno: toDataURL() je tada trenutan (ne čeka grafičku karticu koja crta 3D scenu)
+  const g = c.getContext('2d', { willReadFrequently: true });
   const q = ITEM_QUALITY[it.q] || ITEM_QUALITY.comp;
   // pozadina: tamni gradijent u boji kvalitete
   const bg = g.createRadialGradient(ICON_W * 0.5, ICON_H * 0.36, 4, ICON_W * 0.5, ICON_H * 0.5, ICON_W * 0.66);

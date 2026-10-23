@@ -3038,6 +3038,7 @@ function startGame(heroIdx){
   pendingCast = null;
   gameTime = 0; waveTimer = CFG.firstWave; waveCount = 0;
   firstBlood = false; gameOver = false; paused = false;
+  quickBuy = null; shopSel = null; invDrag = null; hideItemTip();   // nova igra: bez stare brze kupnje i opisa
   banner = null;
   myTeam = TEAM_BLUE;
   remoteHero = null;
@@ -3081,6 +3082,9 @@ function endGameView(winTeam){
   winnerTeam = winTeam;
   const won = player && player.team === winTeam;
   pendingCast = null;
+  hoverUi = null; invDrag = null;
+  if(typeof hideItemTip === 'function') hideItemTip();   // opis predmeta ne smije ostati preko završnog ekrana
+  if(shopOpen) toggleShop();
   announce(won ? '🏆 POBJEDA!' : '💔 PORAZ...', won ? 'Neprijateljski prijestol se raspada!' : 'Naš prijestol je pao...');
   startCinematic(ANCIENT_POS[1 - winTeam]);   // kamera leti do prijestola koji se raspada
   sfx(won ? 'win' : 'lose');
@@ -3265,6 +3269,7 @@ function aimFallback(u){
 
 function setupInput(){
   hudCv.addEventListener('contextmenu', e => e.preventDefault());
+  hudCv.addEventListener('mouseleave', () => { hoverUi = null; if(typeof hideItemTip === 'function') hideItemTip(); });
 
   hudCv.addEventListener('mousedown', e => {
     if(ac() && AC.state === 'suspended') AC.resume();
