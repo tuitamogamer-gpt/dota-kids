@@ -50,8 +50,8 @@ const CFG = {
   runeEvery: 120,
   dayCycle: 240,
   uphillMissChance: 0.25,
-  barracksHp: 2000,
-  towerHp: 2400,
+  barracksHp: 2200,
+  towerHp: 2600,
   ancientHp: 5000,
   heroVsStructure: 0.5,     // junaci udaraju građevine slabije (utvrđeni oklop kao u Allstarsu)
   siegeVsStructure: 1.25,   // opsadni vojnici jače
