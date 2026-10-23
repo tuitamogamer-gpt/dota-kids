@@ -234,8 +234,8 @@ function buildSnapshot(){
       h: Math.round(u.hp), m: u.maxhp,
       d: +(u.dir || 0).toFixed(2),
     };
-    if(u.atkN) b.an = u.atkN % 1000;     // 3D animacije napada i čaranja
-    if(u.castN){ b.cn = u.castN % 1000; b.cf = u.castFx; }
+    if(u.atkN){ b.an = u.atkN % 1000; if(u.atkInt) b.ai = +u.atkInt.toFixed(2); if(u.atkHeavy) b.ah = 1; }   // 3D animacije napada i čaranja
+    if(u.castN){ b.cn = u.castN % 1000; b.cf = u.castFx; if(u.castAim) b.ca = [Math.round(u.castAim.x), Math.round(u.castAim.y)]; }
     if(u.knockN) b.kn = u.knockN % 1000;   // odbačaj
     if(u.charge) b.ch = 1;                 // juriš
     if(u.kind === 'hero'){
@@ -374,7 +374,7 @@ function applySnapshot(d){
     u.tx2 = b.x; u.ty2 = b.y; u.tDir = b.d || 0;
     if(Math.abs(b.x - u.x) > 260 || Math.abs(b.y - u.y) > 260){ u.x = b.x; u.y = b.y; }
     u.hp = b.h; u.maxhp = b.m;
-    u.atkN = b.an || 0; u.castN = b.cn || 0; if(b.cf) u.castFx = b.cf;
+    u.atkN = b.an || 0; u.castN = b.cn || 0; if(b.cf) u.castFx = b.cf; u.castAim = b.ca ? { x: b.ca[0], y: b.ca[1] } : null; u.atkInt = b.ai || null; u.atkHeavy = !!b.ah;
     u.knockN = b.kn || 0; u.charge = b.ch ? { net: true } : null;
     if(u.kind === 'hero'){
       u.level = b.l; u.dead = !!b.dd;

@@ -925,6 +925,7 @@ function applyDamage(t, amount, src){
   amount = Math.max(1, Math.round(amount));
   t.hp -= amount;
   t.flash = 0.12;
+  if(src && src !== t) t.hitAng = Math.atan2(t.y - src.y, t.x - src.x);   // 3D: trzaj od napadača
   if(t.kind === 'hero' || t.kind === 'tower' || t.kind === 'ancient' || t.kind === 'barracks' || (src && src.isPlayer)){
     addFloat(t.x, t.y, '-' + amount, src && src.team === TEAM_BLUE ? '#ffd166' : '#ff8fa3', t.kind === 'hero' ? 16 : 13);
   }
@@ -1299,7 +1300,8 @@ function spawnSkillshot(u, aim, o){
 function spawnHoming(src, target, o){
   projectiles.push({
     id: nextId++,
-    kind: 'homing', x: src.x, y: src.y, target,
+    kind: 'homing', x: o.x != null ? o.x : src.x, y: o.y != null ? o.y : src.y, target,
+    sx: o.x != null ? o.x : src.x, sy: o.y != null ? o.y : src.y,
     speed: o.speed, dmg: o.dmg, src, team: src.team,
     color: o.color || '#fff', emoji: o.emoji || null, r: o.r || 6,
     onHit: o.onHit || null, miss: !!o.miss,
@@ -1431,6 +1433,8 @@ function castAbility(u, i, aim){
   }
   u.mp -= ab.def.mana;
   ab.cd = ab.def.cd * (1 - (u.cdr || 0));   // 🎓 talent: kraće hlađenje
+  if(u.windup){ u.windup = null; u.atkTimer = 0; }   // čaranje prekida zamah — napad nije potrošen
+  u.castAim = aim ? { x: aim.x, y: aim.y } : null;   // 3D: efekt na mjestu cilja
   u.castFx = u.hero.id + ':' + ab.def.key;   // 3D: efekt moći (scene3d.js)
   u.castN = (u.castN || 0) + 1;              // 3D: animacija čaranja
   if(aim && (Math.abs(aim.x - u.x) + Math.abs(aim.y - u.y) > 4)) u.dir = Math.atan2(aim.y - u.y, aim.x - u.x);
@@ -1626,6 +1630,7 @@ function performAttack(u, t){
   const raging = u.status.rageT > 0;           // Bijes: +40% brzine napada
   u.atkTimer = u.atkCd / (u.status.hasteT > 0 ? u.status.hasteF : 1) / (1 + (u.atkSpdBonus || 0) + 0.1 * copor + (raging ? 0.4 : 0) + (u.aspdT > 0 ? u.aspdF : 0) + (u.talAspd || 0));
   u.atkN = (u.atkN || 0) + 1;   // 3D: animacija napada
+  u.atkInt = u.atkTimer;        // 3D: animacija se ubrzava s brzinom napada
   if(Math.abs(t.x - u.x) > 2) u.face = t.x < u.x ? -1 : 1;
   u.dir = Math.atan2(t.y - u.y, t.x - u.x);
   // napad iz sjene (Tragač): bonus PRIJE nego nevidljivost pukne
@@ -1724,8 +1729,22 @@ function performAttack(u, t){
   const miss = ((groundHeight(t.x, t.y) - groundHeight(u.x, u.y) > 25) && Math.random() < CFG.uphillMissChance) ||
     (u.status.blindT > 0 && Math.random() < u.status.blindF) ||   // 😵 tinta / vrtoglavica
     (t.dodgeT > 0 && Math.random() < t.dodgeF);                   // 🥴 Pijani korak
+  u.atkHeavy = crit || komboHit || jinProc || clawProc || shadowBonus > 0;   // 3D: jači zamah (attack2)
+  // kao u DotA: zamah traje do "kadra udarca" animacije, tek tada šteta / projektil (kula puca odmah)
+  const wind = u.kind === 'tower' ? 0 : ATK_POINT / Math.max(1, ATK_ANIM_LEN / u.atkTimer);
+  const deliver = () => releaseAttack(u, t, dmg, miss, onHitFx);
+  if(wind > 0) u.windup = { t: gameTime + wind, target: t, deliver };
+  else deliver();
+}
+const ATK_POINT = 7 / 24;      // udarac je u 7. kadru animacije napada (24 kadra/s)
+const ATK_ANIM_LEN = 0.62;     // ispod ovog razmaka napada animacija se ubrzava
+function releaseAttack(u, t, dmg, miss, onHitFx){
+  if(u.dead || u.removeMe || !isTargetable(t)) return;
+  if(dist(u, t) > u.atkRange + t.r + 160) return;   // meta pobjegla tijekom zamaha: promašaj u zrak
   if(u.projSpeed > 0){
+    const off = (u.r || 16) * 0.8 + 8;   // strijela / kugla polijeće iz ruke ispred junaka, ne iz sredine tijela
     spawnHoming(u, t, {
+      x: u.x + Math.cos(u.dir || 0) * off, y: u.y + Math.sin(u.dir || 0) * off,
       speed: u.projSpeed, dmg, miss,
       onHit: miss ? null : onHitFx,
       color: u.kind === 'tower' ? '#fbbf24' : TEAM_LIGHT[u.team],
@@ -2294,7 +2313,15 @@ function updateUnit(u, dt){
   if(st.stun > 0){
     if(u.kind === 'hero' && u.tpChannel > 0) cancelTeleport(u);   // omama prekida teleport
     u.charge = null;
+    u.windup = null;   // omama prekida i zamah napada
     return;
+  }
+  if(u.windup){   // ⚔️ zamah napada: udarac pada u kadru udarca animacije
+    if(gameTime >= u.windup.t){
+      const w = u.windup; u.windup = null;
+      w.deliver();
+      if(u.dead || u.removeMe) return;
+    } else if(u.attackTarget === u.windup.target && !u.charge) return;   // stoji dok zamahuje
   }
   if(u.charge && updateCharge(u, dt)) return;   // 🏃 juriš: ništa drugo dok traje
 
@@ -2365,6 +2392,7 @@ function updateUnit(u, dt){
 
 function respawn(u){
   u.dead = false;
+  u.windup = null;
   u.hp = u.maxhp;
   u.mp = u.maxmp;
   const f = FOUNTAIN[u.team];
