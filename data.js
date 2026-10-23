@@ -9,7 +9,8 @@
    - Atributi: str/agi/int + rast po levelu; primary daje štetu.
    ============================================================ */
 
-const WORLD = 3000;
+const MAP_S = 1.45;                        // mjerilo mape (1 = stara mapa 3000×3000)
+const WORLD = Math.round(3000 * MAP_S);
 const TEAM_BLUE = 0, TEAM_RED = 1, TEAM_NEUTRAL = 2;
 const TEAM_COLOR = ['#3b82f6', '#ef4444', '#f59e0b'];
 const TEAM_LIGHT = ['#93c5fd', '#fca5a5', '#fcd34d'];
@@ -1658,6 +1659,9 @@ const TALENTS = [
 /* ---------------- RUNE NA RIJECI ---------------- */
 
 const RUNE_SPOTS = [{ x:1150, y:1150 }, { x:1850, y:1850 }];
+// sva mjesta na mapi zadana su za staru mapu 3000×3000 — ovdje se skaliraju na veću
+for(const arr of [CAMP_SPOTS, BOUNTY_SPOTS, WISDOM_SPOTS, SHRINE_SPOTS, RUNE_SPOTS])
+  for(const p of arr){ p.x = Math.round(p.x * MAP_S); p.y = Math.round(p.y * MAP_S); }
 const RUNE_TYPES = [
   { id:'haste',  emoji:'💨', name:'Runa brzine',
     apply(h){ applyHaste(h, 1.8, 15); } },

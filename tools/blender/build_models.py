@@ -1707,6 +1707,198 @@ def build_barracks():
     m.finish()
 
 
+# ------------------------------------------------------------------ SCOURGE (crveni tim): tamni kamen, kosti, ljubičasti sjaj
+DSTONE = ['#4a4352', '#3f3a47', '#554d5e']
+BONE, BONE2, VOID = '#ece4d0', '#d6ccb4', '#a855f7'
+
+
+def bone_spike(p, base, direction, length, r, curve=0.25):
+    """zakrivljeni koštani šiljak (dva stošca)"""
+    b0 = Vector(base); d = Vector(direction).normalized()
+    up = Vector((0, 0, 1))
+    mid = b0 + d * length * 0.55 + up * length * curve * 0.5
+    tip = b0 + d * length + up * length * curve
+    p.cyl(tuple(b0), tuple(mid), r, r * 0.65, BONE2, seg=8)
+    p.cyl(tuple(mid), tuple(tip), r * 0.65, 0.0, BONE, seg=8)
+
+
+def skull(p, c, s, face=(1, 0, 0)):
+    """mala lubanja okrenuta prema face (x os)"""
+    x, y, z = c
+    p.sphere((x, y, z + 0.02 * s), (0.16 * s, 0.17 * s, 0.15 * s), BONE, seg=(12, 9))
+    p.sphere((x + 0.06 * s, y, z - 0.09 * s), (0.1 * s, 0.12 * s, 0.07 * s), BONE2, seg=(10, 6))   # čeljust
+    for sd in (1, -1):
+        p.sphere((x + 0.13 * s, y + sd * 0.065 * s, z + 0.02 * s), (0.03 * s, 0.045 * s, 0.045 * s), '#1a0f24', seg=(8, 6))
+        p.sphere((x + 0.15 * s, y + sd * 0.065 * s, z + 0.02 * s), (0.015 * s, 0.022 * s, 0.022 * s), VOID, mat='glow', seg=(6, 4))
+    p.cyl((x + 0.15 * s, y, z - 0.03 * s), (x + 0.16 * s, y, z - 0.06 * s), 0.02 * s, 0.0, '#1a0f24', seg=4)
+
+
+def build_scourge():
+    # kula: tamni zašiljeni toranj s rebrima od kostiju i kandžama oko kristala
+    m = Model('tower_d')
+    b = m.part('base', (0, 0, 0))
+    b.cyl((0, 0, 0), (0, 0, 0.32), 1.0, 0.9, '#2e2a36', seg=12)
+    for i in range(6):
+        z0 = 0.3 + i * 0.42
+        r0 = 0.78 - i * 0.05
+        b.cyl((0, 0, z0), (0, 0, z0 + 0.42), r0, r0 - 0.05, DSTONE[i % 3], seg=8)
+        b.cyl((0, 0, z0 + 0.38), (0, 0, z0 + 0.45), r0 + 0.03, r0 + 0.02, '#2e2a36', seg=8)
+    for k in range(4):   # koštana rebra uz toranj
+        a = RAD(k * 90 + 45)
+        ca, sa = math.cos(a), math.sin(a)
+        for j in range(3):
+            z = 0.7 + j * 0.75
+            rr = 0.8 - j * 0.12
+            bone_spike(b, (ca * rr * 0.9, sa * rr * 0.9, z), (ca, sa, 0.55), 0.55 - j * 0.08, 0.07, 0.35)
+    for a in (-35, -90, -145):   # ljubičasti prozori-proreci
+        ca, sa = math.cos(RAD(a)), math.sin(RAD(a))
+        for zz, rr in ((1.76, 0.66), (2.6, 0.57)):
+            b.box((ca * rr, sa * rr, zz), (0.06, 0.12, 0.42), VOID, mat='glow', rot=(0, 0, a))
+    b.box((0.72, 0, 0.55), (0.12, 0.34, 0.5), '#1a0f24', bevel=0.03)   # vrata
+    skull(b, (0.8, 0, 1.15), 1.2)
+    b.cyl((0, 0, 1.95), (0, 0, 2.15), 0.68, 0.66, '#ffffff', mat='team', seg=8)
+    b.cyl((0, 0, 2.8), (0, 0, 2.98), 0.92, 0.8, '#2e2a36', seg=10)
+    for i in range(6):   # kandže koje drže kristal
+        a = RAD(i * 60)
+        ca, sa = math.cos(a), math.sin(a)
+        bone_spike(b, (ca * 0.75, sa * 0.75, 2.95), (ca * 0.2, sa * 0.2, 1.0), 0.75, 0.09, -0.15)
+    b.cyl((0, 0, 2.95), (0, 0, 3.1), 0.42, 0.36, '#3f3a47', seg=10)
+    cr = m.part('crystal', (0, 0, 3.3))
+    cr.ico((0, 0, 3.3), (0.22, 0.22, 0.36), '#ffffff', mat='teamglow', sub=0)
+    m.finish()
+
+    # prijestol (Smrznuto srce): kruna od kostiju oko tamnog šiljatog kristala
+    m = Model('ancient_d')
+    b = m.part('base', (0, 0, 0))
+    b.cyl((0, 0, 0), (0, 0, 0.3), 1.95, 1.8, '#2e2a36', seg=14)
+    b.cyl((0, 0, 0.3), (0, 0, 0.55), 1.55, 1.45, DSTONE[0], seg=14)
+    b.cyl((0, 0, 0.55), (0, 0, 0.8), 1.2, 1.1, DSTONE[2], seg=14)
+    b.cyl((0, 0, 0.78), (0, 0, 0.86), 1.22, 1.2, '#ffffff', mat='team', seg=14)
+    for i in range(8):   # veliki koštani šiljci u krugu
+        a = RAD(i * 45 + 22.5)
+        ca, sa = math.cos(a), math.sin(a)
+        bone_spike(b, (ca * 1.5, sa * 1.5, 0.4), (ca * 0.35, sa * 0.35, 1.0), 1.6 + (i % 2) * 0.5, 0.14, 0.12)
+    for i in range(4):
+        a = RAD(i * 90)
+        skull(b, (math.cos(a) * 1.25, math.sin(a) * 1.25, 0.95), 1.4)
+    for i in range(6):   # ljubičasti jezičci energije
+        a = RAD(i * 60)
+        b.cyl((math.cos(a) * 0.6, math.sin(a) * 0.6, 0.8), (math.cos(a) * 0.3, math.sin(a) * 0.3, 1.6), 0.06, 0.0, VOID, mat='glow', seg=5)
+    b.cyl((0, 0, 0.8), (0, 0, 1.15), 0.6, 0.45, '#2e2a36', seg=10)
+    cr = m.part('crystal', (0, 0, 2.15))
+    cr.ico((0, 0, 2.15), (0.45, 0.45, 1.0), '#ffffff', mat='teamglow', sub=0)
+    cr.ico((0, 0, 2.0), (0.62, 0.62, 0.3), '#2e2a36', sub=0)
+    for i in range(5):
+        a = RAD(i * 72)
+        cr.ico((math.cos(a) * 0.55, math.sin(a) * 0.55, 1.9), (0.1, 0.1, 0.42), '#ffffff', mat='teamglow', sub=0, rot=(math.sin(a) * 20, -math.cos(a) * 20, 0))
+    m.finish()
+
+    # fontana: tamni bazen sa sjajnom ljubičastom tekućinom i lubanjama
+    m = Model('fountain_d')
+    b = m.part('base', (0, 0, 0))
+    b.cyl((0, 0, 0), (0, 0, 0.35), 3.0, 3.0, '#2e2a36', seg=24)
+    for i in range(16):
+        a = RAD(i * 22.5)
+        b.box((math.cos(a) * 2.9, math.sin(a) * 2.9, 0.18), (0.32, 0.3, 0.36), DSTONE[i % 3], rot=(0, 0, i * 22.5), bevel=0.03)
+        if i % 4 == 0:
+            bone_spike(b, (math.cos(a) * 2.95, math.sin(a) * 2.95, 0.3), (math.cos(a) * 0.3, math.sin(a) * 0.3, 1.0), 0.9, 0.11, 0.1)
+    b.cyl((0, 0, 0.3), (0, 0, 0.42), 3.08, 3.08, '#ffffff', mat='team', seg=24)
+    b.cyl((0, 0, 0.3), (0, 0, 0.34), 2.75, 2.75, '#7e22ce', mat='glow', seg=24)
+    b.cyl((0, 0, 0.3), (0, 0, 1.4), 0.34, 0.26, DSTONE[1], seg=10)
+    b.cyl((0, 0, 1.3), (0, 0, 1.55), 1.2, 1.3, DSTONE[2], seg=16)
+    b.cyl((0, 0, 1.5), (0, 0, 1.56), 1.15, 1.15, '#9333ea', mat='glow', seg=16)
+    for i in range(4):
+        a = RAD(i * 90 + 45)
+        skull(b, (math.cos(a) * 1.25, math.sin(a) * 1.25, 1.42), 1.0)
+    b.cyl((0, 0, 1.5), (0, 0, 2.4), 0.16, 0.12, DSTONE[0], seg=8)
+    b.cyl((0, 0, 2.3), (0, 0, 2.48), 0.55, 0.6, DSTONE[2], seg=12)
+    w = m.part('water', (0, 0, 2.5))
+    w.sphere((0, 0, 2.65), (0.16, 0.16, 0.3), '#e9d5ff', mat='glow')
+    for i in range(8):
+        a = RAD(i * 45)
+        w.cyl((math.cos(a) * 0.4, math.sin(a) * 0.4, 2.55), (math.cos(a) * 0.95, math.sin(a) * 0.95, 1.6),
+              0.05, 0.08, '#c084fc', mat='glow', seg=5)
+    m.finish()
+
+    # vojarna: tamna kripta s oštrim krovom, koštanim lukom i lubanjom nad vratima
+    m = Model('barracks_d')
+    b = m.part('base', (0, 0, 0))
+    b.box((0, 0, 0.5), (1.7, 1.3, 1.0), DSTONE[0], bevel=0.05)
+    b.box((0, 0, 0.08), (1.9, 1.5, 0.16), '#2e2a36', bevel=0.03)
+    rz, ez, ov, hx = 2.1, 1.0, 0.85, 1.0
+    b.poly([(-hx, 0, rz), (hx, 0, rz), (hx, ov, ez), (-hx, ov, ez)], '#ffffff', mat='team', thick=0.09)
+    b.poly([(hx, 0, rz), (-hx, 0, rz), (-hx, -ov, ez), (hx, -ov, ez)], '#ffffff', mat='team', thick=0.09)
+    b.poly([(0.85, -0.65, ez), (0.85, 0.65, ez), (0.85, 0, rz - 0.02)], DSTONE[2], thick=0.12)
+    b.poly([(-0.85, 0.65, ez), (-0.85, -0.65, ez), (-0.85, 0, rz - 0.02)], DSTONE[2], thick=0.12)
+    for xx in (-hx, hx):   # šiljci na sljemenu
+        bone_spike(b, (xx, 0, rz), (xx * 0.3, 0, 1.0), 0.5, 0.07, 0.0)
+    b.box((0.86, 0, 0.42), (0.1, 0.42, 0.7), '#1a0f24', bevel=0.03)
+    for sd in (1, -1):   # koštani luk oko vrata
+        bone_spike(b, (0.95, sd * 0.4, 0.0), (0.0, -sd * 0.25, 1.0), 1.0, 0.07, 0.0)
+    skull(b, (0.95, 0, 1.0), 1.0)
+    for yy in (0.4, -0.4):
+        b.box((0.84, yy, 0.62), (0.08, 0.14, 0.3), VOID, mat='glow')
+    b.cyl((0.6, 0.55, 1.2), (0.6, 0.55, 2.5), 0.03, 0.03, '#2e2a36', seg=6)
+    b.poly([(0.6, 0.55, 2.5), (0.6, 0.55, 2.15), (1.05, 0.55, 2.32)], '#ffffff', mat='team')
+    m.finish()
+
+    # zidina: tamni kamen s koštanim šiljcima
+    m = Model('wall_d')
+    w = m.part('mesh')
+    w.box((0, 0, 0.4), (1.0, 0.3, 0.8), DSTONE[0], bevel=0.02)
+    w.box((0, 0, 0.12), (1.04, 0.36, 0.24), '#2e2a36', bevel=0.02)
+    for k in range(3):
+        bone_spike(w, (-0.33 + k * 0.33, 0, 0.78), (0.1, 0.4, 1.0), 0.45, 0.06, 0.0)
+    w.cyl((0.5, 0, 0), (0.5, 0, 1.15), 0.2, 0.15, DSTONE[2], seg=8)
+    w.cyl((0.5, 0, 1.1), (0.5, 0, 1.45), 0.18, 0.0, '#ffffff', mat='team', seg=8)
+    m.finish()
+
+    # mrtvo drveće: tamno uvijeno deblo, gole grane, rijetko tamnocrveno lišće
+    rnd = random.Random(23)
+    for v in range(3):
+        m = Model('tree_dead%d' % v)
+        p = m.part('mesh')
+        trunk = '#3b2f2f' if v != 1 else '#463838'
+        pts = [(0, 0, 0), (0.06, 0.02, 0.5), (-0.04, 0.05, 1.0), (0.05, -0.02, 1.45)]
+        rr = [0.2, 0.14, 0.11, 0.07]
+        for i in range(3):
+            p.cyl(pts[i], pts[i + 1], rr[i], rr[i + 1], trunk, seg=8, smooth=True)
+        for k in range(5 + v):
+            a = rnd.uniform(0, math.tau)
+            z = rnd.uniform(0.7, 1.4)
+            base = (0.02, 0.02, z)
+            mid = (math.cos(a) * 0.35, math.sin(a) * 0.35, z + 0.25)
+            tip = (math.cos(a + 0.4) * 0.6, math.sin(a + 0.4) * 0.6, z + 0.55)
+            p.cyl(base, mid, 0.05, 0.03, trunk, seg=6)
+            p.cyl(mid, tip, 0.03, 0.0, trunk, seg=5)
+            if k % 2 == 0:
+                p.ico(tip, 0.13 + rnd.uniform(0, 0.06), ['#7f1d1d', '#581c87', '#6b2135'][(k + v) % 3], sub=1, jitter=0.25, seed=v * 20 + k)
+        for k in range(3):   # korijenje
+            a = k * 2.1 + v
+            p.cyl((0, 0, 0.05), (math.cos(a) * 0.35, math.sin(a) * 0.35, -0.02), 0.09, 0.03, trunk, seg=6)
+        m.finish()
+    for v in range(3):   # tamni borovi (pepeljasti vrhovi)
+        m = Model('tree_dpine%d' % v)
+        p = m.part('mesh')
+        p.cyl((0, 0, 0), (0, 0, 0.7), 0.13, 0.1, '#3b2f2f', seg=6)
+        tiers = 3 + (v % 2)
+        for i in range(tiers):
+            z0 = 0.45 + i * 0.55
+            r0 = 0.82 - i * 0.17
+            p.cyl((0, 0, z0), (0, 0, z0 + 0.95 - i * 0.08), r0, 0.0, ['#1f3b36', '#24443d', '#1a332f'][(i + v) % 3], seg=8)
+            p.cyl((0, 0, z0 + 0.02), (0, 0, z0 + 0.1), r0 * 0.94, r0 * 0.88, '#6b6475', seg=8)   # pepeo
+        m.finish()
+    # kosti na tlu (ukras Scourge strane)
+    m = Model('bones0')
+    p = m.part('mesh')
+    skull(p, (0, 0, 0.12), 1.3)
+    for (a, L) in ((0.4, 0.5), (2.2, 0.42), (3.9, 0.36)):
+        x, y = math.cos(a) * 0.35, math.sin(a) * 0.35
+        p.cyl((x, y, 0.04), (x + math.cos(a + 1.4) * L, y + math.sin(a + 1.4) * L, 0.04), 0.035, 0.035, BONE2, seg=6)
+        p.sphere((x, y, 0.04), 0.05, BONE, seg=(6, 4))
+    m.finish()
+
+
 # ------------------------------------------------------------------ PORTRETI (render glave za ekran odabira)
 def render_portraits(ids, size=512):
     sc = bpy.context.scene
@@ -2760,6 +2952,12 @@ def preview(path, only=None, cols=8, zoom=1.0):
 def main():
     reset_scene()
     make_materials()
+    if '--dev-v19' in argv:   # brza provjera Scourge modela (bez izvoza)
+        build_tower()
+        build_barracks()
+        build_scourge()
+        preview(os.path.join(HERE, 'preview_v19.png'), only=['tower', 'ancient', 'fountain', 'barracks', 'wall', 'tree_dead', 'tree_dpine', 'bones'], cols=5, zoom=1.6)
+        return
     if '--dev-v15' in argv:   # brza provjera novih junaka (bez izvoza)
         for hid in ('jednorog', 'morskipas'):
             c, o = HEROES[hid]
@@ -2778,6 +2976,7 @@ def main():
     build_neutrals()
     build_tower()
     build_barracks()
+    build_scourge()
     build_nature()
     build_env()
     build_golem()

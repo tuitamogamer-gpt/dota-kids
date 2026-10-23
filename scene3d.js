@@ -169,6 +169,10 @@ function modelMat(name, team, look){
   return m;
 }
 
+/* Scourge (crveni tim) ima vlastite zgrade: tamni kamen, kosti, ljubičasti sjaj */
+function themed(name, team){ return team === TEAM_RED && MODELS.tpl[name + '_d'] ? name + '_d' : name; }
+/* strana mape: >0 = Scourge (gore desno), <0 = Sentinel; prijelaz uz rijeku */
+function scourgeSide(x, y){ return (x - y) / Math.SQRT2; }
 /* novi primjerak modela (dijeli geometriju i materijale s predloškom) */
 function modelInstance(name, team, scale){
   const tpl = MODELS.tpl[name];
@@ -421,16 +425,12 @@ function initScene3D(glCanvas){
   scene3.add(sunLight);
   scene3.add(sunLight.target);
 
-  const skirt = new THREE.Mesh(
-    cachedGeo('skirt', () => new THREE.PlaneGeometry(18000, 18000)),
-    lambMat('#2f5d23'));
-  skirt.rotation.x = -Math.PI / 2;
-  skirt.position.set(WORLD / 2, -4, WORLD / 2);
-  scene3.add(skirt);
+  buildBorderLand();
 
   initFx();
   initSpellLights();
   initEnvironment(renderer3, scene3);
+  initPost();
   loadModels3D();
 }
 /* mekano okolišno svjetlo (studio) — modeli dobiju odsjaj i dubinu */
@@ -449,14 +449,81 @@ function resize3D(){
   renderer3.setSize(VW, VH, false);
   camera3.aspect = VW / VH;
   camera3.updateProjectionMatrix();
+  if(POST.composer){
+    POST.composer.setPixelRatio(renderer3.getPixelRatio());
+    POST.composer.setSize(VW, VH);
+  }
   if(fx.mat){
     fx.mat.uniforms.scale.value = VH * renderer3.getPixelRatio() * 0.5 /
       Math.tan(THREE.MathUtils.degToRad(camera3.fov * 0.5));
   }
 }
 
+/* ================= POST-PROCESSING =================
+   HDR render (MSAA) → bloom (sjaj magija, kristala, baklji) → završna obrada:
+   ACES tonska krivulja (kao prije), malo jače boje i kontrast, vinjeta, sRGB.
+   Na sporim uređajima se samo isključi; tipka K ih pali/gasi. */
+const POST = { on: true, composer: null, bloom: null, grade: null, auto: true, frames: 0, acc: 0, last: 0 };
+const GRADE_SHADER = {
+  uniforms: { tDiffuse: { value: null }, exposure: { value: 1.05 }, sat: { value: 1.1 }, contrast: { value: 1.06 },
+    vig: { value: 0.28 }, night: { value: 0 } },
+  vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: `
+    uniform sampler2D tDiffuse; uniform float exposure, sat, contrast, vig, night; varying vec2 vUv;
+    vec3 rrtOdt(vec3 v){ vec3 a = v * (v + 0.0245786) - 0.000090537; vec3 b = v * (0.983729 * v + 0.4329510) + 0.238081; return a / b; }
+    vec3 aces(vec3 c){
+      const mat3 I = mat3(vec3(0.59719, 0.07600, 0.02840), vec3(0.35458, 0.90834, 0.13383), vec3(0.04823, 0.01566, 0.83777));
+      const mat3 O = mat3(vec3(1.60475, -0.10208, -0.00327), vec3(-0.53108, 1.10813, -0.07276), vec3(-0.07367, -0.00605, 1.07602));
+      c *= exposure / 0.6; c = I * c; c = rrtOdt(c); c = O * c; return clamp(c, 0.0, 1.0);
+    }
+    vec3 toSRGB(vec3 c){ return mix(c * 12.92, pow(c, vec3(1.0 / 2.4)) * 1.055 - 0.055, step(0.0031308, c)); }
+    void main(){
+      vec3 c = aces(texture2D(tDiffuse, vUv).rgb);
+      float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+      c = mix(vec3(l), c, sat);                                 // živahnije boje
+      c = (c - 0.5) * contrast + 0.5;                            // malo više kontrasta
+      c = mix(c, c * vec3(0.86, 0.92, 1.08), night * 0.35);      // noću hladniji ton
+      vec2 d = vUv - 0.5;
+      c *= 1.0 - vig * smoothstep(0.35, 0.85, length(d * vec2(1.25, 1.0)));   // vinjeta
+      gl_FragColor = vec4(toSRGB(clamp(c, 0.0, 1.0)), 1.0);
+    }`,
+};
+function initPost(){
+  if(!THREE.EffectComposer || !renderer3.capabilities.isWebGL2) { POST.on = false; return; }
+  try {
+    const pr = renderer3.getPixelRatio();
+    const rt = new THREE.WebGLRenderTarget(VW * pr, VH * pr, { type: THREE.HalfFloatType, samples: 4 });
+    POST.composer = new THREE.EffectComposer(renderer3, rt);
+    POST.composer.addPass(new THREE.RenderPass(scene3, camera3));
+    POST.bloom = new THREE.UnrealBloomPass(new THREE.Vector2(VW, VH), 0.55, 0.45, 0.95);
+    POST.composer.addPass(POST.bloom);
+    POST.grade = new THREE.ShaderPass(GRADE_SHADER);
+    POST.composer.addPass(POST.grade);
+    try { if(localStorage.getItem('dk_post') === '0') POST.on = false; } catch(e){}
+  } catch(e){ console.warn('Post-processing nije dostupan', e); POST.composer = null; POST.on = false; }
+}
+function togglePost(){
+  if(!POST.composer) return false;
+  POST.on = !POST.on; POST.auto = false;
+  try { localStorage.setItem('dk_post', POST.on ? '1' : '0'); } catch(e){}
+  return POST.on;
+}
 function render3D(){
-  renderer3.render(scene3, camera3);
+  cullDeco();
+  if(POST.on && POST.composer){
+    POST.grade.uniforms.night.value = 1 - dayK;
+    POST.composer.render();
+    // samozaštita: ako je ispod ~28 fps 4 s zaredom, isključi efekte
+    const now = performance.now();
+    if(POST.auto && POST.last){
+      POST.acc += now - POST.last; POST.frames++;
+      if(POST.acc > 4000){
+        if(POST.frames / (POST.acc / 1000) < 28){ POST.on = false; if(typeof feedMsg === 'function') feedMsg('✨ Efekti isključeni da igra bude brža (K = uključi)', '#e5e7eb'); }
+        POST.acc = 0; POST.frames = 0;
+      }
+    }
+    POST.last = now;
+  } else renderer3.render(scene3, camera3);
 }
 
 /* ---------- dan i noć ---------- */
@@ -613,6 +680,42 @@ function shockwave(x, y, r, color){
 }
 const HERO_BY_ID3 = {};
 
+/* ---------- rub svijeta: izvan mape se teren diže u šumovita brda i stjenovite planine ---------- */
+function borderHeight(x, y){
+  const cx = clamp(x, 0, WORLD), cy = clamp(y, 0, WORLD);
+  const d = Math.hypot(x - cx, y - cy);
+  const base = groundHeight(cx, cy);
+  if(d <= 0) return base - 3;   // ispod terena mape (ne vidi se)
+  const n = Math.sin(x * 0.004 + Math.cos(y * 0.003) * 2) * 0.5 + Math.sin(y * 0.0055 + x * 0.0021) * 0.5;
+  return base - 3 + smoothstep(0, 650, d) * (150 + 80 * n) + smoothstep(650, 2400, d) * (320 + 160 * n);
+}
+function buildBorderLand(){
+  const E = 3200, seg = 120, size = WORLD + 2 * E;
+  const geo = new THREE.PlaneGeometry(size, size, seg, seg);
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position, cols = new Float32Array(pos.count * 3);
+  const cGrass = new THREE.Color('#6aa844'), cForest = new THREE.Color('#2f5726'), cRock = new THREE.Color('#77706a'),
+    cSnow = new THREE.Color('#d9dde3'), cDire = new THREE.Color('#3b3045'), tmp = new THREE.Color();
+  for(let i = 0; i < pos.count; i++){
+    const x = WORLD / 2 + pos.getX(i), y = WORLD / 2 + pos.getZ(i);
+    const h = borderHeight(x, y);
+    pos.setY(i, h);
+    const d = Math.hypot(x - clamp(x, 0, WORLD), y - clamp(y, 0, WORLD));
+    tmp.copy(cGrass).lerp(cForest, smoothstep(60, 520, d)).lerp(cRock, smoothstep(520, 1300, d) * 0.85);
+    if(h > 520) tmp.lerp(cSnow, smoothstep(520, 700, h) * 0.8);
+    const sd = (x - y) / Math.SQRT2;
+    if(sd > 0) tmp.lerp(cDire, smoothstep(0, 1400, sd) * 0.6);
+    tmp.multiplyScalar(0.92 + 0.16 * hash01(Math.round(x / 37), Math.round(y / 37), 3));
+    cols[i * 3] = tmp.r; cols[i * 3 + 1] = tmp.g; cols[i * 3 + 2] = tmp.b;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+  geo.computeVertexNormals();
+  const land = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true }));
+  land.position.set(WORLD / 2, 0, WORLD / 2);
+  land.receiveShadow = true;
+  scene3.add(land);
+}
+
 /* ---------- teren s VISINAMA ---------- */
 function setGround(terrainCv){
   if(groundMesh){
@@ -625,7 +728,7 @@ function setGround(terrainCv){
   tex.anisotropy = renderer3.capabilities.getMaxAnisotropy();
   if(THREE.sRGBEncoding !== undefined) tex.encoding = THREE.sRGBEncoding;
 
-  const segs = 120;
+  const segs = Math.round(120 * MAP_S);
   const geo = new THREE.PlaneGeometry(WORLD, WORLD, segs, segs);
   // pomakni vrhove po visini terena (lokalni +Y postaje svjetski -Z)
   const pos = geo.attributes.position;
@@ -712,8 +815,36 @@ function instancedFrom(name, items, color){
   im.receiveShadow = false;
   return im;
 }
+/* ukrasi po komadima mape (900×900): crtaju se samo komadi koje kamera vidi (i njihove sjene) */
+const decoChunks = [];
+const _frustum = new THREE.Frustum(), _projScreen = new THREE.Matrix4();
+function instancedChunks(name, items, group){
+  if(!mergedModelGeo(name) || !items.length) return;
+  const CS = 1100, cells = {};
+  for(const it of items){ const k = Math.floor(it.x / CS) + ',' + Math.floor(it.y / CS); (cells[k] = cells[k] || []).push(it); }
+  for(const k in cells){
+    const arr = cells[k], im = instancedFrom(name, arr);
+    if(!im) continue;
+    im.frustumCulled = false;
+    let cx = 0, cy = 0;
+    for(const it of arr){ cx += it.x; cy += it.y; }
+    cx /= arr.length; cy /= arr.length;
+    let r = 0;
+    for(const it of arr) r = Math.max(r, Math.hypot(it.x - cx, it.y - cy) + it.s * 1.6);
+    decoChunks.push({ im, sphere: new THREE.Sphere(new THREE.Vector3(cx, 40, cy), r + 220) });
+    group.add(im);
+  }
+}
+function cullDeco(){
+  if(!decoChunks.length) return;
+  camera3.updateMatrixWorld();
+  _projScreen.multiplyMatrices(camera3.projectionMatrix, camera3.matrixWorldInverse);
+  _frustum.setFromProjectionMatrix(_projScreen);
+  for(const c of decoChunks) c.im.visible = _frustum.intersectsSphere(c.sphere);
+}
 function buildTrees3D(){
   if(treesGroup){ scene3.remove(treesGroup); disposeGroup(treesGroup); treesGroup = null; }
+  decoChunks.length = 0;
   if(!MODELS.ready){
     if(!MODELS.failed){ onModelsReady(buildTrees3D); }
     buildTreesBasic();
@@ -726,7 +857,10 @@ function buildTrees3D(){
     const r = hash01(t.x, t.y, 1);
     const v = Math.floor(r * 3);
     const gh = groundHeight(t.x, t.y);
-    if(t.kind === '🌲') add('tree_pine' + v, { x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.68, sy: 0.9 + r * 0.25 });
+    const dire = scourgeSide(t.x, t.y) > 220 && MODELS.tpl.tree_dead0;
+    if(dire && t.kind === '🌲') add('tree_dpine' + v, { x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.68, sy: 0.9 + r * 0.25 });
+    else if(dire && hash01(t.x, t.y, 4) < 0.7) add('tree_dead' + v, { x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.82 });
+    else if(t.kind === '🌲') add('tree_pine' + v, { x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.68, sy: 0.9 + r * 0.25 });
     else if(hash01(t.x, t.y, 9) < 0.3 && MODELS.tpl.tree_birch0) add('tree_birch' + (v % 2), { x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.7 });
     else add('tree_oak' + v, { x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.78 });
   }
@@ -744,10 +878,11 @@ function buildTrees3D(){
   };
   const decoKinds = ['rock0', 'rock1', 'rock2', 'bush0', 'bush0', 'mushroom0', 'bush0', 'rock1'];
   let n = 0;
-  for(let i = 0; i < 900 && n < 110; i++){
+  for(let i = 0; i < 2000 && n < Math.round(110 * MAP_S * MAP_S); i++){
     const x = hash01(i, 3, 7) * WORLD, y = hash01(i, 11, 5) * WORLD;
     if(!free(x, y, 0)) continue;
-    const kind = decoKinds[Math.floor(hash01(i, 1, 2) * decoKinds.length)];
+    let kind = decoKinds[Math.floor(hash01(i, 1, 2) * decoKinds.length)];
+    if(scourgeSide(x, y) > 220 && MODELS.tpl.bones0 && kind !== 'rock0' && kind !== 'rock1') kind = hash01(i, 6, 6) < 0.5 ? 'bones0' : 'rock2';
     const s = kind.startsWith('rock') ? 26 + hash01(i, 2, 2) * 30 : (kind === 'mushroom0' ? 30 : 34 + hash01(i, 4, 4) * 18);
     add(kind, { x, y, h: groundHeight(x, y) - 1, rot: hash01(i, 5, 5) * 6.28, s });
     n++;
@@ -765,27 +900,28 @@ function buildTrees3D(){
   if(MODELS.tpl.flowers0){   // ---- v0.11: bogatija okolina ----
     // panjevi, cvijeće, busenje trave
     let np = 0;
-    for(let i = 0; i < 600 && np < 24; i++){
+    for(let i = 0; i < 1200 && np < Math.round(24 * MAP_S * MAP_S); i++){
       const x = hash01(i, 31, 7) * WORLD, y = hash01(i, 33, 5) * WORLD;
       if(!free(x, y, 20)) continue;
       add('stump0', { x, y, h: groundHeight(x, y) - 1, rot: hash01(i, 35, 5) * 6.28, s: 30 + hash01(i, 36, 2) * 10 });
       np++;
     }
     let nf = 0;
-    for(let i = 0; i < 2600 && nf < 320; i++){
+    for(let i = 0; i < 5600 && nf < Math.round(320 * MAP_S * MAP_S); i++){
       const x = hash01(i, 41, 7) * WORLD, y = hash01(i, 43, 5) * WORLD;
       if(x < 60 || y < 60 || x > WORLD - 60 || y > WORLD - 60) continue;
       if(Math.abs(x - y) / Math.SQRT2 < 150) continue;
       if(LANE_LIST.some(l => distToPath(LANE_PTS[l], x, y) < 60)) continue;
       if(CAMP_SPOTS.some(c => distXY(x, y, c.x, c.y) < 120)) continue;
       const r = hash01(i, 45, 3);
+      if(scourgeSide(x, y) > 260 && r >= 0.45) continue;   // na Scourge strani nema cvijeća
       const kind = r < 0.45 ? 'grass0' : (r < 0.75 ? 'flowers0' : 'flowers1');
       add(kind, { x, y, h: groundHeight(x, y) - 1, rot: hash01(i, 47, 5) * 6.28, s: 28 + hash01(i, 48, 2) * 16 });
       nf++;
     }
     // uz rijeku: trska na obali, lopoči na vodi
     let nr = 0;
-    for(let i = 0; i < 1500 && nr < 170; i++){
+    for(let i = 0; i < 2400 && nr < Math.round(170 * MAP_S); i++){
       const t = 150 + hash01(i, 51, 7) * (WORLD - 300);
       const bank = hash01(i, 53, 3) < 0.6;
       const d = bank ? 128 + hash01(i, 55, 5) * 34 : hash01(i, 55, 5) * 85;
@@ -799,7 +935,7 @@ function buildTrees3D(){
       nr++;
     }
     // gazovi (plosnato kamenje) gdje staze prelaze rijeku
-    const crossings = [[1500, 1500], [335, 335], [2665, 2665]];
+    const crossings = [[1500, 1500], [335, 335], [2665, 2665]].map(([x, y]) => [S3(x), S3(y)]);
     for(const [cx, cy] of crossings){
       for(let k = -1; k <= 1; k++){
         const x = cx + k * 90 * Math.SQRT1_2, y = cy - k * 90 * Math.SQRT1_2;
@@ -818,7 +954,7 @@ function buildTrees3D(){
           for(let s = acc; s < L; s += 170){
             const px = x1 + ux * s, py = y1 + uy * s;
             const dA = distXY(px, py, a0.x, a0.y);
-            if(dA > 820 || dA < 300) continue;
+            if(dA > 820 * MAP_S || dA < 300 * MAP_S) continue;
             if(distXY(px, py, FOUNTAIN[team].x, FOUNTAIN[team].y) < 260) continue;
             for(const side of [1, -1]){
               const x = px - uy * side * 100, y = py + ux * side * 100;
@@ -850,23 +986,29 @@ function buildTrees3D(){
       }
     });
     // putokazi na izlazu iz baza
-    add('signpost0', { x: 470, y: 2460, h: groundHeight(470, 2460) - 1, rot: -0.6, s: 40 });
-    add('signpost0', { x: 2530, y: 540, h: groundHeight(2530, 540) - 1, rot: 2.5, s: 40 });
+    add('signpost0', { x: S3(470), y: S3(2460), h: groundHeight(S3(470), S3(2460)) - 1, rot: -0.6, s: 40 });
+    add('signpost0', { x: S3(2530), y: S3(540), h: groundHeight(S3(2530), S3(540)) - 1, rot: 2.5, s: 40 });
   }
   // rub šume: gusti borovi i hrastovi oko mape, da se ne vidi "kraj svijeta"
-  for(let i = 0; i < 520; i++){
+  for(let i = 0; i < Math.round(520 * MAP_S); i++){
     const side = i % 4, t = hash01(i, 21, 3) * (WORLD + 1200) - 600, depth = 50 + hash01(i, 22, 4) * 560;
     let x, y;
     if(side === 0){ x = t; y = -depth; } else if(side === 1){ x = t; y = WORLD + depth; }
     else if(side === 2){ x = -depth; y = t; } else { x = WORLD + depth; y = t; }
     const r = hash01(i, 23, 5);
-    const kind = r < 0.7 ? 'tree_pine' + (i % 3) : 'tree_oak' + (i % 3);
-    add(kind, { x, y, h: -6, rot: r * 6.28, s: (r < 0.7 ? 48 : 52) + hash01(i, 24, 6) * 34 });
+    const dire = scourgeSide(x, y) > 0 && MODELS.tpl.tree_dpine0;
+    const kind = r < 0.7 ? (dire ? 'tree_dpine' : 'tree_pine') + (i % 3) : (dire ? 'tree_dead' : 'tree_oak') + (i % 3);
+    add(kind, { x, y, h: borderHeight(x, y) - 4, rot: r * 6.28, s: (r < 0.7 ? 48 : 52) + hash01(i, 24, 6) * 34 });
   }
-  for(const name in buckets){
-    const im = instancedFrom(name, buckets[name]);
-    if(im) treesGroup.add(im);
+  // velike stijene i litice na brdima oko mape
+  if(MODELS.tpl.rock_big0) for(let i = 0; i < Math.round(170 * MAP_S); i++){
+    const side = i % 4, t = hash01(i, 71, 3) * (WORLD + 1600) - 800, depth = 420 + hash01(i, 72, 4) * 1000;
+    let x, y;
+    if(side === 0){ x = t; y = -depth; } else if(side === 1){ x = t; y = WORLD + depth; }
+    else if(side === 2){ x = -depth; y = t; } else { x = WORLD + depth; y = t; }
+    add('rock_big' + (i % 2), { x, y, h: borderHeight(x, y) - 12, rot: hash01(i, 73, 5) * 6.28, s: 60 + hash01(i, 74, 6) * 80 });
   }
+  for(const name in buckets) instancedChunks(name, buckets[name], treesGroup);
   // sjaj plamena baklji, logorskih vatri i kristala (sprite — instancirana geometrija ne svijetli)
   const glows = [];
   for(const it of buckets.torch0 || []) glows.push({ x: it.x, y: it.y, h: it.h + 42, c: '#ffb020', s: 56 });
@@ -910,7 +1052,7 @@ function buildStatic3D(){
     for(let team = 0; team < 2; team++){
       const a0 = ANCIENT_POS[team];
       const segs = [];
-      const R = 470, step = 34 / R;
+      const R = 470 * MAP_S, step = 34 / R;
       for(let a = 0; a < TAU; a += step){
         const x = a0.x + Math.cos(a) * R, y = a0.y + Math.sin(a) * R;
         if(x < 40 || y < 40 || x > WORLD - 40 || y > WORLD - 40) continue;
@@ -918,7 +1060,7 @@ function buildStatic3D(){
         if(distXY(x, y, FOUNTAIN[team].x, FOUNTAIN[team].y) < 200) continue;
         segs.push({ x, y, h: groundHeight(x, y) - 1, rot: -a - Math.PI / 2, s: 34 });
       }
-      const geo = mergedModelGeo('wall');
+      const geo = mergedModelGeo(themed('wall', team));
       if(geo && segs.length){
         const im = new THREE.InstancedMesh(geo, modelMat('TEAM', team, 'n'), segs.length);
         segs.forEach((it, i) => {
@@ -942,7 +1084,7 @@ function buildStatic3D(){
       const tents = [];
       for(let k = -1; k <= 1; k++){
         const a = toCenter + k * 0.55;
-        const x = f.x + Math.cos(a) * 250, y = f.y + Math.sin(a) * 250;
+        const x = f.x + Math.cos(a) * 250 * MAP_S, y = f.y + Math.sin(a) * 250 * MAP_S;
         tents.push({ x, y, h: groundHeight(x, y) - 1, rot: -a, s: 44 });
       }
       const geo = mergedModelGeo('tent0');
@@ -958,13 +1100,13 @@ function buildStatic3D(){
       const props = [];
       for(let k = 0; k < 7; k++){
         const a = toCenter + Math.PI + (k - 3) * 0.32;
-        const x = a0.x + Math.cos(a) * 170, y = a0.y + Math.sin(a) * 170;
+        const x = a0.x + Math.cos(a) * 170 * MAP_S, y = a0.y + Math.sin(a) * 170 * MAP_S;
         if(x < 40 || y < 40 || x > WORLD - 40 || y > WORLD - 40) continue;
         props.push({ kind: k % 2 ? 'crate0' : 'barrel0', x, y, h: groundHeight(x, y) - 1, rot: a, s: 30 + (k % 3) * 4 });
       }
       for(let k = 0; k < 5; k++){
         const a = toCenter + 1.6 + k * 0.1 * 0 + (k - 2) * 0.09;
-        const x = f.x + Math.cos(a) * 330, y = f.y + Math.sin(a) * 330;
+        const x = f.x + Math.cos(a) * 330 * MAP_S, y = f.y + Math.sin(a) * 330 * MAP_S;
         props.push({ kind: 'fence0', x, y, h: groundHeight(x, y) - 1, rot: -a - Math.PI / 2, s: 38 });
       }
       const byKind = {};
@@ -988,7 +1130,7 @@ function buildStatic3D(){
   for(let team = 0; team < 2; team++){
     const f = FOUNTAIN[team];
     const gh = groundHeight(f.x, f.y);
-    const m = MODELS.ready ? modelInstance('fountain', team, MODEL_SCALE.fountain) : null;
+    const m = MODELS.ready ? modelInstance(themed('fountain', team), team, MODEL_SCALE.fountain) : null;
     if(m){
       m.position.set(f.x, gh - 2, f.y);
       m.scale.y *= 0.55;   // niža fontana — junaci stoje u njoj
@@ -1554,7 +1696,7 @@ function buildNeutralMesh(u){
 }
 function buildBarracksMesh(u){
   const g = new THREE.Group();
-  const m = MODELS.ready ? modelInstance('barracks', u.team, 44) : null;
+  const m = MODELS.ready ? modelInstance(themed('barracks', u.team), u.team, 44) : null;
   if(m){ g.add(m); g.userData.model = m; g.rotation.y = -Math.atan2(WORLD / 2 - u.y, WORLD / 2 - u.x); return g; }
   const box = new THREE.Mesh(cachedGeo('barrBox', () => new THREE.BoxGeometry(80, 50, 60)), lambMat(TEAM_LIGHT[u.team]));
   box.position.y = 25;
@@ -1565,7 +1707,7 @@ function buildBarracksMesh(u){
 function buildTowerMesh(u){
   const g = new THREE.Group();
   if(MODELS.ready){
-    const m = modelInstance('tower', u.team, MODEL_SCALE.tower * (u.isGuard ? 0.92 : 1));
+    const m = modelInstance(themed('tower', u.team), u.team, MODEL_SCALE.tower * (u.isGuard ? 0.92 : 1));
     if(m){
       g.add(m);
       g.userData.model = m;
@@ -1594,7 +1736,7 @@ function buildTowerMesh(u){
 function buildAncientMesh(u){
   const g = new THREE.Group();
   const ud = g.userData;
-  const m = MODELS.ready ? modelInstance('ancient', u.team, MODEL_SCALE.ancient) : null;
+  const m = MODELS.ready ? modelInstance(themed('ancient', u.team), u.team, MODEL_SCALE.ancient) : null;
   if(m){
     g.add(m);
     ud.model = m;
@@ -2987,8 +3129,13 @@ function syncScene(tAnim){
   }
 
   if(waterMesh) waterMesh.material.uniforms.t.value = tAnim;
-  // ambijent: krijesnice noću, latice danju
-  if(dayK < 0.4 && Math.random() < dt * 10){
+  // ambijent: na Scourge strani ljubičaste iskrice i pepeo, inače krijesnice noću i latice danju
+  if(scourgeSide(cam.x, cam.y) > 260 * MAP_S){
+    if(Math.random() < dt * 9){
+      const x = cam.x + (Math.random() - 0.5) * 1400, y = cam.y + (Math.random() - 0.5) * 900;
+      if(scourgeSide(x, y) > 200) fxSpawn(x, y, groundHeight(x, y) + 10 + Math.random() * 40, Math.random() < 0.6 ? '#c084fc' : '#9ca3af', { spd: 10, up: 22, grav: 0, life: 2.6, size: Math.random() < 0.6 ? 8 : 11 });
+    }
+  } else if(dayK < 0.4 && Math.random() < dt * 10){
     const x = cam.x + (Math.random() - 0.5) * 1400, y = cam.y + (Math.random() - 0.5) * 900;
     fxSpawn(x, y, groundHeight(x, y) + 25 + Math.random() * 60, Math.random() < 0.5 ? '#d9f99d' : '#fef08a', { spd: 14, up: 6, grav: 0, life: 2.5, size: 9 });
   } else if(dayK > 0.6 && Math.random() < dt * 3){
