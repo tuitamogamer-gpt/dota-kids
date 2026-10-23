@@ -2716,12 +2716,33 @@ function buildTerrain(){
     t.beginPath(); t.arc(c.x, c.y, c.type === 'boss' ? 160 : 110, 0, TAU); t.fill();
   }
 
+  // ☠️ Scourge strana (gore desno): zemlja gubi boju, tamni i dobiva ljubičaste mrlje — prijelaz počinje uz rijeku
+  {
+    const c = WORLD / 2, n = Math.SQRT1_2, a = 150 * MAP_S, b = 900 * MAP_S;
+    const grad = (c0, c1) => { const g = t.createLinearGradient(c + n * a, c - n * a, c + n * b, c - n * b); g.addColorStop(0, c0); g.addColorStop(1, c1); return g; };
+    t.save();
+    t.globalCompositeOperation = 'saturation';
+    t.fillStyle = grad('rgba(128,128,128,0)', 'rgba(128,128,128,0.6)');
+    t.fillRect(0, 0, WORLD, WORLD);
+    t.globalCompositeOperation = 'multiply';
+    t.fillStyle = grad('rgba(255,255,255,0)', 'rgba(120,104,140,0.75)');
+    t.fillRect(0, 0, WORLD, WORLD);
+    t.globalCompositeOperation = 'source-over';
+    for(let i = 0; i < Math.round(160 * MAP_S * MAP_S); i++){
+      const x = rand(0, WORLD), y = rand(0, WORLD);
+      if((x - y) / Math.SQRT2 < 300 * MAP_S) continue;
+      t.fillStyle = Math.random() < 0.6 ? 'rgba(40,22,52,0.16)' : 'rgba(88,28,60,0.12)';
+      t.beginPath(); t.arc(x, y, rand(40, 160), 0, TAU); t.fill();
+    }
+    t.restore();
+  }
+
   // baze (platoi)
   for(let team = 0; team < 2; team++){
     const a = ANCIENT_POS[team];
-    t.fillStyle = team === TEAM_BLUE ? 'rgba(59,130,246,0.22)' : 'rgba(239,68,68,0.22)';
+    t.fillStyle = team === TEAM_BLUE ? 'rgba(59,130,246,0.22)' : 'rgba(76,29,58,0.32)';
     t.beginPath(); t.arc(a.x, a.y, 460 * MAP_S, 0, TAU); t.fill();
-    t.fillStyle = team === TEAM_BLUE ? 'rgba(59,130,246,0.3)' : 'rgba(239,68,68,0.3)';
+    t.fillStyle = team === TEAM_BLUE ? 'rgba(59,130,246,0.3)' : 'rgba(127,29,29,0.3)';
     t.beginPath(); t.arc(a.x, a.y, 260 * MAP_S, 0, TAU); t.fill();
     const f = FOUNTAIN[team];
     t.fillStyle = 'rgba(214,203,181,0.55)';

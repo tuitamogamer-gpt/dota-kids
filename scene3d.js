@@ -169,6 +169,10 @@ function modelMat(name, team, look){
   return m;
 }
 
+/* Scourge (crveni tim) ima vlastite zgrade: tamni kamen, kosti, ljubičasti sjaj */
+function themed(name, team){ return team === TEAM_RED && MODELS.tpl[name + '_d'] ? name + '_d' : name; }
+/* strana mape: >0 = Scourge (gore desno), <0 = Sentinel; prijelaz uz rijeku */
+function scourgeSide(x, y){ return (x - y) / Math.SQRT2; }
 /* novi primjerak modela (dijeli geometriju i materijale s predloškom) */
 function modelInstance(name, team, scale){
   const tpl = MODELS.tpl[name];
@@ -822,7 +826,10 @@ function buildTrees3D(){
     const r = hash01(t.x, t.y, 1);
     const v = Math.floor(r * 3);
     const gh = groundHeight(t.x, t.y);
-    if(t.kind === '🌲') add('tree_pine' + v, { x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.68, sy: 0.9 + r * 0.25 });
+    const dire = scourgeSide(t.x, t.y) > 220 && MODELS.tpl.tree_dead0;
+    if(dire && t.kind === '🌲') add('tree_dpine' + v, { x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.68, sy: 0.9 + r * 0.25 });
+    else if(dire && hash01(t.x, t.y, 4) < 0.7) add('tree_dead' + v, { x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.82 });
+    else if(t.kind === '🌲') add('tree_pine' + v, { x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.68, sy: 0.9 + r * 0.25 });
     else if(hash01(t.x, t.y, 9) < 0.3 && MODELS.tpl.tree_birch0) add('tree_birch' + (v % 2), { x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.7 });
     else add('tree_oak' + v, { x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.78 });
   }
@@ -843,7 +850,8 @@ function buildTrees3D(){
   for(let i = 0; i < 2000 && n < Math.round(110 * MAP_S * MAP_S); i++){
     const x = hash01(i, 3, 7) * WORLD, y = hash01(i, 11, 5) * WORLD;
     if(!free(x, y, 0)) continue;
-    const kind = decoKinds[Math.floor(hash01(i, 1, 2) * decoKinds.length)];
+    let kind = decoKinds[Math.floor(hash01(i, 1, 2) * decoKinds.length)];
+    if(scourgeSide(x, y) > 220 && MODELS.tpl.bones0 && kind !== 'rock0' && kind !== 'rock1') kind = hash01(i, 6, 6) < 0.5 ? 'bones0' : 'rock2';
     const s = kind.startsWith('rock') ? 26 + hash01(i, 2, 2) * 30 : (kind === 'mushroom0' ? 30 : 34 + hash01(i, 4, 4) * 18);
     add(kind, { x, y, h: groundHeight(x, y) - 1, rot: hash01(i, 5, 5) * 6.28, s });
     n++;
@@ -875,6 +883,7 @@ function buildTrees3D(){
       if(LANE_LIST.some(l => distToPath(LANE_PTS[l], x, y) < 60)) continue;
       if(CAMP_SPOTS.some(c => distXY(x, y, c.x, c.y) < 120)) continue;
       const r = hash01(i, 45, 3);
+      if(scourgeSide(x, y) > 260 && r >= 0.45) continue;   // na Scourge strani nema cvijeća
       const kind = r < 0.45 ? 'grass0' : (r < 0.75 ? 'flowers0' : 'flowers1');
       add(kind, { x, y, h: groundHeight(x, y) - 1, rot: hash01(i, 47, 5) * 6.28, s: 28 + hash01(i, 48, 2) * 16 });
       nf++;
@@ -956,7 +965,8 @@ function buildTrees3D(){
     if(side === 0){ x = t; y = -depth; } else if(side === 1){ x = t; y = WORLD + depth; }
     else if(side === 2){ x = -depth; y = t; } else { x = WORLD + depth; y = t; }
     const r = hash01(i, 23, 5);
-    const kind = r < 0.7 ? 'tree_pine' + (i % 3) : 'tree_oak' + (i % 3);
+    const dire = scourgeSide(x, y) > 0 && MODELS.tpl.tree_dpine0;
+    const kind = r < 0.7 ? (dire ? 'tree_dpine' : 'tree_pine') + (i % 3) : (dire ? 'tree_dead' : 'tree_oak') + (i % 3);
     add(kind, { x, y, h: -6, rot: r * 6.28, s: (r < 0.7 ? 48 : 52) + hash01(i, 24, 6) * 34 });
   }
   for(const name in buckets) instancedChunks(name, buckets[name], treesGroup);
@@ -1011,7 +1021,7 @@ function buildStatic3D(){
         if(distXY(x, y, FOUNTAIN[team].x, FOUNTAIN[team].y) < 200) continue;
         segs.push({ x, y, h: groundHeight(x, y) - 1, rot: -a - Math.PI / 2, s: 34 });
       }
-      const geo = mergedModelGeo('wall');
+      const geo = mergedModelGeo(themed('wall', team));
       if(geo && segs.length){
         const im = new THREE.InstancedMesh(geo, modelMat('TEAM', team, 'n'), segs.length);
         segs.forEach((it, i) => {
@@ -1081,7 +1091,7 @@ function buildStatic3D(){
   for(let team = 0; team < 2; team++){
     const f = FOUNTAIN[team];
     const gh = groundHeight(f.x, f.y);
-    const m = MODELS.ready ? modelInstance('fountain', team, MODEL_SCALE.fountain) : null;
+    const m = MODELS.ready ? modelInstance(themed('fountain', team), team, MODEL_SCALE.fountain) : null;
     if(m){
       m.position.set(f.x, gh - 2, f.y);
       m.scale.y *= 0.55;   // niža fontana — junaci stoje u njoj
@@ -1647,7 +1657,7 @@ function buildNeutralMesh(u){
 }
 function buildBarracksMesh(u){
   const g = new THREE.Group();
-  const m = MODELS.ready ? modelInstance('barracks', u.team, 44) : null;
+  const m = MODELS.ready ? modelInstance(themed('barracks', u.team), u.team, 44) : null;
   if(m){ g.add(m); g.userData.model = m; g.rotation.y = -Math.atan2(WORLD / 2 - u.y, WORLD / 2 - u.x); return g; }
   const box = new THREE.Mesh(cachedGeo('barrBox', () => new THREE.BoxGeometry(80, 50, 60)), lambMat(TEAM_LIGHT[u.team]));
   box.position.y = 25;
@@ -1658,7 +1668,7 @@ function buildBarracksMesh(u){
 function buildTowerMesh(u){
   const g = new THREE.Group();
   if(MODELS.ready){
-    const m = modelInstance('tower', u.team, MODEL_SCALE.tower * (u.isGuard ? 0.92 : 1));
+    const m = modelInstance(themed('tower', u.team), u.team, MODEL_SCALE.tower * (u.isGuard ? 0.92 : 1));
     if(m){
       g.add(m);
       g.userData.model = m;
@@ -1687,7 +1697,7 @@ function buildTowerMesh(u){
 function buildAncientMesh(u){
   const g = new THREE.Group();
   const ud = g.userData;
-  const m = MODELS.ready ? modelInstance('ancient', u.team, MODEL_SCALE.ancient) : null;
+  const m = MODELS.ready ? modelInstance(themed('ancient', u.team), u.team, MODEL_SCALE.ancient) : null;
   if(m){
     g.add(m);
     ud.model = m;
