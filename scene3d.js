@@ -162,6 +162,7 @@ function modelMat(name, team, look){
     if(look === 'k') m.color.lerp(new THREE.Color('#a78bfa'), 0.55);                                   // 🌀 kletva
     if(look === 'w'){ m.emissive = new THREE.Color('#ff6a3d'); m.emissiveIntensity = 0.22; }          // 🐺 vučji oblik
     if(look === 'r'){ m.emissive = new THREE.Color('#ef4444'); m.emissiveIntensity = 0.3; }           // 😡 bijes
+    if(look === 'v'){ m.color.lerp(new THREE.Color('#8b5cf6'), 0.8); m.emissive = new THREE.Color('#4c1d95'); m.emissiveIntensity = 0.35; }   // 🐙 pipci
   }
   if(look === 'g'){ m.transparent = true; m.opacity = 0.32; m.depthWrite = false; }
   m.userData.shared = true;
@@ -755,11 +756,23 @@ function updateMist(dt){
   }
 }
 /* ---------- 💨 dim iz dimnjaka (normalno miješanje, ne aditivno — siv dim ne smije svijetliti) ---------- */
-const smoke = { pool: [], next: 0 };
+const smoke = { pool: [], next: 0, tex: null };
+function puffTexture(){   // gust, mekan oblačić (sjaj prebrzo blijedi pa dim ispadne preprozirn)
+  if(smoke.tex) return smoke.tex;
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  for(const [cx, cy, r] of [[32, 34, 22], [22, 30, 14], [42, 28, 15], [32, 22, 14]]){
+    const grad = g.createRadialGradient(cx, cy, 0, cx, cy, r);
+    grad.addColorStop(0, 'rgba(255,255,255,0.9)'); grad.addColorStop(0.6, 'rgba(255,255,255,0.55)'); grad.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grad; g.fillRect(0, 0, 64, 64);
+  }
+  smoke.tex = new THREE.CanvasTexture(c);
+  return smoke.tex;
+}
 function smokePuff(x, y, h, color, o){
   if(!smoke.pool.length){
-    for(let i = 0; i < 48; i++){
-      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeGlowTexture(), color: 0xffffff, transparent: true, opacity: 0, depthWrite: false }));
+    for(let i = 0; i < 64; i++){
+      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: puffTexture(), color: 0xffffff, transparent: true, opacity: 0, depthWrite: false }));
       spr.visible = false;
       scene3.add(spr);
       smoke.pool.push({ spr, t: 1, life: 0 });
@@ -770,6 +783,7 @@ function smokePuff(x, y, h, color, o){
   p.x = x; p.y = y; p.h = h; p.t = 0; p.life = o.life; p.size = o.size; p.alpha = o.alpha;
   p.vx = o.wind + (Math.random() - 0.5) * 8; p.vy = o.wind * 0.6 + (Math.random() - 0.5) * 8; p.vh = o.up;
   p.spr.material.color.set(color);
+  p.spr.material.rotation = Math.random() * TAU;
   p.spr.visible = true;
 }
 function updateSmoke(dt){
@@ -2732,13 +2746,13 @@ function castTargetFx(u, key, aim){
       shockwave(x, y, 240, '#cbd5e1');
       for(let i = 0; i < 22; i++){
         const a = Math.random() * TAU, r = Math.sqrt(Math.random()) * 200;
-        smokePuff(x + Math.cos(a) * r, y + Math.sin(a) * r, gh + 20 + Math.random() * 40, i % 3 ? '#9ca3af' : '#6b7280',
-          { life: 2.6 + Math.random() * 1.6, size: 120 + Math.random() * 80, alpha: 0.75, up: 6 + Math.random() * 10, wind: 3 });
+        smokePuff(x + Math.cos(a) * r, y + Math.sin(a) * r, gh + 20 + Math.random() * 40, i % 3 ? '#d1d5db' : '#9ca3af',
+          { life: 2.6 + Math.random() * 1.6, size: 120 + Math.random() * 80, alpha: 1, up: 6 + Math.random() * 10, wind: 3 });
       }
       break;
     }
     case 'hobotnica:E':   // 🐙 Zagrljaj pipaka: ljubičasti pipci izbiju iz tla i stisnu
-      fxRise('fx_root', x, y, 120, 7, { scale: 40, life: 1.6, look: 'k' });
+      fxRise('fx_root', x, y, 120, 7, { scale: 40, life: 1.6, look: 'v' });
       magicCircle(x, y, 150, '#8b5cf6', 1.2, false);
       for(let i = 0; i < 18; i++){ const a = i / 18 * TAU; fxSpawn(x + Math.cos(a) * 140, y + Math.sin(a) * 140, gh + 10, i % 2 ? '#a78bfa' : '#4c1d95', { spd: 0, up: 60, grav: 0, life: 0.7, size: 22 }); }
       break;
