@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.23: predmeti kao u DotA — 74 predmeta s receptima, dućan s karticama Osnovni / Nadogradnje, prave slike predmeta, torba 3×2 s ruksakom, brza kupnja i opisi kao u DotA!** 🛒🗡️🎒
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.24: peglanje — završni ekran i tablica kao u DotA, asistencije, utvrđene građevine, zlato za povratak u igru, pametniji botovi i jedinstveni opisi!** 🏆📋🛡️
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -18,6 +18,15 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- 🧽 **Peglanje** (v0.24):
+  - 🏆 **završni ekran kao u DotA**: oba tima s portretima, K / D / A, zadnjim udarcima, **neto vrijednošću** i slikama predmeta (uz neutralni), 👑 najbolji igrač; **tablica na Tab** u istom stilu
+  - 🤝 **asistencije**: suigrači koji su udarili metu ili su bili blizu (1000) dobivaju asistenciju i +50 zlata
+  - 🏰 **utvrđene građevine (kao u Allstarsu)**: junaci rade 50% štete građevinama, opsadni vojnici 125%; kule imaju oklop, a dublje kule više života i oklopa (1. kula 2600, 2. kula 3250, čuvari 3575), prijestol 5000 života — igre opet traju dulje, a ne završe za 8 minuta
+  - 🔄 **zlato za povratak u igru**: kad tim koji zaostaje ubije junaka tima koji vodi, ubojica dobiva dodatno zlato (do +400) — manje jednostranih igara
+  - 🧪 **pametniji botovi**: kupe tango na početku i ljekoviti melem kad su ranjeni, umjesto da stalno pješače do fontane
+  - 💬 **jedinstveni opisi**: moći, urođena pasiva, atributi, glif, teleport i dućan imaju isti opis kao predmeti (s brojkama za trenutni i sljedeći rang)
+  - 🐞 popravci: ikone predmeta se stvaraju trenutno (dućan kod gosta u multiplayeru se više ne zamrzava), opis predmeta i dućan se zatvaraju na kraju igre, nova igra počinje bez stare brze kupnje
 
 - 🛒 **Predmeti kao u DotA** (v0.23):
   - 🗡️ **74 predmeta**: *Osnovni* (potrošno, atributi, oprema, razno, rijetko) i *Nadogradnje* (pribor, podrška, čarolije, oklop, oružje, artefakti) — Grančica, Narukvica snage, Fazne čizme, Čizme moći, Čarobni štapić, Ljekoviti medaljon, Štap sile, Vjetrovita palica, Dagon, Kraljevski oklop, Napadački oklop, Srce titana, Bojna sjekira, Dedalova oštrica, Oštrica pustoši, Lubanjolomac, Ponorna oštrica, Leptir, Sjenovita oštrica, Vampirski mač, Sunčev kamen…

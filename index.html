@@ -215,6 +215,12 @@
   .q-cons .tipT b{ color:#e6d3a3; } .q-comp .tipT b{ color:#e5e7eb; } .q-secret .tipT b{ color:#67e8f9; }
   .q-common .tipT b{ color:#4ade80; } .q-rare .tipT b{ color:#7aa7ff; } .q-epic .tipT b{ color:#c792ff; } .q-art .tipT b{ color:#ffad5c; } .q-neutral .tipT b{ color:#a3e635; }
   .tipStats{ padding:6px 12px 2px; color:#e5e7eb; font-weight:bold; }
+  .tipAbIcon{ width:48px; height:48px; border-radius:6px; flex:none; display:flex; align-items:center; justify-content:center; font-size:28px; border:1px solid rgba(255,255,255,.25); }
+  .q-abil .tipT b{ color:#fde68a; }
+  .tipDots{ display:flex; gap:3px; margin-top:3px; }
+  .tipDots i{ width:9px; height:9px; border-radius:2px; background:#334155; display:inline-block; }
+  .tipDots i.on{ background:#fbbf24; box-shadow:0 0 4px #fbbf24; }
+  .tipDesc{ padding:7px 12px 3px; color:#e5e7eb; }
   .tipBox{ margin:6px 10px; padding:6px 8px; border-radius:4px; background:rgba(255,255,255,.04); border-left:3px solid #64748b; }
   .tipAct{ border-left-color:#38bdf8; background:rgba(56,189,248,.07); }
   .tipPas{ border-left-color:#a3a3a3; }
@@ -237,12 +243,26 @@
 
   /* ---------- kraj igre ---------- */
   #end{ background:rgba(8,28,21,.8); }   /* prozirnije: iza se vidi pobjednički ples junaka */
-  #endEmoji{ font-size:74px; }
-  #end h1{ font-size:64px; text-shadow:0 5px 0 rgba(0,0,0,.4); margin:6px 0 16px; }
-  #endTable table{ border-collapse:collapse; background:rgba(255,255,255,.07); border-radius:14px; overflow:hidden; }
-  #endTable th, #endTable td{ padding:7px 20px; font-size:17px; color:#fff; }
-  #endTable th{ background:rgba(255,255,255,.12); color:#fde047; }
-  #endTable tr:nth-child(odd) td{ background:rgba(255,255,255,.04); }
+  #endEmoji{ font-size:56px; }
+  #end h1{ font-size:54px; text-shadow:0 5px 0 rgba(0,0,0,.4); margin:2px 0 12px; }
+  #endTable{ max-width:96vw; overflow-x:auto; }
+  .endT{ border-collapse:collapse; background:rgba(10,14,20,.82); border:1px solid #6b5a35; border-radius:10px; overflow:hidden; min-width:min(820px, 96vw); }
+  .endT th, .endT td{ padding:5px 12px; font-size:15px; color:#e5e7eb; text-align:center; white-space:nowrap; }
+  .endT .etTeam th{ text-align:left; font-size:17px; padding:8px 12px; letter-spacing:.5px; }
+  .endT .etTeam.t0 th{ background:linear-gradient(90deg, rgba(59,130,246,.45), transparent); color:#bfdbfe; }
+  .endT .etTeam.t1 th{ background:linear-gradient(90deg, rgba(239,68,68,.45), transparent); color:#fecaca; }
+  .etWin{ margin-left:10px; font-size:13px; color:#fde047; background:rgba(0,0,0,.35); border-radius:6px; padding:2px 8px; }
+  .endT .etHead th{ font-size:11px; color:#c9b27a; text-transform:uppercase; letter-spacing:.6px; background:rgba(255,255,255,.04); }
+  .endT tr.etMe td{ background:rgba(253,224,71,.12); }
+  .etHero{ display:flex; align-items:center; gap:8px; text-align:left !important; }
+  .etHero img{ width:34px; height:34px; border-radius:6px; object-fit:cover; border:1px solid rgba(255,255,255,.2); }
+  .etK{ color:#4ade80; } .etD{ color:#f87171; } .etA{ color:#93c5fd; }
+  .etNw{ color:#fde047; font-weight:bold; }
+  .etItems{ text-align:left !important; }
+  .etItem{ display:inline-block; width:36px; height:26px; border-radius:3px; margin-right:2px; vertical-align:middle; }
+  .etEmpty{ background:rgba(255,255,255,.06); }
+  .etNeut{ width:26px; height:26px; border-radius:50%; object-fit:cover; margin-left:6px; }
+  .etMvp{ margin:8px 0 10px; font-size:16px; color:#fde68a; }
   #confetti span{ position:fixed; top:-50px; animation:fall 3.2s linear infinite; }
   @keyframes fall{
     0%{ transform:translateY(0) rotate(0); opacity:1; }
@@ -262,7 +282,7 @@
 <div id="select" class="overlay">
   <header>
     <h1>🏰 DOTA Kids 3D ⚔️</h1>
-    <p class="sub">Odaberi junaka i sruši protivnički prijestol! Ti + 2 bota 🔵 protiv 3 bota 🔴 <span class="ver">v0.23</span></p>
+    <p class="sub">Odaberi junaka i sruši protivnički prijestol! Ti + 2 bota 🔵 protiv 3 bota 🔴 <span class="ver">v0.24</span></p>
   </header>
   <div id="loadBar">⏳ Učitavam 3D modele…</div>
   <div class="selWrap">
@@ -310,6 +330,7 @@
     👻 <b>Nevidljivost</b> (Lunina Mjesečeva sjena) — neprijatelji te ne vide ni ne ciljaju; napad je prekida<br>
     🖥️ <b>Raspored kao u Warcraftu 3</b>: minimapa dolje lijevo, torba 2×3 uz portret, moći dolje desno<br>
     🛒 <b>B</b> (ili 🛒 gumb dolje desno) — dućan kao u DotA: <b>Osnovni</b> / <b>Nadogradnje</b> / ⭐ <b>Vodič</b>; <b>desni klik</b> = kupi, klik = recept, 📌 brza kupnja • 🎒 torba 6 + ruksak 3 (povuci mišem; u ruksaku ne djeluje) • aktivni predmeti: tipke <b>1–6</b> ili klik • <b>desni klik</b> na predmet u torbi = prodaja za pola cijene<br>
+    🏰 <b>Utvrđene građevine</b> — junaci rade pola štete kulama, zato guraj s vojnicima (opsadni vojnici ruše jače) • 🤝 <b>asistencija</b>: budi blizu kad suigrač ubije junaka<br>
     🏚️ <b>Vojarne</b> — iza 2. kule svake staze; sruši li tko vojarnu, njegovi vojnici na toj stazi postaju <b>💪 SUPER vojnici</b>!<br>
     💸 <b>O — otkup!</b> Kad pogineš, možeš platiti zlatom da se odmah vratiš (puni se 3 min) • 🛡️ Zmaj daje <b>Aegis</b> — jedno besplatno oživljavanje<br>
     🛡️ <b>F — Glif utvrde!</b> Sve kule i vojarne tvog tima 5 s ne primaju štetu (puni se 5 min) — spasi kulu u zadnji čas<br>
