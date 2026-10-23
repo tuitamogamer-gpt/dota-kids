@@ -2194,6 +2194,8 @@ function botUseAbilities(u, eh){
   }
 }
 
+/* snaga junaka za procjenu borbe: level + vrijednost predmeta, puta koliko mu je ostalo života */
+function botFightScore(h){ return (h.level + netWorth(h) / 800) * (0.35 + 0.65 * h.hp / h.maxhp); }
 /* botovi koriste aktivne predmete (jednostavna pravila) */
 function botUseItems(u, eh){
   const dEh = eh ? dist(u, eh) : 1e9, hpF = u.hp / u.maxhp, mpF = u.maxmp ? u.mp / u.maxmp : 1;
@@ -2263,9 +2265,19 @@ function botThink(u){
     u.moveTarget = stepToward(u, fountain, 300);
     return;
   }
-  if(eh && dist(u, eh) < 520 && (u.hp / u.maxhp > 0.45 || eh.hp < eh.maxhp * 0.25)){
-    u.attackTarget = eh;
-    return;
+  if(eh && dist(u, eh) < 520){
+    // ⚖️ procjena borbe: napadaj samo kad tvoja strana nije puno slabija (inače se povuci k svojoj kuli)
+    const side = team => units.reduce((a, h) => a + (h.kind === 'hero' && h.team === team && !h.dead && dist(h, u) < 800 ? botFightScore(h) : 0), 0);
+    const mine = side(u.team), theirs = side(eh.team);
+    if(eh.hp < eh.maxhp * 0.25 || (u.hp / u.maxhp > 0.45 && mine >= theirs * 0.8)){
+      u.attackTarget = eh;
+      return;
+    }
+    if(theirs > mine * 1.25){
+      u.attackTarget = null;
+      u.moveTarget = stepToward(u, fountain, 320);
+      return;
+    }
   }
   if(!eh){   // 💰📘 uzmi runu u blizini
     let rn = null, bd = 650;
