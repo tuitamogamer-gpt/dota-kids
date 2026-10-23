@@ -3092,7 +3092,7 @@ function showHeroPreview(container, heroId){
     const cv = heroPv.renderer.domElement;
     const img = container.querySelector('.d-img');
     if(img) img.remove();
-    container.insertBefore(cv, container.firstChild);
+    if(cv.parentNode !== container) container.appendChild(cv);
     if(heroPv.id !== heroId){
       if(heroPv.model){ heroPv.scene.remove(heroPv.model); if(heroPv.anim) heroPv.anim.mixer.stopAllAction(); }
       heroPv.model = modelInstance('hero_' + heroId, TEAM_BLUE, 1);
