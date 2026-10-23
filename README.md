@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.17: veliki patch sposobnosti — svaki junak ima urođenu pasivu i 4 aktivne moći (19 novih aktivnih + 5 novih pasiva), najviši level je 25, talenti i na 20 i 25!** ⚔️✨
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.18: jednostavniji početni ekran — filtri Blizina/Daljina, 3D model junaka i pločice moći (urođena pasiva + Q W E R) s opisom jedne po jednoj, multiplayer iza jednog gumba.**
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -18,6 +18,8 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- 🧭 **Jasniji izbor junaka** (v0.18): kratak naslov i jedna rečenica o igri; kartice samo sa slikom, imenom i ikonom ⚔️/🏹; filtri *Svi / Blizina / Daljina*; desno 3D model, uloga i 5 pločica (✨ urođena pasiva + Q W E R) — prijeđi ili klikni pločicu za opis; prvi junak je odmah odabran pa je dovoljno pritisnuti **ZAIGRAJ**; multiplayer se otvara gumbom 👥; na mobitelu su gumbi uvijek pri dnu ekrana
 
 - ⚔️ **Patch sposobnosti** (v0.17):
   - ✨ **Urođene pasive odvojene od moći**: svaki junak ima jednu pasivu (okrugla značka gore desno na portretu, opis kad prijeđeš mišem) koja uvijek radi i sama jača na levelima 7 / 13 / 19 — više ne troši poene ni mjesto među moćima. Nove pasive: 🔥 *Vatrena krv* (Žarko — napadi pale), 🌱 *Korijeni* (Listko — liječi se kad stoji), 💧 *Vodozemac* (Skokica — brža i liječi se u rijeci), 🔭 *Orlovski vid* (Orlina — veći domet), 🌙 *Mjesečeva oštrica* (Luna — napad odskoči na drugog neprijatelja)

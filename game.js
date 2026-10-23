@@ -3293,54 +3293,75 @@ function buildSelectScreen(){
   const cards = document.getElementById('cards');
   let html = '';
   HEROES.forEach((h, i) => {
-    const chip = h.projSpeed > 0
-      ? '<span class="chip chipR">🏹 Daljina</span>'
-      : '<span class="chip chipM">⚔️ Blizina</span>';
-    html += `<div class="card" id="card-${i}">
+    html += `<div class="card" id="card-${i}" data-r="${h.projSpeed > 0 ? 'R' : 'M'}" title="${h.name} — ${h.role}">
       <img class="c-img" src="assets/hero_${h.id}.jpg" alt="${h.emoji}"
         onerror="this.outerHTML='<div class=&quot;c-emoji&quot;>${h.emoji}</div>'">
       <div class="c-name">${h.name}</div>
-      <div class="c-type">${chip}</div>
-      <div class="c-role">${h.role}</div>
+      <div class="c-type">${h.projSpeed > 0 ? '🏹' : '⚔️'}</div>
     </div>`;
   });
   cards.innerHTML = html;
   HEROES.forEach((h, i) => {
-    document.getElementById('card-' + i).addEventListener('click', () => {
-      selectedHero = i;
-      if(net.conn) netPick(i);   // multiplayer: javi prijatelju svoj odabir
-      document.querySelectorAll('.card').forEach(c => c.classList.remove('sel'));
-      document.getElementById('card-' + i).classList.add('sel');
-      const chip = h.projSpeed > 0
-        ? '<span class="chip chipR">🏹 Daljina — napada izdaleka</span>'
-        : '<span class="chip chipM">⚔️ Blizina — bori se prsa o prsa</span>';
-      const primNames = { str: '💪 Snaga', agi: '🤸 Okretnost', int: '🧠 Inteligencija' };
-      const primChip = '<span class="chip chipP">' + primNames[h.attrs.primary] + '</span>';
-      let det = `<img class="d-img" src="assets/hero_${h.id}.jpg" onerror="this.remove()"><div class="d-head">${h.emoji} <b>${h.name}</b></div><div class="d-role">${h.role}</div><div class="d-type">${chip} ${primChip}</div>`;
-      if(h.passive){   // urođena pasiva (odvojena od 4 aktivne moći)
-        const pd = h.passive.desc.replace(/^PASIVNO:\s*/, '');
-        det += `<div class="d-abil">${h.passive.emoji} <b>${h.passive.name}</b> <span class="pasTag">✨ UROĐENO</span> — ${pd}</div>`;
-      }
-      for(const a of h.abilities){
-        const tag = a.ult ? ' <span class="ultTag">🌟 ULTI</span>' : '';
-        det += `<div class="d-abil"><b>${a.key}</b> ${a.emoji} <b>${a.name}</b>${tag} — ${a.desc}</div>`;
-      }
-      document.getElementById('heroDetail').innerHTML = det;
-      showHeroPreview(document.getElementById('heroDetail'), h.id);   // 3D model iz Blendera
-      document.getElementById('startBtn').disabled = false;
-      sfx('click');
-    });
+    document.getElementById('card-' + i).addEventListener('click', () => { selectHero(i); sfx('click'); });
   });
+  // filtar: svi / blizina / daljina
+  document.querySelectorAll('#roleTabs button').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('#roleTabs button').forEach(x => x.classList.toggle('on', x === b));
+    document.querySelectorAll('.card').forEach(c => c.classList.toggle('off', b.dataset.f !== 'all' && c.dataset.r !== b.dataset.f));
+  }));
   document.getElementById('startBtn').addEventListener('click', () => {
     if(net.conn){ netReady(); return; }   // multiplayer: čekaj oba igrača
     if(selectedHero >= 0) startGame(selectedHero);
   });
-  const rndBtn = document.getElementById('randomBtn');
-  if(rndBtn) rndBtn.addEventListener('click', () => {
-    document.getElementById('card-' + Math.floor(Math.random() * HEROES.length)).click();
+  document.getElementById('randomBtn').addEventListener('click', () => {
+    const vis = HEROES.map((h, i) => i).filter(i => !document.getElementById('card-' + i).classList.contains('off'));
+    const i = vis[Math.floor(Math.random() * vis.length)];
+    selectHero(i); sfx('click');
+    document.getElementById('card-' + i).scrollIntoView({ block: 'nearest' });
+  });
+  document.getElementById('mpToggle').addEventListener('click', e => {
+    const box = document.getElementById('mpBox');
+    box.classList.toggle('hidden');
+    e.currentTarget.classList.toggle('on', !box.classList.contains('hidden'));
   });
   document.getElementById('helpClose').addEventListener('click', toggleHelp);
   document.getElementById('againBtn').addEventListener('click', () => location.reload());
+  selectHero(0);   // odmah je netko odabran — dovoljno je pritisnuti ZAIGRAJ
+}
+/* desna ploča: 3D model, uloga i 5 pločica (urođena pasiva + Q W E R); opis jedne po jednoj */
+function selectHero(i){
+  const h = HEROES[i];
+  selectedHero = i;
+  if(net.conn) netPick(i);   // multiplayer: javi prijatelju svoj odabir
+  document.querySelectorAll('.card').forEach(c => c.classList.remove('sel'));
+  document.getElementById('card-' + i).classList.add('sel');
+  const primNames = { str: '💪 Snaga', agi: '🤸 Okretnost', int: '🧠 Pamet' };
+  const chips = (h.projSpeed > 0 ? '<span class="chip chipR">🏹 Daljina</span>' : '<span class="chip chipM">⚔️ Blizina</span>') +
+    '<span class="chip chipP">' + primNames[h.attrs.primary] + '</span>';
+  const tiles = [];
+  if(h.passive) tiles.push({ k: '✨', cls: 'pas', e: h.passive.emoji, name: h.passive.name, tag: '<span class="pasTag">✨ UROĐENO</span>',
+    desc: h.passive.desc.replace(/^PASIVNO:\s*/, '') + ' (uvijek radi)' });
+  for(const a of h.abilities) tiles.push({ k: a.key, cls: a.ult ? 'ult' : '', e: a.emoji, name: a.name,
+    tag: a.ult ? '<span class="ultTag">🌟 ULTI</span>' : '', desc: a.desc.replace(/^ULTI:\s*/, '') });
+  const det = document.getElementById('heroDetail');
+  det.innerHTML = `<div class="d-top">
+      <div class="d-model"><img class="d-img" src="assets/hero_${h.id}.jpg" onerror="this.remove()"></div>
+      <div><div class="d-head">${h.emoji} <b>${h.name}</b></div><div class="d-role">${h.role}</div><div>${chips}</div></div>
+    </div>
+    <div class="d-abils">${tiles.map((t, j) => `<button class="ab ${t.cls}" data-j="${j}" title="${t.name}"><span class="ab-k">${t.k}</span>${t.e}</button>`).join('')}</div>
+    <div class="d-desc"></div>`;
+  const show = j => {
+    const t = tiles[j];
+    det.querySelectorAll('.ab').forEach(b => b.classList.toggle('on', +b.dataset.j === j));
+    det.querySelector('.d-desc').innerHTML = `${t.e} <b>${t.name}</b> ${t.tag}<br>${t.desc}`;
+  };
+  det.querySelectorAll('.ab').forEach(b => {
+    b.addEventListener('mouseenter', () => show(+b.dataset.j));
+    b.addEventListener('click', () => show(+b.dataset.j));
+  });
+  show(0);
+  showHeroPreview(det.querySelector('.d-model'), h.id);   // 3D model iz Blendera
+  document.getElementById('startBtn').disabled = false;
 }
 
 /* ================= HUD ================= */
