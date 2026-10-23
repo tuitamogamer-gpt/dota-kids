@@ -40,6 +40,8 @@ const lineMeshes = new Map();
 const runeMeshes = new Map();
 const wardMeshes = new Map();
 const courierMeshes = new Map();   // 🫏 leteći kuriri
+const extraRuneMeshes = new Map(); // 💰📘 rune zlata i mudrosti
+const pingMeshes = new Map();      // 📍 pingovi suigrača
 const shrineObjs = [];     // 🕊️ svetišta (model + sjaj)
 const dying = [];          // modeli koji upravo padaju / tonu (smrt)
 
@@ -1811,12 +1813,14 @@ function syncZone(z, g, tAnim, dt){
 
 /* projektili: Blender model po emojiju moći ili vrsti napada (hero.shot) */
 const PROJ_BY_EMOJI = { '🔥': 'proj_fireball', '🧊': 'proj_ice', '🎯': 'proj_arrow', '🪶': 'proj_feather', '💫': 'proj_star',
-  '🌰': 'proj_acorn', '🌠': 'proj_moon', '👅': 'proj_tongue', '🦅': 'proj_hawk', '🐝': 'proj_bee', '🟢': 'proj_slime', '🌵': 'proj_quill', '🖤': 'proj_ink' };
+  '🌰': 'proj_acorn', '🌠': 'proj_moon', '👅': 'proj_tongue', '🦅': 'proj_hawk', '🐝': 'proj_bee', '🟢': 'proj_slime', '🌵': 'proj_quill', '🖤': 'proj_ink',
+  '🌈': 'proj_rainbow' };
 const PROJ_BY_SHOT = { arrow: 'proj_arrow', feather: 'proj_feather', fire: 'proj_fireball', ice: 'proj_ice', leaf: 'proj_acorn',
-  bolt: 'proj_bolt', tower: 'proj_bolt' };
+  bolt: 'proj_bolt', tower: 'proj_bolt', rainbow: 'proj_rainbow' };
 const PROJ_TRAIL = { proj_fireball: ['#ff7a1a', '#ffe26b'], proj_ice: ['#bfe6ff', '#ffffff'], proj_moon: ['#c4b5fd', '#fff7d6'],
   proj_star: ['#fde68a'], proj_bolt: ['#ffffff'], proj_hawk: ['#fde68a'], proj_acorn: ['#bef264'], proj_feather: ['#f8fafc'], proj_arrow: [],
-  proj_bee: ['#fde68a'], proj_slime: ['#bef264'], proj_quill: [], proj_ink: ['#312e81', '#1e1b4b'] };
+  proj_bee: ['#fde68a'], proj_slime: ['#bef264'], proj_quill: [], proj_ink: ['#312e81', '#1e1b4b'],
+  proj_rainbow: ['#f87171', '#fbbf24', '#4ade80', '#60a5fa', '#c084fc'] };
 function projModelName(p){
   return (p.emoji && PROJ_BY_EMOJI[p.emoji]) || (p.shot && PROJ_BY_SHOT[p.shot]) || null;
 }
@@ -1836,6 +1840,7 @@ function projScale(name, p){
     case 'proj_slime': return 36;
     case 'proj_quill': return 28;
     case 'proj_ink': return 36;
+    case 'proj_rainbow': return p.emoji ? 54 : 30;
   }
   return 30;
 }
@@ -2023,6 +2028,53 @@ function buildRuneMesh(rn){
   }
   g.userData.ring = ring;
   g.position.set(rn.x, groundHeight(rn.x, rn.y), rn.y);
+  return g;
+}
+
+/* 💰 runa zlata / 📘 runa mudrosti */
+function buildExtraRuneMesh(r){
+  const g = new THREE.Group();
+  const col = r.kind === 'bounty' ? '#fde047' : '#93c5fd';
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(24, 32, 24),
+    new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false }));
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 2;
+  g.add(ring);
+  const glow = new THREE.Sprite(glowMat(col));
+  glow.scale.set(80, 80, 1);
+  glow.position.y = 34;
+  g.add(glow);
+  const m = MODELS.ready ? modelInstance(r.kind === 'bounty' ? 'rune_bounty' : 'rune_wisdom', 0, 40) : null;
+  if(m){ g.add(m); g.userData.model = m; }
+  else {
+    const spr = emojiSprite(r.kind === 'bounty' ? '💰' : '📘', 40);
+    spr.position.y = 38;
+    g.add(spr);
+    g.userData.spr = spr;
+  }
+  g.userData.ring = ring;
+  g.position.set(r.x, groundHeight(r.x, r.y), r.y);
+  return g;
+}
+/* 📍 ping: stup svjetla i pribadača koja poskakuje */
+function buildPingMesh(p){
+  const g = new THREE.Group();
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(30, 40, 32),
+    new THREE.MeshBasicMaterial({ color: 0xfde047, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false }));
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 3;
+  g.add(ring);
+  const beam = new THREE.Mesh(cachedGeo('pingBeam', () => new THREE.CylinderGeometry(6, 14, 260, 10, 1, true)),
+    new THREE.MeshBasicMaterial({ color: 0xfde047, transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+  beam.position.y = 130;
+  g.add(beam);
+  const spr = emojiSprite('📍', 54);
+  spr.position.y = 70;
+  g.add(spr);
+  Object.assign(g.userData, { ring, beam, spr });
+  g.position.set(p.x, groundHeight(p.x, p.y), p.y);
   return g;
 }
 
@@ -2532,7 +2584,7 @@ function coinFx(x, y, n){
 }
 /* skokovi (Junački skok, Žablji skok, Obrušavanje, Mjesečev skok, Majmunski skok, Skokne čizme):
    logika premjesti junaka odmah, a model preleti lukom */
-const LEAP_KEYS = { 'vitez:E': 1, 'skokica:W': 1, 'orlina:E': 1, 'luna:E': 1, 'majmun:W': 1, 'munja:W': 1, 'item:blink': 1, 'vuk:W': 1 };
+const LEAP_KEYS = { 'vitez:E': 1, 'skokica:W': 1, 'orlina:E': 1, 'luna:E': 1, 'majmun:W': 1, 'munja:W': 1, 'item:blink': 1, 'vuk:W': 1, 'morskipas:W': 1 };
 function startLeap(u, g, now, maxH){
   const ud = g.userData;
   if(ud.lastX == null) return;
@@ -2789,6 +2841,43 @@ function syncScene(tAnim){
       fxSpawn(c.x - Math.cos(c.dir) * 24, c.y - Math.sin(c.dir) * 24, gh + ud.lift + 26, c.carry > 0 ? '#fde68a' : TEAM_LIGHT[c.team], { spd: 10, up: -6, grav: 0, life: 0.6, size: 12 });
   });
 
+  if(typeof extraRunes !== 'undefined') syncMapped(extraRunes, extraRuneMeshes, buildExtraRuneMesh, (r, g) => {
+    const ud = g.userData;
+    ud.ring.rotation.set(-Math.PI / 2, 0, tAnim * 1.5);
+    if(ud.model){ ud.model.rotation.y = tAnim * 1.4; ud.model.position.y = 14 + Math.sin(tAnim * 3 + r.x) * 6; }
+    if(ud.spr) ud.spr.position.y = 38 + Math.sin(tAnim * 3) * 6;
+  }, (r, g) => {
+    const col = r.kind === 'bounty' ? '#fde047' : '#93c5fd';
+    burst(g.position.x, g.position.z, col, 14, 160, 5);
+    if(r.kind === 'bounty' && MODELS.ready) coinFx(r.x, r.y, 6);
+    else beamFx(r.x, r.y, col, 0.7);
+  });
+  if(typeof pings !== 'undefined') syncMapped(pings, pingMeshes, buildPingMesh, (p, g) => {
+    const ud = g.userData;
+    g.visible = p.team === myTeam;
+    const f = (p.t * 1.6) % 1;
+    ud.ring.scale.setScalar(0.6 + f * 1.6);
+    ud.ring.material.opacity = 0.9 * (1 - f) * Math.min(1, (3 - p.t) * 2);
+    ud.beam.material.opacity = 0.35 * Math.min(1, (3 - p.t) * 2);
+    ud.spr.position.y = 70 + Math.abs(Math.sin(p.t * 6)) * 26;
+  });
+  // 🌰 neutralni predmet: škrinjica iskoči iz čudovišta i odleti do junaka
+  if(typeof neutralFx !== 'undefined' && neutralFx.length){
+    for(const n of neutralFx){
+      const ch = MODELS.ready ? modelInstance('fx_nchest', 0, 34) : null;
+      const gh0 = groundHeight(n.x, n.y);
+      if(ch) addFx(ch, 1.4, (o, f) => {
+        const k = Math.min(1, f * 1.4), x = n.x + (n.tx - n.x) * k, y = n.y + (n.ty - n.y) * k;
+        o.position.set(x, groundHeight(x, y) + 30 + Math.sin(k * Math.PI) * 140, y);
+        o.rotation.y = f * 9;
+        o.scale.setScalar(34 * (f > 0.85 ? (1 - f) / 0.15 : Math.min(1, f * 8)));
+      });
+      beamFx(n.x, n.y, '#bef264', 0.9);
+      for(let i = 0; i < 18; i++) fxSpawn(n.x, n.y, gh0 + 30, i % 2 ? '#bef264' : '#fde047', { spd: 140, up: 120, grav: -60, life: 0.8, size: 18 });
+    }
+    neutralFx.length = 0;
+  }
+
   // 💰 zlatnici pri last-hitu
   if(typeof coinDrops !== 'undefined' && coinDrops.length){
     if(MODELS.ready) for(const c of coinDrops) coinFx(c.x, c.y, c.n);
@@ -2893,7 +2982,7 @@ function clearScene3D(){
   meshByUnit.clear();
   for(const d of dying){ scene3.remove(d.g); disposeGroup(d.g); }
   dying.length = 0;
-  for(const map of [zoneMeshes, projMeshes, markerMeshes, lineMeshes, runeMeshes, wardMeshes, courierMeshes]){
+  for(const map of [zoneMeshes, projMeshes, markerMeshes, lineMeshes, runeMeshes, wardMeshes, courierMeshes, extraRuneMeshes, pingMeshes]){
     for(const [k, m] of map){ scene3.remove(m); if(m.traverse) disposeGroup(m); }
     map.clear();
   }

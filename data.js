@@ -61,6 +61,12 @@ const CFG = {
   backdoorMul: 0.5,         //   građevina prima pola štete
   backdoorRegen: 15,        //   i obnavlja 15 života/s
   shutdownGold: 60,         // prekid niza ubojstava: +60 zlata po ubojstvu u nizu (od 3.)
+  neutralDrop: 0.12,        // 🌰 šansa da čudovište iz džungle ispusti neutralni predmet
+  neutralT2: 600,           //   od 10. minute bolji predmeti (razina 2)
+  neutralT3: 1200,          //   od 20. minute najbolji (razina 3)
+  neutralMax: 3,            //   najviše 3 po razini za svaki tim
+  bountyEvery: 180,         // 💰 rune zlata u džungli svake 3 min
+  wisdomEvery: 420,         // 📘 rune mudrosti svakih 7 min
   courierSpeed: 520,        // 🫏 kurir leti brže od junaka
   courierBaseR: 900,        // kupljeno dalje od ovoga od fontane čeka kurira
   creepScaleEvery: 450,     // vojnici jačaju svakih 7.5 min (kao u DotA)
@@ -1127,6 +1133,116 @@ const HEROES = [
         }},
     ],
   },
+  // ---- v0.15 ----
+  {
+    id:'jednorog', name:'Duga', emoji:'🦄',
+    role:'🌈 Jednorog — čarobna pomagačica',
+    hp:520, mp:400, dmg:44,
+    attrs:{ str:17, agi:15, int:26, strG:3.2, agiG:2.0, intG:5.6, primary:'int' },
+    range:340, speed:170, atkCd:1.1, projSpeed:640, shot:'rainbow',
+    abilities:[
+      { key:'Q', name:'Dugin snop', emoji:'🌈', cd:8, mana:60, color:'#f0abfc',
+        desc:'Ispali dugu koja prolazi kroz sve neprijatelje na putu i uspori ih',
+        target:'point', castRange:750, line:true,
+        tip:rk => '⚔️ ' + (70 + 45*rk) + ' štete svima na putu + 🐌 usporenje',
+        bot:{type:'shot', range:700},
+        cast(u, aim, rk){
+          return spawnSkillshot(u, aim, {speed:820, r:30, range:750, pierce:true,
+            dmg:70 + 45*rk, color:'#f0abfc', emoji:'🌈', slow:{f:0.3, t:2}});
+        }},
+      { key:'W', name:'Ljekoviti rog', emoji:'💖', cd:14, mana:80, color:'#f9a8d4',
+        desc:'Rog zasja i izliječi tebe i sve prijatelje oko tebe',
+        selfAoe:380,
+        tip:rk => '💖 +' + (90 + 55*rk) + ' života tebi i prijateljima oko tebe',
+        bot:{type:'heal'},
+        cast(u, aim, rk){
+          for(const e of units){
+            if(e.team !== u.team || e.dead || e.removeMe || isStructure(e) || dist(u, e) > 380) continue;
+            if(e.kind !== 'hero' && !e.summonOf && e.kind !== 'creep') continue;
+            heal(e, (90 + 55*rk) * (e.kind === 'hero' ? 1 : 0.5));
+            if(e.kind === 'hero') addFloat(e.x, e.y - 20, '💖', '#f9a8d4', 18);
+          }
+          ring(u.x, u.y, 380, '#f9a8d4');
+          burst(u.x, u.y, '#f9a8d4', 22, 220, 6);
+          return true;
+        }},
+      { key:'E', name:'Čarobna griva', emoji:'✨', cd:0, mana:0, color:'#c4b5fd',
+        passive:true, pid:'griva',
+        desc:'PASIVNO: svi prijatelji oko tebe brže obnavljaju manu',
+        tip:rk => '💧 +' + (0.5 + 0.75*rk).toFixed(2) + ' mane/s prijateljima u krugu 450' },
+      { key:'R', name:'Zvjezdani galop', emoji:'🌠', cd:80, mana:150, ult:true, color:'#fde047',
+        desc:'ULTI: Zvjezdani udar omami neprijatelje oko tebe, a cijeli tim ubrza i dobije štit',
+        selfAoe:420,
+        tip:rk => '⚔️ ' + (100 + 60*rk) + ' štete + 💫 omama ' + (1 + 0.25*rk).toFixed(2) + ' s • tim: 🏃 brzina i 🛡️ štit 5 s',
+        bot:{type:'ult-aoe', range:380},
+        cast(u, aim, rk){
+          damageCircle(u, u.x, u.y, 420, 100 + 60*rk, {stun:1 + 0.25*rk, color:'#fde047'});
+          for(const e of units){
+            if(e.kind !== 'hero' || e.team !== u.team || e.dead) continue;
+            applyHaste(e, 1.4, 5); applyShield(e, 0.35, 5);
+            addFloat(e.x, e.y - 20, '🌠', '#fde047', 18);
+          }
+          burst(u.x, u.y, '#fde047', 30, 320, 7);
+          return true;
+        }},
+    ],
+  },
+  {
+    id:'morskipas', name:'Zubo', emoji:'🦈',
+    role:'🦷 Morski pas — gladni lovac',
+    hp:600, mp:260, dmg:60,
+    attrs:{ str:20, agi:24, int:12, strG:3.8, agiG:5.8, intG:1.8, primary:'agi' },
+    range:90, speed:178, atkCd:1.0, projSpeed:0,
+    abilities:[
+      { key:'Q', name:'Ugriz', emoji:'🦷', cd:7, mana:45, color:'#ef4444',
+        desc:'Snažno ugrizi neprijatelje ispred sebe — krvare još nekoliko sekundi',
+        target:'point', castRange:230, aoe:140,
+        tip:rk => '⚔️ ' + (70 + 45*rk) + ' štete + 🩸 ' + (15 + 10*rk) + '/s krvarenja 4 s',
+        bot:{type:'zone', range:200},
+        cast(u, aim, rk){
+          const p = clampRange(u, aim, 230);
+          u.dir = Math.atan2(p.y - u.y, p.x - u.x);
+          let n = 0;
+          for(const e of units){
+            if(e.team === u.team || e.dead || e.removeMe || e.invuln || !isSpellTarget(e)) continue;
+            if(distXY(p.x, p.y, e.x, e.y) > 140 + e.r * 0.5) continue;
+            applyDamage(e, 70 + 45*rk, u);
+            applyPoison(e, 15 + 10*rk, 4, u, '🩸 Krvari!');
+            n++;
+          }
+          burst(p.x, p.y, '#ef4444', 14, 160, 5);
+          if(n) addFloat(p.x, p.y, '🦷 Ham!', '#fca5a5', 16);
+          return true;
+        }},
+      { key:'W', name:'Skok iz vode', emoji:'🌊', cd:11, mana:55, color:'#38bdf8',
+        desc:'Skoči kao iz valova i zapljusni sve oko mjesta gdje padneš',
+        target:'point', castRange:420, aoe:170,
+        tip:rk => '⚔️ ' + (50 + 35*rk) + ' štete gdje padneš + 🐌 usporenje 40% 2 s',
+        bot:{type:'gap', range:420},
+        cast(u, aim, rk){
+          leapTo(u, aim, 420);
+          damageCircle(u, u.x, u.y, 170, 50 + 35*rk, {slow:{f:0.4, t:2}, color:'#38bdf8'});
+          burst(u.x, u.y, '#7dd3fc', 22, 220, 6);
+          return true;
+        }},
+      { key:'E', name:'Miris krvi', emoji:'🩸', cd:0, mana:0, color:'#f87171',
+        passive:true, pid:'krv',
+        desc:'PASIVNO: jače udaraš ranjene neprijatelje (ispod pola života)',
+        tip:rk => '⚔️ +' + (12 + 12*rk) + '% štete po ranjenima' },
+      { key:'R', name:'Pomama', emoji:'😤', cd:70, mana:110, ult:true, color:'#dc2626',
+        desc:'ULTI: Pobjesni! Napadaš puno brže, brže trčiš i svaki ugriz te liječi',
+        tip:rk => '⚡ +40% brzine napada, 🏃 brzina, 💖 ' + (20 + 10*rk) + '% štete u život • ' + (6 + 1*rk) + ' s',
+        bot:{type:'ult-aoe', range:300},
+        cast(u, aim, rk){
+          const d = 6 + rk;
+          u.status.rageT = d; u.status.rageStun = 0.05;
+          u.frenzyT = d; u.frenzyF = 0.2 + 0.1*rk;
+          applyHaste(u, 1.25, d);
+          burst(u.x, u.y, '#dc2626', 26, 260, 6);
+          return true;
+        }},
+    ],
+  },
 ];
 
 /* ---------------- DUĆAN S RECEPTIMA ---------------- */
@@ -1213,6 +1329,21 @@ const ITEMS = [
 ];
 const ITEM_BY_ID = {};
 for(const it of ITEMS) ITEM_BY_ID[it.id] = it;
+
+/* 🌰 NEUTRALNI PREDMETI — ponekad ispadnu iz čudovišta u džungli (posebno, okruglo mjesto u torbi).
+   Što je igra dulja, to su bolji (3 razine); svaki tim može naći najviše 3 po razini. */
+const NEUTRAL_ITEMS = [
+  { id:'n_clover',  emoji:'🍀', name:'Djetelina sreće',   ntier:1, desc:'+8 štete, +8 brzine',              stats:{dmg:8, speed:8} },
+  { id:'n_feather', emoji:'🪶', name:'Lako pero',         ntier:1, desc:'+25 brzine',                       stats:{speed:25} },
+  { id:'n_amulet',  emoji:'🧿', name:'Plavi amulet',      ntier:1, desc:'+160 života, +1 obnova',           stats:{hp:160, hpRegen:1} },
+  { id:'n_shell',   emoji:'🐚', name:'Morska školjka',    ntier:2, desc:'+250 života, +3 obnova',           stats:{hp:250, hpRegen:3} },
+  { id:'n_fang',    emoji:'🦴', name:'Kost pradavnog vuka', ntier:2, desc:'+22 štete',                      stats:{dmg:22} },
+  { id:'n_crystal', emoji:'🔷', name:'Kristal mudrosti',  ntier:2, desc:'+200 mane, +2.5 obnova mane',      stats:{mp:200, mpRegen:2.5} },
+  { id:'n_star',    emoji:'🌟', name:'Zvjezdani prah',    ntier:3, desc:'+32 štete, +30 brzine',            stats:{dmg:32, speed:30} },
+  { id:'n_dheart',  emoji:'💎', name:'Dijamantno srce',   ntier:3, desc:'+550 života, +5 obnova',           stats:{hp:550, hpRegen:5} },
+  { id:'n_moon',    emoji:'🌙', name:'Mjesečev kamen',    ntier:3, desc:'+400 mane, +5 obnova mane, +12 štete', stats:{mp:400, mpRegen:5, dmg:12} },
+];
+for(const it of NEUTRAL_ITEMS){ it.neutral = true; it.noShop = true; it.cost = 0; it.tier = 1; ITEM_BY_ID[it.id] = it; }
 const ITEM_TIERS = [
   { tier:1, label:'🥉 TIR 1 — Osnovni predmeti' },
   { tier:2, label:'🥈 TIR 2 — Recepti' },
@@ -1265,6 +1396,8 @@ const HERO_BUILDS = {
   hobotnica: ['boots', 'heart', 'guard', 'bigheart', 'bkb', 'titanheart'],
   nosorog:   ['boots', 'heart', 'bigheart', 'bkb', 'titanheart', 'dragonblade'],
   panda:     ['boots', 'heart', 'guard', 'bigheart', 'bkb', 'crown'],
+  jednorog:  ['boots', 'orb', 'guard', 'staff', 'archstaff', 'bigheart'],
+  morskipas: ['boots', 'sword', 'fastboots', 'bigsword', 'bkb', 'dragonblade'],
 };
 for(const h of HEROES) h.build = HERO_BUILDS[h.id] || BOT_BUILD;
 
@@ -1287,6 +1420,14 @@ const CAMP_SPOTS = [
   { x:500,  y:1800, type:'golem'  },
   { x:2500, y:1200, type:'golem'  },
 ];
+
+/* ---------------- RUNE ZLATA I MUDROSTI (u džungli) ---------------- */
+const BOUNTY_SPOTS = [{ x:700, y:1500 }, { x:1500, y:2300 }, { x:1500, y:700 }, { x:2300, y:1500 }];
+const WISDOM_SPOTS = [{ x:420, y:1250 }, { x:1250, y:420 }];
+
+/* ---------------- BRZE PORUKE (G pa 1–6) ---------------- */
+const CHAT_LINES = ['👍 Bravo!', '🆘 Pomoć!', '⚔️ Napadamo!', '🏃 Povlačenje!', '🙏 Hvala!', '😄 Dobra igra!'];
+const BOT_BRAG = ['😎 Hehe, lako!', '💪 Jesam ga!', '🎉 Juhu!', '⭐ Super smo!'];
 
 /* ---------------- SVETIŠTA (liječe tim, kao u DotA 7) ---------------- */
 const SHRINE_SPOTS = [{ x:1150, y:2250, team:0 }, { x:1850, y:750, team:1 }];
