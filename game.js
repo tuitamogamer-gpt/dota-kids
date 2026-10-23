@@ -3125,6 +3125,7 @@ function setupInput(){
     if(k === 'h') toggleHelp();
     if(k === 'o'){ if(net.mode === 'guest') netBuyback(); else buyback(player); }
     if(k === 'f' && player){ if(net.mode === 'guest') netGlyph(); else useGlyph(player.team, player); }
+    if(k === 'k'){ const on = togglePost(); feedMsg(on ? '✨ Efekti uključeni (sjaj, boje)' : '✨ Efekti isključeni', '#e5e7eb'); }
     if(k === 'g' && player){ chatOpen = !chatOpen; return; }
     if(k === 'v' && player){ if(net.mode === 'guest') netPing(mouse.wx, mouse.wy); else addPing(player, mouse.wx, mouse.wy); }
     if(chatOpen && k >= '1' && k <= '6'){

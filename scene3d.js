@@ -431,6 +431,7 @@ function initScene3D(glCanvas){
   initFx();
   initSpellLights();
   initEnvironment(renderer3, scene3);
+  initPost();
   loadModels3D();
 }
 /* mekano okolišno svjetlo (studio) — modeli dobiju odsjaj i dubinu */
@@ -449,14 +450,80 @@ function resize3D(){
   renderer3.setSize(VW, VH, false);
   camera3.aspect = VW / VH;
   camera3.updateProjectionMatrix();
+  if(POST.composer){
+    POST.composer.setPixelRatio(renderer3.getPixelRatio());
+    POST.composer.setSize(VW, VH);
+  }
   if(fx.mat){
     fx.mat.uniforms.scale.value = VH * renderer3.getPixelRatio() * 0.5 /
       Math.tan(THREE.MathUtils.degToRad(camera3.fov * 0.5));
   }
 }
 
+/* ================= POST-PROCESSING =================
+   HDR render (MSAA) → bloom (sjaj magija, kristala, baklji) → završna obrada:
+   ACES tonska krivulja (kao prije), malo jače boje i kontrast, vinjeta, sRGB.
+   Na sporim uređajima se samo isključi; tipka K ih pali/gasi. */
+const POST = { on: true, composer: null, bloom: null, grade: null, auto: true, frames: 0, acc: 0, last: 0 };
+const GRADE_SHADER = {
+  uniforms: { tDiffuse: { value: null }, exposure: { value: 1.05 }, sat: { value: 1.1 }, contrast: { value: 1.06 },
+    vig: { value: 0.28 }, night: { value: 0 } },
+  vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: `
+    uniform sampler2D tDiffuse; uniform float exposure, sat, contrast, vig, night; varying vec2 vUv;
+    vec3 rrtOdt(vec3 v){ vec3 a = v * (v + 0.0245786) - 0.000090537; vec3 b = v * (0.983729 * v + 0.4329510) + 0.238081; return a / b; }
+    vec3 aces(vec3 c){
+      const mat3 I = mat3(vec3(0.59719, 0.07600, 0.02840), vec3(0.35458, 0.90834, 0.13383), vec3(0.04823, 0.01566, 0.83777));
+      const mat3 O = mat3(vec3(1.60475, -0.10208, -0.00327), vec3(-0.53108, 1.10813, -0.07276), vec3(-0.07367, -0.00605, 1.07602));
+      c *= exposure / 0.6; c = I * c; c = rrtOdt(c); c = O * c; return clamp(c, 0.0, 1.0);
+    }
+    vec3 toSRGB(vec3 c){ return mix(c * 12.92, pow(c, vec3(1.0 / 2.4)) * 1.055 - 0.055, step(0.0031308, c)); }
+    void main(){
+      vec3 c = aces(texture2D(tDiffuse, vUv).rgb);
+      float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+      c = mix(vec3(l), c, sat);                                 // živahnije boje
+      c = (c - 0.5) * contrast + 0.5;                            // malo više kontrasta
+      c = mix(c, c * vec3(0.86, 0.92, 1.08), night * 0.35);      // noću hladniji ton
+      vec2 d = vUv - 0.5;
+      c *= 1.0 - vig * smoothstep(0.35, 0.85, length(d * vec2(1.25, 1.0)));   // vinjeta
+      gl_FragColor = vec4(toSRGB(clamp(c, 0.0, 1.0)), 1.0);
+    }`,
+};
+function initPost(){
+  if(!THREE.EffectComposer || !renderer3.capabilities.isWebGL2) { POST.on = false; return; }
+  try {
+    const pr = renderer3.getPixelRatio();
+    const rt = new THREE.WebGLRenderTarget(VW * pr, VH * pr, { type: THREE.HalfFloatType, samples: 4 });
+    POST.composer = new THREE.EffectComposer(renderer3, rt);
+    POST.composer.addPass(new THREE.RenderPass(scene3, camera3));
+    POST.bloom = new THREE.UnrealBloomPass(new THREE.Vector2(VW, VH), 0.55, 0.45, 0.95);
+    POST.composer.addPass(POST.bloom);
+    POST.grade = new THREE.ShaderPass(GRADE_SHADER);
+    POST.composer.addPass(POST.grade);
+    try { if(localStorage.getItem('dk_post') === '0') POST.on = false; } catch(e){}
+  } catch(e){ console.warn('Post-processing nije dostupan', e); POST.composer = null; POST.on = false; }
+}
+function togglePost(){
+  if(!POST.composer) return false;
+  POST.on = !POST.on; POST.auto = false;
+  try { localStorage.setItem('dk_post', POST.on ? '1' : '0'); } catch(e){}
+  return POST.on;
+}
 function render3D(){
-  renderer3.render(scene3, camera3);
+  if(POST.on && POST.composer){
+    POST.grade.uniforms.night.value = 1 - dayK;
+    POST.composer.render();
+    // samozaštita: ako je ispod ~28 fps 4 s zaredom, isključi efekte
+    const now = performance.now();
+    if(POST.auto && POST.last){
+      POST.acc += now - POST.last; POST.frames++;
+      if(POST.acc > 4000){
+        if(POST.frames / (POST.acc / 1000) < 28){ POST.on = false; if(typeof feedMsg === 'function') feedMsg('✨ Efekti isključeni da igra bude brža (K = uključi)', '#e5e7eb'); }
+        POST.acc = 0; POST.frames = 0;
+      }
+    }
+    POST.last = now;
+  } else renderer3.render(scene3, camera3);
 }
 
 /* ---------- dan i noć ---------- */
