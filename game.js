@@ -3768,11 +3768,12 @@ function drawHud(){
       put('⚔️ ' + Math.round(player.dmg * mul) + (player.itemBonus.dmg ? ' (+' + player.itemBonus.dmg + ')' : ''),
         mul > 1 ? '#fb923c' : '#fbbf24', py + 84);
       put('🏃 ' + Math.round(player.speed), '#a7f3d0', py + 84);
-      put('♥ +' + player.hpRegen.toFixed(1) + '/s', '#4ade80', py + 84);
-      put('💧 +' + player.mpRegen.toFixed(1) + '/s', '#7dd3fc', py + 84);
+      // red 3: iskustvo + obnove (u redu 2 ne stanu uz torbu)
       putX = bx;
       ctx.font = fontTxt(10.5, true);
-      put(player.level >= CFG.maxLevel ? '⭐ Najviši level!' : '⭐ Iskustvo ' + Math.floor(player.xp) + ' / ' + xpNeed(player.level), '#fde68a', py + 101);
+      put(player.level >= CFG.maxLevel ? '⭐ Max!' : '⭐ ' + Math.floor(player.xp) + '/' + xpNeed(player.level), '#fde68a', py + 101);
+      put('♥ +' + player.hpRegen.toFixed(1) + '/s', '#4ade80', py + 101);
+      put('💧 +' + player.mpRegen.toFixed(1) + '/s', '#7dd3fc', py + 101);
     }
 
     // torba 2×3 (kao u Warcraftu 3; klik = koristi, desni klik = prodaja za pola cijene)

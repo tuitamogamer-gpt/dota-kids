@@ -730,7 +730,7 @@ function updateMist(dt){
       mist.push({ spr, t: 0, life: 0 });
     }
   }
-  const strength = 0.16 + 0.12 * (1 - dayK);
+  const strength = 0.36 + 0.2 * (1 - dayK);
   for(const m of mist){
     m.t += dt;
     if(m.t >= m.life){   // novi pramen negdje na rijeci u blizini kamere
@@ -738,7 +738,7 @@ function updateMist(dt){
       const off = (Math.random() - 0.5) * 220;
       m.x = along + off * Math.SQRT1_2; m.y = along - off * Math.SQRT1_2;
       m.vx = 14 + Math.random() * 10; m.vy = 14 + Math.random() * 10;
-      m.size = 220 + Math.random() * 260; m.life = 6 + Math.random() * 6; m.t = 0;
+      m.size = 260 + Math.random() * 300; m.life = 6 + Math.random() * 6; m.t = 0;
     }
     m.x += m.vx * dt; m.y += m.vy * dt;
     const f = m.t / m.life, a = Math.sin(Math.PI * f);
@@ -3202,7 +3202,7 @@ function syncScene(tAnim){
           ud.model.localToWorld(_chimV);
           smokePuff(_chimV.x, _chimV.z, _chimV.y,
             red ? '#7c3aed' : (dayK > 0.5 ? '#9ca3af' : '#4b5563'),
-            red ? { life: 2.4, size: 34, alpha: 0.35, up: 18, wind: 4 } : { life: 3.2, size: 30, alpha: 0.55, up: 34, wind: 10 });
+            red ? { life: 2.6, size: 52, alpha: 0.5, up: 20, wind: 4 } : { life: 3.4, size: 58, alpha: 0.8, up: 36, wind: 12 });
         }
       }
       if(glyph[u.team].t > 0 && Math.random() < dt * 14) fxSpawn(u.x + (Math.random() - 0.5) * 110, u.y + (Math.random() - 0.5) * 90, gh + 10, '#fde047', { spd: 6, up: 90, grav: 0, life: 0.8, size: 22 });
