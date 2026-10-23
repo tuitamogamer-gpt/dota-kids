@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.19: veća mapa (+45%), pravi Sentinel i Scourge (tamne zgrade s kostima, mrtva šuma, pokvarena zemlja), brda i planine oko mape i filmski izgled — sjaj (bloom), boje i vinjeta!** 🏔️☠️✨
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.20: litice i rampe oko baza kao u Allstarsu, kameni rubnici staza, iskre pri svakom udarcu, krhotine kad padne kula i HUD u stilu Allstarsa!** ⛰️💥🏛️
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -18,6 +18,12 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- ⛰️ **3D dorada, 2. dio** (v0.20):
+  - ⛰️ **litice oko baza**: plato svake baze završava strmom liticom od slojevitog kamena (Sentinel: siva stijena s travom na vrhu, Scourge: tamni kamen s pepelom i ljubičastim kristalima), a gdje staze ulaze u bazu teren se spušta blagom **rampom** — kao u Allstarsu; visine terena računaju se jednom u mrežu (brže)
+  - 🪨 **kameni rubnici** duž sve tri staze
+  - 💥 **udarci**: zvjezdasta iskra na svakom pogotku (veća za jake udarce); kad padne kula ili vojarna, razlete se kamene krhotine koje odskakuju po tlu, digne se oblak prašine, kristal se rasprsne i bljesne svjetlo
+  - 🏛️ **HUD u stilu Allstarsa**: tamne ploče s dvostrukim rubom i zakovicama (Sentinel: tamno drvo i zlato, Scourge: tamni kamen, kost i ljubičasto), gumbi moći oštrijih kutova s unutarnjim rubom, minimapa prikazuje pravi teren
 
 - 🏔️ **3D dorada, 1. dio** (v0.19):
   - 🗺️ **mapa je 45% veća** (4350×4350): baze, staze, kule, kampovi, rune i svetišta raspoređeni po istom planu, ali je svijet veći u odnosu na junake (kao u DotA); džungla je gušća (oko 270 stabala)
