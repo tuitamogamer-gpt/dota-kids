@@ -28,6 +28,8 @@ const CFG = {
   heroKillGold: 200,
   heroKillGoldPerLvl: 12,
   heroKillXp: 150,
+  assistRange: 1000,        // 🤝 suigrači u ovom krugu oko ubijenog junaka dobivaju asistenciju
+  assistGold: 50,
   towerGoldTeam: 120,
   towerXp: 90,
   passiveGold: 0.9,
@@ -46,7 +48,11 @@ const CFG = {
   runeEvery: 120,
   dayCycle: 240,
   uphillMissChance: 0.25,
-  barracksHp: 1500,
+  barracksHp: 2000,
+  towerHp: 2400,
+  ancientHp: 5000,
+  heroVsStructure: 0.6,     // junaci udaraju građevine slabije (utvrđeni oklop kao u Allstarsu)
+  siegeVsStructure: 1.25,   // opsadni vojnici jače
   towerArmor: 8,            // 🛡️ oklop građevina (smanjuje štetu udaraca; Oštrica pustoši ga skida)
   barracksArmor: 6,
   barracksGoldTeam: 150,
