@@ -177,6 +177,7 @@ function onNetData(d){
     case 'stats': if(net.mode === 'host' && remoteHero) learnStats(remoteHero); break;
     case 'buy': if(net.mode === 'host' && remoteHero && ITEM_BY_ID[d.id]) tryBuy(remoteHero, ITEM_BY_ID[d.id]); break;
     case 'sell': if(net.mode === 'host' && remoteHero) sellItem(remoteHero, d.i); break;
+    case 'swap': if(net.mode === 'host' && remoteHero) swapItems(remoteHero, d.a | 0, d.b | 0); break;
     case 'tp': if(net.mode === 'host' && remoteHero) startTeleport(remoteHero); break;
     case 'buyback': if(net.mode === 'host' && remoteHero) buyback(remoteHero); break;
     case 'item': if(net.mode === 'host' && remoteHero) useItem(remoteHero, d.i, d.x != null ? { x: d.x, y: d.y } : null); break;
@@ -195,6 +196,7 @@ function netLearn(i){ sendNet({ c: 'learn', i }); }
 function netStats(){ sendNet({ c: 'stats' }); }
 function netBuy(id){ sendNet({ c: 'buy', id }); }
 function netSell(i){ sendNet({ c: 'sell', i }); }
+function netSwap(a, b){ sendNet({ c: 'swap', a, b }); }
 function netTp(){ sendNet({ c: 'tp' }); }
 function netBuyback(){ sendNet({ c: 'buyback' }); }
 function netItem(i, aim){ sendNet({ c: 'item', i, x: aim ? Math.round(aim.x) : null, y: aim ? Math.round(aim.y) : null }); }
@@ -220,6 +222,9 @@ function heroExtras(h){
     ab: h.abilities.map(a => [a.rank, +a.cd.toFixed(1)]),
     it: h.items.map(i => i.id),
     ip: h.items.reduce((a, it, k) => (it.pending && a.push(k), a), []),   // 🫏 čekaju kurira
+    bp: (h.backpack || []).map(i => (i.pending ? '*' : '') + i.id),        // 🎒 ruksak
+    ia: h.itemAttr ? [h.itemAttr.str, h.itemAttr.agi, h.itemAttr.int] : [0, 0, 0],
+    ar: +(unitArmor(h)).toFixed(1), asb: +(h.atkSpdBonus || 0).toFixed(3), ls: h.lifesteal || 0, ev: h.evasion || 0,
     nt: h.neutral ? h.neutral.id : 0,                                     // 🌰 neutralni predmet
   };
 }
@@ -238,6 +243,7 @@ function buildSnapshot(){
     if(u.castN){ b.cn = u.castN % 1000; b.cf = u.castFx; if(u.castAim) b.ca = [Math.round(u.castAim.x), Math.round(u.castAim.y)]; }
     if(u.knockN) b.kn = u.knockN % 1000;   // odbačaj
     if(u.charge) b.ch = 1;                 // juriš
+    if(u.cycloneT > 0) b.cy = 1;           // 🌪️ u vihoru
     if(u.kind === 'hero'){
       b.hi = HEROES.indexOf(u.hero);
       b.l = u.level; b.dd = u.dead ? 1 : 0;
@@ -247,7 +253,7 @@ function buildSnapshot(){
       b.lh = u.lastHits || 0; b.dn = u.denies || 0;
       b.pl = u.isPlayer ? 1 : (u.human ? 2 : 0);
       if(u.aegis) b.ag = 1;
-      b.it2 = u.items.map(i => i.emoji).join('');
+      b.it2 = u.items.map(i => i.id).join(',');
       if(u.neutral) b.nt = u.neutral.id;
     }
     else if(u.kind === 'creep'){ if(u.rangedCreep) b.rc = 1; if(u.siege) b.sg = 1; if(u.summonModel) b.sm = u.summonModel; if(u.superCreep) b.su = 1; }
@@ -374,7 +380,7 @@ function applySnapshot(d){
     u.tx2 = b.x; u.ty2 = b.y; u.tDir = b.d || 0;
     if(Math.abs(b.x - u.x) > 260 || Math.abs(b.y - u.y) > 260){ u.x = b.x; u.y = b.y; }
     u.hp = b.h; u.maxhp = b.m;
-    u.atkN = b.an || 0; u.castN = b.cn || 0; if(b.cf) u.castFx = b.cf; u.castAim = b.ca ? { x: b.ca[0], y: b.ca[1] } : null; u.atkInt = b.ai || null; u.atkHeavy = !!b.ah;
+    u.atkN = b.an || 0; u.castN = b.cn || 0; if(b.cf) u.castFx = b.cf; u.castAim = b.ca ? { x: b.ca[0], y: b.ca[1] } : null; u.cycloneT = b.cy ? 1 : 0; u.atkInt = b.ai || null; u.atkHeavy = !!b.ah;
     u.knockN = b.kn || 0; u.charge = b.ch ? { net: true } : null;
     if(u.kind === 'hero'){
       u.level = b.l; u.dead = !!b.dd;
@@ -383,7 +389,7 @@ function applySnapshot(d){
       u.kills = b.k2; u.deaths = b.d2; u.assists = b.a2 || 0; u.gold = b.gd2;
       u.lastHits = b.lh || 0; u.denies = b.dn || 0;
       u.aegis = !!b.ag;
-      if(!u.isPlayer) u.items = (b.it2 || '').split('').map(e => ({ emoji: e, name: '' })).filter(i => i.emoji.trim());
+      if(!u.isPlayer) u.items = (b.it2 || '').split(',').map(id => ITEM_BY_ID[id]).filter(Boolean);
       u.neutral = b.nt ? ITEM_BY_ID[b.nt] || null : null;
       if(b.pl === 2 && !u.isPlayer){ u.isPlayer = true; }
     }
@@ -415,6 +421,9 @@ function applySnapshot(d){
     });
     player.neutral = e.nt ? ITEM_BY_ID[e.nt] || null : null;
     player.items = e.it.map((id, k) => ITEM_BY_ID[id] && ((e.ip || []).includes(k) ? pendingItem(ITEM_BY_ID[id]) : ITEM_BY_ID[id])).filter(Boolean);
+    player.backpack = (e.bp || []).map(s => { const pend = s[0] === '*', it = ITEM_BY_ID[pend ? s.slice(1) : s]; return it && (pend ? pendingItem(it) : it); }).filter(Boolean);
+    if(e.ia) player.itemAttr = { str: e.ia[0], agi: e.ia[1], int: e.ia[2] };
+    player.armor = e.ar || 0; player.auraArmor = 0; player.corruptT = 0; player.atkSpdBonus = e.asb || 0; player.lifesteal = e.ls || 0; player.evasion = e.ev || 0;
   }
   if(player && !net.ringBuilt){ buildPlayerRing(); net.ringBuilt = true; }
   // projektili / zone / rune
