@@ -1595,7 +1595,8 @@ def build_tower():
     b.cyl((0, 0, 3.65), (0, 0, 4.3), 0.75, 0.0, '#ffffff', mat='team', seg=10)
     b.cyl((0, 0, 3.6), (0, 0, 3.7), 0.78, 0.78, '#8a8a8a', mat='team', seg=10)
     b.cyl((0, 0, 4.25), (0, 0, 4.9), 0.025, 0.025, '#5b3a1e', seg=6)
-    b.poly([(0, 0.01, 4.9), (0, 0.01, 4.62), (0.42, 0.01, 4.78)], '#ffffff', mat='team')
+    fl = m.part('flag', (0, 0, 4.76), 'base')   # zastava se vijori (zaseban dio)
+    fl.poly([(0, 0.01, 4.9), (0, 0.01, 4.62), (0.24, 0.01, 4.74), (0.46, 0.01, 4.8)], '#ffffff', mat='team', thick=0.012)
     for side in (1, -1):
         b.poly([(0.7 * 0.98, side * 0.16, 2.75), (0.7 * 0.98, side * 0.16 - side * 0.0, 2.75),
                 (0.79, side * 0.3, 2.0), (0.82, side * 0.14, 1.85)], '#ffffff', mat='team')
@@ -1677,7 +1678,8 @@ def build_barracks():
         b.box((0.88, yy, 0.62), (0.06, 0.16, 0.2), '#ffd166', mat='glow')
     b.box((-0.5, -0.45, 1.62), (0.26, 0.26, 0.6), '#9aa3ad', bevel=0.02)   # dimnjak
     b.cyl((0.6, 0.55, 1.2), (0.6, 0.55, 2.4), 0.03, 0.03, '#5b3a1e', seg=6)   # zastava
-    b.poly([(0.6, 0.55, 2.4), (0.6, 0.55, 2.1), (1.05, 0.55, 2.25)], '#ffffff', mat='team')
+    fl = m.part('flag', (0.6, 0.55, 2.25), 'base')
+    fl.poly([(0.6, 0.55, 2.4), (0.6, 0.55, 2.1), (0.82, 0.55, 2.22), (1.08, 0.55, 2.27)], '#ffffff', mat='team', thick=0.012)
     for s_ in (1, -1):   # stalci s oružjem ispred
         b.box((1.05, s_ * 0.5, 0.2), (0.3, 0.14, 0.4), '#7a4b25')
         b.box((1.05, s_ * 0.5, 0.6), (0.06, 0.06, 0.5), '#dfe6ee', rot=(0, 10, 0))
@@ -1763,6 +1765,11 @@ def build_scourge():
         ca, sa = math.cos(a), math.sin(a)
         bone_spike(b, (ca * 0.75, sa * 0.75, 2.95), (ca * 0.2, sa * 0.2, 1.0), 0.75, 0.09, -0.15)
     b.cyl((0, 0, 2.95), (0, 0, 3.1), 0.42, 0.36, '#3f3a47', seg=10)
+    b.cyl((-0.62, -0.62, 2.9), (-0.62, -0.62, 4.3), 0.03, 0.015, BONE2, seg=6)   # koštano koplje
+    skull(b, (-0.62, -0.62, 4.35), 0.5)
+    fl = m.part('flag', (-0.62, -0.62, 4.0), 'base')   # poderani barjak
+    fl.poly([(-0.62, -0.61, 4.18), (-0.62, -0.61, 3.78), (-0.4, -0.61, 3.86), (-0.3, -0.61, 3.96), (-0.2, -0.61, 3.9), (-0.16, -0.61, 4.12)],
+            '#ffffff', mat='team', thick=0.012)
     cr = m.part('crystal', (0, 0, 3.3))
     cr.ico((0, 0, 3.3), (0.22, 0.22, 0.36), '#ffffff', mat='teamglow', sub=0)
     m.finish()
@@ -1839,7 +1846,8 @@ def build_scourge():
     for yy in (0.4, -0.4):
         b.box((0.84, yy, 0.62), (0.08, 0.14, 0.3), VOID, mat='glow')
     b.cyl((0.6, 0.55, 1.2), (0.6, 0.55, 2.5), 0.03, 0.03, '#2e2a36', seg=6)
-    b.poly([(0.6, 0.55, 2.5), (0.6, 0.55, 2.15), (1.05, 0.55, 2.32)], '#ffffff', mat='team')
+    fl = m.part('flag', (0.6, 0.55, 2.32), 'base')
+    fl.poly([(0.6, 0.55, 2.5), (0.6, 0.55, 2.15), (0.8, 0.55, 2.26), (0.92, 0.55, 2.2), (1.06, 0.55, 2.34)], '#ffffff', mat='team', thick=0.012)
     m.finish()
 
     # zidina: tamni kamen s koštanim šiljcima

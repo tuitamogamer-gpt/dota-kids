@@ -680,6 +680,113 @@ function shockwave(x, y, r, color){
 }
 const HERO_BY_ID3 = {};
 
+/* ---------- ☁️ sjene oblaka: mekane mrlje klize preko terena (ubačeno u shader terena) ---------- */
+const CLOUD = { tex: null, uniforms: { cloudTex: { value: null }, cloudOff: { value: new THREE.Vector2() }, cloudK: { value: 0.3 } } };
+function cloudTexture(){
+  if(CLOUD.tex) return CLOUD.tex;
+  const N = 256, c = document.createElement('canvas'); c.width = c.height = N;
+  const g = c.getContext('2d');
+  g.fillStyle = '#000'; g.fillRect(0, 0, N, N);
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for(let i = 0; i < 26; i++){
+    const x = rnd() * N, y = rnd() * N, r = 18 + rnd() * 46, a = 0.25 + rnd() * 0.45;
+    for(const ox of [-N, 0, N]) for(const oy of [-N, 0, N]){   // bešavno ponavljanje
+      const gr = g.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, r);
+      gr.addColorStop(0, 'rgba(255,255,255,' + a + ')'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gr; g.beginPath(); g.arc(x + ox, y + oy, r, 0, TAU); g.fill();
+    }
+  }
+  CLOUD.tex = new THREE.CanvasTexture(c);
+  CLOUD.tex.wrapS = CLOUD.tex.wrapT = THREE.RepeatWrapping;
+  CLOUD.uniforms.cloudTex.value = CLOUD.tex;
+  return CLOUD.tex;
+}
+function addCloudShadows(mat){
+  cloudTexture();
+  mat.onBeforeCompile = sh => {
+    Object.assign(sh.uniforms, CLOUD.uniforms);
+    sh.vertexShader = 'varying vec2 vCloudUv;\n' + sh.vertexShader.replace('#include <project_vertex>',
+      '#include <project_vertex>\n  vCloudUv = (modelMatrix * vec4(transformed, 1.0)).xz / 2600.0;');
+    sh.fragmentShader = 'uniform sampler2D cloudTex; uniform vec2 cloudOff; uniform float cloudK; varying vec2 vCloudUv;\n' +
+      sh.fragmentShader.replace('#include <dithering_fragment>',
+      '  gl_FragColor.rgb *= 1.0 - cloudK * smoothstep(0.15, 0.75, texture2D(cloudTex, vCloudUv + cloudOff).r);\n#include <dithering_fragment>');
+  };
+  mat.needsUpdate = true;
+}
+function updateClouds(dt){
+  CLOUD.uniforms.cloudOff.value.x += dt * 0.0042;
+  CLOUD.uniforms.cloudOff.value.y += dt * 0.0026;
+  CLOUD.uniforms.cloudK.value = 0.06 + 0.26 * dayK;   // noću se sjene oblaka gotovo ne vide
+}
+/* ---------- 🌫️ izmaglica nad rijekom: mekani pramenovi lebde uz vodu oko kamere ---------- */
+const mist = [];
+function updateMist(dt){
+  if(!mist.length){
+    for(let i = 0; i < 22; i++){
+      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeGlowTexture(), color: 0xeef6ff, transparent: true, opacity: 0, depthWrite: false }));
+      spr.renderOrder = 5;
+      scene3.add(spr);
+      mist.push({ spr, t: 0, life: 0 });
+    }
+  }
+  const strength = 0.16 + 0.12 * (1 - dayK);
+  for(const m of mist){
+    m.t += dt;
+    if(m.t >= m.life){   // novi pramen negdje na rijeci u blizini kamere
+      const along = (cam.x + cam.y) / 2 + (Math.random() - 0.5) * 1700;
+      const off = (Math.random() - 0.5) * 220;
+      m.x = along + off * Math.SQRT1_2; m.y = along - off * Math.SQRT1_2;
+      m.vx = 14 + Math.random() * 10; m.vy = 14 + Math.random() * 10;
+      m.size = 220 + Math.random() * 260; m.life = 6 + Math.random() * 6; m.t = 0;
+    }
+    m.x += m.vx * dt; m.y += m.vy * dt;
+    const f = m.t / m.life, a = Math.sin(Math.PI * f);
+    m.spr.position.set(m.x, groundHeight(m.x, m.y) + 22 + f * 20, m.y);
+    m.spr.scale.set(m.size, m.size * 0.45, 1);
+    m.spr.material.opacity = strength * a;
+  }
+}
+/* ---------- 💨 dim iz dimnjaka (normalno miješanje, ne aditivno — siv dim ne smije svijetliti) ---------- */
+const smoke = { pool: [], next: 0 };
+function smokePuff(x, y, h, color, o){
+  if(!smoke.pool.length){
+    for(let i = 0; i < 48; i++){
+      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeGlowTexture(), color: 0xffffff, transparent: true, opacity: 0, depthWrite: false }));
+      spr.visible = false;
+      scene3.add(spr);
+      smoke.pool.push({ spr, t: 1, life: 0 });
+    }
+  }
+  const p = smoke.pool[smoke.next];
+  smoke.next = (smoke.next + 1) % smoke.pool.length;
+  p.x = x; p.y = y; p.h = h; p.t = 0; p.life = o.life; p.size = o.size; p.alpha = o.alpha;
+  p.vx = o.wind + (Math.random() - 0.5) * 8; p.vy = o.wind * 0.6 + (Math.random() - 0.5) * 8; p.vh = o.up;
+  p.spr.material.color.set(color);
+  p.spr.visible = true;
+}
+function updateSmoke(dt){
+  for(const p of smoke.pool){
+    if(!p.spr.visible) continue;
+    p.t += dt;
+    if(p.t >= p.life){ p.spr.visible = false; continue; }
+    const f = p.t / p.life;
+    p.x += p.vx * dt; p.y += p.vy * dt; p.h += p.vh * dt * (1 - f * 0.5);
+    p.spr.position.set(p.x, p.h, p.y);
+    const s = p.size * (0.45 + f * 1.3);
+    p.spr.scale.set(s, s, 1);
+    p.spr.material.opacity = p.alpha * Math.min(1, f * 5) * (1 - f);
+  }
+}
+const _chimV = new THREE.Vector3();
+/* ---------- 🚩 zastava se vijori oko koplja: spori zamah + brzo treperenje ---------- */
+function waveFlag(fl, t, seed){
+  if(!fl) return;
+  fl.rotation.y = Math.sin(t * 1.7 + seed) * 0.32 + Math.sin(t * 6.3 + seed * 2) * 0.08;
+  fl.rotation.x = Math.sin(t * 4.1 + seed) * 0.05;
+  fl.scale.x = 1 + Math.sin(t * 5.2 + seed * 3) * 0.06;
+}
+
 /* ---------- rub svijeta: izvan mape se teren diže u šumovita brda i stjenovite planine ---------- */
 function borderHeight(x, y){
   const cx = clamp(x, 0, WORLD), cy = clamp(y, 0, WORLD);
@@ -713,7 +820,9 @@ function buildBorderLand(){
   }
   geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
   geo.computeVertexNormals();
-  const land = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true }));
+  const landMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  addCloudShadows(landMat);
+  const land = new THREE.Mesh(geo, landMat);
   land.position.set(WORLD / 2, 0, WORLD / 2);
   land.receiveShadow = true;
   scene3.add(land);
@@ -742,7 +851,9 @@ function setGround(terrainCv){
   }
   geo.computeVertexNormals();
 
-  groundMesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: tex }));
+  const gMat = new THREE.MeshLambertMaterial({ map: tex });
+  addCloudShadows(gMat);
+  groundMesh = new THREE.Mesh(geo, gMat);
   groundMesh.rotation.x = -Math.PI / 2;
   groundMesh.position.set(WORLD / 2, 0, WORLD / 2);
   groundMesh.receiveShadow = true;
@@ -1749,7 +1860,7 @@ function buildTowerMesh(u){
     if(m){
       g.add(m);
       g.userData.model = m;
-      const glow = new THREE.Sprite(glowMat(TEAM_LIGHT[u.team]));
+      const glow = new THREE.Sprite(glowMat(TEAM_LIGHT[u.team]).clone());   // vlastiti materijal: svaka kula pulsira zasebno
       glow.scale.set(90, 90, 1);
       glow.position.y = 3.3 * MODEL_SCALE.tower;
       g.add(glow);
@@ -3080,7 +3191,20 @@ function syncScene(tAnim){
     }
     else if(u.kind === 'barracks'){
       g.position.set(u.x, gh, u.y);
-      if(ud.model) setModelLook(ud.model, u.flash > 0 ? 'f' : 'n');
+      if(ud.model){
+        setModelLook(ud.model, u.flash > 0 ? 'f' : 'n');
+        waveFlag(ud.model.userData.parts.flag, tAnim, u.id);
+        // dimnjak (Sentinel) dimi sivo; Scourge kasarna ispušta ljubičaste pramenove
+        if(Math.random() < dt * (u.team === TEAM_RED ? 2.2 : 3.2)){
+          const red = u.team === TEAM_RED;
+          if(red) _chimV.set((Math.random() - 0.5) * 1.8, 2.15, 0);   // uzduž sljemena krova
+          else _chimV.set(-0.5, 1.98, 0.45);   // vrh dimnjaka
+          ud.model.localToWorld(_chimV);
+          smokePuff(_chimV.x, _chimV.z, _chimV.y,
+            red ? '#7c3aed' : (dayK > 0.5 ? '#9ca3af' : '#4b5563'),
+            red ? { life: 2.4, size: 34, alpha: 0.35, up: 18, wind: 4 } : { life: 3.2, size: 30, alpha: 0.55, up: 34, wind: 10 });
+        }
+      }
       if(glyph[u.team].t > 0 && Math.random() < dt * 14) fxSpawn(u.x + (Math.random() - 0.5) * 110, u.y + (Math.random() - 0.5) * 90, gh + 10, '#fde047', { spd: 6, up: 90, grav: 0, life: 0.8, size: 22 });
       syncHitFx(u, g, 70, tAnim);
     }
@@ -3093,17 +3217,25 @@ function syncScene(tAnim){
       if(glyph[u.team].t > 0 && Math.random() < dt * 14) fxSpawn(u.x + (Math.random() - 0.5) * 80, u.y + (Math.random() - 0.5) * 80, gh + 10, '#fde047', { spd: 6, up: 110, grav: 0, life: 0.9, size: 22 });
       if(ud.model){
         const cr = ud.model.userData.parts.crystal;
-        if(cr) cr.rotation.y = tAnim * 1.5;
+        waveFlag(ud.model.userData.parts.flag, tAnim, u.id);
         // pucanj: kristal bljesne i prsne iskrama
         if((u.atkN || 0) !== ud.atkN){
           ud.atkN = u.atkN || 0;
           ud.flashT = tAnim;
           for(let i = 0; i < 6; i++) fxSpawn(u.x, u.y, gh + 3.3 * MODEL_SCALE.tower, TEAM_LIGHT[u.team], { spd: 60, up: 40, grav: -30, life: 0.4, size: 20 });
         }
+        // kristal pulsira dok kula puca (puls traje dok traje borba, ne samo trenutak hica)
+        const fl = Math.max(0, 1 - (tAnim - (ud.flashT == null ? -9 : ud.flashT)) / 0.3);
+        const busy = ud.flashT != null && tAnim - ud.flashT < 1.6;
+        ud.pulse = (ud.pulse || 0) + ((busy ? 1 : 0) - (ud.pulse || 0)) * Math.min(1, dt * 4);
+        if(cr){
+          cr.rotation.y = tAnim * (1.5 + ud.pulse * 2.5);
+          cr.scale.setScalar(1 + fl * 0.4 + ud.pulse * 0.08 * (1 + Math.sin(tAnim * 9)));
+        }
         if(ud.glow){
-          const fl = Math.max(0, 1 - (tAnim - (ud.flashT == null ? -9 : ud.flashT)) / 0.3);
-          const s = 80 + Math.sin(tAnim * 3 + u.id) * 10 + fl * 70;
+          const s = 80 + Math.sin(tAnim * 3 + u.id) * 10 + ud.pulse * (18 + Math.sin(tAnim * 9) * 14) + fl * 70;
           ud.glow.scale.set(s, s, 1);
+          ud.glow.material.opacity = 0.6 + ud.pulse * 0.25 + fl * 0.15;
         }
       } else if(ud.body){
         ud.body.material = u.flash > 0 ? lambMat('#ffffff') : lambMat('#e8e0cf');
@@ -3245,6 +3377,9 @@ function syncScene(tAnim){
     const x = cam.x + (Math.random() - 0.5) * 1400, y = cam.y + (Math.random() - 0.5) * 900;
     fxSpawn(x, y, groundHeight(x, y) + 140, '#fbcfe8', { spd: 25, up: -30, grav: 0, life: 3, size: 8 });
   }
+  updateClouds(dt);
+  updateMist(dt);
+  updateSmoke(dt);
   updateFxObjs(dt);
   updateSpellLights(dt);
   updateFx(dt);
