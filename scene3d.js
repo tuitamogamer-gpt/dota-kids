@@ -162,6 +162,7 @@ function modelMat(name, team, look){
     if(look === 'k') m.color.lerp(new THREE.Color('#a78bfa'), 0.55);                                   // 🌀 kletva
     if(look === 'w'){ m.emissive = new THREE.Color('#ff6a3d'); m.emissiveIntensity = 0.22; }          // 🐺 vučji oblik
     if(look === 'r'){ m.emissive = new THREE.Color('#ef4444'); m.emissiveIntensity = 0.3; }           // 😡 bijes
+    if(look === 'v'){ m.color.lerp(new THREE.Color('#8b5cf6'), 0.8); m.emissive = new THREE.Color('#4c1d95'); m.emissiveIntensity = 0.35; }   // 🐙 pipci
   }
   if(look === 'g'){ m.transparent = true; m.opacity = 0.32; m.depthWrite = false; }
   m.userData.shared = true;
@@ -230,7 +231,7 @@ function animBase(a, name, ts, now){
   if(prev) act.crossFadeFrom(prev, 0.15, false);
   a.cur = name;
 }
-function animOnce(a, name, ts, now, startAt){
+function animOnce(a, name, ts, now, startAt, fade){
   const act = a.acts[name];
   if(!act) return;
   const prev = a.cur && a.cur !== name ? a.acts[a.cur] : null;
@@ -240,7 +241,7 @@ function animOnce(a, name, ts, now, startAt){
   act.timeScale = ts;
   act.time = startAt || 0;
   act.play();
-  if(prev) act.crossFadeFrom(prev, 0.06, false);
+  if(prev) act.crossFadeFrom(prev, fade || 0.06, false);
   a.cur = name;
   a.oneEnd = now + (act.getClip().duration - (startAt || 0)) / ts - 0.07;
 }
@@ -304,6 +305,13 @@ function glowMat(color){
     matCache[key].userData.shared = true;
   }
   return matCache[key];
+}
+/* vlastita kopija sjaja (za efekte koji mijenjaju prozirnost) — nije dijeljena pa se smije osloboditi */
+function glowMatOwn(color){
+  const m = glowMat(color).clone();
+  m.userData = {};
+  m.opacity = 0;
+  return m;
 }
 function makeGlowTexture(){
   if(glowTex) return glowTex;
@@ -748,11 +756,23 @@ function updateMist(dt){
   }
 }
 /* ---------- 💨 dim iz dimnjaka (normalno miješanje, ne aditivno — siv dim ne smije svijetliti) ---------- */
-const smoke = { pool: [], next: 0 };
+const smoke = { pool: [], next: 0, tex: null };
+function puffTexture(){   // gust, mekan oblačić (sjaj prebrzo blijedi pa dim ispadne preprozirn)
+  if(smoke.tex) return smoke.tex;
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  for(const [cx, cy, r] of [[32, 34, 22], [22, 30, 14], [42, 28, 15], [32, 22, 14]]){
+    const grad = g.createRadialGradient(cx, cy, 0, cx, cy, r);
+    grad.addColorStop(0, 'rgba(255,255,255,0.9)'); grad.addColorStop(0.6, 'rgba(255,255,255,0.55)'); grad.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grad; g.fillRect(0, 0, 64, 64);
+  }
+  smoke.tex = new THREE.CanvasTexture(c);
+  return smoke.tex;
+}
 function smokePuff(x, y, h, color, o){
   if(!smoke.pool.length){
-    for(let i = 0; i < 48; i++){
-      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeGlowTexture(), color: 0xffffff, transparent: true, opacity: 0, depthWrite: false }));
+    for(let i = 0; i < 64; i++){
+      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: puffTexture(), color: 0xffffff, transparent: true, opacity: 0, depthWrite: false }));
       spr.visible = false;
       scene3.add(spr);
       smoke.pool.push({ spr, t: 1, life: 0 });
@@ -763,6 +783,7 @@ function smokePuff(x, y, h, color, o){
   p.x = x; p.y = y; p.h = h; p.t = 0; p.life = o.life; p.size = o.size; p.alpha = o.alpha;
   p.vx = o.wind + (Math.random() - 0.5) * 8; p.vy = o.wind * 0.6 + (Math.random() - 0.5) * 8; p.vh = o.up;
   p.spr.material.color.set(color);
+  p.spr.material.rotation = Math.random() * TAU;
   p.spr.visible = true;
 }
 function updateSmoke(dt){
@@ -1556,17 +1577,17 @@ function skyBolt(x1, y1, h1, x2, y2, color){
   for(let i = 0; i < 10; i++) fxSpawn(x2, y2, h2 + 8, i % 2 ? color : '#ffffff', { spd: 160, up: 80, grav: -60, life: 0.4, size: 16 });
 }
 /* instancirani Blender model (1 draw call za N primjeraka) */
-function instancedFx(name, n, glow){
+function instancedFx(name, n, glow, look){
   const geo = mergedModelGeo(name);
   if(!geo || n <= 0) return null;
-  const im = new THREE.InstancedMesh(geo, modelMat(glow ? 'GLOW' : 'VC', 0, 'n'), n);
+  const im = new THREE.InstancedMesh(geo, modelMat(glow ? 'GLOW' : 'VC', 0, look || 'n'), n);
   im.castShadow = !glow;
   im.frustumCulled = false;
   return im;
 }
 /* modeli izbijaju iz tla oko (x,y) u krugu r, stoje, pa utonu */
 function fxRise(name, x, y, r, n, o){
-  const im = instancedFx(name, n, o.glow);
+  const im = instancedFx(name, n, o.glow, o.look);
   if(!im) return;
   const items = [];
   for(let i = 0; i < n; i++){
@@ -2661,7 +2682,9 @@ function syncHitFx(u, g, bodyH, tAnim){
   const ud = g.userData;
   if(ud.hp != null && u.hp < ud.hp - 0.5 && g.visible){
     const big = u.hp < ud.hp - 60;
-    hitSpark(u.x + (Math.random() - 0.5) * 20, u.y + (Math.random() - 0.5) * 20, g.position.y + bodyH, big ? '#ffd27a' : '#fff1c2', big ? 120 : 70);
+    const ha = u.hitAng != null ? u.hitAng : Math.random() * TAU, side = isStructureKind(u.kind) ? 0 : (u.r || 18) * 0.6;
+    hitSpark(u.x - Math.cos(ha) * side + (Math.random() - 0.5) * 14, u.y - Math.sin(ha) * side + (Math.random() - 0.5) * 14, g.position.y + bodyH, big ? '#ffd27a' : '#fff1c2', big ? 120 : 70);
+    if(!isStructureKind(u.kind)) ud.recoil = { t: tAnim, a: ha, d: big ? 13 : 7 };   // trzaj od napadača
     const n = u.kind === 'tower' || u.kind === 'ancient' ? 6 : 4;
     for(let i = 0; i < n; i++) fxSpawn(u.x, u.y, g.position.y + bodyH, i % 2 ? '#fff7c2' : '#ffb347', { spd: 110, up: 60, grav: -80, life: 0.35, size: 16 });
     // trzaj (ako baš ne napada / ne čara)
@@ -2669,7 +2692,17 @@ function syncHitFx(u, g, bodyH, tAnim){
     if(a && a.acts.hit && tAnim >= a.oneEnd && !u.dead) animOnce(a, 'hit', 1.3, tAnim, 0);
   }
   ud.hp = u.hp;
+  if(ud.recoil){   // kratki trzaj unatrag i povratak (0.16 s)
+    const f = (tAnim - ud.recoil.t) / 0.16;
+    if(f >= 1) ud.recoil = null;
+    else {
+      const k = Math.sin(Math.min(1, f) * Math.PI) * ud.recoil.d;
+      g.position.x += Math.cos(ud.recoil.a) * k;
+      g.position.z += Math.sin(ud.recoil.a) * k;
+    }
+  }
 }
+function isStructureKind(k){ return k === 'tower' || k === 'ancient' || k === 'barracks'; }
 /* prašina pod nogama dok hoda */
 function syncSteps(u, g, dt){
   const ud = g.userData;
@@ -2680,6 +2713,66 @@ function syncSteps(u, g, dt){
     ud.stepT = 0;
     const r = u.r || 16;
     fxSpawn(u.x + (Math.random() - 0.5) * r, u.y + (Math.random() - 0.5) * r, g.position.y + 3, '#c9b48c', { spd: 12, up: 16, grav: -12, life: 0.45, size: 10 + r * 0.35 });
+  }
+}
+/* ✋ trenutak puštanja magije: bljesak svjetla u rukama ispred junaka i iskre u smjeru bacanja */
+function releaseFx(u, gh, col, ult){
+  const dir = u.dir || 0, off = (u.r || 16) * 0.9 + 10;
+  const x = u.x + Math.cos(dir) * off, y = u.y + Math.sin(dir) * off;
+  const spr = new THREE.Sprite(glowMatOwn(col));
+  const peak = ult ? 150 : 100;
+  addFx(spr, 0.32, (o, f) => {
+    o.position.set(x, gh + 52, y);
+    const k = f < 0.2 ? f / 0.2 : 1;
+    o.scale.set(peak * (0.3 + 0.7 * k), peak * (0.3 + 0.7 * k), 1);
+    o.material.opacity = f < 0.2 ? k : Math.max(0, 1 - (f - 0.2) / 0.8);
+  });
+  for(let i = 0; i < (ult ? 14 : 8); i++){
+    const a = dir + (Math.random() - 0.5) * 1.1;
+    const n = fx.list.length;
+    fxSpawn(x, y, gh + 52, i % 2 ? col : '#ffffff', { spd: 0, up: 10, grav: 0, life: 0.35, size: 18 });
+    if(fx.list.length > n){ const p = fx.list[n], sp = 150 + Math.random() * 150; p.vx = Math.cos(a) * sp; p.vy = Math.sin(a) * sp; }   // iskre lete naprijed
+  }
+}
+/* 🎯 efekti na mjestu cilja za magije koje nemaju projektil ni zonu */
+function castTargetFx(u, key, aim){
+  const range = { 'tragac:W': 550, 'hobotnica:E': 320, 'sova:W': 1400, 'tragac:R': 700 }[key];
+  if(!range) return;
+  const d = distXY(u.x, u.y, aim.x, aim.y), k = d > range ? range / d : 1;   // isto ograničenje dometa kao u igri
+  const x = u.x + (aim.x - u.x) * k, y = u.y + (aim.y - u.y) * k, gh = groundHeight(x, y);
+  switch(key){
+    case 'tragac:W': {   // 💨 Dimna bomba: bljesak, pa gust siv dim koji se polako razilazi
+      spellLight(x, y, gh + 40, '#e2e8f0', 2.2, 0.35, 420);
+      shockwave(x, y, 240, '#cbd5e1');
+      for(let i = 0; i < 22; i++){
+        const a = Math.random() * TAU, r = Math.sqrt(Math.random()) * 200;
+        smokePuff(x + Math.cos(a) * r, y + Math.sin(a) * r, gh + 20 + Math.random() * 40, i % 3 ? '#d1d5db' : '#9ca3af',
+          { life: 2.6 + Math.random() * 1.6, size: 120 + Math.random() * 80, alpha: 1, up: 6 + Math.random() * 10, wind: 3 });
+      }
+      break;
+    }
+    case 'hobotnica:E':   // 🐙 Zagrljaj pipaka: ljubičasti pipci izbiju iz tla i stisnu
+      fxRise('fx_root', x, y, 120, 7, { scale: 40, life: 1.6, look: 'v' });
+      magicCircle(x, y, 150, '#8b5cf6', 1.2, false);
+      for(let i = 0; i < 18; i++){ const a = i / 18 * TAU; fxSpawn(x + Math.cos(a) * 140, y + Math.sin(a) * 140, gh + 10, i % 2 ? '#a78bfa' : '#4c1d95', { spd: 0, up: 60, grav: 0, life: 0.7, size: 22 }); }
+      break;
+    case 'sova:W':   // 👁️ Sovino oko: stup ljubičastog svjetla i runski krug vida
+      beamFx(x, y, '#c4b5fd', 0.9);
+      magicCircle(x, y, 210, '#c4b5fd', 1.6, true);
+      spellLight(x, y, gh + 80, '#c4b5fd', 2.4, 0.9, 600);
+      break;
+    case 'tragac:R': {   // 💰 Ucjena: zlatni stup i zlatnici nad metom
+      let best = null, bd = 260;
+      for(const e of units){
+        if(e.kind !== 'hero' || e.team === u.team || e.dead || e.removeMe) continue;
+        const dd = distXY(aim.x, aim.y, e.x, e.y); if(dd < bd){ bd = dd; best = e; }
+      }
+      const tx = best ? best.x : x, ty = best ? best.y : y;
+      beamFx(tx, ty, '#fde047', 0.8);
+      coinFx(tx, ty, 8);
+      spellLight(tx, ty, groundHeight(tx, ty) + 70, '#fde047', 2.2, 0.6, 420);
+      break;
+    }
   }
 }
 /* efekt pri bacanju moći — ključ je "junak:tipka" (game.js: u.castFx) */
@@ -2698,8 +2791,11 @@ function castFx(u, g, key){
       spellLight(u.x, u.y, gh + 70, col, ult ? 3.4 : 2.1, ult ? 1.0 : 0.6, ult ? 700 : 430);
       if(self) shockwave(u.x, u.y, self, col);
       if(ult){ beamFx(u.x, u.y, col, 1.25); shakeAt(u.x, u.y, 0.35, 0.3); }
+      releaseFx(u, gh, col, ult);
     }
   }
+  const aim = u.castAim;   // mjesto cilja (game.js; gost ga dobiva preko mreže)
+  if(aim && g.visible) castTargetFx(u, key, aim);
   const dust = (n, c) => { for(let i = 0; i < n; i++) fxSpawn(u.x, u.y, gh + 4, c || '#c9b48c', { spd: 120, up: 30, grav: -30, life: 0.6, size: 22 }); };
   if(LEAP_KEYS[key]) startLeap(u, g, lastAnimT);
   switch(key){
@@ -2950,10 +3046,17 @@ function animateUnit(u, g, now, dt){
   if(!a) return;
   if((u.atkN || 0) !== ud.atkN){
     ud.atkN = u.atkN || 0;
-    const cd = u.atkCd || 1;
-    const nm = a.acts.attack2 && (ud.atkN % 3 === 2) ? 'attack2' : 'attack';   // svaki treći udarac drukčiji zamah
-    animOnce(a, nm, Math.max(1, 0.62 / cd), now, u.projSpeed ? 0.1 : 0.04);
-    if(u.kind === 'hero' && !u.projSpeed && g.visible) swingFx(u, nm === 'attack2');   // trag zamaha oružja
+    // brzina animacije prati stvarni razmak napada (kao ATK_POINT u game.js) — udarac pada točno u 7. kadru
+    const ts = Math.max(1, 0.62 / (u.atkInt || u.atkCd || 1));
+    const heavy = u.kind === 'hero' && u.atkHeavy;
+    // krit / kombo / iz sjene: drugi, jači zamah; inače svaki treći udarac drukčiji
+    const nm = a.acts.attack2 && (heavy || ud.atkN % 3 === 2) ? 'attack2' : 'attack';
+    animOnce(a, nm, ts, now, 0);
+    const impact = 7 / 24 / ts;
+    if(u.kind === 'hero' && g.visible){
+      if(!u.projSpeed) swingFx(u, nm === 'attack2', impact, heavy);   // trag zamaha oružja preko kadra udarca
+      else chargeFx(u, g, impact);                                    // daljinski: sjaj u ruci dok napinje / zamahuje
+    }
   }
   if((u.castN || 0) !== ud.castN){
     ud.castN = u.castN || 0;
@@ -2964,7 +3067,8 @@ function animateUnit(u, g, now, dt){
       const ab = u.hero.abilities.find(x => x.key === k);
       if(ab && ab.target === 'point' && !ab.ult) nm = 'cast2';
     }
-    animOnce(a, nm, nm === 'cast2' ? 1.15 : 1.25, now, 0);
+    // efekt magije nastaje odmah: animacija kreće s vrha zamaha pa ruke "bace" čaroliju baš kad se efekt pojavi
+    animOnce(a, nm, nm === 'cast2' ? 1.15 : 1.25, now, nm === 'cast2' ? 6 / 24 : 7 / 24, 0.1);
     if(u.castFx) castFx(u, g, u.castFx);
   }
   const moving = gameTime - (u.lastMoveT == null ? -9 : u.lastMoveT) < 0.15;
@@ -2984,9 +3088,9 @@ function animateUnit(u, g, now, dt){
   a.mixer.update(dt);
 }
 /* ⚔️ trag zamaha: svijetli luk ispred junaka koji se proteže preko zamaha (blizinski napad) */
-function swingFx(u, flip){
+function swingFx(u, flip, impact, heavy){
   const geo = cachedGeo('swingArc', () => new THREE.RingGeometry(24, 62, 22, 1, -0.95, 1.9));
-  const col = new THREE.Color((u.hero && u.hero.abilities[0].color) || '#ffffff').lerp(new THREE.Color('#ffffff'), 0.55);
+  const col = new THREE.Color((u.hero && u.hero.abilities[0].color) || '#ffffff').lerp(new THREE.Color('#ffffff'), heavy ? 0.25 : 0.55);
   const mat = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0, side: THREE.DoubleSide,
     depthWrite: false, blending: THREE.AdditiveBlending });
   const inner = new THREE.Mesh(geo, mat);
@@ -2994,14 +3098,32 @@ function swingFx(u, flip){
   const holder = new THREE.Group();
   holder.add(inner);
   const dir = u.dir || 0;
-  addFx(holder, 0.3, (o, f) => {
+  const t0 = Math.max(0, (impact || 0.25) - 0.1), dur = 0.22, big = heavy ? 1.35 : 1;
+  addFx(holder, t0 + dur, (o, f, t) => {
+    const k = (t - t0) / dur;   // 0 → 1 preko zamaha; udarac je na ~45 %
+    o.visible = k >= 0;
+    if(k < 0) return;
     const gh = groundHeight(u.x, u.y);
     o.position.set(u.x, gh + 34 + (flip ? 10 : 0), u.y);
     o.rotation.set(flip ? 0.35 : -0.25, -dir, 0);
-    inner.rotation.z = (flip ? 1 : -1) * (0.9 - 1.8 * f);   // luk "prebriše" od jedne strane do druge
-    mat.opacity = Math.sin(Math.min(1, f * 1.4) * Math.PI) * 0.7;
-    const s = 0.85 + f * 0.3;
+    inner.rotation.z = (flip ? 1 : -1) * (0.9 - 1.8 * k);   // luk "prebriše" od jedne strane do druge
+    mat.opacity = Math.sin(Math.min(1, k * 1.4) * Math.PI) * (heavy ? 0.95 : 0.7);
+    const s = (0.85 + k * 0.3) * big;
     o.scale.set(s, s, s);
+  });
+}
+/* 🏹 daljinski napad: svjetlo se skupi u ruci dok junak napinje luk / zamahuje, pa bljesne pri ispaljivanju */
+function chargeFx(u, g, impact){
+  const col = (u.hero && u.hero.abilities[0].color) || TEAM_LIGHT[u.team];
+  const spr = new THREE.Sprite(glowMatOwn(col));
+  addFx(spr, impact + 0.12, (o, f, t) => {
+    const dir = u.dir || 0, gh = groundHeight(u.x, u.y);
+    const off = (u.r || 16) * 0.8 + 8;
+    o.position.set(u.x + Math.cos(dir) * off, gh + 50, u.y + Math.sin(dir) * off);
+    const k = t < impact ? t / impact : 1 + (t - impact) / 0.12 * 0.8;   // raste do ispaljivanja, pa kratko prasne
+    const s = t < impact ? 10 + 26 * k : 36 + 40 * (k - 1);
+    o.scale.set(s, s, 1);
+    o.material.opacity = t < impact ? 0.35 + 0.5 * k : Math.max(0, 1 - (k - 1) * 1.25);
   });
 }
 /* 💰 zlatnici iskoče iz ubijenog vojnika i odlete prema junaku */
@@ -3031,7 +3153,8 @@ function startLeap(u, g, now, maxH){
   if(ud.lastX == null) return;
   const d = distXY(ud.lastX, ud.lastY, u.x, u.y);
   if(d < 40) return;
-  ud.leap = { x0: ud.lastX, y0: ud.lastY, t0: now, dur: Math.min(0.5, 0.22 + d / 1400), h: Math.min(maxH || 170, 60 + d * 0.25) };
+  ud.leap = { x0: ud.lastX, y0: ud.lastY, t0: now, dur: Math.min(0.5, 0.22 + d / 1400), h: Math.min(maxH || 170, 60 + d * 0.25), knock: !!maxH };
+  if(!maxH && g.visible) for(let i = 0; i < 10; i++) fxSpawn(ud.lastX, ud.lastY, groundHeight(ud.lastX, ud.lastY) + 4, '#c9b48c', { spd: 110, up: 40, grav: -30, life: 0.5, size: 20 });   // odraz
   if(!maxH && ud.anim && ud.anim.acts.jump) animOnce(ud.anim, 'jump', 14 / 24 / ud.leap.dur, now, 0);
   else if(maxH && ud.anim && ud.anim.acts.hit) animOnce(ud.anim, 'hit', 0.8, now, 0);
 }
@@ -3105,7 +3228,11 @@ function syncScene(tAnim){
         const f = Math.min(1, (tAnim - ud.leap.t0) / ud.leap.dur);
         const lx = lerp(ud.leap.x0, u.x, f), ly = lerp(ud.leap.y0, u.y, f);
         g.position.set(lx, groundHeight(lx, ly) + Math.sin(f * Math.PI) * ud.leap.h, ly);
-        if(f >= 1){ ud.leap = null; for(let i = 0; i < 10; i++) fxSpawn(u.x, u.y, gh + 4, '#c9b48c', { spd: 110, up: 25, grav: -30, life: 0.5, size: 20 }); }
+        if(f >= 1){
+          if(!ud.leap.knock && g.visible){ shockwave(u.x, u.y, 110, '#e7d7b0'); shakeAt(u.x, u.y, 0.25, 0.18); }   // doskok
+          ud.leap = null;
+          for(let i = 0; i < 14; i++) fxSpawn(u.x, u.y, gh + 4, '#c9b48c', { spd: 130, up: 30, grav: -30, life: 0.55, size: 22 });
+        }
       }
       ud.lastX = u.x; ud.lastY = u.y;
       if(!seen) continue;

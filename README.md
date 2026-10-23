@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.21: HUD raspoređen kao u Warcraftu 3, sjene oblaka i izmaglica nad rijekom, zastave koje se vijore, dim iz dimnjaka i kristali kula koji pulsiraju dok pucaju!** 🗺️☁️🚩
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.22: sređene animacije udaraca i magija — šteta pada točno kad oružje pogodi, strijele i kugle polijeću iz ruke, magije se bacaju pokretom ruku, a meta se trzne od udarca!** ⚔️✨💥
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -18,6 +18,14 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- ⚔️ **Animacije udaraca i magija** (v0.22):
+  - 🎯 **trenutak udarca kao u DotA**: junak, vojnik i čudovište prvo zamahnu, a šteta (ili strijela / vatrena kugla) dolazi točno u kadru kad oružje pogodi; brži napad = brži zamah; omama prekida zamah, a magija ga prekida bez gubitka udarca (kule pucaju odmah)
+  - 🗡️ **jači zamasi**: Blender animacije napada imaju napinjanje, iskorak i zamah koji prođe kroz udarac; strijelci se trznu kad puste tetivu, čarobnjaci "gurnu" kuglu; **kritični udarac, kombo i udarac iz sjene** imaju poseban, jači zamah i svjetliji trag oružja
+  - 🏹 **daljinski napadi** polijeću iz ruke ispred junaka (ne iz trbuha), a u ruci se skupi svjetlo dok junak napinje
+  - 💥 **pogodak**: meta se trzne unatrag od napadača, iskra sjevne na strani s koje je došao udarac
+  - ✋ **magije**: ruke "bace" čaroliju baš kad se efekt pojavi, uz bljesak svjetla u rukama i iskre u smjeru bacanja; skokovi imaju odraz i doskok s udarnim valom
+  - 🆕 **novi efekti na mjestu cilja**: 💨 *Dimna bomba* (gust sivi dim), 🐙 *Zagrljaj pipaka* (ljubičasti pipci iz tla), 👁️ *Sovino oko* (stup svjetla i runski krug), 💰 *Ucjena* (zlatni stup i zlatnici nad metom) — vide se i kod gosta u multiplayeru
 
 - 🗺️ **3D dorada, 3. dio** (v0.21):
   - 🖥️ **HUD kao u Warcraftu 3**: minimapa dolje lijevo, u sredini ploča junaka (portret, život/mana/iskustvo, atributi) s **torbom 2×3** odmah uz portret i okruglim mjestom za neutralni predmet, a dolje desno **kartica naredbi** — moći Q W E R u prvom redu, ispod atributi, 🌀 teleport, 🛡️ glif i 🛒 dućan; zvuk i pomoć su gore desno
