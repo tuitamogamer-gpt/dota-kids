@@ -5,3 +5,4 @@ shot*.jpg
 node_modules/
 
 .vercel
+node_modules

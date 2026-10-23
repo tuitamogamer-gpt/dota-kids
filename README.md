@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.15: 2 nova junaka — 🦄 jednorog Duga i 🦈 morski pas Zubo — 🌰 neutralni predmeti iz džungle, 💰 rune zlata i 📘 rune mudrosti, 💬 brze poruke i 📍 pingovi!** 🌈🦷
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.16: svi 3D modeli su zaobljeni i glatki — bez grubih rubova — a datoteka modela je 4× manja pa se igra brže učitava!** ✨🧸
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -18,6 +18,8 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- ✨ **Glatki modeli** (v0.16): svi Blender modeli (junaci, vojnici, čudovišta, kule, drveće, kamenje, ukrasi, efekti) dobili su glatko sjenčanje, zaobljene rubove kocki, više segmenata na velikim oblinama i meke izbočine na krošnjama i kamenju; AO sjene se peku po vrhu pa su prijelazi mekani. Geometrija se sažima Dracom pa je `models.glb` ~4× manji nego prije (brže učitavanje, posebno na mobitelu)
 
 - 🦄 **Novi junaci i DotA sitnice** (v0.15):
   - 🦄 **Duga** (jednorog, čarobnica podrške): 🌈 *Dugin snop* prolazi kroz sve neprijatelje i usporava ih, 💖 *Ljekoviti rog* liječi nju i prijatelje oko nje, ✨ *Čarobna griva* (pasivno) brže puni manu prijateljima u blizini, 🌠 ULTI *Zvjezdani galop* omami neprijatelje oko nje uz kišu zvijezda, a cijeli tim ubrza i dobije štit
@@ -149,9 +151,11 @@ Svi modeli nastaju iz jedne skripte: [`tools/blender/build_models.py`](tools/ble
 blender -b -P tools/blender/build_models.py
 # ili Blender kao Python modul (Python 3.13):  pip install bpy==5.2.2
 python tools/blender/build_models.py            # --preview za render svih modela, --no-ao za brže iteracije
+# zatim sažmi geometriju (Draco) — GLB ~4× manji, igra ga dekodira s lib/draco/
+cd tools/compress && npm install && node compress.mjs
 ```
 
-Skripta napravi i `assets/models.js` (isti GLB kao base64) da igra radi i kad otvoriš `index.html` dvoklikom (`file://`). Ako se modeli ne učitaju, igra se vraća na jednostavne oblike i AI portrete.
+Svi oblici su **glatki**: sjenčanje je glatko svugdje, a oštro ostaje samo gdje se plohe lome jače od 40° (poklopci valjaka, rubovi krila, brušeni kristali). Kocke imaju zaobljene rubove, veće kugle i valjci više segmenata, krošnje i kamenje glatke izbočine, a ambijentalna okluzija se peče po vrhu pa su prijelazi mekani. Kompresija (`tools/compress/compress.mjs`, gltf-transform + Draco) napravi i `assets/models.js` (GLB i Draco dekoder kao base64) da igra radi i kad otvoriš `index.html` dvoklikom (`file://`). Ako se modeli ne učitaju, igra se vraća na jednostavne oblike i AI portrete.
 
 Sajt se objavljuje automatski: Vercel je povezan s ovim repozitorijem i svaki push na `main` postaje nova produkcijska verzija.
 

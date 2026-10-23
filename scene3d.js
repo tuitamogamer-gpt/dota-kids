@@ -69,6 +69,15 @@ function onModelsReady(fn){
 function loadModels3D(){
   if(!THREE.GLTFLoader){ MODELS.failed = true; return; }
   const loader = new THREE.GLTFLoader();
+  if(THREE.DRACOLoader){   // geometrija je sažeta Dracom (tools/compress) — ~4× manja datoteka
+    const dl = new THREE.DRACOLoader();
+    dl.setDecoderPath('lib/draco/');
+    if(window.DRACO_JS_B64){   // file:// — dekoder je ugrađen u assets/models.js
+      dl.setDecoderConfig({ type: 'js' });
+      dl._loadLibrary = () => Promise.resolve(atob(window.DRACO_JS_B64));
+    }
+    loader.setDRACOLoader(dl);
+  }
   const fail = err => {
     console.warn('Modeli se nisu učitali — koristim jednostavne oblike.', err);
     MODELS.failed = true;
