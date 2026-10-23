@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.14: 🫏 kurir — leteći magarac s krilima i sandukom donosi predmete kupljene daleko od baze — i posebne 3D magije: zlatni tornado, plameni prsten i olujni oblak s munjama!** 🌪️🔥🌩️
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.15: 2 nova junaka — 🦄 jednorog Duga i 🦈 morski pas Zubo — 🌰 neutralni predmeti iz džungle, 💰 rune zlata i 📘 rune mudrosti, 💬 brze poruke i 📍 pingovi!** 🌈🦷
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -18,6 +18,14 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- 🦄 **Novi junaci i DotA sitnice** (v0.15):
+  - 🦄 **Duga** (jednorog, čarobnica podrške): 🌈 *Dugin snop* prolazi kroz sve neprijatelje i usporava ih, 💖 *Ljekoviti rog* liječi nju i prijatelje oko nje, ✨ *Čarobna griva* (pasivno) brže puni manu prijateljima u blizini, 🌠 ULTI *Zvjezdani galop* omami neprijatelje oko nje uz kišu zvijezda, a cijeli tim ubrza i dobije štit
+  - 🦈 **Zubo** (morski pas, lovac): 🦷 *Ugriz* (rana krvari), 🌊 *Skok iz vode* (skok s valom gdje padne), 🩸 *Miris krvi* (pasivno: jače udara ranjene), 😤 ULTI *Pomama* (puno brži napadi, brže trčanje, svaki ugriz liječi)
+  - 🧸 novi Blender modeli: jednorog sa spiralnim zlatnim rogom, grivom i repom u bojama duge; morski pas s leđnom i bočnim perajama, repom-polumjesecom, škrgama i osmijehom punim zubića; 3D projektil duge; portreti iz Blendera
+  - 🌰 **Neutralni predmeti**: čudovišta u džungli ponekad ispuste predmet (3 razine — od 10. i 20. minute bolji), koji ide u novo okruglo mjesto pokraj torbe; najviše 3 po razini za svaki tim. U 3D-u iz čudovišta iskoči zelena škrinjica sa žirom i odleti do junaka
+  - 💰 **Rune zlata** na 4 mjesta u džungli (od početka, svake 3 min) — zlato cijelom timu; 📘 **Rune mudrosti** u kutovima džungle (svakih 7 min) — puno iskustva. Novi 3D modeli (vrećica zlatnika, čarobna knjiga), prikaz na minimapi; botovi ih skupljaju kad su blizu
+  - 💬 **Brze poruke** (G pa 1–6) i 📍 **ping** (V) — suigrači vide stup svjetla s pribadačom i krugove na minimapi; botovi zovu pomoć kad su ranjeni i malo se pohvale nakon ubojstva; radi i u multiplayeru
 
 - 🫏 **Kurir i 3D magije** (v0.14):
   - 🫏 **Kurir**: predmet kupljen daleko od baze (dalje od 900 od fontane) čeka u škrinji — u torbi je blijed s magarčićem i još ne radi. **Leteći magarac** tvog tima poleti s fontane, donese ga junaku i vrati se kući. Vratiš li se sam u bazu, predmete uzmeš odmah. Recepti rade i s dijelovima koji čekaju kurira. Na minimapi je 🫏, protivnički kurir se vidi samo kad nije u magli
@@ -92,7 +100,7 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
 - 🎨 **AI ilustracije** (v0.5): naslikani portreti svih 10 junaka (select ekran, HUD i 3D glave u igri), portreti čudovišta iz džungle, slikovite teksture trave/staze/rijeke i epska splash pozadina — uz automatski fallback na emoji ako se slike ne učitaju
 - 🗺️ **Kompletna mapa**: 3 staze, rijeka u udolini, baze na platoima (high/low ground — pucanje uzbrdo promaši 25%!), šuma, kule, fontane
 - 🤖 **3 protiv 3**: ti + 2 bota protiv 3 bota — botovi farmaju, koriste moći i ultije, uče vještine, slažu recepte, idu u džunglu, bježe teleportom
-- 🦁 **20 junaka-životinja** s po 4 moći (Q/W/E/R) — napadačke, obrambene i ✨ **pasivne**; ULTI se otključava na levelu 6
+- 🦁 **22 junaka-životinje** s po 4 moći (Q/W/E/R) — napadačke, obrambene i ✨ **pasivne**; ULTI se otključava na levelu 6
   - Lavko 🦁, Žarko 🐉, Ledena 🐧, Strijela 🦊, Listko 🐢, Munja 🐯, Skokica 🐸 (kuka jezikom!), Orlina 🦅, Luna 🐱 (Mirana-stil: Sveta strijela + timska nevidljivost), Tragač 🦝 (Gondar-stil: sjena, podmukli udarci i Ucjena s bonus zlatom), Bodljo 🦔, Tutnjo 🐘, Zuja 🐝, Mudra 🦉, Skakač 🐵, Sivko 🐺, Mrak 🐦‍⬛, Pipko 🐙, Rogo 🦏, Bambus 🐼
 - 🐺 **DotA creep aggro**: creepovi se biju s creepovima, siege vojnici ruše građevine, a napadneš li junaka — njegovi creepovi (i kula!) okreću se na tebe na 2.3 s
 - 🎯 **Indikatori moći**: lebdenje nad gumbom pokazuje domet i krug djelovanja, tooltipi pokazuju štetu za tvoj rang
