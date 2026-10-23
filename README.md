@@ -27,6 +27,7 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
   - 💀 **ACE!** kad padne cijeli protivnički tim
   - ❤️ **trake života kao u LoL-u**: crtice svakih 100 života, svjetliji trag izgubljenog života, bijeli štit, kućica s levelom; 🎯 **strelica ciljanja** za magije koje lete ravno i svijetli rub kruga djelovanja
   - ⌨️ glif je sada na tipki **Y** (F je čarolija prizivača)
+  - 🤖 **botovi procjenjuju borbu**: napadaju kad im strana nije slabija (level, predmeti, život, saveznici u blizini), inače se povuku k svojoj kuli — manje "hranjenja" i ujednačenije igre (u simulacijama 9–23 min)
 
 - 🧽 **Peglanje** (v0.24):
   - 🏆 **završni ekran kao u DotA**: oba tima s portretima, K / D / A, zadnjim udarcima, **neto vrijednošću** i slikama predmeta (uz neutralni), 👑 najbolji igrač; **tablica na Tab** u istom stilu
