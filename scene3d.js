@@ -2456,6 +2456,41 @@ function castFx(u, g, key){
     case 'zarko:R': shakeAt(u.x, u.y, 0.6, 0.4); break;
     case 'ledena:R': case 'skokica:R': case 'strijela:R': case 'orlina:R': case 'luna:R':
       shakeAt(u.x, u.y, 0.5, 0.35); break;
+    case 'jednorog:Q':   // Dugin snop: iskrice u bojama duge
+      for(let i = 0; i < 18; i++) fxSpawn(u.x, u.y, gh + 50, ['#f87171', '#fbbf24', '#4ade80', '#60a5fa', '#c084fc'][i % 5], { spd: 160, up: 50, grav: -20, life: 0.5, size: 18 });
+      break;
+    case 'jednorog:W':   // Ljekoviti rog: srca i ružičasti sjaj
+      fxFloat('fx_heart', u.x, u.y, 160, 9, { scale: 22, up: 80, life: 1.4, h0: 30 });
+      beamFx(u.x, u.y, '#f9a8d4', 0.8);
+      break;
+    case 'jednorog:R':   // Zvjezdani galop: kiša zvijezda po krugu
+      fxRain('fx_star', u.x, u.y, 400, 16, { scale: 26, spin: true, height: 420, fall: 0.45, hold: 0.5, glow: true, trail: '#fde68a' });
+      for(let i = 0; i < 36; i++){ const a = i / 36 * TAU; fxSpawn(u.x + Math.cos(a) * 60, u.y + Math.sin(a) * 60, gh + 30, ['#f87171', '#fbbf24', '#4ade80', '#60a5fa', '#c084fc'][i % 5], { spd: 380, up: 30, grav: 0, life: 0.7, size: 22 }); }
+      shakeAt(u.x, u.y, 0.6, 0.4);
+      break;
+    case 'morskipas:Q': {   // Ugriz: kapi i bljesak ispred gubice
+      const fx = u.x + Math.cos(u.dir || 0) * 90, fy = u.y + Math.sin(u.dir || 0) * 90;
+      for(let i = 0; i < 16; i++) fxSpawn(fx, fy, gh + 40, i % 3 ? '#ef4444' : '#ffffff', { spd: 140, up: 60, grav: -80, life: 0.5, size: 16 });
+      spellLight(fx, fy, gh + 50, '#ef4444', 1.6, 0.3, 300);
+      shakeAt(u.x, u.y, 0.3, 0.2);
+      break;
+    }
+    case 'morskipas:W': {   // Skok iz vode: val se raširi gdje padne
+      const w = MODELS.ready ? modelInstance('fx_wave', 0, 1) : null;
+      const x0 = u.x, y0 = u.y;
+      if(w) addFx(w, 0.9, (o, f) => {
+        const k = f < 0.3 ? 0 : (f - 0.3) / 0.7;   // val krene kad doskoči
+        const r = 170 * (0.15 + 0.85 * k);
+        o.position.set(x0, groundHeight(x0, y0) + Math.sin(k * Math.PI) * 8, y0);
+        o.scale.set(r, 40 * (1 - k * 0.6) * (k > 0 ? 1 : 0.01), r);
+      });
+      for(let i = 0; i < 26; i++){ const a = i / 26 * TAU; fxSpawn(x0 + Math.cos(a) * 40, y0 + Math.sin(a) * 40, gh + 20, i % 2 ? '#7dd3fc' : '#ffffff', { spd: 160, up: 140, grav: -160, life: 0.8, size: 20 }); }
+      break;
+    }
+    case 'morskipas:R':
+      shakeAt(u.x, u.y, 0.5, 0.35);
+      for(let i = 0; i < 30; i++) fxSpawn(u.x, u.y, gh + 40, i % 2 ? '#dc2626' : '#7dd3fc', { spd: 220, up: 90, grav: -30, life: 0.8, size: 24 });
+      break;
     case 'listko:W':   // Iscjeljenje: srca
       fxFloat('fx_heart', u.x, u.y, 60, 7, { scale: 22, up: 70, life: 1.4, h0: 30 }); break;
     case 'listko:R':   // Šumsko srce: korijenje + srca + lišće

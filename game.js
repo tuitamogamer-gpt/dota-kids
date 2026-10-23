@@ -3393,7 +3393,7 @@ function drawWorldOverlay(){
 function drawChatWheel(){
   uiRects.chat = null;
   if(!chatOpen || !player) return;
-  const w = 210, rh = 26, x = VW / 2 - w / 2, y = VH - 200 - CHAT_LINES.length * rh;
+  const w = 210, rh = 26, x = 14, y = VH - 190 - CHAT_LINES.length * rh;
   ctx.fillStyle = 'rgba(15,23,42,0.88)';
   ctx.strokeStyle = '#fde047';
   ctx.lineWidth = 2;
