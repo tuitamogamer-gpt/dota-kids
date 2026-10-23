@@ -2382,7 +2382,7 @@ function castFx(u, g, key){
       const cl = g.visible && fxModel('fx_cloud', false);
       if(cl){
         const x0 = u.x, y0 = u.y, top = gh + 300;
-        const hits = units.filter(e => !e.dead && !e.removeMe && e.team !== u.team && e.kind !== 'tower' && distXY(e.x, e.y, x0, y0) < 600).slice(0, 6);
+        const hits = units.filter(e => !e.dead && !e.removeMe && e.team !== u.team && (e.kind === 'hero' || e.kind === 'creep') && e.team !== TEAM_NEUTRAL && distXY(e.x, e.y, x0, y0) < 480).slice(0, 6);
         let next = 0.12, n = 0;
         addFx(cl, 1.7, (o, f, t, dt) => {
           const k = Math.min(1, t / 0.25);
