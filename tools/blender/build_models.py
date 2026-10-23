@@ -104,6 +104,22 @@ def make_materials():
     MATS.append(m)
 
 
+# ------------------------------------------------------------------ glatkoća
+SHARP_ANGLE = math.radians(40)
+
+
+def smooth_seg(seg, r):
+    """više segmenata za okrugle oblike — veće kugle dobiju još više"""
+    u, v = seg
+    if r > 0.07:
+        u, v = max(u, 14), max(v, 10)
+    if r > 0.14:
+        u, v = max(u, 18), max(v, 12)
+    if r > 0.26:
+        u, v = max(u, 24), max(v, 16)
+    return (min(u, 28), min(v, 18))
+
+
 # ------------------------------------------------------------------ dijelovi
 class Part:
     """Jedan kruti dio modela (npr. lijeva noga). Geometrija se zadaje u
@@ -136,6 +152,7 @@ class Part:
     def sphere(self, c, r, color, mat='vc', rot=(0, 0, 0), seg=(12, 8), smooth=True):
         if isinstance(r, (int, float)):
             r = (r, r, r)
+        seg = smooth_seg(seg, max(r))
         before = set(self.bm.faces)
         bmesh.ops.create_uvsphere(self.bm, u_segments=seg[0], v_segments=seg[1],
                                   radius=1.0, matrix=self.M(c, rot, r))
@@ -145,24 +162,32 @@ class Part:
     def ico(self, c, r, color, mat='vc', rot=(0, 0, 0), sub=1, smooth=False, jitter=0.0, seed=1):
         if isinstance(r, (int, float)):
             r = (r, r, r)
+        if sub == 1 and max(r) > 0.08:
+            sub = 2
         before = set(self.bm.faces)
         ret = bmesh.ops.create_icosphere(self.bm, subdivisions=sub, radius=1.0,
                                          matrix=self.M(c, rot, r))
         if jitter:
+            # glatke izbočine (zbroj nekoliko sinusnih valova po smjeru) umjesto nasumičnog šuma po vrhu
             rnd = random.Random(seed)
+            waves = [(Vector((rnd.uniform(-1, 1), rnd.uniform(-1, 1), rnd.uniform(-1, 1))).normalized() * rnd.uniform(1.5, 3.2),
+                      rnd.uniform(0, math.tau), w) for w in (0.55, 0.3, 0.15)]
             ctr = Vector(c) - self.pivot
             for v in ret['verts']:
                 d = v.co - ctr
-                v.co = ctr + d * (1 + rnd.uniform(-jitter, jitter))
+                n = d.normalized() if d.length > 1e-9 else d
+                k = sum(w * math.sin(a.dot(n) * 2.0 + ph) for a, ph, w in waves)
+                v.co = ctr + d * (1 + jitter * k)
         self._paint(before, color, mat, smooth)
         return self
 
     def box(self, c, size, color, mat='vc', rot=(0, 0, 0), bevel=0.0, smooth=False):
         before = set(self.bm.faces)
         ret = bmesh.ops.create_cube(self.bm, size=1.0, matrix=self.M(c, rot, size))
-        if bevel:
+        bevel = max(bevel, min(min(size) * 0.18, 0.03))   # nijedan rub nije oštar
+        if bevel > 0.0005:
             edges = list({e for v in ret['verts'] for e in v.link_edges})
-            bmesh.ops.bevel(self.bm, geom=edges, offset=bevel, segments=1,
+            bmesh.ops.bevel(self.bm, geom=edges, offset=min(bevel, min(size) * 0.45), segments=3,
                             affect='EDGES', profile=0.5)
         self._paint(before, color, mat, smooth)
         return self
@@ -170,6 +195,9 @@ class Part:
     def cyl(self, p1, p2, r1, r2, color, mat='vc', seg=10, smooth=False, caps=True):
         """valjak/stožac od točke p1 (polumjer r1) do p2 (polumjer r2)"""
         p1, p2 = Vector(p1), Vector(p2)
+        rm = max(r1, r2)
+        if rm >= 0.04:
+            seg = max(seg, 10 if rm < 0.12 else (14 if rm < 0.25 else 18))
         d = p2 - p1
         L = d.length
         q = Vector((0, 0, 1)).rotation_difference(d.normalized())
@@ -214,6 +242,12 @@ class Part:
         me = bpy.data.meshes.new(self.model.name + '_' + self.name)
         for m in MATS:
             me.materials.append(m)
+        # glatko sjenčanje svugdje; samo pravi lomovi (poklopci valjaka, rubovi krila, kristali) ostaju oštri
+        for f in self.bm.faces:
+            f.smooth = True
+        for e in self.bm.edges:
+            if len(e.link_faces) == 2 and e.calc_face_angle(0.0) > SHARP_ANGLE:
+                e.smooth = False
         self.bm.to_mesh(me)
         self.bm.free()
         ca = me.color_attributes.get('Col')
@@ -2588,7 +2622,7 @@ def bake_ao(samples=32):
         me = ob.data
         if not me.polygons:
             continue
-        ao = me.color_attributes.new('AO', 'FLOAT_COLOR', 'CORNER')
+        ao = me.color_attributes.new('AO', 'FLOAT_COLOR', 'POINT')   # po vrhu: glatki prijelazi, vrhovi se dijele
         me.color_attributes.active_color = ao
         bpy.ops.object.select_all(action='DESELECT')
         ob.select_set(True)
@@ -2604,7 +2638,7 @@ def bake_ao(samples=32):
             if poly.material_index in (SLOT['glow'], SLOT['teamglow']):
                 continue
             for li in poly.loop_indices:
-                a = ao.data[li].color[0]
+                a = ao.data[me.loops[li].vertex_index].color[0]
                 k = 0.5 + 0.5 * min(1.0, a * 1.15)
                 c = col.data[li].color
                 col.data[li].color = (c[0] * k, c[1] * k, c[2] * k, c[3])

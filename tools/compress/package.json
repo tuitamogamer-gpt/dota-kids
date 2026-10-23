@@ -1,0 +1,11 @@
+{
+  "name": "dota-kids-compress",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@gltf-transform/core": "^4.0.0",
+    "@gltf-transform/extensions": "^4.0.0",
+    "@gltf-transform/functions": "^4.0.0",
+    "draco3dgltf": "^1.5.7"
+  }
+}
