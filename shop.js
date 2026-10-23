@@ -139,6 +139,15 @@ function innateTipHtml(h){
     (pv.tip ? `<div class="tipBox tipPas"><span class="tipLbl">PASIVNO</span>${escHtml(pv.tip(ir))}</div>` : '') +
     '<div class="tipFoot">✨ Uvijek radi · jača sama na levelima 7 / 13 / 19</div>';
 }
+/* opis čarolije prizivača (D / F) */
+function summonerTipHtml(h, k){
+  const sp = SUMMONER_BY_ID[h.summoners[k]], cd = (h.sumCd || [0, 0])[k];
+  return `<div class="tipHead"><span class="tipAbIcon" style="border-radius:50%;background:linear-gradient(160deg, ${sp.color}, #10141b)">${sp.emoji}</span>` +
+    `<div class="tipT"><b>${escHtml(sp.name)}</b><span class="tipSub">Čarolija prizivača · tipka ${k ? 'F' : 'D'}</span></div></div>` +
+    `<div class="tipDesc">${escHtml(sp.desc)}</div>` +
+    `<div class="tipBox tipAct"><div class="tipActH"><span class="tipLbl">LEVEL ${h.level}</span><span class="tipCd">⏱️ ${sp.cd} s</span></div>${escHtml(sp.tip(h.level))}</div>` +
+    `<div class="tipFoot">${cd > 0 ? '⏳ Spremno za ' + Math.ceil(cd) + ' s' : '✅ Spremno!'}${sp.target ? ' · klik na cilj' : ''}</div>`;
+}
 function simpleTipHtml(title, text, foot){
   return `<div class="tipHead"><div class="tipT"><b>${title}</b></div></div><div class="tipDesc">${text}</div>` + (foot ? `<div class="tipFoot">${foot}</div>` : '');
 }
@@ -147,12 +156,23 @@ let hudTipKey = null;
 function updateHudTip(){
   if(!player || !hoverUi){ if(hudTipKey) hideItemTip(); return; }
   const t = hoverUi.type;
-  if(t === 'abil' || t === 'learn' || t === 'pas' || t === 'stat' || t === 'glyph' || t === 'tp' || t === 'shop'){
+  if(t === 'buff'){
+    const r = uiRects.buff && uiRects.buff[hoverUi.i];
+    if(!r) return hideItemTip();
+    const key = 'buff' + r.b.name + Math.ceil(r.b.t);
+    if(key === hudTipKey) return;
+    hudTipKey = key;
+    showItemTip(simpleTipHtml(r.b.e + ' ' + escHtml(r.b.name), escHtml(r.b.desc), (r.b.good ? '✅ Pomaže ti' : '⚠️ Šteti ti') + (r.b.t < 600 ? ' · još ' + Math.ceil(r.b.t) + ' s' : '')), r);
+    return;
+  }
+  if(t === 'abil' || t === 'learn' || t === 'pas' || t === 'stat' || t === 'glyph' || t === 'tp' || t === 'shop' || t === 'sum'){
     let rect = null, html = '', key = t + (hoverUi.i != null ? hoverUi.i : '');
     if(t === 'abil' || t === 'learn'){
       const ab = player.abilities[hoverUi.i]; if(!ab) return hideItemTip();
       rect = t === 'abil' ? uiRects.abil[hoverUi.i] : uiRects.learn.find(r => r.i === hoverUi.i);
       html = abilityTipHtml(player, hoverUi.i); key += ab.rank;
+    } else if(t === 'sum'){
+      rect = uiRects.sum[hoverUi.i]; html = summonerTipHtml(player, hoverUi.i); key += Math.ceil((player.sumCd || [0, 0])[hoverUi.i]);
     } else if(t === 'pas'){
       rect = uiRects.passive; html = innateTipHtml(player); key += innateRank(player);
     } else if(t === 'stat'){
@@ -161,7 +181,7 @@ function updateHudTip(){
         '💪 = život · 🤸 = brzina napada i oklop · 🧠 = mana · troši poen vještine');
     } else if(t === 'glyph'){
       const gl = glyph[player.team]; rect = uiRects.glyph; key += Math.ceil(gl.cd);
-      html = simpleTipHtml('🛡️ Glif utvrde', 'Sve kule i vojarne tvog tima 5 s ne primaju štetu.', 'Tipka F · ' + (gl.cd > 0 ? 'puni se još ' + Math.ceil(gl.cd) + ' s' : 'spreman!'));
+      html = simpleTipHtml('🛡️ Glif utvrde', 'Sve kule i vojarne tvog tima 5 s ne primaju štetu.', 'Tipka Y · ' + (gl.cd > 0 ? 'puni se još ' + Math.ceil(gl.cd) + ' s' : 'spreman!'));
     } else if(t === 'tp'){
       rect = uiRects.tp; key += Math.ceil(player.tpCd);
       html = simpleTipHtml('🏠 Teleport kući', 'Nakon 3 s kanaliziranja vraća te do fontane (omama ga prekida).', 'Tipka T · ' + (player.tpCd > 0 ? 'puni se još ' + Math.ceil(player.tpCd) + ' s' : 'spreman!'));

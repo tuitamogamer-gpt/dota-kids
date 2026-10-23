@@ -128,7 +128,7 @@ function netPick(i){
 function netReady(){
   if(net.myPick < 0){ netStatus('Prvo klikni junaka!'); return; }
   net.myReady = true;
-  sendNet({ c: 'ready' });
+  sendNet({ c: 'ready', sm: pickedSummoners });
   syncLobbyText();
   tryStartMatch();
 }
@@ -157,6 +157,7 @@ function onNetData(d){
     case 'pick': net.otherPick = d.i; syncLobbyText(); break;
     case 'ready':
       net.otherReady = true;
+      if(Array.isArray(d.sm) && d.sm.length === 2 && d.sm.every(id => SUMMONER_BY_ID[id])) net.otherSum = d.sm;
       syncLobbyText();
       if(net.mode === 'host') tryStartMatch();
       break;
@@ -178,6 +179,7 @@ function onNetData(d){
     case 'buy': if(net.mode === 'host' && remoteHero && ITEM_BY_ID[d.id]) tryBuy(remoteHero, ITEM_BY_ID[d.id]); break;
     case 'sell': if(net.mode === 'host' && remoteHero) sellItem(remoteHero, d.i); break;
     case 'swap': if(net.mode === 'host' && remoteHero) swapItems(remoteHero, d.a | 0, d.b | 0); break;
+    case 'sum': if(net.mode === 'host' && remoteHero) castSummoner(remoteHero, d.s ? 1 : 0, d.x != null ? { x: d.x, y: d.y } : null); break;
     case 'tp': if(net.mode === 'host' && remoteHero) startTeleport(remoteHero); break;
     case 'buyback': if(net.mode === 'host' && remoteHero) buyback(remoteHero); break;
     case 'item': if(net.mode === 'host' && remoteHero) useItem(remoteHero, d.i, d.x != null ? { x: d.x, y: d.y } : null); break;
@@ -197,6 +199,7 @@ function netStats(){ sendNet({ c: 'stats' }); }
 function netBuy(id){ sendNet({ c: 'buy', id }); }
 function netSell(i){ sendNet({ c: 'sell', i }); }
 function netSwap(a, b){ sendNet({ c: 'swap', a, b }); }
+function netSum(slot, aim){ sendNet({ c: 'sum', s: slot, x: aim ? Math.round(aim.x) : null, y: aim ? Math.round(aim.y) : null }); }
 function netTp(){ sendNet({ c: 'tp' }); }
 function netBuyback(){ sendNet({ c: 'buyback' }); }
 function netItem(i, aim){ sendNet({ c: 'item', i, x: aim ? Math.round(aim.x) : null, y: aim ? Math.round(aim.y) : null }); }
@@ -219,6 +222,7 @@ function heroExtras(h){
     tc: +h.tpCd.toFixed(1), tch: +h.tpChannel.toFixed(2), dt2: +h.deadT.toFixed(1),
     as: h.assists, bb: +h.buybackCd.toFixed(1), ag: h.aegis ? 1 : 0, at: Math.round(h.aegisT), ic: h.itemCd, ich: h.itemCharges,
     tal: h.talents, cdr: h.cdr || 0,
+    sm: h.summoners, smc: (h.sumCd || [0, 0]).map(v => +v.toFixed(1)),
     ab: h.abilities.map(a => [a.rank, +a.cd.toFixed(1)]),
     it: h.items.map(i => i.id),
     ip: h.items.reduce((a, it, k) => (it.pending && a.push(k), a), []),   // 🫏 čekaju kurira
@@ -244,6 +248,9 @@ function buildSnapshot(){
     if(u.knockN) b.kn = u.knockN % 1000;   // odbačaj
     if(u.charge) b.ch = 1;                 // juriš
     if(u.cycloneT > 0) b.cy = 1;           // 🌪️ u vihoru
+    if(u.sumN){ b.sn = u.sumN % 1000; b.sf = u.sumFx; if(u.sumAim) b.sa = [Math.round(u.sumAim.x), Math.round(u.sumAim.y)]; if(u.smiteAt) b.sm2 = [Math.round(u.smiteAt.x), Math.round(u.smiteAt.y)]; }
+    if(u.barrierT > 0) b.br = Math.round(u.barrierHp);   // 🫧 štit na traci života
+    if(u.jbuff && (u.jbuff.blue > 0 || u.jbuff.red > 0)) b.jb = [Math.ceil(u.jbuff.blue), Math.ceil(u.jbuff.red)];   // 🔵🔴
     if(u.kind === 'hero'){
       b.hi = HEROES.indexOf(u.hero);
       b.l = u.level; b.dd = u.dead ? 1 : 0;
@@ -380,7 +387,10 @@ function applySnapshot(d){
     u.tx2 = b.x; u.ty2 = b.y; u.tDir = b.d || 0;
     if(Math.abs(b.x - u.x) > 260 || Math.abs(b.y - u.y) > 260){ u.x = b.x; u.y = b.y; }
     u.hp = b.h; u.maxhp = b.m;
-    u.atkN = b.an || 0; u.castN = b.cn || 0; if(b.cf) u.castFx = b.cf; u.castAim = b.ca ? { x: b.ca[0], y: b.ca[1] } : null; u.cycloneT = b.cy ? 1 : 0; u.atkInt = b.ai || null; u.atkHeavy = !!b.ah;
+    u.atkN = b.an || 0; u.castN = b.cn || 0; if(b.cf) u.castFx = b.cf; u.castAim = b.ca ? { x: b.ca[0], y: b.ca[1] } : null; u.cycloneT = b.cy ? 1 : 0;
+      u.sumN = b.sn || 0; if(b.sf) u.sumFx = b.sf; u.sumAim = b.sa ? { x: b.sa[0], y: b.sa[1] } : null; u.smiteAt = b.sm2 ? { x: b.sm2[0], y: b.sm2[1] } : null;
+      u.barrierHp = b.br || 0; u.barrierT = b.br ? 1 : 0;
+      u.jbuff = { blue: b.jb ? b.jb[0] : 0, red: b.jb ? b.jb[1] : 0 }; u.atkInt = b.ai || null; u.atkHeavy = !!b.ah;
     u.knockN = b.kn || 0; u.charge = b.ch ? { net: true } : null;
     if(u.kind === 'hero'){
       u.level = b.l; u.dead = !!b.dd;
@@ -416,6 +426,8 @@ function applySnapshot(d){
     player.itemCd = e.ic || {};
     player.itemCharges = e.ich || {};
     player.talents = e.tal || {}; player.cdr = e.cdr || 0;
+    if(e.sm) player.summoners = e.sm;
+    if(e.smc) player.sumCd = e.smc;
     e.ab.forEach((a, j) => {
       if(player.abilities[j]){ player.abilities[j].rank = a[0]; player.abilities[j].cd = a[1]; }
     });
@@ -555,7 +567,9 @@ function startMatchHost(hostIdx, guestIdx, botIdcs){
   buildStatic3D();
   makeWorld();
   makeHero(HEROES[hostIdx], TEAM_BLUE, true, 'mid');
+  player.summoners = pickedSummoners.slice();
   remoteHero = makeHero(HEROES[guestIdx], TEAM_RED, false, 'mid');
+  if(net.otherSum) remoteHero.summoners = net.otherSum.slice();
   remoteHero.human = true;
   remoteHero.bot = null;
   makeHero(HEROES[botIdcs[0]], TEAM_BLUE, false, 'top');

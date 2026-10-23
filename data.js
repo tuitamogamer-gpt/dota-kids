@@ -51,6 +51,7 @@ const CFG = {
   dayCycle: 240,
   uphillMissChance: 0.25,
   barracksHp: 2200,
+  barracksRespawn: 240,     // 🏚️ srušena vojarna se obnovi nakon 4 min (kao inhibitor u LoL-u)
   towerHp: 2600,
   ancientHp: 5000,
   heroVsStructure: 0.5,     // junaci udaraju građevine slabije (utvrđeni oklop kao u Allstarsu)
@@ -1821,6 +1822,41 @@ const HERO_BUILDS = {
   morskipas: ['wraith', 'phase', 'mom', 'bfury', 'abyssal', 'satanic'],
 };
 for(const h of HEROES) h.build = HERO_BUILDS[h.id] || BOT_BUILD;
+/* ✨ ČAROLIJE PRIZIVAČA (kao u League of Legends): svaki junak nosi dvije (tipke D i F), bira ih na početku */
+const SUMMONERS = [
+  { id:'flash',   emoji:'⚡', name:'Bljesak',      cd:120, target:'point', range:420, color:'#fde047',
+    desc:'Trenutno se prebaci do 420 u smjeru miša — kroz zidove i drveće', tip:() => 'skok 420' },
+  { id:'heal',    emoji:'💚', name:'Iscjeljenje',  cd:120, color:'#4ade80',
+    desc:'Izliječi sebe i najranjenijeg suigrača u blizini (700) i kratko ubrzaj oboje', tip:lv => '+' + (90 + 20 * lv) + ' života, +30% brzine 1 s' },
+  { id:'ignite',  emoji:'🔥', name:'Zapaljenje',   cd:120, target:'unit', range:600, color:'#fb923c',
+    desc:'Zapali neprijateljskog junaka: gori 5 s i slabije se liječi', tip:lv => (70 + 20 * lv) + ' štete kroz 5 s, −40% liječenja' },
+  { id:'ghost',   emoji:'👻', name:'Duh',          cd:110, color:'#c4b5fd',
+    desc:'Postaneš brz kao duh na 10 s', tip:() => '+35% brzine kretanja 10 s' },
+  { id:'barrier', emoji:'🫧', name:'Barijera',     cd:100, color:'#93c5fd',
+    desc:'Štit koji upije štetu na 2.5 s', tip:lv => 'štit od ' + (110 + 25 * lv) + ' štete' },
+  { id:'exhaust', emoji:'🐌', name:'Iscrpljenost', cd:110, target:'unit', range:650, color:'#a3a3a3',
+    desc:'Neprijateljski junak je 3 s spor i slabo udara', tip:() => '−30% brzine i −40% štete udaraca 3 s' },
+  { id:'smite',   emoji:'🌩️', name:'Kazna',        cd:60,  target:'unit', range:500, color:'#fcd34d',
+    desc:'Munja s neba udari čudovište ili vojnika (ne junaka) — za džunglu i zmaja', tip:lv => (450 + 20 * lv) + ' štete' },
+];
+const SUMMONER_BY_ID = {};
+for(const s of SUMMONERS) SUMMONER_BY_ID[s.id] = s;
+const DEFAULT_SUMMONERS = ['flash', 'heal'];
+
+/* 🔵🔴 BUFFOVI DŽUNGLE (kao u League of Legends): Plavi golem i Vatreni vuk daju ubojici buff na 90 s;
+   pogine li junak s buffom, buff prelazi na neprijateljskog junaka koji ga je ubio */
+const JUNGLE_BUFFS = {
+  blue: { emoji:'🔵', name:'Plavi buff', color:'#60a5fa', dur:90, desc:'+4 obnove mane i 15% kraće hlađenje moći' },
+  red:  { emoji:'🔴', name:'Crveni buff', color:'#f87171', dur:90, desc:'udarci pale (8 + level štete/s, 3 s) i usporavaju 15% • +3 obnove života' },
+};
+/* botovi: po vrsti junaka */
+function botSummoners(def){
+  if(def.build === BUILD_TANK) return ['flash', 'exhaust'];
+  if(def.build === BUILD_SUPPORT) return ['flash', 'heal'];
+  if(def.build === BUILD_MAGE) return ['flash', 'ignite'];
+  return def.projSpeed > 0 ? ['flash', 'heal'] : ['flash', 'ignite'];
+}
+
 /* početni predmeti (prvih 650 zlata) */
 const START_ITEMS = ['tango', 'branch', 'branch', 'potion', 'clarity'];
 
@@ -1832,13 +1868,14 @@ const CAMP_TYPES = {
   wolves: { n:2, emoji:'🐺', name:'Vuk',         hp:540,  dmg:34, range:65, atkCd:1.1, speed:135, r:17, gold:55,  xp:60 },
   bear:   { n:1, emoji:'🐻', name:'Medo Brundo', hp:1000, dmg:52, range:75, atkCd:1.2, speed:115, r:22, gold:130, xp:130 },
   boss:   { n:1, emoji:'🐲', name:'Veliki Zmaj', hp:2600, dmg:78, range:95, atkCd:1.3, speed:110, r:34, gold:260, xp:300, boss:true, hpRegen:4 },
-  golem:  { n:1, emoji:'🗿', name:'Kameni Golem', hp:1500, dmg:62, range:85, atkCd:1.4, speed:100, r:27, gold:170, xp:170, stunHit:true, hpRegen:2 },
+  golem:  { n:1, emoji:'🗿', name:'Plavi golem', hp:1500, dmg:62, range:85, atkCd:1.4, speed:100, r:27, gold:170, xp:170, stunHit:true, hpRegen:2, buff:'blue', look:'c' },
+  redbuff:{ n:1, emoji:'🐺', name:'Vatreni vuk', hp:1150, dmg:52, range:70, atkCd:1.15, speed:130, r:25, gold:120, xp:130, hpRegen:2, buff:'red', look:'r', model:'wolves' },
 };
 const CAMP_SPOTS = [
   { x:850,  y:1300, type:'boars'  },
-  { x:1300, y:850,  type:'wolves' },
+  { x:1300, y:850,  type:'redbuff' },
   { x:2120, y:1700, type:'boars'  },
-  { x:1700, y:2120, type:'wolves' },
+  { x:1700, y:2120, type:'redbuff' },
   { x:2100, y:2100, type:'bear'   },
   { x:800,  y:800,  type:'boss'   },
   { x:500,  y:1800, type:'golem'  },

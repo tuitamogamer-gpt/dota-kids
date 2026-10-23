@@ -1354,7 +1354,25 @@ function ensureCastInd(){
     new THREE.LineBasicMaterial({ color: 0xfde047, transparent: true, opacity: 0.8 }));
   line.visible = false;
   scene3.add(line);
-  castInd = { ring, aoe, line };
+  // 🎯 strelica za "skillshot" (kao u LoL-u): široka prozirna traka s vrhom strelice
+  const sh = new THREE.Shape();
+  sh.moveTo(0, -0.5); sh.lineTo(0.84, -0.5); sh.lineTo(0.84, -0.85); sh.lineTo(1, 0); sh.lineTo(0.84, 0.85); sh.lineTo(0.84, 0.5); sh.lineTo(0, 0.5); sh.closePath();
+  const shotGeo = new THREE.ShapeGeometry(sh);
+  const shotMesh = new THREE.Mesh(shotGeo, new THREE.MeshBasicMaterial({ color: 0xfde047, transparent: true, opacity: 0.38, side: THREE.DoubleSide, depthWrite: false }));
+  const shotEdge = new THREE.LineSegments(new THREE.EdgesGeometry(shotGeo), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 }));
+  shotMesh.rotation.x = shotEdge.rotation.x = -Math.PI / 2;
+  const shot = new THREE.Group();
+  shot.add(shotMesh, shotEdge);
+  shot.visible = false;
+  shot.renderOrder = 4;
+  scene3.add(shot);
+  // svijetli rub kruga djelovanja
+  const aoeRim = new THREE.Mesh(new THREE.RingGeometry(0.93, 1, 64),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false }));
+  aoeRim.rotation.x = -Math.PI / 2;
+  aoeRim.visible = false;
+  scene3.add(aoeRim);
+  castInd = { ring, aoe, line, shot, shotMesh, aoeRim };
   return castInd;
 }
 function syncCastIndicator(){
@@ -1362,7 +1380,10 @@ function syncCastIndicator(){
   // indikator radi i pri CILJANJU i pri LEBDENJU nad gumbom moći
   let def = null, mode = null;
   if(pendingCast && player && !player.dead){
-    if(pendingCast.item != null){
+    if(pendingCast.sum != null){
+      const sp = player.summoners && SUMMONER_BY_ID[player.summoners[pendingCast.sum]];
+      def = sp ? { target: 'point', castRange: sp.range || 500, color: sp.color, aoe: sp.id === 'flash' ? 0 : 60, line: sp.id === 'flash' } : null;
+    } else if(pendingCast.item != null){
       const it = player.items[pendingCast.item];
       def = it && it.active ? { target: 'point', castRange: it.active.castRange || 600, color: '#bae6fd' } : null;
     } else def = player.abilities[pendingCast.i].def;
@@ -1372,6 +1393,7 @@ function syncCastIndicator(){
     const ab = player.abilities[hoverUi.i];
     if(ab && ab.rank > 0 && !ab.def.passive){ def = ab.def; mode = 'hover'; }
   }
+  ci.shot.visible = false; ci.aoeRim.visible = false;
   if(!def){
     ci.ring.visible = ci.aoe.visible = ci.line.visible = false;
     return;
@@ -1391,15 +1413,19 @@ function syncCastIndicator(){
         ci.aoe.position.set(aim.x, agh + 2, aim.y);
         ci.aoe.scale.set(def.aoe, def.aoe, 1);
         ci.aoe.material.color.set(def.color || '#fde047');
+        ci.aoeRim.visible = true;   // svijetli rub (kao u LoL-u)
+        ci.aoeRim.position.set(aim.x, agh + 2.6, aim.y);
+        ci.aoeRim.scale.set(def.aoe, def.aoe, 1);
       } else ci.aoe.visible = false;
-      if(def.line){
-        ci.line.visible = true;
-        const p = ci.line.geometry.attributes.position;
-        p.setXYZ(0, player.x, pgh + 26, player.y);
-        p.setXYZ(1, aim.x, agh + 26, aim.y);
-        p.needsUpdate = true;
-        ci.line.material.color.set(def.color || '#fde047');
-      } else ci.line.visible = false;
+      ci.line.visible = false;
+      if(def.line){   // strelica od junaka do cilja
+        const len = Math.max(40, distXY(player.x, player.y, aim.x, aim.y));
+        ci.shot.visible = true;
+        ci.shot.position.set(player.x, Math.max(pgh, agh) + 4, player.y);
+        ci.shot.rotation.y = -Math.atan2(aim.y - player.y, aim.x - player.x);
+        ci.shot.scale.set(len, 1, def.lineW || 64);
+        ci.shotMesh.material.color.set(def.color || '#fde047');
+      }
     } else {
       ci.aoe.visible = false;
       ci.line.visible = false;
@@ -1842,7 +1868,16 @@ function buildCreepMesh(u){
 function buildNeutralMesh(u){
   const g = new THREE.Group();
   const key = u.campType || (u.camp && u.camp.type) || 'boars';
-  if(MODELS.ready && addModel(g, 'mob_' + key, TEAM_NEUTRAL, u.r * 2.2)){
+  const ct = CAMP_TYPES[key] || {};
+  if(MODELS.ready && addModel(g, 'mob_' + (ct.model || key), TEAM_NEUTRAL, u.r * 2.2)){
+    if(ct.look) g.userData.baseLook = ct.look;   // 🔵 plavi golem / 🔴 vatreni vuk: obojeni model
+    if(ct.buff){   // svjetleći krug ispod čudovišta s buffom
+      const col = JUNGLE_BUFFS[ct.buff].color;
+      const ring = new THREE.Mesh(new THREE.RingGeometry(u.r + 22, u.r + 30, 40),
+        new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.75, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
+      ring.rotation.x = -Math.PI / 2; ring.position.y = 3;
+      g.add(ring); g.userData.buffRing = ring;
+    }
     if(u.boss){
       const ring = new THREE.Mesh(new THREE.RingGeometry(u.r + 30, u.r + 38, 40),
         new THREE.MeshBasicMaterial({ color: '#f59e0b', transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false }));
@@ -2702,6 +2737,40 @@ function syncHitFx(u, g, bodyH, tAnim){
     }
   }
 }
+/* ✨ efekti čarolija prizivača (LoL) */
+function summonerFx(u, id, old){
+  const gh = groundHeight(u.x, u.y), sp = SUMMONER_BY_ID[id];
+  const col = sp ? sp.color : '#ffffff';
+  switch(id){
+    case 'flash':   // bljesak na staroj i novoj poziciji
+      for(const p of [old, { x: u.x, y: u.y }]){
+        if(!p) continue;
+        const h = groundHeight(p.x, p.y);
+        hitSpark(p.x, p.y, h + 45, '#fff7c2', 150);
+        for(let i = 0; i < 16; i++) fxSpawn(p.x, p.y, h + 30 + Math.random() * 40, i % 2 ? '#fde047' : '#ffffff', { spd: 160, up: 40, grav: 0, life: 0.35, size: 18 });
+      }
+      spellLight(u.x, u.y, gh + 60, '#fde047', 2.2, 0.3, 380);
+      break;
+    case 'heal': beamFx(u.x, u.y, '#4ade80', 0.8); fxFloat('fx_heart', u.x, u.y, 90, 6, { scale: 20, up: 70, life: 1.2, h0: 30 }); shockwave(u.x, u.y, 260, '#4ade80'); break;
+    case 'ghost': for(let i = 0; i < 14; i++) smokePuff(u.x + (Math.random() - 0.5) * 50, u.y + (Math.random() - 0.5) * 50, gh + 30, '#ddd6fe', { life: 1.0, size: 50, alpha: 0.6, up: 30, wind: 2 }); break;
+    case 'barrier': shockwave(u.x, u.y, 120, '#93c5fd'); spellLight(u.x, u.y, gh + 50, '#93c5fd', 1.8, 0.4, 300); break;
+    case 'ignite': case 'exhaust': {
+      const a = u.sumAim || u;
+      const t = units.find(e => e.kind === 'hero' && e.team !== u.team && distXY(e.x, e.y, a.x, a.y) < 280) || a;
+      const th = groundHeight(t.x, t.y);
+      for(let i = 0; i < 22; i++) fxSpawn(t.x, t.y, th + 20 + Math.random() * 50, id === 'ignite' ? (i % 2 ? '#ff7a1a' : '#ffe26b') : (i % 2 ? '#a3a3a3' : '#e5e7eb'),
+        { spd: 60, up: 70, grav: 0, life: 0.7, size: 24 });
+      spellLight(t.x, t.y, th + 50, col, 1.8, 0.4, 320);
+      break;
+    }
+    case 'smite': {
+      const t = u.smiteAt || u.sumAim || u;
+      skyBolt(t.x + 20, t.y - 10, groundHeight(t.x, t.y) + 420, t.x, t.y, '#fde047');
+      shockwave(t.x, t.y, 120, '#fcd34d');
+      break;
+    }
+  }
+}
 /* 🌪️ u vihoru: lebdi iznad tla, oko njega kruži bijeli vjetar */
 function cycloneFx(u, g, tAnim, dt){
   g.position.y += 70 + Math.sin(tAnim * 6) * 8;
@@ -3238,6 +3307,11 @@ function syncScene(tAnim){
       }
       g.visible = seen;
       g.position.set(u.x, gh, u.y);
+      if((u.sumN || 0) !== (ud.sumN || 0)){   // ✨ čarolija prizivača
+        const old = ud.lastX != null ? { x: ud.lastX, y: ud.lastY } : null;
+        ud.sumN = u.sumN || 0;
+        if(seen && MODELS.ready) summonerFx(u, u.sumFx, old);
+      }
       if((u.knockN || 0) !== (ud.knockN || 0)){   // odbačaj: kratki luk
         ud.knockN = u.knockN || 0;
         startLeap(u, g, tAnim, 50);
@@ -3261,7 +3335,7 @@ function syncScene(tAnim){
       if(ud.spin > 0){ const d = Math.min(ud.spin, dt * 22); ud.spinA = (ud.spinA || 0) + d; ud.spin -= d; if(ud.spin <= 0) ud.spinA = 0; }
       if(ud.model) ud.model.rotation.y = ud.yaw + (ud.spinA || 0);
       else g.rotation.y = ud.yaw;
-      ud.shield.visible = u.status.shieldT > 0;
+      ud.shield.visible = u.status.shieldT > 0 || u.barrierT > 0;   // 🫧 i Barijera
       const ch = pickStatusEmoji(u);
       if(ch !== ud.statusCh){
         ud.statusCh = ch;
@@ -3278,6 +3352,10 @@ function syncScene(tAnim){
         const want = ud.baseScale * (st.formT > 0 ? 1.32 : 1);
         if(Math.abs(ud.model.scale.x - want) > 0.01) ud.model.scale.setScalar(lerp(ud.model.scale.x, want, Math.min(1, dt * 6)));
         if(st.formT > 0 && Math.random() < dt * 10) fxSpawn(u.x + (Math.random() - 0.5) * 50, u.y + (Math.random() - 0.5) * 50, gh + 20, '#cbd5e1', { spd: 10, up: 60, grav: 0, life: 0.6, size: 16 });
+        if(u.jbuff){   // 🔵🔴 buff džungle: iskrice oko junaka
+          if(u.jbuff.blue > 0 && Math.random() < dt * 6) fxSpawn(u.x + (Math.random() - 0.5) * 40, u.y + (Math.random() - 0.5) * 40, gh + 20, '#60a5fa', { spd: 8, up: 45, grav: 0, life: 0.7, size: 14 });
+          if(u.jbuff.red > 0 && Math.random() < dt * 6) fxSpawn(u.x + (Math.random() - 0.5) * 40, u.y + (Math.random() - 0.5) * 40, gh + 20, '#f87171', { spd: 8, up: 45, grav: 0, life: 0.7, size: 14 });
+        }
         if(st.rageT > 0 && Math.random() < dt * 14) fxSpawn(u.x + (Math.random() - 0.5) * 40, u.y + (Math.random() - 0.5) * 40, gh + 70, '#ef4444', { spd: 20, up: 70, grav: 0, life: 0.5, size: 16 });
         // 🏃 juriš: prašina za petama
         if(u.charge && Math.random() < dt * 40) fxSpawn(u.x, u.y, gh + 4, '#c9b48c', { spd: 90, up: 40, grav: -30, life: 0.6, size: 24 });
@@ -3315,7 +3393,8 @@ function syncScene(tAnim){
       ud.yaw = angleLerp(ud.yaw, -(u.dir || 0), Math.min(1, dt * 12));
       g.rotation.y = ud.yaw;
       if(ud.model){
-        setModelLook(ud.model, u.flash > 0 ? 'f' : (u.status.slowT > 0 ? 'c' : (u.status.poisonT > 0 ? 'p' : 'n')));
+        setModelLook(ud.model, u.flash > 0 ? 'f' : (u.status.slowT > 0 ? 'c' : (u.status.poisonT > 0 ? 'p' : (ud.baseLook || 'n'))));
+        if(ud.buffRing){ ud.buffRing.rotation.z = tAnim * 0.8; if(Math.random() < dt * 8) fxSpawn(u.x + (Math.random() - 0.5) * 50, u.y + (Math.random() - 0.5) * 50, gh + 10, ud.buffRing.material.color.getStyle(), { spd: 6, up: 50, grav: 0, life: 0.8, size: 16 }); }
         animateUnit(u, g, tAnim, dt);
         syncStatusFx(u, g, tAnim, dt, u.r * 2.4 + 18);
         if(u.kind === 'neutral') syncSteps(u, g, dt);
