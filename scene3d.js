@@ -39,6 +39,7 @@ const markerMeshes = new Map();
 const lineMeshes = new Map();
 const runeMeshes = new Map();
 const wardMeshes = new Map();
+const courierMeshes = new Map();   // 🫏 leteći kuriri
 const shrineObjs = [];     // 🕊️ svetišta (model + sjaj)
 const dying = [];          // modeli koji upravo padaju / tonu (smrt)
 
@@ -1212,6 +1213,46 @@ function updateFxObjs(dt){
     f.update(f.obj, f.t / f.life, f.t, dt);
   }
 }
+/* Blender model efekta s vlastitim prozirnim materijalima (može blijedjeti); additive = sjaj */
+function fxModel(name, additive, tint){
+  const tpl = MODELS.ready && MODELS.tpl[name];
+  if(!tpl) return null;
+  const obj = tpl.clone(true);
+  const mats = [];
+  obj.traverse(o => {
+    if(!o.isMesh) return;
+    o.material = additive
+      ? new THREE.MeshBasicMaterial({ color: tint || 0xffffff, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })
+      : new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, depthWrite: false });
+    o.castShadow = false;
+    mats.push(o.material);
+  });
+  obj.userData.mats = mats;
+  return obj;
+}
+function fadeFx(obj, a){ for(const m of obj.userData.mats) m.opacity = Math.max(0, a); }
+/* munja s neba: nazubljena svjetleća cijev od (x1,y1,h1) do tla u (x2,y2) */
+function skyBolt(x1, y1, h1, x2, y2, color){
+  const h2 = groundHeight(x2, y2) + 4, n = 9, pts = [];
+  for(let i = 0; i <= n; i++){
+    const t = i / n, j = i === 0 || i === n ? 0 : 1;
+    pts.push(new THREE.Vector3(x1 + (x2 - x1) * t + (Math.random() - 0.5) * 70 * j, h1 + (h2 - h1) * t, y1 + (y2 - y1) * t + (Math.random() - 0.5) * 70 * j));
+  }
+  const path = new THREE.CurvePath();
+  for(let i = 0; i < n; i++) path.add(new THREE.LineCurve3(pts[i], pts[i + 1]));
+  const g = new THREE.Group();
+  const m1 = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending });
+  const m2 = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 1, depthWrite: false, blending: THREE.AdditiveBlending });
+  g.add(new THREE.Mesh(new THREE.TubeGeometry(path, n * 3, 6, 6, false), m1));
+  g.add(new THREE.Mesh(new THREE.TubeGeometry(path, n * 3, 2, 4, false), m2));
+  const k = 3 + Math.floor(Math.random() * n / 2);   // ogranak munje
+  const b0 = pts[k], b1 = new THREE.Vector3(b0.x + (Math.random() - 0.5) * 160, b0.y - 90, b0.z + (Math.random() - 0.5) * 160);
+  g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.LineCurve3(b0, b1), 3, 3, 4, false), m1));
+  addFx(g, 0.3, (o, f) => { m1.opacity = 0.8 * (1 - f) * (Math.random() < 0.3 ? 0.4 : 1); m2.opacity = 1 - f; });
+  spellLight(x2, y2, h2 + 60, color, 2.6, 0.3, 420);
+  shockwave(x2, y2, 90, color);
+  for(let i = 0; i < 10; i++) fxSpawn(x2, y2, h2 + 8, i % 2 ? color : '#ffffff', { spd: 160, up: 80, grav: -60, life: 0.4, size: 16 });
+}
 /* instancirani Blender model (1 draw call za N primjeraka) */
 function instancedFx(name, n, glow){
   const geo = mergedModelGeo(name);
@@ -2012,6 +2053,28 @@ function buildWardMesh(w){
   return g;
 }
 
+/* 🫏 kurir: leteći magarac s krilima i sandukom (Blender model 'courier') */
+function buildCourierMesh(c){
+  const g = new THREE.Group();
+  const m = MODELS.ready ? modelInstance('courier', c.team, 54) : null;
+  if(m){
+    g.add(m); g.userData.model = m;
+    g.userData.anim = makeAnimator(m, 'courier');
+  } else {
+    const spr = emojiSprite('🫏', 46);
+    spr.position.y = 30;
+    g.add(spr);
+    g.userData.spr = spr;
+  }
+  const glow = new THREE.Sprite(glowMat('#fde047'));   // sanduk zasja dok nosi predmete
+  glow.scale.set(0.01, 0.01, 1);
+  g.add(glow);
+  g.userData.glow = glow;
+  g.userData.yaw = -c.dir;
+  g.userData.lift = 0;
+  return g;
+}
+
 function syncMapped(arr, map, buildFn, updateFn, removeFn){
   for(const o of arr){
     let m = map.get(o);
@@ -2278,20 +2341,68 @@ function castFx(u, g, key){
     case 'panda:Q': shakeAt(u.x, u.y, 0.8, 0.45); dust(18); for(let i = 0; i < 16; i++){ const a = i / 16 * TAU; fxSpawn(u.x + Math.cos(a) * 120, u.y + Math.sin(a) * 120, gh + 30, '#fde68a', { spd: 100, up: 40, grav: 0, life: 0.5, size: 22 }); } break;
     case 'panda:W': break;
     case 'panda:R': for(let i = 0; i < 24; i++) fxSpawn(u.x + (Math.random() - 0.5) * 120, u.y + (Math.random() - 0.5) * 120, gh + 20, i % 3 === 0 ? '#86efac' : (i % 3 === 1 ? '#7dd3fc' : '#fb923c'), { spd: 40, up: 60, grav: 0, life: 0.8, size: 26 }); break;
-    case 'vitez:Q':   // Vrtlog: junak se zavrti
+    case 'vitez:Q': {   // Vrtlog: junak se zavrti, oko njega se digne zlatni tornado
       g.userData.spin = TAU * 2;
       for(let i = 0; i < 18; i++) fxSpawn(u.x, u.y, gh + 30 + Math.random() * 30, '#fde68a', { spd: 220, up: 20, grav: 0, life: 0.45, size: 20 });
+      const tw = g.visible && fxModel('fx_tornado', true, 0xa8843a);
+      if(tw) addFx(tw, 0.8, (o, f, t, dt) => {
+        const k = Math.min(1, f * 6);
+        o.position.set(u.x, groundHeight(u.x, u.y), u.y);
+        o.rotation.y -= dt * 16;
+        o.scale.set(260 * (0.5 + 0.5 * k), 160 * k, 260 * (0.5 + 0.5 * k));
+        fadeFx(o, 0.8 * Math.min(1, (1 - f) * 3.5));
+        if(Math.random() < 0.6){ const a = Math.random() * TAU; fxSpawn(u.x + Math.cos(a) * 150, u.y + Math.sin(a) * 150, gh + 20 + Math.random() * 120, '#fef3c7', { spd: 90, up: 40, grav: 0, life: 0.4, size: 14 }); }
+      });
       break;
+    }
     case 'vitez:E': dust(14); shakeAt(u.x, u.y, 0.5, 0.3); break;
     case 'vitez:R':   // Kraljev urlik
       shakeAt(u.x, u.y, 1.2, 0.6);
       for(let i = 0; i < 30; i++) fxSpawn(u.x, u.y, gh + 40, '#fde047', { spd: 300, up: 30, grav: 0, life: 0.6, size: 26 });
       break;
-    case 'zarko:W':   // Plameni krug
+    case 'zarko:W': {   // Plameni krug: prsten plamenih jezika izbije iz tla i polako se ugasi
       for(let i = 0; i < 28; i++){ const a = i / 28 * TAU; fxSpawn(u.x + Math.cos(a) * 200, u.y + Math.sin(a) * 200, gh + 8, i % 2 ? '#ff7a1a' : '#ffe26b', { spd: 20, up: 70, grav: 0, life: 0.7, size: 30 }); }
+      const fr = g.visible && fxModel('fx_firering', true);
+      if(fr){
+        const x0 = u.x, y0 = u.y;
+        fr.position.set(x0, gh, y0);
+        addFx(fr, 1.1, (o, f, t, dt) => {
+          const up = Math.min(1, t / 0.14);
+          o.rotation.y += dt * 0.8;
+          o.scale.set(215 * (0.6 + 0.4 * up), 150 * up * (0.85 + 0.15 * Math.sin(t * 40)), 215 * (0.6 + 0.4 * up));
+          fadeFx(o, Math.min(1, (1 - f) * 2.5));
+          if(Math.random() < 0.7){ const a = Math.random() * TAU; fxSpawn(x0 + Math.cos(a) * 215, y0 + Math.sin(a) * 215, gh + 40 + Math.random() * 60, '#ffb020', { spd: 10, up: 120, grav: 0, life: 0.5, size: 18 }); }
+        });
+        scorchFx(x0, y0, 225, '#1f1a17', 3);
+      }
       break;
+    }
+    case 'munja:R': {   // Gnjev oluje: nad Munjom se skupi olujni oblak i iz njega udaraju munje
+      shakeAt(u.x, u.y, 0.5, 0.35);
+      const cl = g.visible && fxModel('fx_cloud', false);
+      if(cl){
+        const x0 = u.x, y0 = u.y, top = gh + 300;
+        const hits = units.filter(e => !e.dead && !e.removeMe && e.team !== u.team && (e.kind === 'hero' || e.kind === 'creep') && e.team !== TEAM_NEUTRAL && distXY(e.x, e.y, x0, y0) < 480).slice(0, 6);
+        let next = 0.12, n = 0;
+        addFx(cl, 1.7, (o, f, t, dt) => {
+          const k = Math.min(1, t / 0.25);
+          o.position.set(x0, top + Math.sin(t * 3) * 8, y0);
+          o.rotation.y += dt * 0.5;
+          o.scale.set(135 * (0.4 + 0.6 * k), 80 * (0.4 + 0.6 * k), 135 * (0.4 + 0.6 * k));
+          fadeFx(o, 0.82 * Math.min(1, (1 - f) * 3));
+          if(t >= next && n < 7){
+            const e = hits[n];
+            const a = Math.random() * TAU, d = 80 + Math.random() * 280;
+            const tx = e ? e.x : x0 + Math.cos(a) * d, ty = e ? e.y : y0 + Math.sin(a) * d;
+            skyBolt(x0 + (Math.random() - 0.5) * 150, y0 + (Math.random() - 0.5) * 100, top - 20, tx, ty, n % 2 ? '#c4b5fd' : '#fde047');
+            n++; next += 0.16 + Math.random() * 0.08;
+          }
+        });
+      }
+      break;
+    }
     case 'zarko:R': shakeAt(u.x, u.y, 0.6, 0.4); break;
-    case 'ledena:R': case 'skokica:R': case 'strijela:R': case 'munja:R': case 'orlina:R': case 'luna:R':
+    case 'ledena:R': case 'skokica:R': case 'strijela:R': case 'orlina:R': case 'luna:R':
       shakeAt(u.x, u.y, 0.5, 0.35); break;
     case 'listko:W':   // Iscjeljenje: srca
       fxFloat('fx_heart', u.x, u.y, 60, 7, { scale: 22, up: 70, life: 1.4, h0: 30 }); break;
@@ -2658,6 +2769,26 @@ function syncScene(tAnim){
     if(w.team === myTeam) burst(g.position.x, g.position.z, '#c4b5fd', 10, 120, 4);
   });
 
+  if(typeof couriers !== 'undefined') syncMapped(couriers, courierMeshes, buildCourierMesh, (c, g) => {
+    const ud = g.userData;
+    g.visible = c.team === myTeam || isVisibleTo(myTeam, c);
+    const flying = c.state !== 'home';
+    ud.lift += ((flying ? 70 : 34) - ud.lift) * Math.min(1, dt * 3);
+    const gh = groundHeight(c.x, c.y);
+    g.position.set(c.x, gh + ud.lift + Math.sin(tAnim * (flying ? 5 : 2.2) + c.team) * (flying ? 6 : 4), c.y);
+    ud.yaw = angleLerp(ud.yaw, -c.dir, Math.min(1, dt * 8));
+    g.rotation.y = ud.yaw;
+    if(ud.model){
+      ud.model.rotation.z = flying ? -0.12 : 0;   // u letu se nagne naprijed
+      if(ud.anim){ animBase(ud.anim, flying ? 'walk' : 'idle', flying ? 1.3 : 1, tAnim); ud.anim.mixer.update(dt); }
+    }
+    const gs = c.carry > 0 ? 26 + Math.sin(tAnim * 8) * 5 : 0.01;
+    ud.glow.scale.set(gs, gs, 1);
+    ud.glow.position.set(-Math.cos(c.dir) * 6, 52, -Math.sin(c.dir) * 6);
+    if(flying && g.visible && Math.random() < dt * 14)   // trag zvjezdica iza krila
+      fxSpawn(c.x - Math.cos(c.dir) * 24, c.y - Math.sin(c.dir) * 24, gh + ud.lift + 26, c.carry > 0 ? '#fde68a' : TEAM_LIGHT[c.team], { spd: 10, up: -6, grav: 0, life: 0.6, size: 12 });
+  });
+
   // 💰 zlatnici pri last-hitu
   if(typeof coinDrops !== 'undefined' && coinDrops.length){
     if(MODELS.ready) for(const c of coinDrops) coinFx(c.x, c.y, c.n);
@@ -2762,7 +2893,7 @@ function clearScene3D(){
   meshByUnit.clear();
   for(const d of dying){ scene3.remove(d.g); disposeGroup(d.g); }
   dying.length = 0;
-  for(const map of [zoneMeshes, projMeshes, markerMeshes, lineMeshes, runeMeshes, wardMeshes]){
+  for(const map of [zoneMeshes, projMeshes, markerMeshes, lineMeshes, runeMeshes, wardMeshes, courierMeshes]){
     for(const [k, m] of map){ scene3.remove(m); if(m.traverse) disposeGroup(m); }
     map.clear();
   }

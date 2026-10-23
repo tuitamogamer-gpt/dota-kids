@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.13: detaljniji 3D modeli (oči, prsti, tabani, tunike, oružje, vojnici), rubno svjetlo i spektakularne magije — runski krugovi, udarni valovi, svijetleće munje i svjetla koja bljesnu!** ✨⚡
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.14: 🫏 kurir — leteći magarac s krilima i sandukom donosi predmete kupljene daleko od baze — i posebne 3D magije: zlatni tornado, plameni prsten i olujni oblak s munjama!** 🌪️🔥🌩️
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -18,6 +18,14 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- 🫏 **Kurir i 3D magije** (v0.14):
+  - 🫏 **Kurir**: predmet kupljen daleko od baze (dalje od 900 od fontane) čeka u škrinji — u torbi je blijed s magarčićem i još ne radi. **Leteći magarac** tvog tima poleti s fontane, donese ga junaku i vrati se kući. Vratiš li se sam u bazu, predmete uzmeš odmah. Recepti rade i s dijelovima koji čekaju kurira. Na minimapi je 🫏, protivnički kurir se vidi samo kad nije u magli
+  - 🧸 **novi Blender model kurira**: sivi magarčić s pernatim krilima (puna ploha + tri reda pera s plavkastim vrhovima), sedlom u boji tima sa zlatnim rubom, drvenim sandukom s okovima i draguljem tima, zastavicom, pilotskim naočalama, dugim ušima koje mrdaju i čupavim repom; animacije mirovanja (lagano mahanje) i leta (snažni zamasi, podvučene noge); sanduk zasja dok nosi predmete, iza krila ostaje trag iskri
+  - 🌪️ **Vrtlog** (Lavko): oko junaka se digne zlatni prozirni **tornado** od spiralnih traka vjetra s lišćem i kamenčićima
+  - 🔥 **Plameni krug** (Žarko): iz tla izbije **prsten plamenih jezika** koji treperi i ostavi nagoreno tlo
+  - 🌩️ **Gnjev oluje** (Munja): nad Munjom se skupi **olujni oblak** i iz njega u nizu udaraju izlomljene **munje** s ograncima — ravno u pogođene protivnike
+  - Zuja i Pipko više nemaju krzno na obrazima
 
 - ✨ **Detalji i magije** (v0.13):
   - 🧸 **detaljniji modeli** svih junaka: oči sa šarenicom, zjenicom, dva odsjaja, tuš-linijom i trepavicama; krzno na obrazima i prsima; prsti, palac i jastučić na šakama; potplati i prstići na stopalima; tunika sa zlatnim rubom, naborima, torbicom na pojasu i ovratnikom

@@ -1121,7 +1121,7 @@ HEROES = {
                   atk='melee', scale=1.08, brows='#5b6474', browAngle=-4, headR=(0.42, 0.44, 0.38))),
     'pcela': (dict(fur='#f5c518', belly='#fde68a', muzzle='#fde68a', dark='#1f1a17', nose='#1f1a17'),
               dict(ears=None, snout='muzzle', bands='#1f1a17', wings='#dff6ff', wingScale=1.15, antennae=True,
-                   stinger=True, weapon='orb', orb='#f59e0b', atk='mage', tunic='team', eyes={'size': 1.1})),
+                   stinger=True, weapon='orb', orb='#f59e0b', atk='mage', tunic='team', eyes={'size': 1.1}, cheekFluff=False)),
     'sova': (dict(fur='#8a6a4a', belly='#e9dcc3', muzzle='#e9dcc3', beak='#f5b324', feet='#f5b324', limb='#f5b324',
                   dark='#4a3222'),
              dict(snout='beak', armWings='#6b4f35', tail=None, atk='wing', eyes={'white': True, 'color': '#f59e0b', 'size': 1.2},
@@ -1145,7 +1145,7 @@ HEROES = {
     'hobotnica': (dict(fur='#8b5cf6', belly='#c4b5fd', muzzle='#c4b5fd', dark='#5b21b6', limb='#8b5cf6'),
                   dict(ears=None, snout='muzzle', tail=None, tentacles='#7c3aed', atk='melee', tunic='team',
                        eyes={'white': True, 'size': 1.25}, brows='#5b21b6', browAngle=-4, headR=(0.44, 0.46, 0.42),
-                       blush=True)),
+                       blush=True, cheekFluff=False)),
     'nosorog': (dict(fur='#7d8a96', belly='#b8c2cc', muzzle='#9aa6b2', dark='#4a5560', inner='#d8c0c8', nose='#3b4450'),
                 dict(ears='round', earScale=0.7, snout='long', tail='thin', tuft='#4a5560', atk='melee', scale=1.1,
                      noseHorn='#f1e9d6', chest='#9aa3ad', shoulders='#9aa3ad', brows='#4a5560', browAngle=-16,
@@ -1957,6 +1957,157 @@ def build_golem():
                headR=(0.4, 0.42, 0.34), shoulders='#4b5563', chest='#6b7380', spots=True))
 
 
+def build_courier():
+    """🫏 Kurir: leteći magarčić s pernatim krilima, sedlom u boji tima, sandukom
+    za predmete i pilotskim naočalama. Gleda prema +X (kao ostali četveronošci)."""
+    m = Model('courier')
+    fur, belly, muz, mane = '#9ba1aa', '#ece6da', '#f1e9dc', '#3d3838'
+    dark, hoof = '#5d636c', '#3a302a'
+    L, H, W, bz = 0.9, 0.3, 0.24, 0.56
+    # noge (u letu se podvuku)
+    for nm, x, y in (('legFL', 0.26, W * 0.6), ('legFR', 0.26, -W * 0.6), ('legBL', -0.26, W * 0.6), ('legBR', -0.26, -W * 0.6)):
+        lg = m.part(nm, (x, y, H + 0.12))
+        lg.cyl((x, y, H + 0.14), (x + 0.01, y, 0.17), 0.065, 0.05, fur, seg=8, smooth=True)
+        lg.sphere((x + 0.005, y, 0.2), (0.055, 0.05, 0.04), fur)   # koljeno
+        lg.cyl((x + 0.01, y, 0.17), (x + 0.01, y, 0.07), 0.048, 0.045, fur, seg=8, smooth=True)
+        lg.cyl((x + 0.012, y, 0.08), (x + 0.015, y, 0.02), 0.055, 0.06, belly, seg=8)          # bijele "čarape"
+        lg.cyl((x + 0.015, y, 0.025), (x + 0.015, y, -0.015), 0.062, 0.064, hoof, seg=10)      # kopito
+    b = m.part('body', (0, 0, bz))
+    b.sphere((0, 0, bz), (0.48 * L, W, 0.26), fur, seg=(22, 14))
+    b.sphere((0.02, 0, bz - 0.1), (0.4 * L, W * 0.82, 0.16), belly, seg=(16, 10))
+    b.sphere((0.3 * L, 0, bz + 0.05), (0.2, W * 0.92, 0.22), fur, seg=(14, 10))      # prsa
+    b.sphere((-0.3 * L, 0, bz + 0.03), (0.2, W * 0.95, 0.22), fur, seg=(14, 10))     # sapi
+    # tamna pruga po leđima (kao pravi magarac)
+    for i in range(7):
+        x = 0.28 - i * 0.09
+        b.sphere((x, 0, bz + 0.245 - abs(x) * 0.12), (0.06, 0.03, 0.02), dark, seg=(8, 5))
+    # sedlo u boji tima, zlatni rub, kožni remen ispod trbuha
+    b.sphere((0.0, 0, bz + 0.2), (0.24, W * 1.04, 0.1), '#ffffff', mat='team', seg=(16, 10))
+    b.arc((0.0, 0, bz + 0.2), 0.235, 0, 360, 20, 0.014, '#f2c14e', plane='xy', seg=5)
+    for s in (1, -1):
+        b.box((0.0, s * (W + 0.005), bz + 0.08), (0.16, 0.02, 0.16), '#ffffff', mat='team', bevel=0.01)
+        b.arc((0.0, s * (W + 0.02), bz + 0.08), 0.07, 0, 360, 12, 0.008, '#f2c14e', plane='xz', seg=4)
+    b.arc((0.08, 0, bz - 0.02), W + 0.02, 180, 360, 12, 0.016, '#7a4b25', plane='yz', seg=5)
+    # sanduk za predmete (daske, metalni okovi, zakovice, dragulj tima na poklopcu)
+    cz = bz + 0.42
+    b.box((-0.06, 0, cz), (0.3, 0.26, 0.2), '#a46a35', bevel=0.012)
+    for dz in (-0.05, 0.05):
+        b.box((-0.06, 0, cz + dz), (0.305, 0.265, 0.008), '#7a4b25')
+    for dx in (-0.17, 0.05):
+        b.box((-0.06 + dx * 0.6, 0, cz), (0.022, 0.27, 0.205), '#9ca3af')
+    b.box((-0.06, 0, cz + 0.11), (0.31, 0.27, 0.035), '#8a5a2b', bevel=0.01)
+    for sx in (1, -1):
+        for sy in (1, -1):
+            b.sphere((-0.06 + sx * 0.14, sy * 0.13, cz + 0.08), 0.014, '#e5e7eb', seg=(6, 4))
+    b.box((0.095, 0, cz - 0.005), (0.012, 0.06, 0.07), '#f2c14e')                      # brava
+    b.ico((-0.06, 0, cz + 0.145), 0.04, '#ffffff', mat='teamglow', sub=1)
+    # mala zastavica tima na sanduku
+    b.cyl((-0.19, 0.1, cz + 0.1), (-0.19, 0.1, cz + 0.42), 0.008, 0.008, '#7a4b25', seg=5)
+    b.poly([(-0.19, 0.1, cz + 0.41), (-0.36, 0.1, cz + 0.36), (-0.19, 0.1, cz + 0.3)], '#ffffff', mat='team', thick=0.01)
+    b.sphere((-0.19, 0.1, cz + 0.43), 0.016, '#f2c14e', seg=(6, 4))
+    # vrat + griva
+    nx, nz = 0.4, bz + 0.2
+    b.cyl((0.28, 0, bz + 0.05), (nx + 0.06, 0, nz + 0.16), 0.13, 0.1, fur, seg=12, smooth=True)
+    for i in range(6):
+        t = i / 5
+        b.sphere((0.26 + t * 0.2, 0, bz + 0.2 + t * 0.2), (0.05, 0.035, 0.07), mane, rot=(0, -30, 0), seg=(8, 6))
+    # glava
+    hx, hz = nx + 0.12, nz + 0.24
+    h = m.part('head', (nx + 0.04, 0, nz + 0.12), 'body')
+    h.sphere((hx, 0, hz), (0.17, 0.15, 0.16), fur, seg=(18, 12))
+    h.cyl((hx + 0.06, 0, hz - 0.03), (hx + 0.27, 0, hz - 0.08), 0.12, 0.105, muz, seg=14, smooth=True)
+    h.sphere((hx + 0.27, 0, hz - 0.08), (0.075, 0.105, 0.09), muz, seg=(12, 9))
+    for s in (1, -1):
+        h.sphere((hx + 0.33, s * 0.045, hz - 0.06), (0.02, 0.025, 0.018), '#4a3a3a', seg=(8, 5))   # nosnice
+    h.arc((hx + 0.29, 0, hz - 0.14), 0.05, 200, 340, 6, 0.008, '#4a3a3a', plane='yz', seg=4)        # osmijeh
+    h.box((hx + 0.3, 0, hz - 0.16), (0.012, 0.04, 0.03), '#ffffff', bevel=0.004)                    # zubići
+    eyes(h, hx + 0.1, 0, hz + 0.04, r=0.05, spread=0.09, big=1.05)
+    brows(h, hx + 0.12, 0, hz + 0.11, dark, angle=10, spread=0.09)
+    h.sphere((hx + 0.1, 0.12, hz - 0.03), (0.02, 0.03, 0.018), '#f6a6b2', seg=(8, 5))   # rumeni obrazi
+    h.sphere((hx + 0.1, -0.12, hz - 0.03), (0.02, 0.03, 0.018), '#f6a6b2', seg=(8, 5))
+    # čuperak grive na čelu
+    for k, (dy, dz) in enumerate(((0, 0.15), (0.04, 0.13), (-0.04, 0.13))):
+        h.sphere((hx + 0.02, dy, hz + dz), (0.05, 0.03, 0.05), mane, rot=(0, -25, 0), seg=(8, 6))
+    # pilotske naočale podignute na čelo
+    for s in (1, -1):
+        h.cyl((hx + 0.06, s * 0.065, hz + 0.13), (hx + 0.1, s * 0.065, hz + 0.15), 0.045, 0.045, '#8a5a2b', seg=12)
+        h.cyl((hx + 0.095, s * 0.065, hz + 0.148), (hx + 0.105, s * 0.065, hz + 0.152), 0.034, 0.034, '#a5f3fc', mat='glow', seg=12)
+    h.arc((hx - 0.01, 0, hz + 0.1), 0.16, 0, 360, 18, 0.012, '#5a3a1e', plane='xy', seg=4)        # remen
+    # duge uši (posebni dijelovi — mrdaju): široke, ružičaste iznutra, tamni vrh
+    for s, nm in ((1, 'earL'), (-1, 'earR')):
+        e = m.part(nm, (hx - 0.05, s * 0.08, hz + 0.12), 'head')
+        e.sphere((hx - 0.08, s * 0.12, hz + 0.27), (0.045, 0.06, 0.17), fur, rot=(-s * 18, -14, 0), seg=(12, 9))
+        e.sphere((hx - 0.055, s * 0.125, hz + 0.27), (0.02, 0.04, 0.13), '#f3c1c8', rot=(-s * 18, -14, 0), seg=(10, 7))
+        e.sphere((hx - 0.12, s * 0.17, hz + 0.42), (0.03, 0.04, 0.045), dark, rot=(-s * 18, -14, 0), seg=(8, 6))
+    # pernata krila: lepeza pera unatrag u ravnini krila (ruka krila ide van i gore)
+    for s, nm in ((1, 'wingL'), (-1, 'wingR')):
+        p0 = Vector((0.1, s * W * 0.75, bz + 0.2))
+        w = m.part(nm, tuple(p0), 'body')
+        elbow = p0 + Vector((0.06, s * 0.3, 0.2))
+        tipp = p0 + Vector((-0.04, s * 0.68, 0.3))
+        w.cyl(p0, elbow, 0.045, 0.035, '#f8fafc', seg=8, smooth=True)
+        w.cyl(elbow, tipp, 0.035, 0.015, '#f8fafc', seg=8, smooth=True)
+        w.sphere(elbow, 0.04, '#f8fafc', seg=(8, 6))
+        X = Vector((1, 0, 0))
+        fan = []
+        for i in range(9):   # dugačka pera (letna): od ramena do vrha, sve duža prema van
+            t = i / 8
+            root = p0.lerp(elbow, t * 2) if t < 0.5 else elbow.lerp(tipp, (t - 0.5) * 2)
+            A = ((elbow - p0) if t < 0.5 else (tipp - elbow)).normalized()
+            Ln = 0.2 + 0.26 * t ** 0.8
+            wd = 0.08 + 0.01 * t
+            back = -X * Ln + Vector((0, 0, -0.06 - 0.06 * (1 - t)))
+            tip = root + back + A * (0.05 * t)
+            fan.append((root, back))
+            pts = [root + A * wd * 0.6, root + back * 0.5 + A * wd, tip, root + back * 0.55 - A * wd * 0.8, root - A * wd * 0.5]
+            w.poly([tuple(v) for v in pts], '#ffffff' if i % 2 == 0 else '#f1f5ff', thick=0.014)
+            w.poly([tuple(v) for v in (root + back * 0.8 + A * wd * 0.7, tip, root + back * 0.82 - A * wd * 0.6)], '#bfdbfe', thick=0.018)
+        for i in range(len(fan) - 1):   # puna ploha krila ispod pera (bez rupa između njih)
+            (r0, b0), (r1, b1) = fan[i], fan[i + 1]
+            dn = Vector((0, 0, -0.018))
+            w.poly([tuple(r0 + dn), tuple(r1 + dn), tuple(r1 + b1 * 0.8 + dn), tuple(r0 + b0 * 0.8 + dn)], '#f4f7ff', thick=0.01)
+        for i in range(7):   # kratka pokrovna pera preko korijena
+            t = 0.05 + i / 7
+            root = p0.lerp(elbow, t * 2) if t < 0.5 else elbow.lerp(tipp, (t - 0.5) * 2)
+            w.sphere(tuple(root + Vector((-0.07, 0, -0.02))), (0.1, 0.03, 0.06), '#fafcff', seg=(10, 6))
+    # rep s čupavim vrhom
+    t = m.part('tail', (-0.42, 0, bz + 0.08), 'body')
+    t.cyl((-0.42, 0, bz + 0.08), (-0.58, 0, bz - 0.12), 0.025, 0.018, fur, seg=6, smooth=True)
+    t.sphere((-0.6, 0, bz - 0.17), (0.05, 0.045, 0.08), mane, seg=(8, 6))
+    t.sphere((-0.61, 0, bz - 0.23), (0.035, 0.03, 0.05), mane, seg=(7, 5))
+
+    Z = (0, 0, 0)
+    # IDLE: lagano maše krilima, mrda ušima i repom, glava kima
+    m.anim('idle', 48, {
+        'body': [(0, Z, Z), (24, (0, -2, 0), (0, 0, 0.03)), (48, Z, Z)],
+        'head': [(0, Z), (12, (0, -6, 4)), (30, (0, 4, -6)), (48, Z)],
+        'earL': [(0, Z), (8, (-14, 0, 0)), (14, Z), (40, Z), (44, (-20, 0, 0)), (48, Z)],
+        'earR': [(0, Z), (20, Z), (25, (16, 0, 0)), (30, Z), (48, Z)],
+        'tail': [(0, (0, 0, -20)), (24, (0, 0, 20)), (48, (0, 0, -20))],
+        'wingL': [(0, (-10, 0, 0)), (12, (24, 0, 0)), (24, (-10, 0, 0)), (36, (24, 0, 0)), (48, (-10, 0, 0))],
+        'wingR': [(0, (10, 0, 0)), (12, (-24, 0, 0)), (24, (10, 0, 0)), (36, (-24, 0, 0)), (48, (10, 0, 0))],
+        'legFL': [(0, Z), (24, (0, -8, 0)), (48, Z)],
+        'legFR': [(0, Z), (24, (0, 8, 0)), (48, Z)],
+        'legBL': [(0, Z), (24, (0, 6, 0)), (48, Z)],
+        'legBR': [(0, Z), (24, (0, -6, 0)), (48, Z)],
+    })
+    # "WALK" = let: snažni zamasi, noge podvučene, uši polegnute unatrag
+    m.anim('walk', 16, {
+        'body': [(0, Z, (0, 0, -0.03)), (4, (0, -3, 0), (0, 0, 0.04)), (8, Z, (0, 0, -0.03)), (12, (0, -3, 0), (0, 0, 0.04)), (16, Z, (0, 0, -0.03))],
+        'head': [(0, (0, 8, 0)), (8, (0, 3, 0)), (16, (0, 8, 0))],
+        'earL': [(0, (-10, 40, 0)), (8, (-16, 48, 0)), (16, (-10, 40, 0))],
+        'earR': [(0, (10, 40, 0)), (8, (16, 48, 0)), (16, (10, 40, 0))],
+        'tail': [(0, (0, 30, -10)), (8, (0, 34, 10)), (16, (0, 30, -10))],
+        'wingL': [(0, (55, 0, 0)), (8, (-40, 0, 0)), (16, (55, 0, 0))],
+        'wingR': [(0, (-55, 0, 0)), (8, (40, 0, 0)), (16, (-55, 0, 0))],
+        'legFL': [(0, (0, -70, 0)), (8, (0, -60, 0)), (16, (0, -70, 0))],
+        'legFR': [(0, (0, -65, 0)), (8, (0, -75, 0)), (16, (0, -65, 0))],
+        'legBL': [(0, (0, 60, 0)), (8, (0, 70, 0)), (16, (0, 60, 0))],
+        'legBR': [(0, (0, 65, 0)), (8, (0, 55, 0)), (16, (0, 65, 0))],
+    })
+    m.finish()
+
+
 # ------------------------------------------------------------------ PROJEKTILI (lete prema +X)
 def rotx(pt, deg):
     """zarotiraj točku oko osi X (za perje strijele)"""
@@ -2185,6 +2336,78 @@ def build_fx():
     p.cyl((0.22, -0.12, 0.05), (0.26, -0.14, 0.3), 0.015, 0.012, '#4caf50', seg=4)
     p.sphere((0.26, -0.14, 0.32), 0.06, '#f9a8d4', seg=(7, 5))
     m.finish()
+    build_spell_fx()
+
+
+def build_spell_fx():
+    """posebni 3D efekti magija (u igri prozirni, aditivni sjaj)"""
+    rnd = random.Random(14)
+    # 🌪️ tornado (Lavkov Vrtlog): lijevak od spiralnih traka vjetra, prstenova i krhotina
+    m = Model('fx_tornado')
+    p = m.part('mesh')
+    R = lambda t: 0.1 + 0.42 * t ** 1.3
+    cols = ('#fff7d6', '#fde68a', '#fbbf24')
+    for k in range(4):
+        prev = None
+        for i in range(29):
+            t = i / 28
+            a = RAD(t * 760 + k * 90)
+            pt = (math.cos(a) * R(t), math.sin(a) * R(t), t * 1.1)
+            if prev:
+                p.cyl(prev, pt, 0.018 + 0.02 * t, 0.018 + 0.02 * t, cols[k % 3], mat='glow', seg=4)
+            prev = pt
+    for t in (0.18, 0.4, 0.62, 0.84):
+        p.arc((0.03 * math.sin(t * 9), 0.03 * math.cos(t * 9), t * 1.1), R(t) * 1.06, 0, 300, 14, 0.012, '#fffbeb', plane='xy', mat='glow', seg=4)
+    for i in range(10):   # lišće i kamenčići koje vjetar nosi
+        t = 0.15 + rnd.random() * 0.8
+        a = rnd.random() * math.tau
+        c = (math.cos(a) * R(t) * 1.15, math.sin(a) * R(t) * 1.15, t * 1.1)
+        if i % 2:
+            p.poly([c, (c[0] + 0.05, c[1] + 0.02, c[2] + 0.03), (c[0] + 0.08, c[1], c[2] - 0.01), (c[0] + 0.03, c[1] - 0.02, c[2] - 0.03)],
+                   '#86efac', mat='glow', thick=0.008)
+        else:
+            p.ico(c, 0.025, '#d6c7a1', mat='glow', sub=0, jitter=0.2, seed=i)
+    p.sphere((0, 0, 0.02), (0.3, 0.3, 0.03), '#fde68a', mat='glow', seg=(14, 4))   # prašina pri tlu
+    m.finish()
+    # 💍 plameni prsten (Žarkov Plameni krug): krug plamenih jezika oko junaka, polumjer 1
+    m = Model('fx_firering')
+    p = m.part('mesh')
+    n = 22
+    for i in range(n):
+        a = RAD(i * 360 / n + rnd.uniform(-4, 4))
+        ca, sa = math.cos(a), math.sin(a)
+        h = 0.45 + rnd.random() * 0.35
+        lean = 0.06 + rnd.random() * 0.05
+        b0 = (ca, sa, 0.0)
+        tip = (ca * (1 + lean), sa * (1 + lean), h)
+        p.sphere((ca, sa, 0.06), (0.11, 0.11, 0.1), '#ff5a0a', mat='glow', seg=(8, 6))
+        p.cyl(b0, tip, 0.11, 0.0, '#ff5a0a', mat='glow', seg=6)
+        p.cyl((ca, sa, 0.0), (ca * (1 + lean * 0.6), sa * (1 + lean * 0.6), h * 0.7), 0.07, 0.0, '#ffb020', mat='glow', seg=5)
+        p.cyl((ca, sa, 0.0), (ca * (1 + lean * 0.3), sa * (1 + lean * 0.3), h * 0.38), 0.04, 0.0, '#fff1a8', mat='glow', seg=4)
+        if i % 3 == 0:   # iskre iznad plamena
+            p.ico((ca * (1 + lean * 1.4), sa * (1 + lean * 1.4), h + 0.12 + rnd.random() * 0.1), 0.025, '#ffe26b', mat='glow', sub=0)
+    p.arc((0, 0, 0.02), 1.0, 0, 360, 36, 0.05, '#ff7a1a', plane='xy', mat='glow', seg=5)
+    p.arc((0, 0, 0.01), 0.9, 0, 360, 36, 0.025, '#7c2d12', plane='xy', mat='glow', seg=4)
+    m.finish()
+    # 🌩️ olujni oblak (Munjin Gnjev oluje): tamni kumulus s ljubičastim sjajem ispod
+    m = Model('fx_cloud')
+    p = m.part('mesh')
+    for i in range(16):
+        a = rnd.random() * math.tau
+        d = rnd.random() ** 0.6 * 0.75
+        c = (math.cos(a) * d, math.sin(a) * d, rnd.uniform(-0.04, 0.12) + (0.75 - d) * 0.25)
+        r = 0.28 + rnd.random() * 0.2
+        shade = mix('#3f3d56', '#6b6890', rnd.random())
+        p.sphere(c, (r, r, r * 0.7), shade, seg=(12, 8))
+    for i in range(7):   # svjetlije kupole na vrhu
+        a = rnd.random() * math.tau
+        d = rnd.random() * 0.5
+        p.sphere((math.cos(a) * d, math.sin(a) * d, 0.28 + rnd.random() * 0.08), (0.24, 0.24, 0.18), '#8e8bb0', seg=(12, 8))
+    for i in range(6):   # ljubičasti bljesak u trbuhu oblaka
+        a = i / 6 * math.tau + 0.3
+        p.sphere((math.cos(a) * 0.4, math.sin(a) * 0.4, -0.12), (0.16, 0.16, 0.06), '#c4b5fd', seg=(10, 6))
+    p.sphere((0, 0, -0.14), (0.62, 0.62, 0.1), '#2e2b45', seg=(16, 6))
+    m.finish()
 
 
 # ------------------------------------------------------------------ RUNE
@@ -2291,7 +2514,7 @@ def export(path):
         export_cameras=False, export_lights=False)
 
 
-def preview(path, only=None, cols=8):
+def preview(path, only=None, cols=8, zoom=1.0):
     """Cycles render modela u mreži — samo za provjeru."""
     sc = bpy.context.scene
     roots = [o for o in sc.objects if o.parent is None and o.type == 'EMPTY']
@@ -2311,7 +2534,7 @@ def preview(path, only=None, cols=8):
     sc.collection.objects.link(cam)
     cam.data.type = 'ORTHO'
     # mreža je zarotirana 45° prema kameri: pokrij dijagonalu (širina + visina mreže)
-    cam.data.ortho_scale = (cols * 2.6 + rows * 3.2) * 0.72 + 3
+    cam.data.ortho_scale = ((cols * 2.6 + rows * 3.2) * 0.72 + 3) / zoom
     cam.location = (cx + 14, cy - 14, 14)
     cam.rotation_euler = (RAD(58), 0, RAD(45))
     # usmjeri kameru u središte
@@ -2355,6 +2578,11 @@ def preview(path, only=None, cols=8):
 def main():
     reset_scene()
     make_materials()
+    if '--dev-v14' in argv:   # brza provjera novih modela (bez izvoza)
+        build_courier()
+        build_spell_fx()
+        preview(os.path.join(HERE, 'preview_courier.png'), cols=2, zoom=2.4)
+        return
     build_heroes()
     build_creeps()
     build_neutrals()
@@ -2363,6 +2591,7 @@ def main():
     build_nature()
     build_env()
     build_golem()
+    build_courier()
     build_projectiles()
     build_fx()
     build_runes()
@@ -2382,6 +2611,10 @@ def main():
         preview(os.path.join(HERE, 'preview_heroes.png'), only=['hero_', 'creep_'], cols=4)
     elif '--preview-fx' in argv:
         preview(os.path.join(HERE, 'preview_fx.png'), only=['proj_', 'fx_', 'rune_'], cols=6)
+    elif '--preview-v14' in argv:
+        preview(os.path.join(HERE, 'preview_v14.png'), only=['courier', 'fx_tornado', 'fx_firering', 'fx_cloud', 'hero_pcela', 'hero_hobotnica'], cols=3, zoom=2.2)
+    elif '--preview-courier' in argv:
+        preview(os.path.join(HERE, 'preview_courier.png'), only=['courier'], cols=1, zoom=3.0)
     elif '--preview-new' in argv:
         preview(os.path.join(HERE, 'preview_new.png'), only=['tree_birch', 'stump', 'flowers', 'grass0', 'reeds', 'lilypad', 'crystal', 'campfire',
                                                                'tent', 'barrel', 'crate', 'fence', 'torch', 'ford', 'shrine', 'rock_big', 'signpost', 'mob_golem'], cols=5)
