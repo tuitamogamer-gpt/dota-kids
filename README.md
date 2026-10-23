@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.20: litice i rampe oko baza kao u Allstarsu, kameni rubnici staza, iskre pri svakom udarcu, krhotine kad padne kula i HUD u stilu Allstarsa!** ⛰️💥🏛️
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.21: HUD raspoređen kao u Warcraftu 3, sjene oblaka i izmaglica nad rijekom, zastave koje se vijore, dim iz dimnjaka i kristali kula koji pulsiraju dok pucaju!** 🗺️☁️🚩
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -18,6 +18,11 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- 🗺️ **3D dorada, 3. dio** (v0.21):
+  - 🖥️ **HUD kao u Warcraftu 3**: minimapa dolje lijevo, u sredini ploča junaka (portret, život/mana/iskustvo, atributi) s **torbom 2×3** odmah uz portret i okruglim mjestom za neutralni predmet, a dolje desno **kartica naredbi** — moći Q W E R u prvom redu, ispod atributi, 🌀 teleport, 🛡️ glif i 🛒 dućan; zvuk i pomoć su gore desno
+  - ☁️ **sjene oblaka** polako klize preko cijele mape (danju jače, noću se gotovo ne vide), a nad **rijekom lebdi izmaglica** — mekani pramenovi koji plove niz vodu (noću gušći)
+  - 🚩 **živahne zgrade**: zastave na kulama i vojarnama vijore se na vjetru (Scourge kule imaju poderani barjak na koštanom koplju s lubanjom), iz dimnjaka Sentinel vojarni izlazi siv dim, iz Scourge kripti ljubičasti pramenovi, a **kristal kule pulsira** i brže se vrti dok kula puca
 
 - ⛰️ **3D dorada, 2. dio** (v0.20):
   - ⛰️ **litice oko baza**: plato svake baze završava strmom liticom od slojevitog kamena (Sentinel: siva stijena s travom na vrhu, Scourge: tamni kamen s pepelom i ljubičastim kristalima), a gdje staze ulaze u bazu teren se spušta blagom **rampom** — kao u Allstarsu; visine terena računaju se jednom u mrežu (brže)

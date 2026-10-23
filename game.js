@@ -3539,7 +3539,7 @@ function drawWorldOverlay(){
 function drawChatWheel(){
   uiRects.chat = null;
   if(!chatOpen || !player) return;
-  const w = 210, rh = 26, x = 14, y = VH - 190 - CHAT_LINES.length * rh;
+  const w = 210, rh = 26, x = 14, y = VH - hudLayout().ms - 60 - CHAT_LINES.length * rh;
   drawFrame(x, y - 30, w, CHAT_LINES.length * rh + 40, 10);
   ctx.font = fontTxt(13, true);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -3563,6 +3563,16 @@ function drawChatWheel(){
   });
 }
 
+/* položaji dijelova HUD-a (Warcraft 3 raspored) */
+function hudLayout(){
+  const ms = VW < 1000 ? 140 : 170;
+  const as = 52, gap = 6, cardW = 4 * as + 3 * gap + 24, cardH = 2 * as + gap + 24;
+  const cardX = VW - cardW - 10, cardY = VH - cardH - 10;
+  const left = 14 + ms + 22, right = cardX - 10;
+  const pw = Math.min(452, Math.max(380, right - left)), ph = 124;
+  const px = left + Math.max(0, (right - left - pw) / 2), py = VH - ph - 10;
+  return { ms, mx: 21, my: VH - ms - 21, as, gap, cardX, cardY, cardW, cardH, pw, ph, px, py, invX: px + 318 };
+}
 /* 🏛️ okvir u stilu Allstarsa: tamna ploča, dvostruki rub i zakovice
    (Sentinel = tamno drvo i zlato, Scourge = tamni kamen i kost s ljubičastim) */
 function hudTheme(){
@@ -3657,8 +3667,9 @@ function drawHud(){
   uiRects.learn = [];
   uiRects.inv = [];
   if(player){
-    const pw = 640, ph = 134;
-    const px = (VW - pw) / 2, py = VH - ph - 10;
+    // raspored kao u Warcraftu 3: minimapa dolje lijevo, ploča junaka u sredini (portret, trake, torba 2×3), moći dolje desno
+    const HL = hudLayout();
+    const pw = HL.pw, ph = HL.ph, px = HL.px, py = HL.py;
     drawFrame(px, py, pw, ph, 10);
     if(player.dead){ ctx.fillStyle = 'rgba(30,30,40,0.35)'; ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 10); ctx.fill(); }
 
@@ -3757,64 +3768,70 @@ function drawHud(){
       put('⚔️ ' + Math.round(player.dmg * mul) + (player.itemBonus.dmg ? ' (+' + player.itemBonus.dmg + ')' : ''),
         mul > 1 ? '#fb923c' : '#fbbf24', py + 84);
       put('🏃 ' + Math.round(player.speed), '#a7f3d0', py + 84);
-      put('♥ +' + player.hpRegen.toFixed(1) + '/s', '#4ade80', py + 84);
-      put('💧 +' + player.mpRegen.toFixed(1) + '/s', '#7dd3fc', py + 84);
+      // red 3: iskustvo + obnove (u redu 2 ne stanu uz torbu)
+      putX = bx;
+      ctx.font = fontTxt(10.5, true);
+      put(player.level >= CFG.maxLevel ? '⭐ Max!' : '⭐ ' + Math.floor(player.xp) + '/' + xpNeed(player.level), '#fde68a', py + 101);
+      put('♥ +' + player.hpRegen.toFixed(1) + '/s', '#4ade80', py + 101);
+      put('💧 +' + player.mpRegen.toFixed(1) + '/s', '#7dd3fc', py + 101);
     }
 
-    // torba (klik = prodaja za pola cijene)
+    // torba 2×3 (kao u Warcraftu 3; klik = koristi, desni klik = prodaja za pola cijene)
+    const CS = 32, CG = 4;
     for(let i = 0; i < CFG.inventorySlots; i++){
-      const ix = bx + i * 26, iy = py + 102;
+      const ix = HL.invX + (i % 2) * (CS + CG), iy = py + 10 + Math.floor(i / 2) * (CS + CG);
       const hovered = hoverUi && hoverUi.type === 'inv' && hoverUi.i === i && player.items[i];
-      uiRects.inv[i] = player.items[i] ? { x: ix, y: iy, w: 23, h: 23 } : null;
-      ctx.fillStyle = hovered ? '#334155' : '#0f172a';
-      ctx.strokeStyle = hovered ? '#fde047' : '#475569';
+      uiRects.inv[i] = player.items[i] ? { x: ix, y: iy, w: CS, h: CS } : null;
+      ctx.fillStyle = hovered ? '#334155' : 'rgba(5,8,12,0.75)';
+      ctx.strokeStyle = hovered ? '#fde047' : hudTheme().rim2;
       ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.roundRect(ix, iy, 23, 23, 5); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.roundRect(ix, iy, CS, CS, 4); ctx.fill(); ctx.stroke();
       const itm = player.items[i];
+      const cx = ix + CS / 2, cy = iy + CS / 2;
       if(itm && itm.pending){   // čeka kurira: blijedo + magarčić
-        ctx.font = fontEmoji(15);
+        ctx.font = fontEmoji(19);
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.globalAlpha = 0.35 + 0.15 * Math.sin(gameTime * 5);
-        ctx.fillText(itm.emoji, ix + 11.5, iy + 12);
+        ctx.fillText(itm.emoji, cx, cy + 1);
         ctx.globalAlpha = 1;
-        ctx.font = fontEmoji(9);
-        ctx.fillText('🫏', ix + 17, iy + 18);
+        ctx.font = fontEmoji(10);
+        ctx.fillText('🫏', ix + CS - 7, iy + CS - 7);
       } else if(itm){
-        ctx.font = fontEmoji(15);
+        ctx.font = fontEmoji(19);
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(itm.emoji, ix + 11.5, iy + 12);
+        ctx.fillText(itm.emoji, cx, cy + 1);
         if(itm.active){
           const icd = player.itemCd[itm.id] || 0;
           if(icd > 0){
             ctx.fillStyle = 'rgba(0,0,0,0.6)';
-            ctx.beginPath(); ctx.roundRect(ix, iy, 23, 23 * Math.min(1, icd / itm.active.cd), 5); ctx.fill();
+            ctx.beginPath(); ctx.roundRect(ix, iy, CS, CS * Math.min(1, icd / itm.active.cd), 4); ctx.fill();
             ctx.fillStyle = '#fff';
-            ctx.font = fontTxt(10, true);
-            ctx.fillText(Math.ceil(icd), ix + 11.5, iy + 12);
+            ctx.font = fontTxt(12, true);
+            ctx.fillText(Math.ceil(icd), cx, cy);
           }
           ctx.fillStyle = pendingCast && pendingCast.item === i ? '#fde047' : '#4ade80';
-          ctx.font = fontTxt(8, true);
-          ctx.fillText(i + 1, ix + 18, iy + 5);
+          ctx.font = fontTxt(9, true);
+          ctx.fillText(i + 1, ix + CS - 6, iy + 6);
           if(itm.charges){   // gutljaji / punjenja
             const ch = itemCharges(player, itm.id);
             ctx.fillStyle = ch > 0 ? '#7dd3fc' : '#fca5a5';
-            ctx.fillText(ch, ix + 5, iy + 19);
+            ctx.fillText(ch, ix + 6, iy + CS - 6);
           }
         }
       }
     }
     {   // 🌰 okruglo mjesto za neutralni predmet iz džungle
-      const nx = bx + CFG.inventorySlots * 26 + 3, ny = py + 102;
-      uiRects.neutral = { x: nx, y: ny, w: 23, h: 23 };
+      const nx = HL.invX + 2 * (CS + CG) + 8, ny = py + ph / 2 - 15;
+      uiRects.neutral = { x: nx, y: ny, w: 30, h: 30 };
       const hov = hoverUi && hoverUi.type === 'neut';
       ctx.fillStyle = hov ? '#365314' : '#1a2e05';
       ctx.strokeStyle = player.neutral ? '#bef264' : '#3f6212';
       ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(nx + 11.5, ny + 11.5, 11.5, 0, TAU); ctx.fill(); ctx.stroke();
-      ctx.font = fontEmoji(player.neutral ? 14 : 10);
+      ctx.beginPath(); ctx.arc(nx + 15, ny + 15, 15, 0, TAU); ctx.fill(); ctx.stroke();
+      ctx.font = fontEmoji(player.neutral ? 17 : 12);
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.globalAlpha = player.neutral ? 1 : 0.35;
-      ctx.fillText(player.neutral ? player.neutral.emoji : '🌰', nx + 11.5, ny + 12);
+      ctx.fillText(player.neutral ? player.neutral.emoji : '🌰', nx + 15, ny + 16);
       ctx.globalAlpha = 1;
     }
     if(hoverUi && hoverUi.type === 'neut'){
@@ -3843,8 +3860,9 @@ function drawHud(){
 
     // moći (Q W E R) + atributi (📊) + teleport (T)
     uiRects.abil = [];
-    const as = 52, gap = 6;
-    const ax0 = px + 318, ay = py + 20;
+    const as = HL.as, gap = HL.gap;
+    drawFrame(HL.cardX, HL.cardY, HL.cardW, HL.cardH, 10);   // naredbena kartica (Warcraft 3)
+    const ax0 = HL.cardX + 12, ay = HL.cardY + 12, ay2 = ay + as + gap;
     if(pendingCast){
       ctx.font = fontTxt(13, true);
       ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
@@ -3951,14 +3969,14 @@ function drawHud(){
 
     // ATRIBUTI gumb (📊 = +2 sve, kao DotA "Attribute Bonus")
     {
-      const sb = { x: ax0 + 4 * (as + gap), y: ay, w: 40, h: as };
+      const sb = { x: ax0, y: ay2, w: as, h: as };
       uiRects.statBtn = sb;
       const canS = player.skillPoints > 0 && canLearnStats(player);
       ctx.fillStyle = '#1e3a2f';
-      ctx.beginPath(); ctx.roundRect(sb.x, sb.y, sb.w, sb.h, 10); ctx.fill();
-      ctx.strokeStyle = canS ? '#4ade80' : '#475569';
-      ctx.lineWidth = canS ? 3 : 2;
-      ctx.beginPath(); ctx.roundRect(sb.x, sb.y, sb.w, sb.h, 10); ctx.stroke();
+      ctx.beginPath(); ctx.roundRect(sb.x, sb.y, sb.w, sb.h, 6); ctx.fill();
+      ctx.strokeStyle = canS ? '#4ade80' : hudTheme().rim2;
+      ctx.lineWidth = canS ? 3 : 2.5;
+      ctx.beginPath(); ctx.roundRect(sb.x, sb.y, sb.w, sb.h, 6); ctx.stroke();
       ctx.font = fontEmoji(17);
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.globalAlpha = player.statRanks >= CFG.statMaxRanks ? 0.45 : 1;
@@ -3977,14 +3995,14 @@ function drawHud(){
 
     // teleport kući (T)
     {
-      const tr = { x: ax0 + 4 * (as + gap) + 46, y: ay + 2, w: 42, h: 48 };
+      const tr = { x: ax0 + (as + gap), y: ay2, w: as, h: as };
       uiRects.tp = tr;
       const channeling = player.tpChannel > 0;
       ctx.fillStyle = channeling ? '#1e3a5f' : '#16243a';
-      ctx.beginPath(); ctx.roundRect(tr.x, tr.y, tr.w, tr.h, 11); ctx.fill();
+      ctx.beginPath(); ctx.roundRect(tr.x, tr.y, tr.w, tr.h, 6); ctx.fill();
       ctx.strokeStyle = '#60a5fa';
-      ctx.lineWidth = channeling ? 3.5 : 2;
-      ctx.beginPath(); ctx.roundRect(tr.x, tr.y, tr.w, tr.h, 11); ctx.stroke();
+      ctx.lineWidth = channeling ? 3.5 : 2.5;
+      ctx.beginPath(); ctx.roundRect(tr.x, tr.y, tr.w, tr.h, 6); ctx.stroke();
       ctx.font = fontEmoji(20);
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.globalAlpha = player.tpCd > 0 && !channeling ? 0.4 : 1;
@@ -4004,14 +4022,14 @@ function drawHud(){
         ctx.fillText(Math.ceil(player.tpCd), tr.x + tr.w / 2, tr.y + tr.h / 2);
       }
       // 🛡️ Glif utvrde (F): kule i vojarne tima 5 s neranjive
-      const gr = { x: tr.x + tr.w + 6, y: tr.y, w: 42, h: 48 };
+      const gr = { x: ax0 + 2 * (as + gap), y: ay2, w: as, h: as };
       uiRects.glyph = gr;
       const gl = glyph[player.team];
       ctx.fillStyle = gl.t > 0 ? '#3f2a0a' : '#2a2214';
-      ctx.beginPath(); ctx.roundRect(gr.x, gr.y, gr.w, gr.h, 11); ctx.fill();
+      ctx.beginPath(); ctx.roundRect(gr.x, gr.y, gr.w, gr.h, 6); ctx.fill();
       ctx.strokeStyle = '#fde047';
-      ctx.lineWidth = gl.t > 0 ? 3.5 : 2;
-      ctx.beginPath(); ctx.roundRect(gr.x, gr.y, gr.w, gr.h, 11); ctx.stroke();
+      ctx.lineWidth = gl.t > 0 ? 3.5 : 2.5;
+      ctx.beginPath(); ctx.roundRect(gr.x, gr.y, gr.w, gr.h, 6); ctx.stroke();
       ctx.font = fontEmoji(20);
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.globalAlpha = gl.cd > 0 && gl.t <= 0 ? 0.4 : 1;
@@ -4035,18 +4053,26 @@ function drawHud(){
       ctx.fillText('T', tr.x + 8, tr.y + 9);
     }
 
-    // gumbi sa strane
-    const gx = px + pw + 10;
-    uiRects.shop = { x: gx, y: py, w: 44, h: 30 };
-    uiRects.mute = { x: gx, y: py + 37, w: 44, h: 30 };
-    uiRects.help = { x: gx, y: py + 74, w: 44, h: 30 };
-    const btns = [['🛒', uiRects.shop], [muted ? '🔇' : '🔊', uiRects.mute], ['❓', uiRects.help]];
-    for(const [em, r] of btns){
-      ctx.fillStyle = 'rgba(15,23,42,0.85)';
-      ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 9); ctx.fill();
-      ctx.font = fontEmoji(17);
+    // 🛒 dućan: zadnji gumb naredbene kartice; zvuk i pomoć gore desno
+    uiRects.shop = { x: ax0 + 3 * (as + gap), y: ay2, w: as, h: as };
+    {
+      const r = uiRects.shop, hov = hoverUi && hoverUi.type === 'shop';
+      ctx.fillStyle = shopOpen ? '#4a3510' : '#2a2214';
+      ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 6); ctx.fill();
+      ctx.strokeStyle = hov || shopOpen ? '#fde047' : '#f59e0b'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 6); ctx.stroke();
+      ctx.font = fontEmoji(22); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('🛒', r.x + r.w / 2, r.y + r.h / 2 - 2);
+      ctx.fillStyle = '#fde047'; ctx.font = fontTxt(9, true);
+      ctx.fillText('B', r.x + r.w - 7, r.y + 8);
+    }
+    uiRects.mute = { x: VW - 92, y: 12, w: 38, h: 32 };
+    uiRects.help = { x: VW - 48, y: 12, w: 38, h: 32 };
+    for(const [em, r] of [[muted ? '🔇' : '🔊', uiRects.mute], ['❓', uiRects.help]]){
+      drawFrame(r.x, r.y, r.w, r.h, 7);
+      ctx.font = fontEmoji(16);
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(em, r.x + r.w / 2, r.y + r.h / 2);
+      ctx.fillText(em, r.x + r.w / 2, r.y + r.h / 2 + 1);
     }
 
     // tooltip atributa
@@ -4213,8 +4239,8 @@ function drawHud(){
   if(keys['tab']) drawScoreboard();
 
   // ----- minimapa -----
-  const ms = 200, mx = VW - ms - 12, my = VH - ms - 12;
-  drawMinimap(ms, mx, my);
+  const ML = hudLayout();
+  drawMinimap(ML.ms, ML.mx, ML.my);
 }
 
 /* ================= Tablica rezultata (Tab) ================= */
