@@ -1647,7 +1647,7 @@ function ensureUnitMesh(u){
 
 /* ---------- zone, projektili, oznake, munje, rune ---------- */
 /* zone moći: po emojiju moći biramo 3D efekt */
-const ZONE_FX = { '☄️': 'meteor', '❄️': 'snow', '🏹': 'arrows', '🌱': 'roots', '🥶': 'ice', '🌊': 'wave', '🍯': 'swarm', '🏺': 'swarm', '🐦‍⬛': 'crows' };
+const ZONE_FX = { '☄️': 'meteor', '❄️': 'snow', '🏹': 'arrows', '🌱': 'roots', '🥶': 'ice', '🌊': 'wave', '🍯': 'swarm', '🏺': 'swarm', '🐦‍⬛': 'crows', '🪶': 'feathers' };
 function buildZoneMesh(z){
   const g = new THREE.Group();
   const ud = g.userData;
@@ -1673,9 +1673,9 @@ function buildZoneMesh(z){
     g.add(m);
     ud.meteor = m;
   }
-  if(ud.kind === 'swarm' || ud.kind === 'crows'){   // roj pčela / jato gavranova kruži nad zonom
+  if(ud.kind === 'swarm' || ud.kind === 'crows' || ud.kind === 'feathers'){   // roj pčela / jato gavranova / vihor perja kruži nad zonom
     const n = Math.min(14, Math.max(6, Math.round(z.r / 25)));
-    const im = instancedFx(ud.kind === 'crows' ? 'proj_crow' : 'proj_bee', n, false);
+    const im = instancedFx(ud.kind === 'crows' ? 'proj_crow' : (ud.kind === 'feathers' ? 'proj_feather' : 'proj_bee'), n, false);
     if(im){
       ud.bees = im; ud.beeN = n;
       ud.beeSeed = Math.random() * 10;
@@ -1823,7 +1823,7 @@ function syncZone(z, g, tAnim, dt){
 /* projektili: Blender model po emojiju moći ili vrsti napada (hero.shot) */
 const PROJ_BY_EMOJI = { '🔥': 'proj_fireball', '🧊': 'proj_ice', '🎯': 'proj_arrow', '🪶': 'proj_feather', '💫': 'proj_star',
   '🌰': 'proj_acorn', '🌠': 'proj_moon', '👅': 'proj_tongue', '🦅': 'proj_hawk', '🐝': 'proj_bee', '🟢': 'proj_slime', '🌵': 'proj_quill', '🖤': 'proj_ink',
-  '🌈': 'proj_rainbow' };
+  '🌈': 'proj_rainbow', '🍌': 'proj_banana', '🕸️': 'proj_net' };
 const PROJ_BY_SHOT = { arrow: 'proj_arrow', feather: 'proj_feather', fire: 'proj_fireball', ice: 'proj_ice', leaf: 'proj_acorn',
   bolt: 'proj_bolt', tower: 'proj_bolt', rainbow: 'proj_rainbow' };
 const PROJ_TRAIL = { proj_fireball: ['#ff7a1a', '#ffe26b'], proj_ice: ['#bfe6ff', '#ffffff'], proj_moon: ['#c4b5fd', '#fff7d6'],
@@ -1850,6 +1850,8 @@ function projScale(name, p){
     case 'proj_quill': return 28;
     case 'proj_ink': return 36;
     case 'proj_rainbow': return p.emoji ? 54 : 30;
+    case 'proj_banana': return 46;
+    case 'proj_net': return 70;
   }
   return 30;
 }
@@ -1876,7 +1878,7 @@ function buildProjMesh(p){
       basicMat(p.color));
     g.add(ball);
   }
-  const noGlow = name === 'proj_arrow' || name === 'proj_feather' || name === 'proj_acorn' || name === 'proj_hawk' || name === 'proj_tongue' || name === 'proj_bee' || name === 'proj_quill';
+  const noGlow = name === 'proj_arrow' || name === 'proj_feather' || name === 'proj_acorn' || name === 'proj_hawk' || name === 'proj_tongue' || name === 'proj_bee' || name === 'proj_quill' || name === 'proj_banana' || name === 'proj_net';
   if(!noGlow){
     const glow = new THREE.Sprite(glowMat(p.color));
     const gs = m ? p.r * 5 + 30 : p.r * 7 + 24;
@@ -1928,6 +1930,8 @@ function syncProj(p, g, tAnim, dt){
       case 'proj_bee': m.position.y = Math.sin(tAnim * 22) * 5; m.rotation.z = Math.sin(tAnim * 22) * 0.15; break;
       case 'proj_slime': m.rotation.z += dt * 8; break;
       case 'proj_bolt': m.rotation.x += dt * 12; break;
+      case 'proj_banana': m.rotation.y += dt * 16; break;                  // banana se vrti
+      case 'proj_net': m.rotation.z += dt * 6; m.position.y = -10; break;    // mreža se okreće plosnato
     }
     const tr = PROJ_TRAIL[ud.name];
     if(tr && tr.length && seenProj(p) && Math.random() < 0.9){
@@ -2500,6 +2504,43 @@ function castFx(u, g, key){
       shakeAt(u.x, u.y, 0.5, 0.35);
       for(let i = 0; i < 30; i++) fxSpawn(u.x, u.y, gh + 40, i % 2 ? '#dc2626' : '#7dd3fc', { spd: 220, up: 90, grav: -30, life: 0.8, size: 24 });
       break;
+    // ---- v0.17: nove aktivne moći ----
+    case 'vitez:W':   // Bojni poklič: zlatni val i iskre uvis
+      for(let i = 0; i < 30; i++){ const a = i / 30 * TAU; fxSpawn(u.x + Math.cos(a) * 50, u.y + Math.sin(a) * 50, gh + 40, i % 2 ? '#fde047' : '#f59e0b', { spd: 260, up: 60, grav: -20, life: 0.6, size: 22 }); }
+      shakeAt(u.x, u.y, 0.4, 0.3);
+      break;
+    case 'ledena:W':   // Trbušno klizanje: ledene krhotine
+      for(let i = 0; i < 20; i++) fxSpawn(u.x + (Math.random() - 0.5) * 60, u.y + (Math.random() - 0.5) * 60, gh + 8, i % 2 ? '#e0f2fe' : '#7dd3fc', { spd: 120, up: 60, grav: -80, life: 0.6, size: 16 });
+      fxRise('fx_ice', u.x, u.y, 60, 3, { scale: 24, life: 1.0, glow: true });
+      break;
+    case 'munja:E': case 'vuk:E':   // kandže: crvene / žute iskre oko šapa
+      for(let i = 0; i < 18; i++) fxSpawn(u.x, u.y, gh + 40, key === 'munja:E' ? '#facc15' : '#ef4444', { spd: 150, up: 40, grav: 0, life: 0.45, size: 18 });
+      break;
+    case 'jez:E':   // Klupko: zavrti se
+      g.userData.spin = TAU * 3;
+      dust(14);
+      break;
+    case 'slon:E':   // Tuš iz surle: fontana kapljica
+      for(let i = 0; i < 40; i++){ const a = Math.random() * TAU; fxSpawn(u.x + Math.cos(a) * 20, u.y + Math.sin(a) * 20, gh + 70, i % 3 ? '#7dd3fc' : '#ffffff', { spd: 160, up: 220, grav: -320, life: 1.0, size: 16 }); }
+      beamFx(u.x, u.y, '#7dd3fc', 0.6);
+      break;
+    case 'sova:E':   // Tihi let: oblačić i perje
+      for(let i = 0; i < 20; i++) fxSpawn(u.x + (Math.random() - 0.5) * 70, u.y + (Math.random() - 0.5) * 70, gh + 30, '#e9d5ff', { spd: 40, up: 50, grav: 0, life: 0.9, size: 30 });
+      break;
+    case 'panda:E':   // Pijani korak: mjehurići
+      for(let i = 0; i < 14; i++) fxSpawn(u.x + (Math.random() - 0.5) * 50, u.y + (Math.random() - 0.5) * 50, gh + 50, i % 2 ? '#bbf7d0' : '#fef9c3', { spd: 20, up: 70, grav: 0, life: 1.0, size: 18 });
+      break;
+    case 'nosorog:E':   // Izazov: narančasti krugovi zvuka
+      for(let k = 0; k < 3; k++) for(let i = 0; i < 18; i++){ const a = i / 18 * TAU; fxSpawn(u.x + Math.cos(a) * (50 + k * 90), u.y + Math.sin(a) * (50 + k * 90), gh + 40, '#fb923c', { spd: 70, up: 10, grav: 0, life: 0.45 + k * 0.15, size: 18 }); }
+      shakeAt(u.x, u.y, 0.5, 0.3);
+      break;
+    case 'morskipas:E':   // Krvavi vrtlog: zavrti se, kapi i voda
+      g.userData.spin = TAU * 2;
+      for(let i = 0; i < 26; i++){ const a = i / 26 * TAU; fxSpawn(u.x + Math.cos(a) * 60, u.y + Math.sin(a) * 60, gh + 30, i % 2 ? '#dc2626' : '#7dd3fc', { spd: 220, up: 40, grav: -40, life: 0.5, size: 18 }); }
+      break;
+    case 'jednorog:E':   // Dugin most: iskrice u bojama duge
+      for(let i = 0; i < 24; i++) fxSpawn(u.x, u.y, gh + 30, ['#f87171', '#fbbf24', '#4ade80', '#60a5fa', '#c084fc'][i % 5], { spd: 140, up: 90, grav: -60, life: 0.7, size: 18 });
+      break;
     case 'listko:W':   // Iscjeljenje: srca
       fxFloat('fx_heart', u.x, u.y, 60, 7, { scale: 22, up: 70, life: 1.4, h0: 30 }); break;
     case 'listko:R':   // Šumsko srce: korijenje + srca + lišće
@@ -2628,7 +2669,7 @@ function coinFx(x, y, n){
 }
 /* skokovi (Junački skok, Žablji skok, Obrušavanje, Mjesečev skok, Majmunski skok, Skokne čizme):
    logika premjesti junaka odmah, a model preleti lukom */
-const LEAP_KEYS = { 'vitez:E': 1, 'skokica:W': 1, 'orlina:E': 1, 'luna:E': 1, 'majmun:W': 1, 'munja:W': 1, 'item:blink': 1, 'vuk:W': 1, 'morskipas:W': 1 };
+const LEAP_KEYS = { 'vitez:E': 1, 'skokica:W': 1, 'orlina:E': 1, 'luna:E': 1, 'majmun:W': 1, 'munja:W': 1, 'item:blink': 1, 'vuk:W': 1, 'morskipas:W': 1, 'pcela:E': 1, 'jednorog:E': 1 };
 function startLeap(u, g, now, maxH){
   const ud = g.userData;
   if(ud.lastX == null) return;

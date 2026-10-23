@@ -458,6 +458,10 @@ function chooseTalent(h, lvl, pick){
     case 'hp': h.maxhp += 300; h.hp += 300; break;
     case 'spd': h.speed = Math.round(h.speed * 1.15); break;
     case 'cdr': h.cdr = 0.2; break;
+    case 'dmg2': h.dmg += 60; break;
+    case 'hp2': h.maxhp += 650; h.hp += 650; break;
+    case 'aspd': h.talAspd = 0.35; break;
+    case 'cdr2': h.cdr = Math.min(0.4, (h.cdr || 0) + 0.15); break;
   }
   addFloat(h.x, h.y, '🎓 ' + t.emoji + ' ' + t.txt, '#c4b5fd', 15);
   burst(h.x, h.y, '#c4b5fd', 16, 200, 5);
@@ -743,6 +747,22 @@ function applyImmune(h, dur){
   addFloat(h.x, h.y, '👑 Nepokolebljiv!', '#fde047', 15);
 }
 function applyShield(t, f, dur){ t.status.shieldT = dur; t.status.shieldF = f; }
+function applyAtkSpeed(t, f, dur){ t.aspdT = dur; t.aspdF = f; }          // Tigrove kandže: brži napadi
+function applyDodge(t, f, dur){ t.dodgeT = dur; t.dodgeF = f; }           // Pijani korak: izbjegavanje udaraca
+function applyTaunt(t, by, dur){                                         // Izazov: mora napadati izazivača
+  if(t.status.immuneT > 0) return;
+  t.tauntT = dur; t.tauntBy = by;
+  t.attackTarget = by; t.moveTarget = null;
+  if(t.kind === 'hero') addFloat(t.x, t.y, '📢', '#fb923c', 18);
+}
+function applyDot(t, dps, dur, src){                                     // tiho gorenje / krvarenje (bez natpisa)
+  const st = t.status;
+  if(st.immuneT > 0 || !isSpellTarget(t)) return;
+  st.poisonDps = Math.max(st.poisonT > 0 ? st.poisonDps : 0, dps);
+  st.poisonT = Math.max(st.poisonT, dur);
+  st.poisonSrc = src || null;
+}
+function inRiver(x, y){ return Math.abs(x - y) / Math.SQRT2 < 130; }
 function applyHaste(t, f, dur){ t.status.hasteT = dur; t.status.hasteF = f; }
 function applyCurse(t, f, dur){ if(t.status.immuneT > 0) return; t.status.curseT = Math.max(t.status.curseT, dur); t.status.curseF = Math.max(t.status.curseF, f); }
 function applyBlind(t, f, dur){ if(t.status.immuneT > 0) return; t.status.blindT = Math.max(t.status.blindT, dur); t.status.blindF = Math.max(t.status.blindF, f); }
@@ -1190,12 +1210,13 @@ function learnStats(h){
   return true;
 }
 
-function abilityMaxRank(ab){ return 3; }   // Q/W/E i ulti: po 3 ranga (9 + 3 + 6 statsa = 18 levela)
+function abilityMaxRank(ab){ return ab.def.ult ? 3 : 4; }   // Q/W/E po 4 ranga, ulti 3 (12 + 3 + 10 statsa = 25 levela)
 function canLearn(h, i){
   const ab = h.abilities[i];
   if(!ab) return false;
   if(ab.rank >= abilityMaxRank(ab)) return false;
   if(ab.def.ult && h.level < CFG.ultLevels[ab.rank]) return false;
+  if(!ab.def.ult && h.level < ab.rank * 2 + 1) return false;   // rang 2 od levela 3, rang 3 od 5, rang 4 od 7
   return true;
 }
 function learnAbility(h, i){
@@ -1218,7 +1239,7 @@ function botSpendPoints(h){
       let bs = -1;
       for(let i = 0; i < 3; i++){
         if(!canLearn(h, i)) continue;
-        const score = (4 - h.abilities[i].rank) * 10 - i * 3;
+        const score = (5 - h.abilities[i].rank) * 10 - i * 3;
         if(score > bs){ bs = score; idx = i; }
       }
     }
@@ -1476,10 +1497,11 @@ function cancelTeleport(h){
 }
 
 /* ================= Pasivne moći ================= */
+/* urođena pasiva (odvojena od Q/W/E/R): rang 1 → 4 na levelima 1 / 7 / 13 / 19 */
+function innateRank(h){ return Math.min(4, 1 + Math.floor((h.level - 1) / 6)); }
 function passiveRank(h, pid){
-  if(h.kind !== 'hero') return 0;
-  for(const ab of h.abilities) if(ab.def.pid === pid) return ab.rank;
-  return 0;
+  if(h.kind !== 'hero' || !h.hero.passive || h.hero.passive.pid !== pid) return 0;
+  return innateRank(h);
 }
 
 // igračev tok: moći s ciljem prvo pokažu domet, pa se klikom baca
@@ -1515,6 +1537,8 @@ function unitSpeed(u){
   if(st.hasteT > 0) s *= st.hasteF;
   const noc = passiveRank(u, 'noc');
   if(noc && isNight) s *= 1.15 + 0.08 * noc;
+  const voda = passiveRank(u, 'voda');       // Vodozemac (Skokica): brža u rijeci
+  if(voda && inRiver(u.x, u.y)) s *= 1.15 + 0.1 * voda;
   return s;
 }
 function moveToward(u, tx, ty, dt){
@@ -1570,7 +1594,7 @@ function separation(){
 function performAttack(u, t){
   const copor = passiveRank(u, 'copor');       // Čopor: brži napad
   const raging = u.status.rageT > 0;           // Bijes: +40% brzine napada
-  u.atkTimer = u.atkCd / (u.status.hasteT > 0 ? u.status.hasteF : 1) / (1 + (u.atkSpdBonus || 0) + 0.1 * copor + (raging ? 0.4 : 0));
+  u.atkTimer = u.atkCd / (u.status.hasteT > 0 ? u.status.hasteF : 1) / (1 + (u.atkSpdBonus || 0) + 0.1 * copor + (raging ? 0.4 : 0) + (u.aspdT > 0 ? u.aspdF : 0) + (u.talAspd || 0));
   u.atkN = (u.atkN || 0) + 1;   // 3D: animacija napada
   if(Math.abs(t.x - u.x) > 2) u.face = t.x < u.x ? -1 : 1;
   u.dir = Math.atan2(t.y - u.y, t.x - u.x);
@@ -1622,7 +1646,9 @@ function performAttack(u, t){
   const jin = passiveRank(u, 'jinada');
   if(jin && Math.random() < 0.15 + 0.05 * jin){ dmg += 25 + 25 * jin; jinProc = true; }
   if(u.status.dmgMulT > 0) dmg *= u.status.dmgMulF;
-  const krv = passiveRank(u, 'krv');           // Miris krvi (Zubo E): jače po ranjenima
+  let clawProc = false;                        // Divlje kandže (Sivko E)
+  if(u.clawHits > 0){ dmg += u.clawDmg; u.clawHits--; clawProc = true; }
+  const krv = passiveRank(u, 'krv');           // Miris krvi (Zubo): jače po ranjenima
   if(krv && t.hp < t.maxhp * 0.5 && !isStructure(t)) dmg *= 1 + 0.12 + 0.12 * krv;
   // pasivne moći napadača
   let crit = false;
@@ -1643,6 +1669,18 @@ function performAttack(u, t){
     if(sluz && !u.dead && u.kind !== 'tower') applySlow(u, 0.15 + 0.05 * sluz, 1.5);
     if(komboHit){ heal(u, 15 + 10 * kombo); addFloat(tt.x, tt.y, '👊 Kombo!', '#fde047', 15); }
     if(u.frenzyT > 0 && !isStructure(tt)) heal(u, dmg * u.frenzyF);   // 😤 Pomama: ugriz liječi
+    if(clawProc && !isStructure(tt)){ applySlow(tt, 0.3, 1.5); addFloat(tt.x, tt.y, '💢', '#fca5a5', 15); }
+    const zar = passiveRank(u, 'zar');         // Vatrena krv (Žarko): napadi pale
+    if(zar && !isStructure(tt)) applyDot(tt, 6 + 6 * zar, 2, u);
+    const mj = passiveRank(u, 'mjesec');       // Mjesečeva oštrica (Luna): odskok na drugog neprijatelja
+    if(mj){
+      let b2 = null, bd = 320;
+      for(const e of units){
+        if(e === tt || e.team === u.team || e.dead || e.removeMe || e.invuln || isStructure(e) || !isTargetable(e)) continue;
+        const d = dist(tt, e); if(d < bd){ bd = d; b2 = e; }
+      }
+      if(b2){ applyDamage(b2, dmg * (0.25 + 0.1 * mj), u); addLine(tt.x, tt.y, b2.x, b2.y, '#c4b5fd', 4, 0.25); }
+    }
     if(shadowBonus) addFloat(tt.x, tt.y, 'Iz sjene! 👤', '#c4b5fd', 15);
     if(jinProc){ applySlow(tt, 0.3, 1.5); addFloat(tt.x, tt.y, '💢', '#fb923c', 15); }
     if(dodir) applySlow(tt, 0.1 + 0.05 * dodir, 1.5);
@@ -1654,7 +1692,8 @@ function performAttack(u, t){
   };
   // pucanje uzbrdo zna promašiti — visinska prednost kao u DotA!
   const miss = ((groundHeight(t.x, t.y) - groundHeight(u.x, u.y) > 25) && Math.random() < CFG.uphillMissChance) ||
-    (u.status.blindT > 0 && Math.random() < u.status.blindF);   // 😵 tinta / vrtoglavica
+    (u.status.blindT > 0 && Math.random() < u.status.blindF) ||   // 😵 tinta / vrtoglavica
+    (t.dodgeT > 0 && Math.random() < t.dodgeF);                   // 🥴 Pijani korak
   if(u.projSpeed > 0){
     spawnHoming(u, t, {
       speed: u.projSpeed, dmg, miss,
@@ -1877,6 +1916,13 @@ function botUseAbilities(u, eh){
       case 'night':
         if(eh && dEh < hint.range && !isNight) castAbility(u, i, { x: u.x, y: u.y });
         break;
+      case 'escape': {   // bijeg prema fontani kad je ranjen i neprijatelj je blizu
+        if(eh && dEh < hint.range && u.hp < u.maxhp * 0.4){
+          const f = FOUNTAIN[u.team];
+          castAbility(u, i, stepToward(u, f, 500));
+        }
+        break;
+      }
       case 'swap':   // Zamjena: povuci ranjenog neprijatelja k sebi kad je dalje
         if(eh && dEh < hint.range && dEh > 220 && eh.hp < eh.maxhp * 0.6) castAbility(u, i, { x: eh.x, y: eh.y });
         break;
@@ -2151,6 +2197,19 @@ function updateUnit(u, dt){
     const cop = passiveRank(u, 'copor');       // Čopor (Sivko E): obnova života
     if(cop) u.hp = Math.min(u.maxhp, u.hp + (1 + cop) * dt);
     if(u.frenzyT > 0) u.frenzyT -= dt;
+    if(u.aspdT > 0) u.aspdT -= dt;
+    if(u.dodgeT > 0) u.dodgeT -= dt;
+    const kor = passiveRank(u, 'korijen');     // Korijeni (Listko): liječenje kad stoji
+    if(kor){
+      const moved = Math.abs(u.x - (u.lastX || 0)) + Math.abs(u.y - (u.lastY || 0)) > 0.5;
+      u.stillT = moved ? 0 : (u.stillT || 0) + dt;
+      if(u.stillT > 0.8){ u.hp = Math.min(u.maxhp, u.hp + (3 + 2 * kor) * dt); u.mp = Math.min(u.maxmp, u.mp + (1 + kor) * dt); }
+      u.lastX = u.x; u.lastY = u.y;
+    }
+    const voda = passiveRank(u, 'voda');       // Vodozemac (Skokica): liječi se u rijeci
+    if(voda && inRiver(u.x, u.y)) u.hp = Math.min(u.maxhp, u.hp + (2 + 2 * voda) * dt);
+    const vid = passiveRank(u, 'vid');         // Orlovski vid (Orlina): veći domet
+    if(vid) u.atkRange = u.hero.range + 30 * vid;
     const griva = passiveRank(u, 'griva');     // Čarobna griva (Duga E): aura mane
     if(griva) for(const e of units){
       if(e.kind === 'hero' && e.team === u.team && !e.dead && dist(u, e) <= 450) e.mp = Math.min(e.maxmp, e.mp + (0.5 + 0.75 * griva) * dt);
@@ -2243,6 +2302,12 @@ function updateUnit(u, dt){
     if(u.bot.thinkT <= 0){ u.bot.thinkT = rand(0.4, 0.6); botThink(u); }
   }
 
+  if(u.tauntT > 0){   // 📢 Izazov: mora napadati izazivača
+    u.tauntT -= dt;
+    const tb = u.tauntBy;
+    if(tb && !tb.dead && !tb.removeMe){ u.attackTarget = tb; u.moveTarget = null; }
+    else u.tauntT = 0;
+  }
   if(u.kind === 'hero' && isHuman(u) && !u.attackTarget && !u.moveTarget && !u.charge){
     u.acqT = (u.acqT || 0) - dt;
     if(u.acqT <= 0){ u.acqT = 0.25; autoAcquire(u); }
@@ -3021,6 +3086,7 @@ function setupInput(){
       if(uiRects.inv[i] && inRect(mouse.sx, mouse.sy, uiRects.inv[i])) hoverUi = { type: 'inv', i };
     }
     if(uiRects.neutral && inRect(mouse.sx, mouse.sy, uiRects.neutral)) hoverUi = { type: 'neut' };
+    if(uiRects.passive && inRect(mouse.sx, mouse.sy, uiRects.passive)) hoverUi = { type: 'pas' };
     if(inRect(mouse.sx, mouse.sy, uiRects.statBtn)) hoverUi = { type: 'stat' };
     if(inRect(mouse.sx, mouse.sy, uiRects.tp)) hoverUi = { type: 'tp' };
     if(uiRects.glyph && inRect(mouse.sx, mouse.sy, uiRects.glyph)) hoverUi = { type: 'glyph' };
@@ -3251,9 +3317,12 @@ function buildSelectScreen(){
       const primNames = { str: '💪 Snaga', agi: '🤸 Okretnost', int: '🧠 Inteligencija' };
       const primChip = '<span class="chip chipP">' + primNames[h.attrs.primary] + '</span>';
       let det = `<img class="d-img" src="assets/hero_${h.id}.jpg" onerror="this.remove()"><div class="d-head">${h.emoji} <b>${h.name}</b></div><div class="d-role">${h.role}</div><div class="d-type">${chip} ${primChip}</div>`;
+      if(h.passive){   // urođena pasiva (odvojena od 4 aktivne moći)
+        const pd = h.passive.desc.replace(/^PASIVNO:\s*/, '');
+        det += `<div class="d-abil">${h.passive.emoji} <b>${h.passive.name}</b> <span class="pasTag">✨ UROĐENO</span> — ${pd}</div>`;
+      }
       for(const a of h.abilities){
-        const tag = a.ult ? ' <span class="ultTag">🌟 ULTI</span>'
-          : (a.passive ? ' <span class="pasTag">✨ PASIVNO</span>' : '');
+        const tag = a.ult ? ' <span class="ultTag">🌟 ULTI</span>' : '';
         det += `<div class="d-abil"><b>${a.key}</b> ${a.emoji} <b>${a.name}</b>${tag} — ${a.desc}</div>`;
       }
       document.getElementById('heroDetail').innerHTML = det;
@@ -3516,6 +3585,24 @@ function drawHud(){
     ctx.fillStyle = '#fde047';
     ctx.font = fontTxt(13, true);
     ctx.fillText(player.level, px + 78, py + ph / 2 + 25);
+    uiRects.passive = null;
+    if(player.hero.passive){   // ✨ urođena pasiva: okrugla značka gore desno na portretu
+      const pv = player.hero.passive, cx = px + 82, cy = py + ph / 2 - 26;
+      uiRects.passive = { x: cx - 14, y: cy - 14, w: 28, h: 28 };
+      const hov = hoverUi && hoverUi.type === 'pas';
+      ctx.fillStyle = hov ? '#065f46' : '#064e3b';
+      ctx.beginPath(); ctx.arc(cx, cy, 14, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#34d399'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(cx, cy, 14, 0, TAU); ctx.stroke();
+      ctx.font = fontEmoji(15);
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(pv.emoji, cx, cy + 1);
+      const ir = innateRank(player);
+      for(let k = 0; k < 4; k++){   // točkice ranga ispod značke
+        ctx.fillStyle = k < ir ? '#34d399' : '#334155';
+        ctx.beginPath(); ctx.arc(cx - 9 + k * 6, cy + 18, 2, 0, TAU); ctx.fill();
+      }
+    }
     if(player.aegis){   // 🛡️ Zmajev štit
       ctx.font = fontEmoji(18);
       ctx.fillText('🛡️', px + 24, py + ph / 2 - 26);
@@ -3907,7 +3994,7 @@ function drawHud(){
       const tipTxt = ab.def.tip ? ab.def.tip(Math.max(1, ab.rank)) + (ab.rank === 0 ? '  (na rangu 1)' : '') : '';
       const txt3 = ab.def.passive
         ? '✨ PASIVNO — uvijek radi, ne baca se'
-        : '💧 ' + ab.def.mana + '   ⏱️ ' + ab.def.cd + 's' + (ab.def.ult ? '   🔓 leveli ' + CFG.ultLevels.join('/') : '');
+        : '💧 ' + ab.def.mana + '   ⏱️ ' + ab.def.cd + 's' + (ab.def.ult ? '   🔓 leveli ' + CFG.ultLevels.join('/') : '   🔓 rangovi na levelima 1/3/5/7');
       ctx.font = fontTxt(13, true);
       const wdt = Math.max(ctx.measureText(txt1).width, ctx.measureText(txt2).width,
         ctx.measureText(tipTxt).width, ctx.measureText(txt3).width) + 24;
@@ -3932,6 +4019,25 @@ function drawHud(){
       ctx.fillStyle = '#7dd3fc';
       ctx.font = fontTxt(12, false);
       ctx.fillText(txt3, ttx + 12, yy);
+    }
+
+    if(hoverUi && hoverUi.type === 'pas' && player.hero.passive && uiRects.passive){   // opis urođene pasive
+      const pv = player.hero.passive, ir = innateRank(player);
+      const t1 = pv.emoji + ' ' + pv.name + '  ✨ UROĐENO  (rang ' + ir + '/4)';
+      const t2 = pv.desc.replace(/^PASIVNO:\s*/, '');
+      const t3 = pv.tip ? pv.tip(ir) : '';
+      const t4 = '✨ Uvijek radi • jača sama na levelima 7 / 13 / 19';
+      ctx.font = fontTxt(13, true);
+      const wdt = Math.max(ctx.measureText(t1).width, ctx.measureText(t2).width, ctx.measureText(t3).width, ctx.measureText(t4).width) + 24;
+      const r = uiRects.passive, hgt = 94;
+      const ttx = clamp(r.x - 10, 8, VW - wdt - 8), tty = r.y - hgt - 10;
+      ctx.fillStyle = 'rgba(6,46,35,0.95)';
+      ctx.beginPath(); ctx.roundRect(ttx, tty, wdt, hgt, 10); ctx.fill();
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#6ee7b7'; ctx.fillText(t1, ttx + 12, tty + 17);
+      ctx.fillStyle = '#e2e8f0'; ctx.font = fontTxt(12, false); ctx.fillText(t2, ttx + 12, tty + 38);
+      ctx.fillStyle = '#fbbf24'; ctx.font = fontTxt(12, true); ctx.fillText(t3, ttx + 12, tty + 58);
+      ctx.fillStyle = '#7dd3fc'; ctx.font = fontTxt(12, false); ctx.fillText(t4, ttx + 12, tty + 78);
     }
 
     // nišan dok ciljaš
