@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.22: sređene animacije udaraca i magija — šteta pada točno kad oružje pogodi, strijele i kugle polijeću iz ruke, magije se bacaju pokretom ruku, a meta se trzne od udarca!** ⚔️✨💥
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.23: predmeti kao u DotA — 74 predmeta s receptima, dućan s karticama Osnovni / Nadogradnje, prave slike predmeta, torba 3×2 s ruksakom, brza kupnja i opisi kao u DotA!** 🛒🗡️🎒
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -18,6 +18,12 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- 🛒 **Predmeti kao u DotA** (v0.23):
+  - 🗡️ **74 predmeta**: *Osnovni* (potrošno, atributi, oprema, razno, rijetko) i *Nadogradnje* (pribor, podrška, čarolije, oklop, oružje, artefakti) — Grančica, Narukvica snage, Fazne čizme, Čizme moći, Čarobni štapić, Ljekoviti medaljon, Štap sile, Vjetrovita palica, Dagon, Kraljevski oklop, Napadački oklop, Srce titana, Bojna sjekira, Dedalova oštrica, Oštrica pustoši, Lubanjolomac, Ponorna oštrica, Leptir, Sjenovita oštrica, Vampirski mač, Sunčev kamen…
+  - ⚙️ **prave DotA statistike**: atributi (snaga / okretnost / inteligencija), brzina napada, **oklop** (smanjuje štetu udaraca; kule i vojarne imaju svoj), krađa života, izbjegavanje, kritični udarci, tresak (omama), zamah po skupini, blok štete, skidanje oklopa, aure za saveznike i ~25 aktivnih predmeta (vihor, ledeni val, zlatni dodir, treptaj, osvježenje moći…); botovi kupuju po vodiču i koriste aktivne predmete
+  - 🖼️ **prikaz kao u DotA**: pravokutne slike predmeta u boji kvalitete (sivo, zeleno, plavo, ljubičasto, narančasto), dućan sa stupcima po kategorijama, tražilicom, **⭐ vodičem** za tvog junaka, receptom ("Sastojci" / "Ulazi u") i **desnim klikom za kupnju**; opis predmeta kao u DotA (statistike, PASIVNO / AKTIVNO s manom i hlađenjem, priča)
+  - 🎒 **torba 3×2 + ruksak 3**: povuci predmet mišem na drugo mjesto, u ruksaku ne djeluje; hlađenje se prikazuje kao sat koji se otvara, punjenja dolje desno, tipke 1–6 gore lijevo; 📌 **brza kupnja** iznad naredbene kartice pokazuje što još fali za prikvačeni predmet
 
 - ⚔️ **Animacije udaraca i magija** (v0.22):
   - 🎯 **trenutak udarca kao u DotA**: junak, vojnik i čudovište prvo zamahnu, a šteta (ili strijela / vatrena kugla) dolazi točno u kadru kad oružje pogodi; brži napad = brži zamah; omama prekida zamah, a magija ga prekida bez gubitka udarca (kule pucaju odmah)

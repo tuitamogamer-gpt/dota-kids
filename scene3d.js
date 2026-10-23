@@ -2702,6 +2702,14 @@ function syncHitFx(u, g, bodyH, tAnim){
     }
   }
 }
+/* 🌪️ u vihoru: lebdi iznad tla, oko njega kruži bijeli vjetar */
+function cycloneFx(u, g, tAnim, dt){
+  g.position.y += 70 + Math.sin(tAnim * 6) * 8;
+  if(g.visible && Math.random() < dt * 40){
+    const a = tAnim * 9 + Math.random() * TAU, r = 30 + Math.random() * 20;
+    fxSpawn(u.x + Math.cos(a) * r, u.y + Math.sin(a) * r, g.position.y - 60 + Math.random() * 90, '#e0f2fe', { spd: 20, up: 40, grav: 0, life: 0.4, size: 18 });
+  }
+}
 function isStructureKind(k){ return k === 'tower' || k === 'ancient' || k === 'barracks'; }
 /* prašina pod nogama dok hoda */
 function syncSteps(u, g, dt){
@@ -2823,6 +2831,16 @@ function castFx(u, g, key){
       break;
     }
     case 'majmun:R': for(let i = 0; i < 24; i++) fxSpawn(u.x + (Math.random() - 0.5) * 120, u.y + (Math.random() - 0.5) * 120, gh + 20, '#f59e0b', { spd: 40, up: 50, grav: 0, life: 0.8, size: 26 }); break;
+    case 'item:shiva': shockwave(u.x, u.y, 700, '#bae6fd'); for(let i = 0; i < 40; i++){ const a = i / 40 * TAU; fxSpawn(u.x + Math.cos(a) * 60, u.y + Math.sin(a) * 60, gh + 20, i % 2 ? '#e0f2fe' : '#7dd3fc', { spd: 520, up: 20, grav: 0, life: 0.9, size: 22 }); } break;
+    case 'item:mek': shockwave(u.x, u.y, 600, '#4ade80'); fxFloat('fx_heart', u.x, u.y, 140, 8, { scale: 20, up: 70, life: 1.2, h0: 30 }); break;
+    case 'item:arcane': shockwave(u.x, u.y, 600, '#7dd3fc'); beamFx(u.x, u.y, '#7dd3fc', 0.7); break;
+    case 'item:drum': shockwave(u.x, u.y, 600, '#fb923c'); break;
+    case 'item:mom': for(let i = 0; i < 18; i++) fxSpawn(u.x, u.y, gh + 50, '#ef4444', { spd: 140, up: 50, grav: 0, life: 0.5, size: 20 }); break;
+    case 'item:satanic': beamFx(u.x, u.y, '#dc2626', 0.7); for(let i = 0; i < 16; i++) fxSpawn(u.x, u.y, gh + 40, '#7f1d1d', { spd: 120, up: 60, grav: 0, life: 0.6, size: 22 }); break;
+    case 'item:refresher': beamFx(u.x, u.y, '#a5f3fc', 1.0); shockwave(u.x, u.y, 200, '#a5f3fc'); break;
+    case 'item:shadowblade': for(let i = 0; i < 16; i++) smokePuff(u.x + (Math.random() - 0.5) * 60, u.y + (Math.random() - 0.5) * 60, gh + 30, '#6b7280', { life: 1.4, size: 60, alpha: 0.8, up: 20, wind: 2 }); break;
+    case 'item:midas': coinFx(u.x, u.y, 6); break;
+    case 'item:phase': for(let i = 0; i < 10; i++) fxSpawn(u.x, u.y, gh + 20, '#93c5fd', { spd: 80, up: 20, grav: 0, life: 0.5, size: 16 }); break;
     case 'item:bkb': for(let i = 0; i < 24; i++) fxSpawn(u.x, u.y, gh + 30, '#fde047', { spd: 120, up: 70, grav: -20, life: 0.7, size: 20 }); break;
     case 'item:dust': for(let i = 0; i < 30; i++) fxSpawn(u.x, u.y, gh + 30, '#e5e7eb', { spd: 320, up: 20, grav: 0, life: 0.9, size: 30 }); break;
     case 'item:tango': for(let i = 0; i < 12; i++) fxSpawn(u.x + (Math.random() - 0.5) * 40, u.y + (Math.random() - 0.5) * 40, gh + 30, i % 2 ? '#86efac' : '#4ade80', { spd: 30, up: 50, grav: -20, life: 0.8, size: 16 }); break;
@@ -3147,7 +3165,7 @@ function coinFx(x, y, n){
 }
 /* skokovi (Junački skok, Žablji skok, Obrušavanje, Mjesečev skok, Majmunski skok, Skokne čizme):
    logika premjesti junaka odmah, a model preleti lukom */
-const LEAP_KEYS = { 'vitez:E': 1, 'skokica:W': 1, 'orlina:E': 1, 'luna:E': 1, 'majmun:W': 1, 'munja:W': 1, 'item:blink': 1, 'vuk:W': 1, 'morskipas:W': 1, 'pcela:E': 1, 'jednorog:E': 1 };
+const LEAP_KEYS = { 'vitez:E': 1, 'skokica:W': 1, 'orlina:E': 1, 'luna:E': 1, 'majmun:W': 1, 'munja:W': 1, 'item:blink': 1, 'item:force': 1, 'vuk:W': 1, 'morskipas:W': 1, 'pcela:E': 1, 'jednorog:E': 1 };
 function startLeap(u, g, now, maxH){
   const ud = g.userData;
   if(ud.lastX == null) return;
@@ -3235,8 +3253,10 @@ function syncScene(tAnim){
         }
       }
       ud.lastX = u.x; ud.lastY = u.y;
+      if(u.cycloneT > 0) cycloneFx(u, g, tAnim, dt);   // 🌪️ Vjetrovita palica
       if(!seen) continue;
       ud.yaw = angleLerp(ud.yaw, -(u.dir || 0), Math.min(1, dt * 14));
+      if(u.cycloneT > 0 && !(ud.spin > 0)) ud.spin = TAU;   // vrti se u vihoru
       // Vrtlog: dodatna vrtnja modela
       if(ud.spin > 0){ const d = Math.min(ud.spin, dt * 22); ud.spinA = (ud.spinA || 0) + d; ud.spin -= d; if(ud.spin <= 0) ud.spinA = 0; }
       if(ud.model) ud.model.rotation.y = ud.yaw + (ud.spinA || 0);
@@ -3290,6 +3310,7 @@ function syncScene(tAnim){
         if(f >= 1) ud.leap = null;
       }
       ud.lastX = u.x; ud.lastY = u.y;
+      if(u.cycloneT > 0) cycloneFx(u, g, tAnim, dt);
       if(!seen){ ud.hp = u.hp; continue; }
       ud.yaw = angleLerp(ud.yaw, -(u.dir || 0), Math.min(1, dt * 12));
       g.rotation.y = ud.yaw;
