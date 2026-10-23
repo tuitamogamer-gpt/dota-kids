@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.24: peglanje — završni ekran i tablica kao u DotA, asistencije, utvrđene građevine, zlato za povratak u igru, pametniji botovi i jedinstveni opisi!** 🏆📋🛡️
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.25: detalji iz League of Legends — čarolije prizivača (D / F), plavi i crveni buff u džungli, traka buffova, obnova vojarni, ACE, trake života i strelice ciljanja kao u LoL-u!** ⚡🔵🔴
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -18,6 +18,16 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- ⚡ **Detalji iz League of Legends** (v0.25):
+  - ✨ **čarolije prizivača** na tipkama **D** i **F**: ⚡ *Bljesak*, 💚 *Iscjeljenje*, 🔥 *Zapaljenje* (gori i slabije se liječi), 👻 *Duh*, 🫧 *Barijera* (štit), 🐌 *Iscrpljenost*, 🌩️ *Kazna* (za džunglu i zmaja) — biraš ih na ekranu junaka (igra pamti izbor), okrugli gumbi u petom stupcu naredbene kartice; botovi ih biraju po ulozi i koriste
+  - 🔵🔴 **buffovi džungle**: *Plavi golem* daje plavi buff (mana i 15% kraće hlađenje), *Vatreni vuk* crveni buff (udarci pale i usporavaju) — 90 s, a pogineš li, buff preuzima tvoj ubojica; čudovišta s buffom svijetle i vide se na minimapi
+  - 📊 **traka buffova** iznad ploče junaka: sve što ti pomaže (zeleno) ili šteti (crveno) s preostalim sekundama i opisom
+  - 🏚️ **vojarne se obnavljaju** 4 minute nakon rušenja (kao inhibitori) — super vojnici tada nestaju, pa tim koji gubi može se vratiti
+  - 💀 **ACE!** kad padne cijeli protivnički tim
+  - ❤️ **trake života kao u LoL-u**: crtice svakih 100 života, svjetliji trag izgubljenog života, bijeli štit, kućica s levelom; 🎯 **strelica ciljanja** za magije koje lete ravno i svijetli rub kruga djelovanja
+  - ⌨️ glif je sada na tipki **Y** (F je čarolija prizivača)
+  - 🤖 **botovi procjenjuju borbu**: napadaju kad im strana nije slabija (level, predmeti, život, saveznici u blizini), inače se povuku k svojoj kuli — manje "hranjenja" i ujednačenije igre (u simulacijama 9–23 min)
 
 - 🧽 **Peglanje** (v0.24):
   - 🏆 **završni ekran kao u DotA**: oba tima s portretima, K / D / A, zadnjim udarcima, **neto vrijednošću** i slikama predmeta (uz neutralni), 👑 najbolji igrač; **tablica na Tab** u istom stilu

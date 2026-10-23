@@ -72,6 +72,14 @@
     color:#fff; background:#92400e; border-radius:6px; padding:0 5px; }
   .ab.pas .ab-k{ background:#059669; }
   .ab.ult .ab-k{ background:#7c3aed; }
+  .d-sum{ display:flex; align-items:center; gap:5px; margin-top:8px; flex-wrap:wrap; }
+  .d-sumL{ width:100%; font-size:12px; font-weight:bold; color:#92400e; margin-bottom:1px; }
+  .d-sumL b{ background:#fde68a; border-radius:4px; padding:0 4px; }
+  .sumb{ position:relative; width:34px; height:34px; border-radius:50%; border:2px solid #d6c08a; background:#fffbeb; font-size:19px; cursor:pointer; padding:0; opacity:.6; transition:all .12s; }
+  .sumb:hover{ opacity:1; transform:scale(1.08); }
+  .sumb.on{ opacity:1; border-color:#f59e0b; background:#fde68a; box-shadow:0 0 0 2px rgba(245,158,11,.35); }
+  .sumb i{ position:absolute; right:-4px; bottom:-4px; font-style:normal; font-size:10px; font-weight:bold; color:#fff; background:#b45309; border-radius:4px; padding:0 3px; line-height:13px; }
+  .sumb i:empty{ display:none; }
   .d-desc{ background:#fef3c7; border-radius:12px; padding:9px 11px; font-size:13px; line-height:1.4; min-height:76px; }
   .d-desc b{ font-size:14px; }
   .ultTag{ background:#a855f7; color:#fff; border-radius:7px; padding:1px 7px; font-size:10.5px; font-weight:bold; }
@@ -282,7 +290,7 @@
 <div id="select" class="overlay">
   <header>
     <h1>🏰 DOTA Kids 3D ⚔️</h1>
-    <p class="sub">Odaberi junaka i sruši protivnički prijestol! Ti + 2 bota 🔵 protiv 3 bota 🔴 <span class="ver">v0.24</span></p>
+    <p class="sub">Odaberi junaka i sruši protivnički prijestol! Ti + 2 bota 🔵 protiv 3 bota 🔴 <span class="ver">v0.25</span></p>
   </header>
   <div id="loadBar">⏳ Učitavam 3D modele…</div>
   <div class="selWrap">
@@ -312,7 +320,7 @@
     </div>
     <div id="mpStatus">Napravi sobu i pošalji kod prijatelju (treba internet).</div>
   </div>
-  <p class="hint">🖱️ klik = hodaj i napadaj &nbsp;·&nbsp; <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>R</kbd> moći &nbsp;·&nbsp; <kbd>B</kbd> dućan &nbsp;·&nbsp; <kbd>H</kbd> sve tipke</p>
+  <p class="hint">🖱️ klik = hodaj i napadaj &nbsp;·&nbsp; <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>R</kbd> moći &nbsp;·&nbsp; <kbd>D</kbd> <kbd>F</kbd> čarolije &nbsp;·&nbsp; <kbd>B</kbd> dućan &nbsp;·&nbsp; <kbd>H</kbd> sve tipke</p>
 </div>
 
 <!-- POMOĆ -->
@@ -333,7 +341,8 @@
     🏰 <b>Utvrđene građevine</b> — junaci rade pola štete kulama, zato guraj s vojnicima (opsadni vojnici ruše jače) • 🤝 <b>asistencija</b>: budi blizu kad suigrač ubije junaka<br>
     🏚️ <b>Vojarne</b> — iza 2. kule svake staze; sruši li tko vojarnu, njegovi vojnici na toj stazi postaju <b>💪 SUPER vojnici</b>!<br>
     💸 <b>O — otkup!</b> Kad pogineš, možeš platiti zlatom da se odmah vratiš (puni se 3 min) • 🛡️ Zmaj daje <b>Aegis</b> — jedno besplatno oživljavanje<br>
-    🛡️ <b>F — Glif utvrde!</b> Sve kule i vojarne tvog tima 5 s ne primaju štetu (puni se 5 min) — spasi kulu u zadnji čas<br>
+    ✨ <b>D / F — čarolije prizivača</b> (biraš ih na ekranu junaka): ⚡ Bljesak, 💚 Iscjeljenje, 🔥 Zapaljenje, 👻 Duh, 🫧 Barijera, 🐌 Iscrpljenost, 🌩️ Kazna • 🔵🔴 <b>buffovi džungle</b>: Plavi golem (mana, kraće hlađenje) i Vatreni vuk (udarci pale) — 90 s, a ubojica ti ga otme<br>
+    🛡️ <b>Y — Glif utvrde!</b> Sve kule i vojarne tvog tima 5 s ne primaju štetu (puni se 5 min) — spasi kulu u zadnji čas<br>
     ✨ <b>K</b> — uključi/isključi efekte (sjaj, boje; na sporim uređajima se sami isključe) • 💬 <b>G</b> — brze poruke (pa 1–6: Bravo, Pomoć, Napadamo…) • 📍 <b>V</b> — ping na mjesto miša (suigrači ga vide na mapi i minimapi)<br>
     💰 <b>Rune zlata</b> (4 u džungli, svake 3 min) daju zlato cijelom timu • 📘 <b>Rune mudrosti</b> (kutovi džungle, svakih 7 min) daju puno iskustva • 🌰 <b>Neutralni predmeti</b> ponekad ispadnu iz čudovišta u džungli i idu u okruglo mjesto pokraj torbe (bolji što je igra dulja)<br>
     🍼 <b>Boca</b> (3 gutljaja, puni se kod fontane), 🌫️ <b>Prašina</b> (otkrije nevidljive), 👁️ <b>Oko</b> (postavi oko u maglu), ☀️ <b>Sunčev kamen</b> (žari sve oko tebe)<br>
