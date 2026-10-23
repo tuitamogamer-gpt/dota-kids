@@ -215,6 +215,7 @@ function heroExtras(h){
     tal: h.talents, cdr: h.cdr || 0,
     ab: h.abilities.map(a => [a.rank, +a.cd.toFixed(1)]),
     it: h.items.map(i => i.id),
+    ip: h.items.reduce((a, it, k) => (it.pending && a.push(k), a), []),   // 🫏 čekaju kurira
   };
 }
 const CAMP_KEYS = ['boars', 'wolves', 'bear', 'boss', 'golem'];
@@ -268,6 +269,7 @@ function buildSnapshot(){
     nf: +nightForceT.toFixed(1),
     gl: [Math.round(glyph[0].t * 10), Math.round(glyph[0].cd), Math.round(glyph[1].t * 10), Math.round(glyph[1].cd)],
     sh: shrines.map(s => [Math.round(s.cd), +s.t.toFixed(1)]),
+    cu: couriers.map(c => [Math.round(c.x), Math.round(c.y), +c.dir.toFixed(2), ['home', 'go', 'back'].indexOf(c.state), c.carry]),
     wd: wards.map(w => ({ x: Math.round(w.x), y: Math.round(w.y), r: w.r, t: +w.t.toFixed(1), tm: w.team })),
   };
 }
@@ -402,7 +404,7 @@ function applySnapshot(d){
     e.ab.forEach((a, j) => {
       if(player.abilities[j]){ player.abilities[j].rank = a[0]; player.abilities[j].cd = a[1]; }
     });
-    player.items = e.it.map(id => ITEM_BY_ID[id]).filter(Boolean);
+    player.items = e.it.map((id, k) => ITEM_BY_ID[id] && ((e.ip || []).includes(k) ? pendingItem(ITEM_BY_ID[id]) : ITEM_BY_ID[id])).filter(Boolean);
   }
   if(player && !net.ringBuilt){ buildPlayerRing(); net.ringBuilt = true; }
   // projektili / zone / rune
@@ -433,6 +435,10 @@ function applySnapshot(d){
   nightForceT = d.nf || 0;
   if(d.gl){ glyph[0].t = d.gl[0] / 10; glyph[0].cd = d.gl[1]; glyph[1].t = d.gl[2] / 10; glyph[1].cd = d.gl[3]; }
   if(d.sh){ if(shrines.length !== d.sh.length) makeShrines(); d.sh.forEach((v, i) => { shrines[i].cd = v[0]; shrines[i].t = v[1]; }); }
+  if(d.cu){   // 🫏 isti objekti kurira (3D model se gradi samo jednom)
+    if(couriers.length !== d.cu.length) makeCouriers();
+    d.cu.forEach((v, i) => { const c = couriers[i]; c.x = v[0]; c.y = v[1]; c.dir = v[2]; c.state = ['home', 'go', 'back'][v[3]] || 'home'; c.carry = v[4]; });
+  }
   {   // zadrži iste objekte oka da 3D prikaz ne gradi mrežu iznova svaki snapshot
     const old = wards;
     wards = (d.wd || []).map(w => {
@@ -499,7 +505,7 @@ function resetMatchState(){
   runeTimer = CFG.runeEvery; runeSpotI = 0; isNight = false;
   wards = []; nightForceT = 0; superCreeps = [{}, {}]; winnerTeam = null;
   glyph = [{ t: 0, cd: 0 }, { t: 0, cd: 0 }];
-  makeShrines(); creepTier = 0; bossKills = 0; coinDrops = [];
+  makeShrines(); makeCouriers(); creepTier = 0; bossKills = 0; coinDrops = [];
   pendingCast = null;
   gameTime = 0; waveTimer = CFG.firstWave; waveCount = 0;
   firstBlood = false; gameOver = false; paused = false;

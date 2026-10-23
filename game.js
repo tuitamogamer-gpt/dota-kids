@@ -275,6 +275,63 @@ function backdoorProtected(t){
 let shrines = [];               // 🕊️ svetišta: { x, y, team, cd, t }
 let creepTier = 0;              // koliko su puta vojnici ojačali
 function makeShrines(){ shrines = SHRINE_SPOTS.map(s => ({ x: s.x, y: s.y, team: s.team, cd: 0, t: 0 })); }
+/* 🫏 Kurir (kao u DotA): predmet kupljen daleko od baze čeka u škrinji (blijedi u torbi, ne radi);
+   leteći magarac ga odnese junaku. Kad se junak sam vrati kući, uzme ga odmah. */
+let couriers = [];              // { team, x, y, dir, state: 'home'|'go'|'back', to, carry }
+function courierHome(team){
+  const f = FOUNTAIN[team], k = team === 0 ? 1 : -1;
+  return { x: f.x + 300 * k, y: f.y + 40 * k };
+}
+function makeCouriers(){
+  couriers = [0, 1].map(team => { const p = courierHome(team); return { team, x: p.x, y: p.y, dir: team === 0 ? -0.8 : 2.3, state: 'home', to: 0, carry: 0 }; });
+}
+function hasPending(h){ return h.items.some(i => i.pending); }
+function nearBase(h){ return distXY(h.x, h.y, FOUNTAIN[h.team].x, FOUNTAIN[h.team].y) < CFG.courierBaseR; }
+function pendingItem(item){ return Object.assign({}, item, { pending: true, stats: null, active: null, burn: 0 }); }
+function deliverPending(h, byCourier){
+  let n = 0;
+  h.items = h.items.map(it => { if(!it.pending) return it; n++; return ITEM_BY_ID[it.id]; });
+  if(!n) return 0;
+  recomputeItemStats(h);
+  if(byCourier){
+    addFloat(h.x, h.y - 30, '🫏 Kurir je donio predmete!', '#fde047', 15);
+    burst(h.x, h.y, '#fde047', 14, 160, 4);
+  }
+  if(h.isPlayer){ sfx('buy'); refreshShop(); }
+  return n;
+}
+function moveCourier(c, tx, ty, dt){
+  const dx = tx - c.x, dy = ty - c.y, d = Math.hypot(dx, dy);
+  const step = CFG.courierSpeed * dt;
+  if(d > 1) c.dir = Math.atan2(dy, dx);
+  if(d <= step){ c.x = tx; c.y = ty; return true; }
+  c.x += dx / d * step; c.y += dy / d * step;
+  return false;
+}
+function updateCouriers(dt){
+  for(const h of units)   // tko je kod kuće, uzme iz škrinje sam
+    if(h.kind === 'hero' && !h.dead && hasPending(h) && nearBase(h)) deliverPending(h, false);
+  for(const c of couriers){
+    const owner = c.state === 'go' ? units.find(u => u.id === c.to) : null;
+    if(c.state === 'go' && (!owner || owner.dead || owner.removeMe || !hasPending(owner))) c.state = 'back';
+    if(c.state === 'home'){
+      const h = units.find(u => u.kind === 'hero' && u.team === c.team && !u.dead && hasPending(u));
+      if(h){
+        c.state = 'go'; c.to = h.id; c.carry = h.items.filter(i => i.pending).length;
+        if(h.isPlayer) addFloat(h.x, h.y - 30, '🫏 Kurir je krenuo prema tebi!', '#fde68a', 13);
+      }
+    } else if(c.state === 'go'){
+      if(moveCourier(c, owner.x, owner.y, dt) || distXY(c.x, c.y, owner.x, owner.y) < 80){
+        deliverPending(owner, true);
+        c.state = 'back'; c.carry = 0;
+      }
+    } else if(c.state === 'back'){
+      c.carry = 0;
+      const p = courierHome(c.team);
+      if(moveCourier(c, p.x, p.y, dt)) c.state = 'home';
+    }
+  }
+}
 /* svetište se samo upali kad ranjeni junak tima stane uz njega; 5 s liječi sve saveznike u krugu */
 function updateShrines(dt){
   for(const s of shrines){
@@ -1846,8 +1903,10 @@ function planPurchase(h, item){
   return { cost, inv, slotsOk, tagOk, ok: slotsOk && tagOk };
 }
 function doPurchase(h, item, plan){
-  h.items = plan.inv.map(id => ITEM_BY_ID[id]);
-  h.items.push(item);
+  const left = plan.inv.slice(), keep = [];   // preostali predmeti ostaju isti objekti (i oni što čekaju kurira)
+  for(const it of h.items){ const k = left.indexOf(it.id); if(k >= 0){ left.splice(k, 1); keep.push(it); } }
+  h.items = keep;
+  h.items.push(isHuman(h) && !h.dead && !nearBase(h) ? pendingItem(item) : item);
   h.gold -= plan.cost;
   recomputeItemStats(h);
 }
@@ -1917,7 +1976,8 @@ function tryBuy(h, item){
     return;
   }
   doPurchase(h, item, plan);
-  addFloat(h.x, h.y, item.emoji + ' ' + item.name + '!', '#fde047', 15);
+  if(hasPending(h)) addFloat(h.x, h.y, '🫏 ' + item.emoji + ' čeka kurira…', '#fde68a', 15);
+  else addFloat(h.x, h.y, item.emoji + ' ' + item.name + '!', '#fde047', 15);
   if(h.isPlayer) sfx('buy');
   refreshShop();
 }
@@ -2278,6 +2338,7 @@ function update(dt){
   if(nightForceT > 0) nightForceT -= dt;
   for(let i = wards.length - 1; i >= 0; i--){ wards[i].t -= dt; if(wards[i].t <= 0) wards.splice(i, 1); }
   updateShrines(dt);
+  updateCouriers(dt);
   {   // 💪 vojnici jačaju svakih 7.5 min
     const tier = Math.floor(gameTime / CFG.creepScaleEvery);
     if(tier > creepTier){ creepTier = tier; announce('💪 Vojnici su ojačali!', '+' + Math.round(CFG.creepScalePct * 100 * tier) + '% života i štete na obje strane'); }
@@ -2532,7 +2593,7 @@ function startGame(heroIdx){
   runeTimer = CFG.runeEvery; runeSpotI = 0; isNight = false;
   wards = []; nightForceT = 0; superCreeps = [{}, {}]; winnerTeam = null;
   glyph = [{ t: 0, cd: 0 }, { t: 0, cd: 0 }];
-  makeShrines(); creepTier = 0; bossKills = 0; coinDrops = [];
+  makeShrines(); makeCouriers(); creepTier = 0; bossKills = 0; coinDrops = [];
   pendingCast = null;
   gameTime = 0; waveTimer = CFG.firstWave; waveCount = 0;
   firstBlood = false; gameOver = false; paused = false;
@@ -3367,7 +3428,15 @@ function drawHud(){
       ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.roundRect(ix, iy, 23, 23, 5); ctx.fill(); ctx.stroke();
       const itm = player.items[i];
-      if(itm){
+      if(itm && itm.pending){   // čeka kurira: blijedo + magarčić
+        ctx.font = fontEmoji(15);
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.globalAlpha = 0.35 + 0.15 * Math.sin(gameTime * 5);
+        ctx.fillText(itm.emoji, ix + 11.5, iy + 12);
+        ctx.globalAlpha = 1;
+        ctx.font = fontEmoji(9);
+        ctx.fillText('🫏', ix + 17, iy + 18);
+      } else if(itm){
         ctx.font = fontEmoji(15);
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText(itm.emoji, ix + 11.5, iy + 12);
@@ -3398,7 +3467,7 @@ function drawHud(){
       ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
       ctx.strokeStyle = 'rgba(0,0,0,0.7)';
       ctx.lineWidth = 3;
-      const txt = it.name + (it.active ? ' — klik ili tipka ' + (hoverUi.i + 1) + ' = koristi • ' : ' — ') + 'desni klik = prodaj za ' + v + ' 💰';
+      const txt = it.name + (it.pending ? ' — 🫏 kurir ga nosi (ili se vrati u bazu) • ' : it.active ? ' — klik ili tipka ' + (hoverUi.i + 1) + ' = koristi • ' : ' — ') + 'desni klik = prodaj za ' + v + ' 💰';
       ctx.strokeText(txt, bx, py - 6);
       ctx.fillStyle = '#fde047';
       ctx.fillText(txt, bx, py - 6);
@@ -3875,6 +3944,12 @@ function drawMinimap(ms, mx, my){
     ctx.font = fontEmoji(11);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('👁️', mx + w.x * sc, my + w.y * sc);
+  }
+  for(const c of couriers){   // 🫏 naš kurir (protivnički samo kad se vidi)
+    if(c.team !== myTeam && !isVisibleTo(myTeam, c)) continue;
+    ctx.font = fontEmoji(c.state === 'home' ? 9 : 12);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('🫏', mx + c.x * sc, my + c.y * sc);
   }
   const corners = [
     screenToWorld(0, 0, true), screenToWorld(VW, 0, true),

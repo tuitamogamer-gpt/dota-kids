@@ -61,6 +61,8 @@ const CFG = {
   backdoorMul: 0.5,         //   građevina prima pola štete
   backdoorRegen: 15,        //   i obnavlja 15 života/s
   shutdownGold: 60,         // prekid niza ubojstava: +60 zlata po ubojstvu u nizu (od 3.)
+  courierSpeed: 520,        // 🫏 kurir leti brže od junaka
+  courierBaseR: 900,        // kupljeno dalje od ovoga od fontane čeka kurira
   creepScaleEvery: 450,     // vojnici jačaju svakih 7.5 min (kao u DotA)
   creepScalePct: 0.12,
   shrineCd: 240,            // svetište: liječi 5 s, puni se 4 min
