@@ -628,11 +628,13 @@ function makeCreepOnLane(team, lane, ranged, siege){
 }
 
 function makeTower(team, x, y, lane, tier, isGuard){
+  // kao u DotA: dublje kule su jače (više života i oklopa)
+  const hpMul = isGuard ? 1.375 : (tier >= 2 ? 1.25 : 1), arm = CFG.towerArmor + (isGuard ? 4 : (tier >= 2 ? 2 : 0));
   return makeUnit({
     kind: 'tower', team, x, y, r: 38,
-    hp: CFG.towerHp, maxhp: CFG.towerHp,
+    hp: Math.round(CFG.towerHp * hpMul), maxhp: Math.round(CFG.towerHp * hpMul),
     dmg: 108, atkRange: 390, atkCd: 1.0, projSpeed: 640,
-    speed: 0, isStatic: true, armor: CFG.towerArmor,   // 🛡️ oklop kule (kao u DotA)
+    speed: 0, isStatic: true, armor: arm,   // 🛡️ oklop kule (kao u DotA)
     lane: lane || null, tier: tier || 0, isGuard: !!isGuard,
   });
 }
@@ -660,7 +662,7 @@ function makeAncient(team){
   const u = makeUnit({
     kind: 'ancient', team, x: p.x, y: p.y, r: 56,
     hp: CFG.ancientHp, maxhp: CFG.ancientHp,
-    dmg: 0, atkRange: 0, speed: 0, isStatic: true, invuln: true, armor: CFG.towerArmor,
+    dmg: 0, atkRange: 0, speed: 0, isStatic: true, invuln: true, armor: CFG.towerArmor + 4,
   });
   ancients[team] = u;
   return u;
@@ -1070,6 +1072,13 @@ function kill(t, src){
       giveXp(credit, CFG.heroKillXp + t.level * 15);
       killerName = credit.emoji + ' ' + credit.name;
       if(credit.isPlayer) addFloat(credit.x, credit.y, '+' + (CFG.heroKillGold + t.level * CFG.heroKillGoldPerLvl) + ' 💰', '#fde047', 17);
+      // 🔄 povratak u igru (kao u DotA): tim koji gubi dobiva više zlata kad ubije junaka tima koji vodi
+      const behind = teamNetWorth(t.team) - teamNetWorth(credit.team);
+      if(behind > 1500){
+        const cb = Math.min(CFG.comebackMax, Math.round(behind * CFG.comebackPct / 10) * 10);
+        credit.gold += cb;
+        if(credit.isPlayer) addFloat(credit.x, credit.y - 26, '🔄 Povratak! +' + cb + ' 💰', '#a7f3d0', 15);
+      }
       // višestruko ubojstvo (unutar 10 s) i niz ubojstava — kao najavljivač u DotA
       credit.multiN = gameTime - (credit.lastKillT || -99) < 10 ? (credit.multiN || 1) + 1 : 1;
       if(credit.bot && Math.random() < 0.3) say(credit, choice(BOT_BRAG));   // botovi se malo pohvale
@@ -3077,6 +3086,7 @@ function endGameView(winTeam){
   sfx(won ? 'win' : 'lose');
   setTimeout(() => showEndScreen(winTeam, won), 3200);
 }
+function teamNetWorth(team){ return units.reduce((a, h) => a + (h.kind === 'hero' && h.team === team ? netWorth(h) : 0), 0); }
 /* neto vrijednost (kao u DotA): zlato + vrijednost svih predmeta */
 function netWorth(h){
   return Math.floor(h.gold + h.items.concat(h.backpack || []).reduce((a, it) => a + (it.cost != null ? itemFullCost(ITEM_BY_ID[it.id] || it) : 0), 0));
