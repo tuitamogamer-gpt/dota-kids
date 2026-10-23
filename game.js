@@ -97,15 +97,17 @@ const LANE_PTS = {
   mid: [[420,2580],[1010,1990],[1500,1500],[1990,1010],[2580,420]],
   bot: [[480,2700],[1550,2750],[2580,2750],[2750,2580],[2750,1550],[2700,480]],
 };
+const S3 = v => Math.round(v * MAP_S);   // koordinate stare mape (3000) → nova veća mapa
+for(const l in LANE_PTS) LANE_PTS[l] = LANE_PTS[l].map(([x, y]) => [S3(x), S3(y)]);
 const LANE_REV = {};
 for(const l of LANE_LIST) LANE_REV[l] = LANE_PTS[l].slice().reverse();
 function lanePath(team, lane){ return team === TEAM_BLUE ? LANE_PTS[lane] : LANE_REV[lane]; }
 
-const FOUNTAIN = [{ x: 150, y: 2850 }, { x: 2850, y: 150 }];
-const ANCIENT_POS = [{ x: 320, y: 2680 }, { x: 2680, y: 320 }];
+const FOUNTAIN = [{ x: S3(150), y: S3(2850) }, { x: S3(2850), y: S3(150) }];
+const ANCIENT_POS = [{ x: S3(320), y: S3(2680) }, { x: S3(2680), y: S3(320) }];
 const GUARD_POS = [
-  [[470, 2640], [360, 2530]],
-  [[2530, 360], [2640, 470]],
+  [[S3(470), S3(2640)], [S3(360), S3(2530)]],
+  [[S3(2530), S3(360)], [S3(2640), S3(470)]],
 ];
 const TOWER_FRACS = [[0.36, 0.16], [0.64, 0.84]];
 
@@ -115,14 +117,14 @@ function groundHeight(x, y){
   let h = smoothstep(70, 300, dRiver) * 40;
   const dBase = Math.min(distXY(x, y, ANCIENT_POS[0].x, ANCIENT_POS[0].y),
                          distXY(x, y, ANCIENT_POS[1].x, ANCIENT_POS[1].y));
-  h += (1 - smoothstep(500, 780, dBase)) * 40;
+  h += (1 - smoothstep(500 * MAP_S, 780 * MAP_S, dBase)) * 40;
   return h;
 }
 
 /* ================= MAGLA RATA (fog of war) =================
    Svaki tim vidi samo oko svojih jedinica; noću je vid kraći.
    visGrid = mreža vidljivosti po timu, fogCanvas = vizualna magla. */
-const VIS_N = 48;
+const VIS_N = 64;
 const visGrid = [new Uint8Array(VIS_N * VIS_N), new Uint8Array(VIS_N * VIS_N)];
 let visionTimer = 0;
 let fogCanvas = null, fogCtx = null;
@@ -2595,7 +2597,7 @@ function update(dt){
 function genTrees(){
   trees = [];
   let attempts = 0;
-  while(trees.length < 150 && attempts < 4000){
+  while(trees.length < Math.round(220 * MAP_S * MAP_S) && attempts < 14000){
     attempts++;
     const x = rand(70, WORLD - 70), y = rand(70, WORLD - 70);
     if(Math.abs(x - y) / Math.SQRT2 < 180) continue;
@@ -2621,7 +2623,7 @@ function genTrees(){
     }
     if(blocked) continue;
     for(const t of trees){
-      if(distXY(x, y, t.x, t.y) < 200){ blocked = true; break; }
+      if(distXY(x, y, t.x, t.y) < 150){ blocked = true; break; }
     }
     if(blocked) continue;
     trees.push({ x, y, r: 24, size: rand(42, 62), kind: Math.random() < 0.7 ? '🌳' : '🌲' });
@@ -2630,9 +2632,11 @@ function genTrees(){
 
 function buildTerrain(){
   terrainCanvas = document.createElement('canvas');
-  terrainCanvas.width = WORLD;
-  terrainCanvas.height = WORLD;
+  const RES = Math.min(WORLD, 3600);   // tekstura do 3600 px (veće ne podnose svi uređaji)
+  terrainCanvas.width = RES;
+  terrainCanvas.height = RES;
   const t = terrainCanvas.getContext('2d');
+  t.scale(RES / WORLD, RES / WORLD);   // crtamo u koordinatama svijeta
 
   // trava: AI tekstura ako je učitana, inače boja
   if(imgReady(GFX.tex.grass)){
@@ -2646,13 +2650,13 @@ function buildTerrain(){
     t.fillStyle = '#7ec850';
     t.fillRect(0, 0, WORLD, WORLD);
   }
-  for(let i = 0; i < 420; i++){
+  for(let i = 0; i < Math.round(420 * MAP_S * MAP_S); i++){
     t.fillStyle = Math.random() < 0.5 ? 'rgba(96,160,56,0.14)' : 'rgba(170,220,120,0.12)';
     t.beginPath();
     t.arc(rand(0, WORLD), rand(0, WORLD), rand(30, 130), 0, TAU);
     t.fill();
   }
-  for(let i = 0; i < 200; i++){
+  for(let i = 0; i < Math.round(200 * MAP_S * MAP_S); i++){
     t.fillStyle = choice(['#fef08a', '#fda4af', '#e9d5ff', '#ffffff']);
     t.beginPath();
     t.arc(rand(0, WORLD), rand(0, WORLD), rand(3, 6), 0, TAU);
@@ -2716,9 +2720,9 @@ function buildTerrain(){
   for(let team = 0; team < 2; team++){
     const a = ANCIENT_POS[team];
     t.fillStyle = team === TEAM_BLUE ? 'rgba(59,130,246,0.22)' : 'rgba(239,68,68,0.22)';
-    t.beginPath(); t.arc(a.x, a.y, 460, 0, TAU); t.fill();
+    t.beginPath(); t.arc(a.x, a.y, 460 * MAP_S, 0, TAU); t.fill();
     t.fillStyle = team === TEAM_BLUE ? 'rgba(59,130,246,0.3)' : 'rgba(239,68,68,0.3)';
-    t.beginPath(); t.arc(a.x, a.y, 260, 0, TAU); t.fill();
+    t.beginPath(); t.arc(a.x, a.y, 260 * MAP_S, 0, TAU); t.fill();
     const f = FOUNTAIN[team];
     t.fillStyle = 'rgba(214,203,181,0.55)';
     t.beginPath(); t.arc(f.x, f.y, 150, 0, TAU); t.fill();

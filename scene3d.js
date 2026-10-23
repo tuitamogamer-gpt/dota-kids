@@ -510,6 +510,7 @@ function togglePost(){
   return POST.on;
 }
 function render3D(){
+  cullDeco();
   if(POST.on && POST.composer){
     POST.grade.uniforms.night.value = 1 - dayK;
     POST.composer.render();
@@ -692,7 +693,7 @@ function setGround(terrainCv){
   tex.anisotropy = renderer3.capabilities.getMaxAnisotropy();
   if(THREE.sRGBEncoding !== undefined) tex.encoding = THREE.sRGBEncoding;
 
-  const segs = 120;
+  const segs = Math.round(120 * MAP_S);
   const geo = new THREE.PlaneGeometry(WORLD, WORLD, segs, segs);
   // pomakni vrhove po visini terena (lokalni +Y postaje svjetski -Z)
   const pos = geo.attributes.position;
@@ -779,8 +780,36 @@ function instancedFrom(name, items, color){
   im.receiveShadow = false;
   return im;
 }
+/* ukrasi po komadima mape (900×900): crtaju se samo komadi koje kamera vidi (i njihove sjene) */
+const decoChunks = [];
+const _frustum = new THREE.Frustum(), _projScreen = new THREE.Matrix4();
+function instancedChunks(name, items, group){
+  if(!mergedModelGeo(name) || !items.length) return;
+  const CS = 1100, cells = {};
+  for(const it of items){ const k = Math.floor(it.x / CS) + ',' + Math.floor(it.y / CS); (cells[k] = cells[k] || []).push(it); }
+  for(const k in cells){
+    const arr = cells[k], im = instancedFrom(name, arr);
+    if(!im) continue;
+    im.frustumCulled = false;
+    let cx = 0, cy = 0;
+    for(const it of arr){ cx += it.x; cy += it.y; }
+    cx /= arr.length; cy /= arr.length;
+    let r = 0;
+    for(const it of arr) r = Math.max(r, Math.hypot(it.x - cx, it.y - cy) + it.s * 1.6);
+    decoChunks.push({ im, sphere: new THREE.Sphere(new THREE.Vector3(cx, 40, cy), r + 220) });
+    group.add(im);
+  }
+}
+function cullDeco(){
+  if(!decoChunks.length) return;
+  camera3.updateMatrixWorld();
+  _projScreen.multiplyMatrices(camera3.projectionMatrix, camera3.matrixWorldInverse);
+  _frustum.setFromProjectionMatrix(_projScreen);
+  for(const c of decoChunks) c.im.visible = _frustum.intersectsSphere(c.sphere);
+}
 function buildTrees3D(){
   if(treesGroup){ scene3.remove(treesGroup); disposeGroup(treesGroup); treesGroup = null; }
+  decoChunks.length = 0;
   if(!MODELS.ready){
     if(!MODELS.failed){ onModelsReady(buildTrees3D); }
     buildTreesBasic();
@@ -811,7 +840,7 @@ function buildTrees3D(){
   };
   const decoKinds = ['rock0', 'rock1', 'rock2', 'bush0', 'bush0', 'mushroom0', 'bush0', 'rock1'];
   let n = 0;
-  for(let i = 0; i < 900 && n < 110; i++){
+  for(let i = 0; i < 2000 && n < Math.round(110 * MAP_S * MAP_S); i++){
     const x = hash01(i, 3, 7) * WORLD, y = hash01(i, 11, 5) * WORLD;
     if(!free(x, y, 0)) continue;
     const kind = decoKinds[Math.floor(hash01(i, 1, 2) * decoKinds.length)];
@@ -832,14 +861,14 @@ function buildTrees3D(){
   if(MODELS.tpl.flowers0){   // ---- v0.11: bogatija okolina ----
     // panjevi, cvijeće, busenje trave
     let np = 0;
-    for(let i = 0; i < 600 && np < 24; i++){
+    for(let i = 0; i < 1200 && np < Math.round(24 * MAP_S * MAP_S); i++){
       const x = hash01(i, 31, 7) * WORLD, y = hash01(i, 33, 5) * WORLD;
       if(!free(x, y, 20)) continue;
       add('stump0', { x, y, h: groundHeight(x, y) - 1, rot: hash01(i, 35, 5) * 6.28, s: 30 + hash01(i, 36, 2) * 10 });
       np++;
     }
     let nf = 0;
-    for(let i = 0; i < 2600 && nf < 320; i++){
+    for(let i = 0; i < 5600 && nf < Math.round(320 * MAP_S * MAP_S); i++){
       const x = hash01(i, 41, 7) * WORLD, y = hash01(i, 43, 5) * WORLD;
       if(x < 60 || y < 60 || x > WORLD - 60 || y > WORLD - 60) continue;
       if(Math.abs(x - y) / Math.SQRT2 < 150) continue;
@@ -852,7 +881,7 @@ function buildTrees3D(){
     }
     // uz rijeku: trska na obali, lopoči na vodi
     let nr = 0;
-    for(let i = 0; i < 1500 && nr < 170; i++){
+    for(let i = 0; i < 2400 && nr < Math.round(170 * MAP_S); i++){
       const t = 150 + hash01(i, 51, 7) * (WORLD - 300);
       const bank = hash01(i, 53, 3) < 0.6;
       const d = bank ? 128 + hash01(i, 55, 5) * 34 : hash01(i, 55, 5) * 85;
@@ -866,7 +895,7 @@ function buildTrees3D(){
       nr++;
     }
     // gazovi (plosnato kamenje) gdje staze prelaze rijeku
-    const crossings = [[1500, 1500], [335, 335], [2665, 2665]];
+    const crossings = [[1500, 1500], [335, 335], [2665, 2665]].map(([x, y]) => [S3(x), S3(y)]);
     for(const [cx, cy] of crossings){
       for(let k = -1; k <= 1; k++){
         const x = cx + k * 90 * Math.SQRT1_2, y = cy - k * 90 * Math.SQRT1_2;
@@ -885,7 +914,7 @@ function buildTrees3D(){
           for(let s = acc; s < L; s += 170){
             const px = x1 + ux * s, py = y1 + uy * s;
             const dA = distXY(px, py, a0.x, a0.y);
-            if(dA > 820 || dA < 300) continue;
+            if(dA > 820 * MAP_S || dA < 300 * MAP_S) continue;
             if(distXY(px, py, FOUNTAIN[team].x, FOUNTAIN[team].y) < 260) continue;
             for(const side of [1, -1]){
               const x = px - uy * side * 100, y = py + ux * side * 100;
@@ -917,11 +946,11 @@ function buildTrees3D(){
       }
     });
     // putokazi na izlazu iz baza
-    add('signpost0', { x: 470, y: 2460, h: groundHeight(470, 2460) - 1, rot: -0.6, s: 40 });
-    add('signpost0', { x: 2530, y: 540, h: groundHeight(2530, 540) - 1, rot: 2.5, s: 40 });
+    add('signpost0', { x: S3(470), y: S3(2460), h: groundHeight(S3(470), S3(2460)) - 1, rot: -0.6, s: 40 });
+    add('signpost0', { x: S3(2530), y: S3(540), h: groundHeight(S3(2530), S3(540)) - 1, rot: 2.5, s: 40 });
   }
   // rub šume: gusti borovi i hrastovi oko mape, da se ne vidi "kraj svijeta"
-  for(let i = 0; i < 520; i++){
+  for(let i = 0; i < Math.round(520 * MAP_S); i++){
     const side = i % 4, t = hash01(i, 21, 3) * (WORLD + 1200) - 600, depth = 50 + hash01(i, 22, 4) * 560;
     let x, y;
     if(side === 0){ x = t; y = -depth; } else if(side === 1){ x = t; y = WORLD + depth; }
@@ -930,10 +959,7 @@ function buildTrees3D(){
     const kind = r < 0.7 ? 'tree_pine' + (i % 3) : 'tree_oak' + (i % 3);
     add(kind, { x, y, h: -6, rot: r * 6.28, s: (r < 0.7 ? 48 : 52) + hash01(i, 24, 6) * 34 });
   }
-  for(const name in buckets){
-    const im = instancedFrom(name, buckets[name]);
-    if(im) treesGroup.add(im);
-  }
+  for(const name in buckets) instancedChunks(name, buckets[name], treesGroup);
   // sjaj plamena baklji, logorskih vatri i kristala (sprite — instancirana geometrija ne svijetli)
   const glows = [];
   for(const it of buckets.torch0 || []) glows.push({ x: it.x, y: it.y, h: it.h + 42, c: '#ffb020', s: 56 });
@@ -977,7 +1003,7 @@ function buildStatic3D(){
     for(let team = 0; team < 2; team++){
       const a0 = ANCIENT_POS[team];
       const segs = [];
-      const R = 470, step = 34 / R;
+      const R = 470 * MAP_S, step = 34 / R;
       for(let a = 0; a < TAU; a += step){
         const x = a0.x + Math.cos(a) * R, y = a0.y + Math.sin(a) * R;
         if(x < 40 || y < 40 || x > WORLD - 40 || y > WORLD - 40) continue;
@@ -1009,7 +1035,7 @@ function buildStatic3D(){
       const tents = [];
       for(let k = -1; k <= 1; k++){
         const a = toCenter + k * 0.55;
-        const x = f.x + Math.cos(a) * 250, y = f.y + Math.sin(a) * 250;
+        const x = f.x + Math.cos(a) * 250 * MAP_S, y = f.y + Math.sin(a) * 250 * MAP_S;
         tents.push({ x, y, h: groundHeight(x, y) - 1, rot: -a, s: 44 });
       }
       const geo = mergedModelGeo('tent0');
@@ -1025,13 +1051,13 @@ function buildStatic3D(){
       const props = [];
       for(let k = 0; k < 7; k++){
         const a = toCenter + Math.PI + (k - 3) * 0.32;
-        const x = a0.x + Math.cos(a) * 170, y = a0.y + Math.sin(a) * 170;
+        const x = a0.x + Math.cos(a) * 170 * MAP_S, y = a0.y + Math.sin(a) * 170 * MAP_S;
         if(x < 40 || y < 40 || x > WORLD - 40 || y > WORLD - 40) continue;
         props.push({ kind: k % 2 ? 'crate0' : 'barrel0', x, y, h: groundHeight(x, y) - 1, rot: a, s: 30 + (k % 3) * 4 });
       }
       for(let k = 0; k < 5; k++){
         const a = toCenter + 1.6 + k * 0.1 * 0 + (k - 2) * 0.09;
-        const x = f.x + Math.cos(a) * 330, y = f.y + Math.sin(a) * 330;
+        const x = f.x + Math.cos(a) * 330 * MAP_S, y = f.y + Math.sin(a) * 330 * MAP_S;
         props.push({ kind: 'fence0', x, y, h: groundHeight(x, y) - 1, rot: -a - Math.PI / 2, s: 38 });
       }
       const byKind = {};
