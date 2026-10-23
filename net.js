@@ -181,6 +181,8 @@ function onNetData(d){
     case 'buyback': if(net.mode === 'host' && remoteHero) buyback(remoteHero); break;
     case 'item': if(net.mode === 'host' && remoteHero) useItem(remoteHero, d.i, d.x != null ? { x: d.x, y: d.y } : null); break;
     case 'glyph': if(net.mode === 'host' && remoteHero) useGlyph(remoteHero.team, remoteHero); break;
+    case 'chat': if(net.mode === 'host' && remoteHero) sendChat(remoteHero, d.i | 0); break;
+    case 'ping': if(net.mode === 'host' && remoteHero) addPing(remoteHero, +d.x || 0, +d.y || 0); break;
     case 'talent': if(net.mode === 'host' && remoteHero) chooseTalent(remoteHero, d.l, d.p === 'b' ? 'b' : 'a'); break;
   }
 }
@@ -197,6 +199,8 @@ function netTp(){ sendNet({ c: 'tp' }); }
 function netBuyback(){ sendNet({ c: 'buyback' }); }
 function netItem(i, aim){ sendNet({ c: 'item', i, x: aim ? Math.round(aim.x) : null, y: aim ? Math.round(aim.y) : null }); }
 function netGlyph(){ sendNet({ c: 'glyph' }); }
+function netChat(i){ sendNet({ c: 'chat', i }); }
+function netPing(x, y){ sendNet({ c: 'ping', x: Math.round(x), y: Math.round(y) }); }
 function netTalent(l, p){ sendNet({ c: 'talent', l, p }); }
 
 /* ---------- SNAPSHOT: domaćin → gost ---------- */
@@ -216,6 +220,7 @@ function heroExtras(h){
     ab: h.abilities.map(a => [a.rank, +a.cd.toFixed(1)]),
     it: h.items.map(i => i.id),
     ip: h.items.reduce((a, it, k) => (it.pending && a.push(k), a), []),   // 🫏 čekaju kurira
+    nt: h.neutral ? h.neutral.id : 0,                                     // 🌰 neutralni predmet
   };
 }
 const CAMP_KEYS = ['boars', 'wolves', 'bear', 'boss', 'golem'];
@@ -243,6 +248,7 @@ function buildSnapshot(){
       b.pl = u.isPlayer ? 1 : (u.human ? 2 : 0);
       if(u.aegis) b.ag = 1;
       b.it2 = u.items.map(i => i.emoji).join('');
+      if(u.neutral) b.nt = u.neutral.id;
     }
     else if(u.kind === 'creep'){ if(u.rangedCreep) b.rc = 1; if(u.siege) b.sg = 1; if(u.summonModel) b.sm = u.summonModel; if(u.superCreep) b.su = 1; }
     else if(u.kind === 'barracks'){ b.iv = u.invuln ? 1 : 0; b.ln = u.lane; }
@@ -269,6 +275,8 @@ function buildSnapshot(){
     nf: +nightForceT.toFixed(1),
     gl: [Math.round(glyph[0].t * 10), Math.round(glyph[0].cd), Math.round(glyph[1].t * 10), Math.round(glyph[1].cd)],
     sh: shrines.map(s => [Math.round(s.cd), +s.t.toFixed(1)]),
+    xr: extraRunes.map(r => [r.x, r.y, r.kind === 'bounty' ? 0 : 1]),
+    pg: pings.map(p => [Math.round(p.x), Math.round(p.y), p.team, +p.t.toFixed(2)]),
     cu: couriers.map(c => [Math.round(c.x), Math.round(c.y), +c.dir.toFixed(2), ['home', 'go', 'back'].indexOf(c.state), c.carry]),
     wd: wards.map(w => ({ x: Math.round(w.x), y: Math.round(w.y), r: w.r, t: +w.t.toFixed(1), tm: w.team })),
   };
@@ -376,6 +384,7 @@ function applySnapshot(d){
       u.lastHits = b.lh || 0; u.denies = b.dn || 0;
       u.aegis = !!b.ag;
       if(!u.isPlayer) u.items = (b.it2 || '').split('').map(e => ({ emoji: e, name: '' })).filter(i => i.emoji.trim());
+      u.neutral = b.nt ? ITEM_BY_ID[b.nt] || null : null;
       if(b.pl === 2 && !u.isPlayer){ u.isPlayer = true; }
     }
     if(u.kind === 'ancient' || u.kind === 'barracks') u.invuln = !!b.iv;
@@ -404,6 +413,7 @@ function applySnapshot(d){
     e.ab.forEach((a, j) => {
       if(player.abilities[j]){ player.abilities[j].rank = a[0]; player.abilities[j].cd = a[1]; }
     });
+    player.neutral = e.nt ? ITEM_BY_ID[e.nt] || null : null;
     player.items = e.it.map((id, k) => ITEM_BY_ID[id] && ((e.ip || []).includes(k) ? pendingItem(ITEM_BY_ID[id]) : ITEM_BY_ID[id])).filter(Boolean);
   }
   if(player && !net.ringBuilt){ buildPlayerRing(); net.ringBuilt = true; }
@@ -435,6 +445,15 @@ function applySnapshot(d){
   nightForceT = d.nf || 0;
   if(d.gl){ glyph[0].t = d.gl[0] / 10; glyph[0].cd = d.gl[1]; glyph[1].t = d.gl[2] / 10; glyph[1].cd = d.gl[3]; }
   if(d.sh){ if(shrines.length !== d.sh.length) makeShrines(); d.sh.forEach((v, i) => { shrines[i].cd = v[0]; shrines[i].t = v[1]; }); }
+  if(d.xr){   // 💰📘 isti objekti runa (3D model se gradi jednom)
+    const old = extraRunes;
+    extraRunes = d.xr.map(v => old.find(r => r.x === v[0] && r.y === v[1]) || { x: v[0], y: v[1], kind: v[2] ? 'wisdom' : 'bounty' });
+  }
+  if(d.pg){
+    const old = pings;
+    pings = d.pg.map(v => { const ex = old.find(p => p.x === v[0] && p.y === v[1] && p.team === v[2] && v[3] >= p.t - 0.5);
+      if(ex){ ex.t = v[3]; return ex; } return { x: v[0], y: v[1], team: v[2], t: v[3] }; });
+  }
   if(d.cu){   // 🫏 isti objekti kurira (3D model se gradi samo jednom)
     if(couriers.length !== d.cu.length) makeCouriers();
     d.cu.forEach((v, i) => { const c = couriers[i]; c.x = v[0]; c.y = v[1]; c.dir = v[2]; c.state = ['home', 'go', 'back'][v[3]] || 'home'; c.carry = v[4]; });
@@ -506,6 +525,8 @@ function resetMatchState(){
   wards = []; nightForceT = 0; superCreeps = [{}, {}]; winnerTeam = null;
   glyph = [{ t: 0, cd: 0 }, { t: 0, cd: 0 }];
   makeShrines(); makeCouriers(); creepTier = 0; bossKills = 0; coinDrops = [];
+  neutralDrops = [{ 1: 0, 2: 0, 3: 0 }, { 1: 0, 2: 0, 3: 0 }]; neutralFx = [];
+  resetExtraRunes(); pings = []; chatOpen = false;
   pendingCast = null;
   gameTime = 0; waveTimer = CFG.firstWave; waveCount = 0;
   firstBlood = false; gameOver = false; paused = false;
