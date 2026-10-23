@@ -112,13 +112,41 @@ const GUARD_POS = [
 const TOWER_FRACS = [[0.36, 0.16], [0.64, 0.84]];
 
 // VISINA TERENA: rijeka = nizina (0), polje = 40, platoi baza = 80
-function groundHeight(x, y){
+// Rub platoa je strma LITICA (kao u Allstarsu), a gdje staze ulaze u bazu — blaga RAMPA.
+const CLIFF_R0 = 640 * MAP_S, CLIFF_R1 = 700 * MAP_S;   // litica: od punog platoa do polja
+function laneDist(x, y){
+  let d = 1e9;
+  for(const l of LANE_LIST) d = Math.min(d, distToPath(LANE_PTS[l], x, y));
+  return d;
+}
+function groundHeightRaw(x, y){
   const dRiver = Math.abs(x - y) / Math.SQRT2;
   let h = smoothstep(70, 300, dRiver) * 40;
   const dBase = Math.min(distXY(x, y, ANCIENT_POS[0].x, ANCIENT_POS[0].y),
                          distXY(x, y, ANCIENT_POS[1].x, ANCIENT_POS[1].y));
-  h += (1 - smoothstep(500 * MAP_S, 780 * MAP_S, dBase)) * 40;
-  return h;
+  if(dBase < 500 * MAP_S) return h + 40;
+  if(dBase > 860 * MAP_S) return h;
+  const cliff = 1 - smoothstep(CLIFF_R0, CLIFF_R1, dBase);
+  const wide = 1 - smoothstep(520 * MAP_S, 840 * MAP_S, dBase);
+  const ramp = 1 - smoothstep(120, 240, laneDist(x, y));
+  return h + 40 * (cliff + (wide - cliff) * ramp);
+}
+/* visine se jednom izračunaju u mrežu (brzo čitanje za tisuće poziva po sličici) */
+const HGRID_N = 360;
+let hGrid = null;
+function buildHeightGrid(){
+  const n = HGRID_N + 1, cs = WORLD / HGRID_N;
+  hGrid = new Float32Array(n * n);
+  for(let j = 0; j < n; j++) for(let i = 0; i < n; i++) hGrid[j * n + i] = groundHeightRaw(i * cs, j * cs);
+}
+function groundHeight(x, y){
+  if(!hGrid) buildHeightGrid();
+  const cs = WORLD / HGRID_N, n = HGRID_N + 1;
+  const fx = clamp(x / cs, 0, HGRID_N - 1e-4), fy = clamp(y / cs, 0, HGRID_N - 1e-4);
+  const i = fx | 0, j = fy | 0, tx = fx - i, ty = fy - j, k = j * n + i;
+  const a = hGrid[k] + (hGrid[k + 1] - hGrid[k]) * tx;
+  const b = hGrid[k + n] + (hGrid[k + n + 1] - hGrid[k + n]) * tx;
+  return a + (b - a) * ty;
 }
 
 /* ================= MAGLA RATA (fog of war) =================
@@ -2610,6 +2638,8 @@ function genTrees(){
     if(distXY(x, y, FOUNTAIN[1].x, FOUNTAIN[1].y) < 430) continue;
     if(distXY(x, y, ANCIENT_POS[0].x, ANCIENT_POS[0].y) < 380) continue;
     if(distXY(x, y, ANCIENT_POS[1].x, ANCIENT_POS[1].y) < 380) continue;
+    { const dB = Math.min(distXY(x, y, ANCIENT_POS[0].x, ANCIENT_POS[0].y), distXY(x, y, ANCIENT_POS[1].x, ANCIENT_POS[1].y));
+      if(dB > CLIFF_R0 - 70 && dB < CLIFF_R1 + 70) continue; }   // ne na liticama
     for(const c of CAMP_SPOTS){
       if(distXY(x, y, c.x, c.y) < 260){ blocked = true; break; }
     }
@@ -3510,10 +3540,7 @@ function drawChatWheel(){
   uiRects.chat = null;
   if(!chatOpen || !player) return;
   const w = 210, rh = 26, x = 14, y = VH - 190 - CHAT_LINES.length * rh;
-  ctx.fillStyle = 'rgba(15,23,42,0.88)';
-  ctx.strokeStyle = '#fde047';
-  ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.roundRect(x, y - 30, w, CHAT_LINES.length * rh + 40, 12); ctx.fill(); ctx.stroke();
+  drawFrame(x, y - 30, w, CHAT_LINES.length * rh + 40, 10);
   ctx.font = fontTxt(13, true);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillStyle = '#fde047';
@@ -3536,11 +3563,41 @@ function drawChatWheel(){
   });
 }
 
+/* 🏛️ okvir u stilu Allstarsa: tamna ploča, dvostruki rub i zakovice
+   (Sentinel = tamno drvo i zlato, Scourge = tamni kamen i kost s ljubičastim) */
+function hudTheme(){
+  return myTeam === TEAM_RED
+    ? { a: '#2a2133', b: '#0f0a15', rim: '#d6cbb0', rim2: '#5b4a6b', gem: '#c084fc' }
+    : { a: '#28331f', b: '#0d130a', rim: '#e9bf62', rim2: '#7a5a22', gem: '#4ade80' };
+}
+function drawFrame(x, y, w, h, r, alpha){
+  const th = hudTheme();
+  const g = ctx.createLinearGradient(0, y, 0, y + h);
+  g.addColorStop(0, th.a); g.addColorStop(1, th.b);
+  ctx.save();
+  ctx.globalAlpha = alpha == null ? 0.94 : alpha;
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = th.rim2; ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.stroke();
+  ctx.strokeStyle = th.rim; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.roundRect(x + 1.5, y + 1.5, w - 3, h - 3, Math.max(2, r - 1)); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(x + 5, y + 5, w - 10, h - 10, Math.max(2, r - 4)); ctx.stroke();
+  for(const [cx, cy] of [[x + 6, y + 6], [x + w - 6, y + 6], [x + 6, y + h - 6], [x + w - 6, y + h - 6]]){   // zakovice
+    ctx.fillStyle = th.rim;
+    ctx.beginPath(); ctx.moveTo(cx, cy - 4); ctx.lineTo(cx + 4, cy); ctx.lineTo(cx, cy + 4); ctx.lineTo(cx - 4, cy); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = th.gem;
+    ctx.beginPath(); ctx.arc(cx, cy, 1.4, 0, TAU); ctx.fill();
+  }
+  ctx.restore();
+}
+
 function drawHud(){
   // ----- gornja ploča -----
   const tw = 280, tx = (VW - tw) / 2;
-  ctx.fillStyle = 'rgba(15,23,42,0.82)';
-  ctx.beginPath(); ctx.roundRect(tx, 8, tw, 64, 14); ctx.fill();
+  drawFrame(tx, 8, tw, 64, 10);
   ctx.font = fontTxt(22, true);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillStyle = TEAM_LIGHT[0];
@@ -3602,11 +3659,8 @@ function drawHud(){
   if(player){
     const pw = 640, ph = 134;
     const px = (VW - pw) / 2, py = VH - ph - 10;
-    ctx.fillStyle = 'rgba(15,23,42,0.85)';
-    ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 16); ctx.fill();
-    ctx.strokeStyle = player.dead ? '#64748b' : TEAM_COLOR[0];
-    ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 16); ctx.stroke();
+    drawFrame(px, py, pw, ph, 10);
+    if(player.dead){ ctx.fillStyle = 'rgba(30,30,40,0.35)'; ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 10); ctx.fill(); }
 
     // portret (AI slika junaka, emoji kao rezerva)
     ctx.fillStyle = player.dead ? '#475569' : TEAM_LIGHT[0];
@@ -3824,10 +3878,12 @@ function drawHud(){
       const canL = player.skillPoints > 0 && canLearn(player, i);
       const isPending = pendingCast && pendingCast.i === i;
       ctx.fillStyle = ab.def.ult ? '#3b2a4d' : '#1e293b';
-      ctx.beginPath(); ctx.roundRect(ax, ay, as, as, 12); ctx.fill();
-      ctx.strokeStyle = isPending ? '#fde047' : (ab.def.ult ? '#c084fc' : (!unlearned && noMana ? '#38bdf8' : '#94a3b8'));
-      ctx.lineWidth = isPending ? 4 : 2.5;
-      ctx.beginPath(); ctx.roundRect(ax, ay, as, as, 12); ctx.stroke();
+      ctx.beginPath(); ctx.roundRect(ax, ay, as, as, 6); ctx.fill();
+      ctx.strokeStyle = isPending ? '#fde047' : (ab.def.ult ? '#c084fc' : (!unlearned && noMana ? '#38bdf8' : hudTheme().rim2));
+      ctx.lineWidth = isPending ? 4 : 3;
+      ctx.beginPath(); ctx.roundRect(ax, ay, as, as, 6); ctx.stroke();
+      ctx.strokeStyle = isPending ? '#fef9c3' : hudTheme().rim; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(ax + 3, ay + 3, as - 6, as - 6, 4); ctx.stroke();
       ctx.font = fontEmoji(26);
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.globalAlpha = unlearned ? 0.3 : ((ab.cd > 0 || noMana) ? 0.45 : 1);
@@ -3835,7 +3891,7 @@ function drawHud(){
       ctx.globalAlpha = 1;
       if(ultLocked){
         ctx.fillStyle = 'rgba(0,0,0,0.55)';
-        ctx.beginPath(); ctx.roundRect(ax, ay, as, as, 12); ctx.fill();
+        ctx.beginPath(); ctx.roundRect(ax, ay, as, as, 6); ctx.fill();
         ctx.font = fontEmoji(18);
         ctx.fillText('🔒', ax + as / 2, ay + as / 2 - 8);
         ctx.fillStyle = '#e9d5ff';
@@ -4210,19 +4266,15 @@ function drawScoreboard(){
 function drawMinimap(ms, mx, my){
   uiRects.mini = { x: mx, y: my, w: ms, h: ms };
   const sc = ms / WORLD;
-  ctx.fillStyle = 'rgba(126,200,80,0.95)';
-  ctx.beginPath(); ctx.roundRect(mx, my, ms, ms, 10); ctx.fill();
-  ctx.strokeStyle = '#5ab6ee';
-  ctx.lineWidth = 10;
-  ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(mx + ms, my + ms); ctx.stroke();
-  ctx.strokeStyle = '#d9c79b';
-  ctx.lineWidth = 6;
-  for(const l of LANE_LIST){
-    const pts = LANE_PTS[l];
-    ctx.beginPath();
-    ctx.moveTo(mx + pts[0][0] * sc, my + pts[0][1] * sc);
-    for(let i = 1; i < pts.length; i++) ctx.lineTo(mx + pts[i][0] * sc, my + pts[i][1] * sc);
-    ctx.stroke();
+  drawFrame(mx - 7, my - 7, ms + 14, ms + 14, 10, 1);
+  if(terrainCanvas){   // pravi teren (rijeka, staze, Scourge strana) umanjen na minimapu
+    ctx.save();
+    ctx.beginPath(); ctx.roundRect(mx, my, ms, ms, 6); ctx.clip();
+    ctx.drawImage(terrainCanvas, mx, my, ms, ms);
+    ctx.restore();
+  } else {
+    ctx.fillStyle = 'rgba(126,200,80,0.95)';
+    ctx.beginPath(); ctx.roundRect(mx, my, ms, ms, 6); ctx.fill();
   }
   for(const u of units){
     if(u.dead || u.removeMe) continue;

@@ -1899,6 +1899,39 @@ def build_scourge():
     m.finish()
 
 
+def build_cliffs():
+    """litice na rubu platoa baza: slojevite kamene ploče, vrh od trave (Sentinel) ili pepela (Scourge).
+    Lice litice gleda prema +Y (u igri: prema dolje, od baze prema polju)."""
+    for theme in ('', '_d'):
+        stones = ['#8d8478', '#9c9386', '#7b7268'] if not theme else ['#4a4352', '#3f3a47', '#554d5e']
+        cap = '#5e9c3a' if not theme else '#3b3045'
+        line = '#6b6359' if not theme else '#2e2a36'
+        for v in range(3):
+            rnd = random.Random(300 + v * 7 + (50 if theme else 0))
+            m = Model('cliff%s%d' % (theme, v))
+            p = m.part('mesh')
+            x = -0.62
+            while x < 0.6:
+                w = rnd.uniform(0.28, 0.42)
+                h = rnd.uniform(0.85, 1.1)
+                cx = x + w / 2
+                p.box((cx, rnd.uniform(-0.04, 0.06), h / 2 - 0.05), (w, 0.55 + rnd.uniform(-0.05, 0.08), h),
+                      stones[rnd.randrange(3)], rot=(rnd.uniform(-8, -3), rnd.uniform(-4, 4), rnd.uniform(-6, 6)), bevel=0.05)
+                for z in (0.3, 0.62):   # slojevi stijene
+                    p.box((cx, 0.29, z + rnd.uniform(-0.05, 0.05)), (w * 0.95, 0.06, 0.035), line, rot=(0, 0, rnd.uniform(-5, 5)))
+                x += w * 0.92
+            p.box((0, -0.02, 1.0), (1.3, 0.62, 0.1), cap, bevel=0.04)                # vrh (trava / pepeo)
+            for k in range(4):   # rubni busenovi / kristali na vrhu
+                kx = rnd.uniform(-0.55, 0.55)
+                if not theme:
+                    p.ico((kx, 0.22, 1.06), (0.12, 0.08, 0.07), '#4f8a30', sub=1, jitter=0.2, seed=k + v * 10)
+                elif k % 2 == 0:
+                    p.ico((kx, 0.1, 1.12), (0.05, 0.05, 0.14), '#a855f7', mat='glow', sub=0)
+            for k in range(4):   # kamenje pri dnu
+                p.ico((rnd.uniform(-0.6, 0.6), 0.38 + rnd.uniform(0, 0.12), 0.06), rnd.uniform(0.07, 0.13), stones[k % 3], sub=1, jitter=0.2, seed=40 + k + v)
+            m.finish()
+
+
 # ------------------------------------------------------------------ PORTRETI (render glave za ekran odabira)
 def render_portraits(ids, size=512):
     sc = bpy.context.scene
@@ -2952,6 +2985,10 @@ def preview(path, only=None, cols=8, zoom=1.0):
 def main():
     reset_scene()
     make_materials()
+    if '--dev-v20' in argv:
+        build_cliffs()
+        preview(os.path.join(HERE, 'preview_v20.png'), only=['cliff'], cols=3, zoom=2.2)
+        return
     if '--dev-v19' in argv:   # brza provjera Scourge modela (bez izvoza)
         build_tower()
         build_barracks()
@@ -2977,6 +3014,7 @@ def main():
     build_tower()
     build_barracks()
     build_scourge()
+    build_cliffs()
     build_nature()
     build_env()
     build_golem()
