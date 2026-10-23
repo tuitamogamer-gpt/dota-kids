@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.16: svi 3D modeli su zaobljeni i glatki — bez grubih rubova — a datoteka modela je 4× manja pa se igra brže učitava!** ✨🧸
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.17: veliki patch sposobnosti — svaki junak ima urođenu pasivu i 4 aktivne moći (19 novih aktivnih + 5 novih pasiva), najviši level je 25, talenti i na 20 i 25!** ⚔️✨
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -18,6 +18,12 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- ⚔️ **Patch sposobnosti** (v0.17):
+  - ✨ **Urođene pasive odvojene od moći**: svaki junak ima jednu pasivu (okrugla značka gore desno na portretu, opis kad prijeđeš mišem) koja uvijek radi i sama jača na levelima 7 / 13 / 19 — više ne troši poene ni mjesto među moćima. Nove pasive: 🔥 *Vatrena krv* (Žarko — napadi pale), 🌱 *Korijeni* (Listko — liječi se kad stoji), 💧 *Vodozemac* (Skokica — brža i liječi se u rijeci), 🔭 *Orlovski vid* (Orlina — veći domet), 🌙 *Mjesečeva oštrica* (Luna — napad odskoči na drugog neprijatelja)
+  - 🆕 **Svaki junak ima 4 aktivne moći** — 17 novih: 📯 *Bojni poklič* (Lavko), 🛷 *Trbušno klizanje* (Ledena), 🕸️ *Lovačka mreža* (Strijela), 💨 *Dimna bomba* (Tragač), 🐾 *Tigrove kandže* (Munja), 🌰 *Klupko* (Bodljo), 💦 *Tuš iz surle* (Tutnjo), 🌬️ *Zuj-bijeg* (Zuja), 🌫️ *Tihi let* (Mudra), 🍌 *Banana* (Skakač), 💢 *Divlje kandže* (Sivko), 🪶 *Pernata oluja* (Mrak), 🫂 *Zagrljaj pipaka* (Pipko), 📢 *Izazov* (Rogo — neprijatelji moraju napadati njega), 🥴 *Pijani korak* (Bambus — izbjegava udarce), 🌉 *Dugin most* (Duga), 🌀 *Krvavi vrtlog* (Zubo); svaka ima svoj 3D efekt, a banana i mreža nove Blender modele
+  - ⬆️ **Najviši level je 25**: Q/W/E imaju 4 ranga (rang 2/3/4 od levela 3/5/7), ulti 3 (leveli 6/12/18), višak poena ide u atribute (do 10 puta); 🎓 talenti na levelima 10, 15, 20 i 25
+  - 🤖 botovi znaju nove moći (i bježe kad su ranjeni: Zuja, Mudra, Duga)
 
 - ✨ **Glatki modeli** (v0.16): svi Blender modeli (junaci, vojnici, čudovišta, kule, drveće, kamenje, ukrasi, efekti) dobili su glatko sjenčanje, zaobljene rubove kocki, više segmenata na velikim oblinama i meke izbočine na krošnjama i kamenju; AO sjene se peku po vrhu pa su prijelazi mekani. Geometrija se sažima Dracom pa je `models.glb` ~4× manji nego prije (brže učitavanje, posebno na mobitelu)
 
@@ -55,7 +61,7 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
 
 - 🌳 **Živa okolina i više složenosti** (v0.11):
   - 🌲 **novi Blender modeli okoline**: breze, panjevi, cvjetne krpice i busenje trave po cijeloj mapi, trska na obali i lopoči na rijeci, **kameni gazovi** gdje staze prelaze rijeku, **baklje** uz staze kod baza (noću svijetle), **šatori** u boji tima, bačve, sanduci i ograde u bazama, logorske vatre i svjetleći kristali uz kampove, veliko kamenje oko Zmajeve jazbine, putokazi — sve instancirano (jedan draw call po vrsti)
-  - 🎓 **Talenti**: na levelu 10 i 15 biraš jedan od dva bonusa (+30 štete / +300 života, +15% brzine / −20% hlađenja moći) — botovi biraju sami
+  - 🎓 **Talenti**: na levelima 10, 15, 20 i 25 biraš jedan od dva bonusa (+30 štete / +300 života, +15% brzine / −20% hlađenja, +60 štete / +650 života, +35% brzine napada / −15% hlađenja) — botovi biraju sami
   - 🕊️ **Svetišta** (DotA 7): po jedno u džungli svakog tima — ranjen junak stane uz njega i ono 5 s liječi cijeli tim u krugu, puni se 4 min
   - 🗿 **Kameni Golem**: novi neutralni kamp (po jedan na svakoj strani), svaki treći udarac omamljuje
   - 💪 **vojnici jačaju** svakih 7.5 min (+12% života i štete), kao u DotA
@@ -102,7 +108,7 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
 - 🎨 **AI ilustracije** (v0.5): naslikani portreti svih 10 junaka (select ekran, HUD i 3D glave u igri), portreti čudovišta iz džungle, slikovite teksture trave/staze/rijeke i epska splash pozadina — uz automatski fallback na emoji ako se slike ne učitaju
 - 🗺️ **Kompletna mapa**: 3 staze, rijeka u udolini, baze na platoima (high/low ground — pucanje uzbrdo promaši 25%!), šuma, kule, fontane
 - 🤖 **3 protiv 3**: ti + 2 bota protiv 3 bota — botovi farmaju, koriste moći i ultije, uče vještine, slažu recepte, idu u džunglu, bježe teleportom
-- 🦁 **22 junaka-životinje** s po 4 moći (Q/W/E/R) — napadačke, obrambene i ✨ **pasivne**; ULTI se otključava na levelu 6
+- 🦁 **22 junaka-životinje**: svaki ima ✨ **urođenu pasivu** i 4 aktivne moći (Q/W/E/R); ULTI se otključava na levelu 6
   - Lavko 🦁, Žarko 🐉, Ledena 🐧, Strijela 🦊, Listko 🐢, Munja 🐯, Skokica 🐸 (kuka jezikom!), Orlina 🦅, Luna 🐱 (Mirana-stil: Sveta strijela + timska nevidljivost), Tragač 🦝 (Gondar-stil: sjena, podmukli udarci i Ucjena s bonus zlatom), Bodljo 🦔, Tutnjo 🐘, Zuja 🐝, Mudra 🦉, Skakač 🐵, Sivko 🐺, Mrak 🐦‍⬛, Pipko 🐙, Rogo 🦏, Bambus 🐼
 - 🐺 **DotA creep aggro**: creepovi se biju s creepovima, siege vojnici ruše građevine, a napadneš li junaka — njegovi creepovi (i kula!) okreću se na tebe na 2.3 s
 - 🎯 **Indikatori moći**: lebdenje nad gumbom pokazuje domet i krug djelovanja, tooltipi pokazuju štetu za tvoj rang

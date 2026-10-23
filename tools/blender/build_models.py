@@ -2217,6 +2217,33 @@ def rotx(pt, deg):
 
 
 def build_projectiles():
+    # 🍌 banana (Skakač E) — zakrivljena, vrti se u letu
+    m = Model('proj_banana')
+    p = m.part('mesh')
+    pts = [(-0.32, 0, 0.12), (-0.18, 0, -0.04), (0.0, 0, -0.1), (0.18, 0, -0.04), (0.32, 0, 0.12)]
+    rr = [0.05, 0.09, 0.1, 0.09, 0.05]
+    for i in range(4):
+        p.cyl(pts[i], pts[i + 1], rr[i], rr[i + 1], '#facc15', seg=10, smooth=True)
+        p.sphere(pts[i + 1], rr[i + 1], '#fde047', seg=(10, 7))
+    p.sphere(pts[0], 0.05, '#facc15', seg=(8, 6))
+    p.cyl(pts[0], (-0.4, 0, 0.2), 0.03, 0.02, '#78350f', seg=6)        # peteljka
+    p.sphere((0.33, 0, 0.13), 0.035, '#78350f', seg=(6, 4))
+    for i in range(3):   # smeđe pjegice
+        p.sphere((-0.1 + i * 0.1, -0.09, -0.06), 0.015, '#a16207', seg=(6, 4))
+    m.finish()
+    # 🕸️ lovačka mreža (Strijela W) — kolut od užeta s paukovim nitima, leti plosnato
+    m = Model('proj_net')
+    p = m.part('mesh')
+    for rad in (0.42, 0.28, 0.14):
+        p.arc((0, 0, 0), rad, 0, 360, 16, 0.012, '#f5f5f4', plane='xy', seg=4)
+    for k in range(8):
+        a = RAD(k * 45)
+        p.cyl((0, 0, 0), (math.cos(a) * 0.44, math.sin(a) * 0.44, 0), 0.01, 0.01, '#e7e5e4', seg=4)
+    for k in range(6):   # utezi na rubu
+        a = RAD(k * 60 + 15)
+        p.sphere((math.cos(a) * 0.44, math.sin(a) * 0.44, 0), 0.04, '#78716c', seg=(8, 6))
+    p.arc((0, 0, 0), 0.44, 0, 360, 18, 0.02, '#a16207', plane='xy', seg=5)
+    m.finish()
     # duga (Duga: Dugin snop i auto-napadi) — luk u ravnini okomitoj na let, sjaji
     m = Model('proj_rainbow')
     p = m.part('mesh')
