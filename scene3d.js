@@ -1931,7 +1931,7 @@ function syncProj(p, g, tAnim, dt){
       case 'proj_slime': m.rotation.z += dt * 8; break;
       case 'proj_bolt': m.rotation.x += dt * 12; break;
       case 'proj_banana': m.rotation.y += dt * 16; break;                  // banana se vrti
-      case 'proj_net': m.rotation.z += dt * 6; m.position.y = -10; break;    // mreža se okreće plosnato
+      case 'proj_net': m.rotation.y += dt * 6; m.position.y = -10; break;    // mreža se okreće plosnato
     }
     const tr = PROJ_TRAIL[ud.name];
     if(tr && tr.length && seenProj(p) && Math.random() < 0.9){
