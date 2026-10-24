@@ -9,7 +9,8 @@
   html,body{ width:100%; height:100%; overflow:hidden; background:#16331f;
     font-family:"Comic Sans MS","Segoe UI",cursive,sans-serif; }
   #game{ position:fixed; inset:0; width:100%; height:100%; display:block; z-index:1; }
-  #hud{ position:fixed; inset:0; z-index:4; display:block; cursor:crosshair; }
+  #hud{ position:fixed; inset:0; z-index:4; display:block; cursor:crosshair; touch-action:none; -webkit-touch-callout:none; }
+  html, body{ overscroll-behavior:none; }
 
   .hidden{ display:none !important; }
 
@@ -249,6 +250,27 @@
   .pauseBox{ font-size:52px; font-weight:bold; color:#fde047; text-shadow:0 4px 14px rgba(0,0,0,.6); line-height:1.4; }
   .pauseBox small{ font-size:20px; color:#d1fae5; }
 
+  /* ---------- postavke ---------- */
+  #options{ background:rgba(8,12,18,.72); z-index:30; }
+  .optBox{ background:linear-gradient(180deg, rgba(30,36,46,.98), rgba(12,15,21,.98)); border:2px solid #6b5a35; border-radius:14px;
+    padding:20px 26px; width:min(460px, calc(100vw - 32px)); color:#e5e7eb; box-shadow:0 14px 40px rgba(0,0,0,.6); text-align:left; }
+  .optBox h2{ text-align:center; color:#f3d48a; margin-bottom:12px; text-shadow:0 2px 4px #000; }
+  .optRow{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,.07); font-size:15px; }
+  .optCtl{ display:flex; align-items:center; gap:8px; }
+  .optCtl input{ width:150px; accent-color:#f59e0b; }
+  .optCtl b{ width:42px; text-align:right; color:#fde047; }
+  .optSeg{ display:flex; gap:3px; }
+  .optSeg button, .optTog{ font-family:inherit; font-size:13px; font-weight:bold; border:1px solid #4b5563; border-radius:8px; padding:6px 10px;
+    background:#1c2029; color:#9ca3af; cursor:pointer; }
+  .optSeg button.on{ background:linear-gradient(180deg, #4a3d22, #2a2316); color:#f3d48a; border-color:#a37f3c; }
+  .optTog{ min-width:122px; }
+  .optTog.on{ color:#bbf7d0; border-color:#16a34a; background:#14261a; }
+  .optHint{ margin:12px 0 4px; font-size:12.5px; color:#9ca3af; line-height:1.6; }
+  .optBtns{ display:flex; gap:10px; justify-content:center; margin-top:12px; flex-wrap:wrap; }
+  .optBtns button{ font-family:inherit; font-size:16px; font-weight:bold; border:none; border-radius:11px; padding:9px 20px; cursor:pointer; }
+  #optResume{ background:#f59e0b; color:#fff; box-shadow:0 4px 0 #b45309; }
+  #optQuit{ background:#334155; color:#e5e7eb; box-shadow:0 4px 0 #1e293b; }
+
   /* ---------- kraj igre ---------- */
   #end{ background:rgba(8,28,21,.8); }   /* prozirnije: iza se vidi pobjednički ples junaka */
   #endEmoji{ font-size:56px; }
@@ -375,6 +397,21 @@
 <!-- PAUZA -->
 <div id="pause" class="overlay hidden">
   <div class="pauseBox">⏸️ PAUZA<br><small>Pritisni P za nastavak</small></div>
+</div>
+
+<!-- POSTAVKE (⚙️ gumb gore desno ili Esc) -->
+<div id="options" class="overlay hidden">
+  <div class="optBox">
+    <h2>⚙️ Postavke</h2>
+    <div class="optRow"><span>🔊 Glasnoća</span><span class="optCtl"><input id="optVol" type="range" min="0" max="100" step="5"><b id="optVolV"></b></span></div>
+    <div class="optRow"><span>🎵 Zvuk</span><button class="optTog" id="optMute"></button></div>
+    <div class="optRow"><span>🖼️ Kvaliteta slike</span><span class="optSeg" id="optQ"><button data-q="low">Niska</button><button data-q="med">Srednja</button><button data-q="high">Visoka</button></span></div>
+    <div class="optRow"><span>✨ Efekti (sjaj, boje)</span><button class="optTog" id="optPost"></button></div>
+    <div class="optRow" id="optEdgeRow"><span>🖱️ Kamera uz rub ekrana</span><button class="optTog" id="optEdge"></button></div>
+    <div class="optRow"><span>💥 Brojevi štete</span><button class="optTog" id="optDmg"></button></div>
+    <p class="optHint">Igra trza? Stavi kvalitetu na <b>Niska</b> i isključi efekte.<br>👆 Tablet: dodir = hodaj/napadni, povuci prstom = kamera, dva prsta = zum.</p>
+    <div class="optBtns"><button id="optResume">▶️ Nastavi</button><button id="optQuit">🏠 Izlaz u izbornik</button></div>
+  </div>
 </div>
 
 <!-- KRAJ IGRE -->

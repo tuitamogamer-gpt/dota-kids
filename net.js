@@ -549,7 +549,7 @@ function resetMatchState(){
   wards = []; nightForceT = 0; superCreeps = [{}, {}]; winnerTeam = null; barracksRespawn = [];
   glyph = [{ t: 0, cd: 0 }, { t: 0, cd: 0 }];
   makeShrines(); makeCouriers(); creepTier = 0; bossKills = 0; coinDrops = [];
-  teamDrakes = [[], []]; nextDrake = null;
+  teamDrakes = [[], []]; nextDrake = null; scoreOpen = false;
   neutralDrops = [{ 1: 0, 2: 0, 3: 0 }, { 1: 0, 2: 0, 3: 0 }]; neutralFx = [];
   resetExtraRunes(); pings = []; chatOpen = false;
   pendingCast = null;
