@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.26: zmajčići na rijeci s trajnim bonusima za tim, igranje na tabletu (dodir, povlačenje, zum s dva prsta) i izbornik postavki (glasnoća, kvaliteta slike, kamera uz rub ekrana)!** 🐉👆⚙️
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.27: novi dizajn — četiri prava zmajčića, nove kule s lebdećim kristalima, Sentinelov prijestol "Drvo života", popločani trgovi u bazama i rub mape bez šava!** 🎨🐉🏰 (v0.26: zmajčići, igranje na tabletu, postavke)
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -18,6 +18,16 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- 🎨 **Dizajn i 3D modeli** (v0.27):
+  - 🐉 **četiri prava zmajčića** iz Blendera umjesto prebojanog Velikog Zmaja: 🔥 vatreni (plamen na leđima, žar na obrazima), 💧 vodeni (leđna peraja, peraje na glavi, mjehurići), ⚡ olujni (krijesta od munja, svjetleći rogovi), 🌿 šumski (lišće, cvjetići i mahovina); oko svakog lete čestice njegovog elementa
+  - 🏰 **nove kule**: topli tamniji kamen (više se ne "ispere" u bijelo), stepenasto postolje s potpornjima, zastave tima sprijeda, zupci na konzolama i **veliki lebdeći kristal** u zlatnoj kruni umjesto krova (kod Scourgea u koštanim kandžama, s ljubičastim runama); kule su malo veće
+  - 🌳 **Sentinelov prijestol "Drvo života"**: kameni podij sa zlatnim rubom i stubama, stupovi sa zlatnim kapitelima, deblo s korijenjem i tri grane koje drže kristal, krošnje sa svjetlećim plodovima
+  - 🛡️ **štit prijestola** dok čuvarske kule stoje: svijetli samo rub kupole (prije je bijela izmaglica skrivala prijestol)
+  - 🏛️ **popločani trg** oko prijestola i fontane (svijetli kamen i zlatni ukrasi za Sentinel, tamne ploče i ljubičaste rune za Scourge) umjesto ravnih prozirnih krugova; rub trga se gubi u travi
+  - 🗺️ **rub mape bez šava**: tlo izvan mape uzima boju terena i polako prelazi u šumu i stijene (prije oštra crta i taman pojas)
+  - ⛲ fontane opet pokazuju vodu (prsten u boji tima više ne prekriva bazen), podij prijestola bez ružičastog/plavog diska, mekše podloge kampova
+  - 🦁 junaci su malo veći (lakše ih je vidjeti na tabletu)
 
 - 🐉 **Zmajčići, tablet i postavke** (v0.26):
   - 🐉 **zmajčići na rijeci** (dolje desno, umjesto Mede Brunde): 🔥 *Vatreni* (+6% štete), 💧 *Vodeni* (+3 obnove života i +1,5 mane), ⚡ *Olujni* (+5% brzine), 🌿 *Šumski* (+3 oklopa) — tim koji ubije zmajčića dobiva **trajni bonus za sve junake** i bonusi se zbrajaju; novi zmajčić (drugog elementa) dolazi nakon 2,5 min. Vide se na minimapi u boji elementa, u traci buffova (×2, ×3…) i u tablici; botovi ih love u paru od 5. minute

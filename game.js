@@ -3181,10 +3181,18 @@ function buildTerrain(){
     t.stroke();
   }
 
-  // podloge kampova
+  // podloge kampova: utabana zemlja s mekim rubom
   for(const c of CAMP_SPOTS){
-    t.fillStyle = 'rgba(146,100,47,0.25)';
-    t.beginPath(); t.arc(c.x, c.y, c.type === 'boss' ? 160 : 110, 0, TAU); t.fill();
+    const r = c.type === 'boss' || c.type === 'drake' ? 175 : 120;
+    const g = t.createRadialGradient(c.x, c.y, r * 0.2, c.x, c.y, r);
+    g.addColorStop(0, 'rgba(140,98,52,0.34)'); g.addColorStop(0.65, 'rgba(140,98,52,0.2)'); g.addColorStop(1, 'rgba(140,98,52,0)');
+    t.fillStyle = g;
+    t.beginPath(); t.arc(c.x, c.y, r, 0, TAU); t.fill();
+    for(let i = 0; i < 9; i++){   // kamenčići
+      const a = rand(0, TAU), d = rand(20, r * 0.8);
+      t.fillStyle = Math.random() < 0.5 ? 'rgba(120,110,96,0.45)' : 'rgba(170,160,140,0.4)';
+      t.beginPath(); t.ellipse(c.x + Math.cos(a) * d, c.y + Math.sin(a) * d, rand(4, 9), rand(3, 6), a, 0, TAU); t.fill();
+    }
   }
 
   // ☠️ Scourge strana (gore desno): zemlja gubi boju, tamni i dobiva ljubičaste mrlje — prijelaz počinje uz rijeku
@@ -3208,23 +3216,60 @@ function buildTerrain(){
     t.restore();
   }
 
-  // baze (platoi)
+  // baze: popločani trg oko prijestola i fontane (rub se gubi u travi)
   for(let team = 0; team < 2; team++){
-    const a = ANCIENT_POS[team];
-    t.fillStyle = team === TEAM_BLUE ? 'rgba(59,130,246,0.22)' : 'rgba(76,29,58,0.32)';
-    t.beginPath(); t.arc(a.x, a.y, 460 * MAP_S, 0, TAU); t.fill();
-    t.fillStyle = team === TEAM_BLUE ? 'rgba(59,130,246,0.3)' : 'rgba(127,29,29,0.3)';
-    t.beginPath(); t.arc(a.x, a.y, 260 * MAP_S, 0, TAU); t.fill();
-    const f = FOUNTAIN[team];
-    t.fillStyle = 'rgba(214,203,181,0.55)';
-    t.beginPath(); t.arc(f.x, f.y, 150, 0, TAU); t.fill();
+    const a = ANCIENT_POS[team], f = FOUNTAIN[team];
+    paintPlaza(t, a.x, a.y, 330 * MAP_S, team, true);
+    paintPlaza(t, f.x, f.y, 190, team, false);
   }
 
-  t.strokeStyle = '#3f6b2a';
-  t.lineWidth = 40;
-  t.strokeRect(0, 0, WORLD, WORLD);
+  // sjena šume uz rub mape: teren se mekano utapa u tlo izvan mape (bez oštre crte)
+  const EW = 220;
+  for(const [x0, y0, x1, y1] of [[0, 0, EW, 0], [WORLD, 0, WORLD - EW, 0], [0, 0, 0, EW], [0, WORLD, 0, WORLD - EW]]){
+    const g = t.createLinearGradient(x0, y0, x1, y1);
+    g.addColorStop(0, 'rgba(28,46,22,0.42)'); g.addColorStop(1, 'rgba(28,46,22,0)');
+    t.fillStyle = g;
+    t.fillRect(0, 0, WORLD, WORLD);
+  }
 
   setGround(terrainCanvas);
+}
+/* 🏛️ kameni trg: ploče u krugovima (Sentinel svijetli kamen i zlatni ukras, Scourge tamni kamen i ljubičaste rune) */
+function paintPlaza(t, cx, cy, R, team, rune){
+  const light = team === TEAM_BLUE;
+  const base = light ? [140, 130, 108] : [62, 52, 70];
+  const g = t.createRadialGradient(cx, cy, R * 0.45, cx, cy, R);
+  g.addColorStop(0, `rgba(${base},0.6)`); g.addColorStop(0.7, `rgba(${base},0.35)`); g.addColorStop(1, `rgba(${base},0)`);
+  t.fillStyle = g;
+  t.beginPath(); t.arc(cx, cy, R, 0, TAU); t.fill();
+  const step = 32;
+  for(let r = 26, ring = 0; r < R * 0.95; r += step, ring++){
+    const fade = 1 - smoothstep(R * 0.55, R * 0.95, r);
+    const n = Math.max(6, Math.round(TAU * r / 44));
+    for(let k = 0; k < n; k++){
+      if(Math.random() < 0.04 + 0.5 * (1 - fade)) continue;   // na rubu ploče nedostaju — trg se gubi u travi
+      const a0 = (k + (ring % 2) * 0.5) / n * TAU, a1 = a0 + TAU / n * 0.92;
+      const v = (Math.random() - 0.5) * 26;
+      t.fillStyle = `rgba(${base.map(c => Math.round(clamp(c + v + 6, 0, 255)))},${((light ? 0.6 : 0.85) * fade).toFixed(3)})`;
+      t.beginPath(); t.arc(cx, cy, r + step / 2 - 2, a0, a1); t.arc(cx, cy, r - step / 2 + 2, a1, a0, true); t.closePath(); t.fill();
+      t.strokeStyle = `rgba(30,24,20,${(0.22 * fade).toFixed(3)})`; t.lineWidth = 2; t.stroke();
+    }
+  }
+  if(!rune) return;
+  // ukrasni prsten oko prijestola
+  t.lineWidth = 10;
+  t.strokeStyle = light ? 'rgba(234,191,98,0.7)' : 'rgba(168,85,247,0.55)';
+  t.beginPath(); t.arc(cx, cy, R * 0.5, 0, TAU); t.stroke();
+  t.lineWidth = 4;
+  t.beginPath(); t.arc(cx, cy, R * 0.5 + 16, 0, TAU); t.stroke();
+  for(let k = 0; k < 12; k++){   // znakovi u prstenu
+    const a = k / 12 * TAU, x = cx + Math.cos(a) * (R * 0.5 + 8), y = cy + Math.sin(a) * (R * 0.5 + 8);
+    t.fillStyle = light ? 'rgba(250,215,120,0.85)' : 'rgba(192,132,252,0.8)';
+    t.beginPath();
+    if(light){ t.arc(x, y, 9, 0, TAU); }   // zlatni čavli
+    else { t.moveTo(x + Math.cos(a) * 12, y + Math.sin(a) * 12); t.lineTo(x + Math.cos(a + 1.6) * 8, y + Math.sin(a + 1.6) * 8); t.lineTo(x - Math.cos(a) * 12, y - Math.sin(a) * 12); t.lineTo(x + Math.cos(a - 1.6) * 8, y + Math.sin(a - 1.6) * 8); t.closePath(); }   // rune
+    t.fill();
+  }
 }
 
 function makeWorld(){
@@ -4021,11 +4066,11 @@ function drawHeroBar(u, cx, cy){
   ctx.fillText(u.level, lx + 8.5, y + (h + 5) / 2);
 }
 function barHeight(u){
-  if(u.kind === 'hero') return 102;
+  if(u.kind === 'hero') return 110;
   if(u.kind === 'barracks') return 150;
   if(u.kind === 'creep') return u.siege ? 72 : 62;
   if(u.kind === 'neutral') return u.boss ? 150 : (u.drake ? 118 : u.r * 2.4 + 22);
-  if(u.kind === 'tower') return 172;
+  if(u.kind === 'tower') return 196;
   return 185;
 }
 

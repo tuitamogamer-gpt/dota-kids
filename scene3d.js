@@ -54,9 +54,10 @@ const DAY_SKY = { day: null, night: null, sunDay: null, sunNight: null };
 
 /* ---------- veličine Blender modela u jedinicama igre ---------- */
 const MODEL_SCALE = {
-  hero: 46, creep_melee: 34, creep_ranged: 32, creep_siege: 40,
-  tower: 32, ancient: 48, fountain: 42,
+  hero: 50, creep_melee: 34, creep_ranged: 32, creep_siege: 40,
+  tower: 35, ancient: 48, fountain: 42,
 };
+const TOWER_CRYSTAL_Z = 3.75;   // visina kristala na kuli (u jedinicama modela; tools/blender: TOWER_CRYSTAL_Z)
 
 /* ================= Blender modeli (GLB) ================= */
 const MODELS = { ready: false, failed: false, tpl: {}, clips: {}, merged: {}, waiting: [] };
@@ -867,12 +868,56 @@ function buildBorderLand(){
   }
   geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
   geo.computeVertexNormals();
+  // normale iz vidljive visine (bez skrivenog rova ispod terena) — inače je pojas uz rub mape taman
+  const nrm = geo.attributes.normal, vis = (x, y) => (x >= 0 && y >= 0 && x <= WORLD && y <= WORLD) ? groundHeight(x, y) : borderHeight(x, y), e = 40, nv = new THREE.Vector3();
+  for(let i = 0; i < pos.count; i++){
+    const x = WORLD / 2 + pos.getX(i), y = WORLD / 2 + pos.getZ(i);
+    nv.set(vis(x - e, y) - vis(x + e, y), 2 * e, vis(x, y - e) - vis(x, y + e)).normalize();
+    nrm.setXYZ(i, nv.x, nv.y, nv.z);
+  }
   const landMat = new THREE.MeshLambertMaterial({ vertexColors: true });
   addCloudShadows(landMat);
   const land = new THREE.Mesh(geo, landMat);
   land.position.set(WORLD / 2, 0, WORLD / 2);
   land.receiveShadow = true;
   scene3.add(land);
+  borderLand = land;
+}
+/* rub mape bez šava: tlo izvan mape uz rub uzima boju terena (zamućenu), dalje prelazi u šumu i stijene */
+let borderLand = null;
+function tintBorderLand(terrainCv){
+  if(!borderLand) return;
+  const N = 128, cv = document.createElement('canvas');
+  cv.width = cv.height = N;
+  const c2 = cv.getContext('2d', { willReadFrequently: true });
+  c2.drawImage(terrainCv, 0, 0, N, N);
+  const raw = c2.getImageData(0, 0, N, N).data, px = new Float32Array(N * N * 4);
+  for(let y = 0; y < N; y++) for(let x = 0; x < N; x++){   // prosjek 5×5 (bez crnog ruba koji daje filter zamućenja)
+    let r = 0, g = 0, b = 0, n = 0;
+    for(let dy = -2; dy <= 2; dy++) for(let dx = -2; dx <= 2; dx++){
+      const xx = clamp(x + dx, 0, N - 1), yy = clamp(y + dy, 0, N - 1), k = (yy * N + xx) * 4;
+      r += raw[k]; g += raw[k + 1]; b += raw[k + 2]; n++;
+    }
+    const k = (y * N + x) * 4;
+    px[k] = r / n; px[k + 1] = g / n; px[k + 2] = b / n;
+  }
+  const geo = borderLand.geometry, pos = geo.attributes.position, col = geo.attributes.color;
+  const cForest = new THREE.Color('#2f5726'), cRock = new THREE.Color('#77706a'), cSnow = new THREE.Color('#d9dde3'),
+    cDire = new THREE.Color('#3b3045'), tmp = new THREE.Color();
+  for(let i = 0; i < pos.count; i++){
+    const x = WORLD / 2 + pos.getX(i), y = WORLD / 2 + pos.getZ(i);
+    const cx = clamp(x, 0, WORLD), cy = clamp(y, 0, WORLD), d = Math.hypot(x - cx, y - cy);
+    const ix = Math.min(N - 1, Math.floor(cx / WORLD * N)), iy = Math.min(N - 1, Math.floor(cy / WORLD * N)), k = (iy * N + ix) * 4;
+    tmp.setRGB(px[k] / 255, px[k + 1] / 255, px[k + 2] / 255);
+    if(tmp.convertSRGBToLinear) tmp.convertSRGBToLinear();
+    const sd = (x - y) / Math.SQRT2;
+    tmp.lerp(sd > 0 ? cDire : cForest, smoothstep(60, 800, d) * (sd > 0 ? 0.35 : 0.6)).lerp(cRock, smoothstep(700, 1500, d) * 0.8);
+    const h = pos.getY(i);
+    if(h > 520) tmp.lerp(cSnow, smoothstep(520, 700, h) * 0.8);
+    tmp.multiplyScalar(0.94 + 0.12 * hash01(Math.round(x / 37), Math.round(y / 37), 3));
+    col.setXYZ(i, tmp.r, tmp.g, tmp.b);
+  }
+  col.needsUpdate = true;
 }
 
 /* ---------- teren s VISINAMA ---------- */
@@ -905,6 +950,7 @@ function setGround(terrainCv){
   groundMesh.position.set(WORLD / 2, 0, WORLD / 2);
   groundMesh.receiveShadow = true;
   scene3.add(groundMesh);
+  tintBorderLand(terrainCv);
 
   // magla rata: prozirni tamni pokrov preko terena (ista geometrija)
   if(fogDrape){ scene3.remove(fogDrape); fogDrape.material.dispose(); }
@@ -1526,6 +1572,14 @@ function fxSpawn(x, y, h, color, o){
     g: o.grav != null ? o.grav : -20, t: 0, life: o.life || (0.4 + Math.random() * 0.4),
     c: fxColor(color), size: (o.size || 14) * (0.7 + Math.random() * 0.6) });
 }
+/* 🐉 aura zmajčića: vatreni žar se diže, vodene kapljice padaju, olujne iskre frcaju, šumsko lišće lebdi */
+function drakeAura(el, x, y, gh){
+  const a = Math.random() * TAU, r = 20 + Math.random() * 45, px = x + Math.cos(a) * r, py = y + Math.sin(a) * r;
+  if(el === 'fire') fxSpawn(px, py, gh + 20 + Math.random() * 40, Math.random() < 0.5 ? '#fb923c' : '#fde047', { spd: 8, up: 70 + Math.random() * 40, grav: 10, life: 0.9, size: 15 });
+  else if(el === 'water') fxSpawn(px, py, gh + 60 + Math.random() * 40, Math.random() < 0.6 ? '#67e8f9' : '#e0f2fe', { spd: 6, up: 10, grav: -90, life: 0.8, size: 12 });
+  else if(el === 'storm') fxSpawn(px, py, gh + 30 + Math.random() * 60, Math.random() < 0.6 ? '#fde047' : '#c4b5fd', { spd: 90, up: 20, grav: 0, life: 0.25, size: 13 });
+  else fxSpawn(px, py, gh + 50 + Math.random() * 40, Math.random() < 0.6 ? '#84cc16' : '#bef264', { spd: 18, up: -12, grav: 4, life: 1.4, size: 14 });
+}
 function updateFx(dt){
   let n = 0;
   const P = fx.pos, C = fx.col, S = fx.size, A = fx.alpha;
@@ -1895,10 +1949,12 @@ function buildNeutralMesh(u){
   const g = new THREE.Group();
   const key = u.campType || (u.camp && u.camp.type) || 'boars';
   const ct = CAMP_TYPES[key] || {};
-  if(MODELS.ready && addModel(g, 'mob_' + (ct.model || key), TEAM_NEUTRAL, u.r * 2.2)){
-    const dk = u.drake && DRAKES[u.drake];
+  const dk = u.drake && DRAKES[u.drake];
+  const own = dk && MODELS.tpl['mob_drake_' + u.drake];   // 🐉 vlastiti model zmajčića za svaki element
+  if(MODELS.ready && addModel(g, own ? 'mob_drake_' + u.drake : 'mob_' + (ct.model || key), TEAM_NEUTRAL, u.r * 2.2)){
     if(ct.look) g.userData.baseLook = ct.look;   // 🔵 plavi golem / 🔴 vatreni vuk: obojeni model
-    if(dk) g.userData.baseLook = dk.look;         // 🐉 zmajčić u boji elementa
+    if(dk && !own) g.userData.baseLook = dk.look; // stari GLB bez zmajčića: obojeni Veliki Zmaj
+    if(dk) g.userData.drakeEl = u.drake;
     if(ct.buff || dk){   // svjetleći krug ispod čudovišta s buffom / zmajčića
       const col = dk ? dk.color : JUNGLE_BUFFS[ct.buff].color;
       const ring = new THREE.Mesh(new THREE.RingGeometry(u.r + 22, u.r + 30, 40),
@@ -1946,7 +2002,7 @@ function buildTowerMesh(u){
       g.userData.model = m;
       const glow = new THREE.Sprite(glowMat(TEAM_LIGHT[u.team]).clone());   // vlastiti materijal: svaka kula pulsira zasebno
       glow.scale.set(90, 90, 1);
-      glow.position.y = 3.3 * MODEL_SCALE.tower;
+      glow.position.y = TOWER_CRYSTAL_Z * MODEL_SCALE.tower;
       g.add(glow);
       g.userData.glow = glow;
       return g;
@@ -1989,10 +2045,20 @@ function buildAncientMesh(u){
     ud.crystal = crystal;
     ud.crystalY = 86;
   }
+  // 🛡️ štit dok čuvarske kule stoje: svijetli samo rub kupole (fresnel), sredina ostaje prozirna — prijestol se jasno vidi
   const shield = new THREE.Mesh(
-    cachedGeo('ancShield', () => new THREE.SphereGeometry(115, 20, 14)),
-    new THREE.MeshBasicMaterial({ color: TEAM_LIGHT[u.team], transparent: true, opacity: 0.09, depthWrite: false,
-      blending: THREE.AdditiveBlending }));
+    cachedGeo('ancShield', () => new THREE.SphereGeometry(115, 28, 18)),
+    new THREE.ShaderMaterial({
+      uniforms: { col: { value: new THREE.Color(TEAM_LIGHT[u.team]) }, amp: { value: 0.5 }, t: { value: 0 } },
+      vertexShader: 'varying vec3 vN; varying vec3 vV; varying float vY;\n' +
+        'void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); vY = position.y;\n' +
+        '  gl_Position = projectionMatrix * mv; }',
+      fragmentShader: 'uniform vec3 col; uniform float amp; uniform float t; varying vec3 vN; varying vec3 vV; varying float vY;\n' +
+        'void main(){ float f = pow(1.0 - abs(dot(vN, vV)), 2.2);\n' +
+        '  float band = 0.5 + 0.5 * sin(vY * 0.12 - t * 3.0);\n' +
+        '  float a = amp * (f * 0.9 + band * f * 0.35);\n' +
+        '  gl_FragColor = vec4(col * a, a); }',
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
   shield.position.y = 60;
   g.add(shield);
   ud.shield = shield;
@@ -2265,7 +2331,7 @@ function buildProjMesh(p){
   ud.sx = p.sx != null ? p.sx : (p.src ? p.src.x : p.x);
   ud.sy = p.sy != null ? p.sy : (p.src ? p.src.y : p.y);
   const sk = p.src ? p.src.kind : (p.shot === 'tower' ? 'tower' : 'hero');
-  ud.h0 = sk === 'tower' ? 3.3 * MODEL_SCALE.tower : (sk === 'hero' ? 52 : 40);
+  ud.h0 = sk === 'tower' ? TOWER_CRYSTAL_Z * MODEL_SCALE.tower : (sk === 'hero' ? 52 : 40);
   ud.arc = (name === 'proj_arrow' || name === 'proj_feather' || name === 'proj_acorn') && !p.emoji ? 70 : 0;
   ud.lastH = null;
   g.position.set(p.x, groundHeight(p.x, p.y) + 34, p.y);
@@ -2558,7 +2624,7 @@ function startDying(u, g, now){
   if(bldg && MODELS.ready){   // rušenje: krhotine kamena, oblak prašine, kristal se rasprsne
     fxDebris(u.team === TEAM_RED ? 'cliff_d0' : 'rock1', x, y, h + 60, 18, { scale: u.team === TEAM_RED ? 14 : 22, speed: 300, spread: 120, life: 1.8 });
     for(let i = 0; i < 30; i++) fxSpawn(x + (Math.random() - 0.5) * 80, y + (Math.random() - 0.5) * 80, h + 10 + Math.random() * 60, i % 3 ? '#a8a29e' : '#d6cbb5', { spd: 70, up: 50, grav: -5, life: 2.2, size: 70 });
-    if(kind === 'tower') shatterFx(x, y, h + 3.3 * MODEL_SCALE.tower, u.team, 8);
+    if(kind === 'tower') shatterFx(x, y, h + TOWER_CRYSTAL_Z * MODEL_SCALE.tower, u.team, 8);
     spellLight(x, y, h + 80, '#ffb347', 3, 0.6, 600);
   }
   const c = bldg ? '#d6cbb5' : '#e5e7eb';
@@ -3370,7 +3436,7 @@ function syncScene(tAnim){
         if(ch){ ud.statusSpr.material.map = makeEmojiTexture(ch); ud.statusSpr.material.needsUpdate = true; }
         ud.statusSpr.visible = !!ch;
       }
-      if(ud.statusSpr.visible) ud.statusSpr.position.y = 88 + Math.sin(tAnim * 6) * 4;
+      if(ud.statusSpr.visible) ud.statusSpr.position.y = 94 + Math.sin(tAnim * 6) * 4;
       const invis = u.status.invisT > 0;
       if(ud.model){
         const st = u.status;
@@ -3423,6 +3489,7 @@ function syncScene(tAnim){
       if(ud.model){
         setModelLook(ud.model, u.flash > 0 ? 'f' : (u.status.slowT > 0 ? 'c' : (u.status.poisonT > 0 ? 'p' : (ud.baseLook || 'n'))));
         if(ud.buffRing){ ud.buffRing.rotation.z = tAnim * 0.8; if(Math.random() < dt * 8) fxSpawn(u.x + (Math.random() - 0.5) * 50, u.y + (Math.random() - 0.5) * 50, gh + 10, ud.buffRing.material.color.getStyle(), { spd: 6, up: 50, grav: 0, life: 0.8, size: 16 }); }
+        if(ud.drakeEl && Math.random() < dt * 10) drakeAura(ud.drakeEl, u.x, u.y, gh);
         animateUnit(u, g, tAnim, dt);
         syncStatusFx(u, g, tAnim, dt, u.r * 2.4 + 18);
         if(u.kind === 'neutral') syncSteps(u, g, dt);
@@ -3441,6 +3508,8 @@ function syncScene(tAnim){
       if(ud.shield.visible){
         const s = 1 + Math.sin(tAnim * 3) * 0.03;
         ud.shield.scale.set(s, s, s);
+        const su = ud.shield.material.uniforms;
+        if(su){ su.t.value = tAnim; su.amp.value = 0.55 + (u.flash > 0 ? 0.9 : 0); }   // udarac: štit bljesne
       }
       syncHitFx(u, g, 90, tAnim);
     }
@@ -3477,13 +3546,15 @@ function syncScene(tAnim){
         if((u.atkN || 0) !== ud.atkN){
           ud.atkN = u.atkN || 0;
           ud.flashT = tAnim;
-          for(let i = 0; i < 6; i++) fxSpawn(u.x, u.y, gh + 3.3 * MODEL_SCALE.tower, TEAM_LIGHT[u.team], { spd: 60, up: 40, grav: -30, life: 0.4, size: 20 });
+          for(let i = 0; i < 6; i++) fxSpawn(u.x, u.y, gh + TOWER_CRYSTAL_Z * MODEL_SCALE.tower, TEAM_LIGHT[u.team], { spd: 60, up: 40, grav: -30, life: 0.4, size: 20 });
         }
         // kristal pulsira dok kula puca (puls traje dok traje borba, ne samo trenutak hica)
         const fl = Math.max(0, 1 - (tAnim - (ud.flashT == null ? -9 : ud.flashT)) / 0.3);
         const busy = ud.flashT != null && tAnim - ud.flashT < 1.6;
         ud.pulse = (ud.pulse || 0) + ((busy ? 1 : 0) - (ud.pulse || 0)) * Math.min(1, dt * 4);
         if(cr){
+          if(cr.userData.y0 == null) cr.userData.y0 = cr.position.y;
+          cr.position.y = cr.userData.y0 + Math.sin(tAnim * 1.7 + u.id) * 0.06;   // kristal lagano lebdi
           cr.rotation.y = tAnim * (1.5 + ud.pulse * 2.5);
           cr.scale.setScalar(1 + fl * 0.4 + ud.pulse * 0.08 * (1 + Math.sin(tAnim * 9)));
         }
