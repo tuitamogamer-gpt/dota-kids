@@ -3948,7 +3948,7 @@ function screenToWorld(sx, sy, fast){
    stopala do vrha glave. Prije se gledala samo točka na tlu iza jedinice, pa je klik na glavu junaka
    promašio i junak je samo otišao onamo. */
 function unitHitShape(u){
-  const H = barHeight(u) * (u.kind === 'hero' ? 0.86 : 0.9);
+  const H = barHeight(u) * 0.95;   // do trake života: i klik na traku ili ime gađa jedinicu
   const R = u.kind === 'hero' ? Math.max(26, (u.r || 22) * 1.2) :
             u.kind === 'creep' ? Math.max(17, (u.r || 16) * 1.2) :
             isStructure(u) ? (u.r || 40) * 0.95 : Math.max(18, (u.r || 20) * 1.1);
