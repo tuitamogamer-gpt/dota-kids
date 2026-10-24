@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.28: živa džungla (bogatije drveće, grmlje, šumsko tlo), mekše svjetlo, Scourge vojnici-kosturi i pravi Vatreni vuk!** 🌳☠️🔥 (v0.27: zmajčići, nove kule, "Drvo života")
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.29: 3D modeli bliže LoL-u — "ručno oslikani" prijelazi, pravi sjajni metal, pregače, remenje, zakovice, amblemi i novi portreti!** 🎨⚔️✨ (v0.28: živa džungla, Scourge vojnici, Vatreni vuk)
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -18,6 +18,15 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- ⚔️ **3D modeli bliže League of Legendsu** (v0.29):
+  - 🎨 **"ručno oslikani" izgled svih modela** (kao teksture u LoL-u): uz pečenu okluziju svaki model dobiva prijelaz od tamnijeg podnožja prema svjetlijem vrhu, hladnije i zasićenije sjene, toplije svjetlo i blagi šum poteza kistom — sve u bojama vrhova, bez troška u igri
+  - ✨ **pravi metal**: zlato i čelik na junacima i zgradama (oklopi, naramenjaci, mačevi, štitovi, krune, zlatni lukovi kula) imaju vlastiti materijal sa sjajem i odsjajem okoline; noću odsijavaju slabije
+  - 🧥 **sekundarni detalji kao kod LoL junaka**: pregača (tabard) sprijeda i straga u tamnijoj boji tima sa zlatnim rubom i znakom, zlatne zakovice uz rub tunike, šavovi i dragulj u boji tima na pojasu, kožni remen preko prsa s okruglom zlatnom kopčom (pješaci, strijelci, borci s kandžama), zlatne ogrlice s draguljem za čarobnjake
+  - 🛡️ **oklopi i oružje**: slojeviti naramenjaci sa zakovicama, zlatni amblem-sunce na oklopu, čelične kapice i zlatni rubovi čizama, širi mač sa svjetlećom runom i većim križem, zakovice i zlatna zvijezda na štitu, dragulj na luku, čelične narukvice uz kandže, željezni obruč na batini, još jedna kost u krilima
+  - 🦁 **Lavkova griva** od šiljatih pramenova u dva prstena oko cijelog lica (prije mjehurići samo s jedne strane); čuperci krzna/perja na tjemenu Strijele, Munje, Majmuna, Vuka, Pande, Lune i Orline
+  - 💎 likovi imaju blagi sjaj (oslikani odsjaj), a kameni golem ostaje bez zlatnih ukrasa
+  - 🖼️ **novi portreti** 12 junaka iz Blendera na ekranu odabira (s novim detaljima)
 
 - 🌳 **Džungla, svjetlo i vojnici** (v0.28):
   - 🌲 **živa džungla**: drveće, grmlje i kamenje su mat (bez plastičnog odsjaja koji je krošnje činio bijelima), zelene boje su bogatije, krošnje malo veće, a uz stabla raste grmlje — šume izgledaju gušće; ispod stabala je tamnije šumsko tlo pa se šume odvajaju od svijetlih livada
