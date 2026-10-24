@@ -232,7 +232,7 @@ function heroExtras(h){
     nt: h.neutral ? h.neutral.id : 0,                                     // 🌰 neutralni predmet
   };
 }
-const CAMP_KEYS = ['boars', 'wolves', 'bear', 'boss', 'golem'];
+const CAMP_KEYS = Object.keys(CAMP_TYPES);   // isti data.js kod domaćina i gosta
 function buildSnapshot(){
   const us = [];
   for(const u of units){
@@ -266,7 +266,7 @@ function buildSnapshot(){
     else if(u.kind === 'creep'){ if(u.rangedCreep) b.rc = 1; if(u.siege) b.sg = 1; if(u.summonModel) b.sm = u.summonModel; if(u.superCreep) b.su = 1; }
     else if(u.kind === 'barracks'){ b.iv = u.invuln ? 1 : 0; b.ln = u.lane; }
     if(u.bdT != null && gameTime - u.bdT < 0.5) b.bd = 1;   // 🛡️ backdoor zaštita upravo radi
-    else if(u.kind === 'neutral'){ b.ct = CAMP_KEYS.indexOf(u.camp.type); }
+    else if(u.kind === 'neutral'){ b.ct = CAMP_KEYS.indexOf(u.camp.type); if(u.drake) b.dk = DRAKE_KEYS.indexOf(u.drake); }
     else if(u.kind === 'tower'){ if(u.isGuard) b.gd = 1; }
     else if(u.kind === 'ancient'){ b.iv = u.invuln ? 1 : 0; }
     us.push(b);
@@ -287,6 +287,7 @@ function buildSnapshot(){
     me: remoteHero ? heroExtras(remoteHero) : 0,
     nf: +nightForceT.toFixed(1),
     gl: [Math.round(glyph[0].t * 10), Math.round(glyph[0].cd), Math.round(glyph[1].t * 10), Math.round(glyph[1].cd)],
+    dr: teamDrakes.map(a => a.map(k => DRAKE_KEYS.indexOf(k)).join('')),   // 🐉
     sh: shrines.map(s => [Math.round(s.cd), +s.t.toFixed(1)]),
     xr: extraRunes.map(r => [r.x, r.y, r.kind === 'bounty' ? 0 : 1]),
     pg: pings.map(p => [Math.round(p.x), Math.round(p.y), p.team, +p.t.toFixed(2)]),
@@ -354,7 +355,8 @@ function makeGuestUnit(b){
     const key = CAMP_KEYS[b.ct] || 'boars';
     const ct = CAMP_TYPES[key];
     base.r = ct.r; base.emoji = ct.emoji; base.name = ct.name; base.boss = !!ct.boss;
-    base.campType = key;
+    base.campType = key; base.buff = ct.buff || null;
+    if(b.dk != null && DRAKE_KEYS[b.dk]){ base.drake = DRAKE_KEYS[b.dk]; base.name = DRAKES[base.drake].name; }
   }
   else if(b.k === 'tower'){ base.r = 38; base.isStatic = true; base.isGuard = !!b.gd; }
   else if(b.k === 'ancient'){ base.r = 56; base.isStatic = true; base.invuln = !!b.iv; }
@@ -465,6 +467,7 @@ function applySnapshot(d){
   banner = d.bn ? { txt: d.bn.tx, sub: d.bn.sb, t: d.bn.t, dur: d.bn.dr } : null;
   nightForceT = d.nf || 0;
   if(d.gl){ glyph[0].t = d.gl[0] / 10; glyph[0].cd = d.gl[1]; glyph[1].t = d.gl[2] / 10; glyph[1].cd = d.gl[3]; }
+  if(d.dr) teamDrakes = d.dr.map(s => [...s].map(c => DRAKE_KEYS[+c]).filter(Boolean));
   if(d.sh){ if(shrines.length !== d.sh.length) makeShrines(); d.sh.forEach((v, i) => { shrines[i].cd = v[0]; shrines[i].t = v[1]; }); }
   if(d.xr){   // 💰📘 isti objekti runa (3D model se gradi jednom)
     const old = extraRunes;
@@ -543,9 +546,10 @@ function resetMatchState(){
   kills = [0, 0];
   camps = []; runes = [];
   runeTimer = CFG.runeEvery; runeSpotI = 0; isNight = false;
-  wards = []; nightForceT = 0; superCreeps = [{}, {}]; winnerTeam = null;
+  wards = []; nightForceT = 0; superCreeps = [{}, {}]; winnerTeam = null; barracksRespawn = [];
   glyph = [{ t: 0, cd: 0 }, { t: 0, cd: 0 }];
   makeShrines(); makeCouriers(); creepTier = 0; bossKills = 0; coinDrops = [];
+  teamDrakes = [[], []]; nextDrake = null; scoreOpen = false;
   neutralDrops = [{ 1: 0, 2: 0, 3: 0 }, { 1: 0, 2: 0, 3: 0 }]; neutralFx = [];
   resetExtraRunes(); pings = []; chatOpen = false;
   pendingCast = null;

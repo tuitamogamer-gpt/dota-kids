@@ -47,6 +47,7 @@ const CFG = {
   inventorySlots: 6,
   campRespawn: 60,
   bossRespawn: 180,
+  drakeRespawn: 150,   // 🐉 novi zmajčić (novog elementa) nakon 2,5 min
   runeEvery: 120,
   dayCycle: 240,
   uphillMissChance: 0.25,
@@ -1849,6 +1850,15 @@ const JUNGLE_BUFFS = {
   blue: { emoji:'🔵', name:'Plavi buff', color:'#60a5fa', dur:90, desc:'+4 obnove mane i 15% kraće hlađenje moći' },
   red:  { emoji:'🔴', name:'Crveni buff', color:'#f87171', dur:90, desc:'udarci pale (8 + level štete/s, 3 s) i usporavaju 15% • +3 obnove života' },
 };
+/* 🐉 ZMAJČIĆI (kao zmajevi u League of Legends): na rijeci dolje desno živi zmajčić jednog elementa.
+   Tim koji ga ubije dobiva TRAJNI bonus za sve svoje junake — bonusi se zbrajaju! Novi dolazi nakon 2,5 min. */
+const DRAKES = {
+  fire:   { emoji:'🔥', name:'Vatreni zmajčić', acc:'vatrenog zmajčića', color:'#fb923c', look:'r', desc:'+6% štete junaka (udarci i moći)' },
+  water:  { emoji:'💧', name:'Vodeni zmajčić',  acc:'vodenog zmajčića',  color:'#38bdf8', look:'c', desc:'+3 obnove života i +1,5 obnove mane' },
+  storm:  { emoji:'⚡', name:'Olujni zmajčić',  acc:'olujnog zmajčića',  color:'#c084fc', look:'k', desc:'+5% brzine kretanja' },
+  forest: { emoji:'🌿', name:'Šumski zmajčić',  acc:'šumskog zmajčića',  color:'#4ade80', look:'p', desc:'+3 oklopa' },
+};
+const DRAKE_KEYS = ['fire', 'water', 'storm', 'forest'];
 /* botovi: po vrsti junaka */
 function botSummoners(def){
   if(def.build === BUILD_TANK) return ['flash', 'exhaust'];
@@ -1866,7 +1876,7 @@ const START_ITEMS = ['tango', 'branch', 'branch', 'potion', 'clarity'];
 const CAMP_TYPES = {
   boars:  { n:3, emoji:'🐗', name:'Veprić',      hp:340,  dmg:24, range:60, atkCd:1.2, speed:120, r:15, gold:34,  xp:40 },
   wolves: { n:2, emoji:'🐺', name:'Vuk',         hp:540,  dmg:34, range:65, atkCd:1.1, speed:135, r:17, gold:55,  xp:60 },
-  bear:   { n:1, emoji:'🐻', name:'Medo Brundo', hp:1000, dmg:52, range:75, atkCd:1.2, speed:115, r:22, gold:130, xp:130 },
+  drake:  { n:1, emoji:'🐉', name:'Zmajčić',     hp:1900, dmg:58, range:90, atkCd:1.3, speed:110, r:25, gold:150, xp:200, hpRegen:3, drake:true, model:'boss' },
   boss:   { n:1, emoji:'🐲', name:'Veliki Zmaj', hp:2600, dmg:78, range:95, atkCd:1.3, speed:110, r:34, gold:260, xp:300, boss:true, hpRegen:4 },
   golem:  { n:1, emoji:'🗿', name:'Plavi golem', hp:1500, dmg:62, range:85, atkCd:1.4, speed:100, r:27, gold:170, xp:170, stunHit:true, hpRegen:2, buff:'blue', look:'c' },
   redbuff:{ n:1, emoji:'🐺', name:'Vatreni vuk', hp:1150, dmg:52, range:70, atkCd:1.15, speed:130, r:25, gold:120, xp:130, hpRegen:2, buff:'red', look:'r', model:'wolves' },
@@ -1876,7 +1886,7 @@ const CAMP_SPOTS = [
   { x:1300, y:850,  type:'redbuff' },
   { x:2120, y:1700, type:'boars'  },
   { x:1700, y:2120, type:'redbuff' },
-  { x:2100, y:2100, type:'bear'   },
+  { x:2100, y:2100, type:'drake'  },
   { x:800,  y:800,  type:'boss'   },
   { x:500,  y:1800, type:'golem'  },
   { x:2500, y:1200, type:'golem'  },

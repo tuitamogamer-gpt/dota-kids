@@ -451,9 +451,35 @@ function initEnvironment(renderer, scene){
   } catch(e){ console.warn('Okolišno svjetlo nije dostupno', e); }
 }
 
+/* ⚙️ kvaliteta slike: niska = manja rezolucija i bez sjena (brže na tabletima),
+   srednja = sjene i rezolucija do 1.25×, visoka = puna rezolucija (do 2×) */
+let quality3 = 'high';
+function qualityPixelRatio(){
+  const dpr = window.devicePixelRatio || 1;
+  return quality3 === 'low' ? Math.min(dpr, 1) * 0.75 : (quality3 === 'med' ? Math.min(dpr, 1.25) : Math.min(dpr, 2));
+}
+function setQuality3D(q){
+  quality3 = q;
+  if(!renderer3) return;
+  const sh = q !== 'low';
+  if(renderer3.shadowMap.enabled !== sh){
+    renderer3.shadowMap.enabled = sh;
+    sunLight.castShadow = sh;
+    scene3.traverse(o => {   // materijali se moraju ponovno složiti sa/bez sjena
+      if(!o.material) return;
+      for(const m of Array.isArray(o.material) ? o.material : [o.material]) m.needsUpdate = true;
+    });
+  }
+  const ms = q === 'high' ? 2048 : 1024;
+  if(sunLight.shadow.mapSize.x !== ms){
+    sunLight.shadow.mapSize.set(ms, ms);
+    if(sunLight.shadow.map){ sunLight.shadow.map.dispose(); sunLight.shadow.map = null; }
+  }
+  resize3D();
+}
 function resize3D(){
   if(!renderer3) return;
-  renderer3.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer3.setPixelRatio(qualityPixelRatio());
   renderer3.setSize(VW, VH, false);
   camera3.aspect = VW / VH;
   camera3.updateProjectionMatrix();
@@ -1870,9 +1896,11 @@ function buildNeutralMesh(u){
   const key = u.campType || (u.camp && u.camp.type) || 'boars';
   const ct = CAMP_TYPES[key] || {};
   if(MODELS.ready && addModel(g, 'mob_' + (ct.model || key), TEAM_NEUTRAL, u.r * 2.2)){
+    const dk = u.drake && DRAKES[u.drake];
     if(ct.look) g.userData.baseLook = ct.look;   // 🔵 plavi golem / 🔴 vatreni vuk: obojeni model
-    if(ct.buff){   // svjetleći krug ispod čudovišta s buffom
-      const col = JUNGLE_BUFFS[ct.buff].color;
+    if(dk) g.userData.baseLook = dk.look;         // 🐉 zmajčić u boji elementa
+    if(ct.buff || dk){   // svjetleći krug ispod čudovišta s buffom / zmajčića
+      const col = dk ? dk.color : JUNGLE_BUFFS[ct.buff].color;
       const ring = new THREE.Mesh(new THREE.RingGeometry(u.r + 22, u.r + 30, 40),
         new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.75, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
       ring.rotation.x = -Math.PI / 2; ring.position.y = 3;

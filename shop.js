@@ -162,7 +162,7 @@ function updateHudTip(){
     const key = 'buff' + r.b.name + Math.ceil(r.b.t);
     if(key === hudTipKey) return;
     hudTipKey = key;
-    showItemTip(simpleTipHtml(r.b.e + ' ' + escHtml(r.b.name), escHtml(r.b.desc), (r.b.good ? '✅ Pomaže ti' : '⚠️ Šteti ti') + (r.b.t < 600 ? ' · još ' + Math.ceil(r.b.t) + ' s' : '')), r);
+    showItemTip(simpleTipHtml(r.b.e + ' ' + escHtml(r.b.name), escHtml(r.b.desc), (r.b.good ? '✅ Pomaže ti' : '⚠️ Šteti ti') + (r.b.perm ? ' · ♾️ trajno, cijelom timu' : (r.b.t < 600 ? ' · još ' + Math.ceil(r.b.t) + ' s' : ''))), r);
     return;
   }
   if(t === 'abil' || t === 'learn' || t === 'pas' || t === 'stat' || t === 'glyph' || t === 'tp' || t === 'shop' || t === 'sum'){
@@ -194,6 +194,16 @@ function updateHudTip(){
     showItemTip(html, rect);
     return;
   }
+  if(t === 'opts' || t === 'score' || t === 'center'){
+    const rect = uiRects[t];
+    if(!rect) return hideItemTip();
+    if(hudTipKey === t) return;
+    hudTipKey = t;
+    showItemTip(t === 'opts' ? simpleTipHtml('⚙️ Postavke', 'Glasnoća, kvaliteta slike, efekti, kamera, brojevi štete.', 'Tipka Esc')
+      : t === 'score' ? simpleTipHtml('📋 Tablica', 'Ubojstva, smrti, asistencije, zlato i predmeti svih junaka.', 'Tipka Tab')
+      : simpleTipHtml('🎯 Kamera na junaka', 'Kamera opet prati tvog junaka.', 'Razmaknica'), rect, 'left');
+    return;
+  }
   if(t !== 'inv' && t !== 'neut' && t !== 'qb'){ if(hudTipKey) hideItemTip(); return; }
   let it = null, rect = null, foot = '';
   if(hoverUi.type === 'inv'){
@@ -201,8 +211,8 @@ function updateHudTip(){
     if(it){
       const bp = hoverUi.i >= CFG.inventorySlots;
       foot = (it.pending ? '🫏 Kurir ga nosi (ili se vrati u bazu)<br>' : '') +
-        (bp ? '🎒 U ruksaku ne djeluje — klik ga vraća u torbu<br>' : (it.active ? '🖱️ Klik ili tipka ' + (hoverUi.i + 1) + ' = koristi<br>' : '')) +
-        '↔️ Povuci na drugo mjesto · desni klik = prodaj za <b>' + Math.floor(itemFullCost(it) / 2) + ' 🪙</b>';
+        (bp ? '🎒 U ruksaku ne djeluje — klik ga vraća u torbu<br>' : (it.active ? (touchMode ? '👆 Dodir = koristi<br>' : '🖱️ Klik ili tipka ' + (hoverUi.i + 1) + ' = koristi<br>') : '')) +
+        '↔️ Povuci na drugo mjesto · ' + (touchMode ? 'drži prst 1 s' : 'desni klik') + ' = prodaj za <b>' + Math.floor(itemFullCost(it) / 2) + ' 🪙</b>';
     }
   } else if(hoverUi.type === 'neut'){
     it = player.neutral; rect = uiRects.neutral;
