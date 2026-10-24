@@ -25,6 +25,7 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
   - ☀️ **mekše svjetlo**: slabije plavkasto nebo i umjerenija ekspozicija — vrhovi krošnji, kamen i junaci se više ne "isperu" u bijelo, boje su dublje
   - ☠️ **Scourge vojnici** imaju svoj izgled (kao Dire u DotA): kostur-vitezovi s rogatim kacigama, nazubljenim mačem i štitom s lubanjom, tamni čarobnjaci s kapuljačom i lubanjom na štapu, koštana opsadna kola s lubanjom na ovnu
   - 🔥 **pravi Vatreni vuk** (crveni buff): tamnocrveno krzno, plamena griva i leđa, svjetleće oči; svetište tamnijeg kamena
+  - 🏰 **zgrade bez "ispranog" bijelog**: kule, prijestoli, vojarne, fontane i svetišta imaju vlastiti materijal sa slabijim odsjajem, pa se vidi pravi topli kamen; **zidine oko baza su kamene** (samo vrhovi stupova u boji tima, prije su bile cijele plave kao plastika), šatori isto; svetište u mirovanju ima mali sjaj samo oko kugle; Scourge fontana opet ljubičasta
 
 - 🎨 **Dizajn i 3D modeli** (v0.27):
   - 🐉 **četiri prava zmajčića** iz Blendera umjesto prebojanog Velikog Zmaja: 🔥 vatreni (plamen na leđima, žar na obrazima), 💧 vodeni (leđna peraja, peraje na glavi, mjehurići), ⚡ olujni (krijesta od munja, svjetleći rogovi), 🌿 šumski (lišće, cvjetići i mahovina); oko svakog lete čestice njegovog elementa

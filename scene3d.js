@@ -427,7 +427,8 @@ function disposeGroup(g){
   g.traverse(o => {
     if(o.isInstancedMesh) o.dispose();
     if(o.geometry && !o.geometry.userData.shared) o.geometry.dispose();
-    if(o.material && !o.material.userData.shared) o.material.dispose();
+    if(o.material) for(const m of Array.isArray(o.material) ? o.material : [o.material])   // zidine/šatori: niz materijala
+      if(!m.userData.shared) m.dispose();
   });
 }
 
