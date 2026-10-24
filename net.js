@@ -170,7 +170,10 @@ function onNetData(d){
     case 'cmd':
       if(net.mode === 'host' && remoteHero && !remoteHero.dead){
         if(d.stop){ remoteHero.moveTarget = null; remoteHero.attackTarget = null; cancelTeleport(remoteHero); }
-        else playerCommandFor(remoteHero, d.x, d.y);
+        else {   // v0.31: gost šalje i jedinicu pod mišem (tid), napad u hodu (am) i držanje miša (hm)
+          const tgt = d.tid === undefined ? undefined : (d.tid === null ? null : (units.find(u => u.id === d.tid) || null));
+          playerCommandFor(remoteHero, d.x, d.y, tgt, { amove: !!d.am, silent: !!d.hm });
+        }
       }
       break;
     case 'cast': if(net.mode === 'host' && remoteHero) castAbility(remoteHero, d.i, { x: d.x, y: d.y }); break;
@@ -191,7 +194,7 @@ function onNetData(d){
 }
 
 /* gost → domaćin */
-function netCmd(wx, wy){ sendNet({ c: 'cmd', x: Math.round(wx), y: Math.round(wy) }); }
+function netCmd(wx, wy, tid, am, hm){ sendNet({ c: 'cmd', x: Math.round(wx), y: Math.round(wy), tid, am: am ? 1 : 0, hm: hm ? 1 : 0 }); }
 function netStop(){ sendNet({ c: 'cmd', stop: 1 }); }
 function netCast(i, aim){ sendNet({ c: 'cast', i, x: Math.round(aim.x), y: Math.round(aim.y) }); }
 function netLearn(i){ sendNet({ c: 'learn', i }); }
@@ -375,7 +378,9 @@ function mergeById(arr, list, makeFn, updFn){
   return out;
 }
 function applySnapshot(d){
+  const wasPrep = gameTime < 0;
   gameTime = d.gt;
+  if(wasPrep && gameTime >= 0) prepOver();   // 📯 i gost čuje rog
   kills = d.ks;
   const seen = new Set();
   for(const b of d.u){
@@ -590,6 +595,7 @@ function startMatchHost(hostIdx, guestIdx, botIdcs){
   document.getElementById('select').classList.add('hidden');
   announce('⚔️ 1 NA 1!', 'Sruši protivnikov prijestol! 👑');
   refreshShop();
+  beginPrep();
   sfx('levelup');
 }
 function startMatchGuest(d){
@@ -606,5 +612,7 @@ function startMatchGuest(d){
   cam.x = FOUNTAIN[1].x; cam.y = FOUNTAIN[1].y; cam.zoom = 0.9; cam.follow = true;
   document.getElementById('select').classList.add('hidden');
   banner = { txt: '⚔️ 1 NA 1!', sub: 'Sruši plavi prijestol! 👑', t: 0, dur: 3 };
+  gameTime = -CFG.prepTime; prepShop = false;   // ⏳ priprema: domaćin šalje sat, dućan se sam otvori
+  if(CFG.prepTime > 0 && !shopOpen){ toggleShop(); prepShop = true; }
   sfx('levelup');
 }

@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.30: svaki junak ima svoj potpisni detalj kao u LoL-u — Lavkov kraljevski plašt, Žarkovi goreći rogovi, Zubov gusarski povez, Bambusov slamnati šešir…** 🦁🔥🏴‍☠️ (v0.29: "ručno oslikani" modeli, pravi metal, pregače i remenje)
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.31: ciljanje mišem kao u LoL-u — klik na tijelo junaka pogađa, indikatori leže na terenu i pokazuju pravi domet, napad u hodu (A), brzo bacanje moći, 30 s pripreme za kupovinu na početku!** 🎯🖱️⚔️🛒 (v0.30: potpisni detalj svakog junaka)
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -18,6 +18,19 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- 🎯 **Ciljanje mišem, indikatori i priprema** (v0.31) — popravci po prijavama testera:
+  - ⏳ **30 sekundi pripreme na početku** (kao u DotA prije roga): sat kreće od **-0:30**, dućan se sam otvori da kupiš predmete, a vojnici, čudovišta u džungli, rune i pasivno zlato kreću tek u **0:00** uz zvuk roga; zadnjih 5 sekundi otkucava; u igri protiv botova gumb **▶️ Kreni odmah** preskače čekanje
+  - 🖱️ **klik na junaka pogađa bilo gdje na tijelu** (glava, trbuh, noge): jedinica pod mišem bira se po svom tijelu na ekranu, a ne po točki na tlu iza nje — prije je klik na glavu protivnika promašio i junak je samo otišao iza njega
+  - ⭕ **jedinica pod mišem zasvijetli**: crveni krug pod neprijateljem (zeleni pod prijateljem, žuti pod čudovištem), okvir oko njegove trake života, a pokazivač postaje ⚔️ mač; pri ciljanju moći pokazivač je 🎯 nišan
+  - 🏹 **strijela projektila pokazuje PRAVI domet i širinu** — vatrena kugla leti 760 i strijela je toliko duga (prije je išla samo do miša, pa je izgledala kratko); skokovi i juriši pokazuju točno mjesto slijetanja i širinu udarca
+  - ⛰️ **indikatori leže na terenu**: krug djelovanja, prsten dometa i strijela prate brežuljke, nasipe i rijeku (prije su bili ravni diskovi koji su se skrivali pod tlom); isto i **zone moći** (gdje pada meteor, kiša strijela, korijenje…), pa se vidi kamo ne smiješ stati
+  - 🎯 **moć ide točno na junaka pod mišem**: klikneš li junaka dok ciljaš (ili pustiš tipku kod brzog bacanja), krug ili strijela se prilijepe za njega
+  - 🐞 **nišan više ne zaostaje**: točka na tlu ispod miša računa se u svakoj sličici, pa indikator prati miš i dok kamera prati junaka (prije je moć znala odletjeti na staro mjesto); **držanje tipke Q** više ne baca moć samo od sebe (preglednik ponavlja pritisak tipke)
+  - ⚔️ **A pa klik — napad u hodu**: junak ide onamo i usput napada neprijatelje (junake, vojnike, čudovišta, građevine); crveni krug pokazuje domet napada
+  - 🖱️ **drži tipku miša** na tlu i junak stalno ide za mišem; **desni klik dok ciljaš** odustaje i odmah daje običnu naredbu
+  - ⚡ **brzo bacanje** (Postavke): drži tipku moći = vidiš domet i krug, pusti = baci prema mišu (za iskusnije igrače; uobičajeno je pritisni pa klikni)
+  - ✅ Ucjena (Tragač) sada traži metu samo unutar prstena dometa koji pokazuje (prije je hvatala junaka bilo gdje uz miš), a Zamjena (Mrak) pokazuje pravi krug hvatanja
 
 - 🦸 **Potpisni detalji svakog junaka** (v0.30) — kao kod LoL junaka, svatko ima svoj prepoznatljiv rekvizit koji priča njegovu priču i moći (smješten tako da se vidi i odozgo, iz kamere u igri):
   - 🦁 **Lavko**: kraljevski plašt sa zlatnim rubom i velikim zlatnim lavljim suncem s rubinom na leđima

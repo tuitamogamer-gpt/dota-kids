@@ -147,6 +147,10 @@
     background:linear-gradient(180deg, rgba(22,26,34,.97), rgba(10,12,17,.97)); border:2px solid #6b5a35; border-radius:10px; padding:10px 12px; color:#e5e7eb;
     box-shadow:0 12px 40px rgba(0,0,0,.6), inset 0 0 0 1px rgba(255,220,150,.08); }
   .shopHead{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  #shopPrep{ display:flex; align-items:center; gap:10px; margin:0 0 8px; padding:6px 10px; border-radius:8px; background:rgba(253,224,71,.12); border:1px solid rgba(253,224,71,.45); color:#fde047; font-weight:700; font-size:14px; }
+  #shopPrep.soon{ color:#fca5a5; border-color:rgba(252,165,165,.6); background:rgba(252,165,165,.12); }
+  #shopPrepGo{ margin-left:auto; background:#15803d; color:#fff; border:2px solid #86efac; border-radius:8px; padding:5px 12px; font:inherit; cursor:pointer; white-space:nowrap; }
+  #shopPrepGo:hover{ background:#16a34a; }
   .shopTitle{ font-size:18px; font-weight:bold; color:#f3d48a; letter-spacing:.5px; text-shadow:0 2px 4px #000; }
   #shopSearch{ flex:1; min-width:80px; font-family:inherit; font-size:13px; padding:6px 10px; border-radius:6px; border:1px solid #4b5563;
     background:#0b0e13; color:#fff; outline:none; }
@@ -256,6 +260,7 @@
     padding:20px 26px; width:min(460px, calc(100vw - 32px)); color:#e5e7eb; box-shadow:0 14px 40px rgba(0,0,0,.6); text-align:left; }
   .optBox h2{ text-align:center; color:#f3d48a; margin-bottom:12px; text-shadow:0 2px 4px #000; }
   .optRow{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,.07); font-size:15px; }
+  .optRow small{ font-size:12px; opacity:.7; font-weight:normal; }
   .optCtl{ display:flex; align-items:center; gap:8px; }
   .optCtl input{ width:150px; accent-color:#f59e0b; }
   .optCtl b{ width:42px; text-align:right; color:#fde047; }
@@ -312,7 +317,7 @@
 <div id="select" class="overlay">
   <header>
     <h1>🏰 DOTA Kids 3D ⚔️</h1>
-    <p class="sub">Odaberi junaka i sruši protivnički prijestol! Ti + 2 bota 🔵 protiv 3 bota 🔴 <span class="ver">v0.30</span></p>
+    <p class="sub">Odaberi junaka i sruši protivnički prijestol! Ti + 2 bota 🔵 protiv 3 bota 🔴 <span class="ver">v0.31</span></p>
   </header>
   <div id="loadBar">⏳ Učitavam 3D modele…</div>
   <div class="selWrap">
@@ -342,15 +347,17 @@
     </div>
     <div id="mpStatus">Napravi sobu i pošalji kod prijatelju (treba internet).</div>
   </div>
-  <p class="hint">🖱️ klik = hodaj i napadaj &nbsp;·&nbsp; <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>R</kbd> moći &nbsp;·&nbsp; <kbd>D</kbd> <kbd>F</kbd> čarolije &nbsp;·&nbsp; <kbd>B</kbd> dućan &nbsp;·&nbsp; <kbd>Esc</kbd> postavke &nbsp;·&nbsp; <kbd>H</kbd> sve tipke &nbsp;·&nbsp; 👆 tablet: dodir i povlačenje</p>
+  <p class="hint">🖱️ klik = hodaj i napadaj &nbsp;·&nbsp; <kbd>A</kbd>+klik napad u hodu &nbsp;·&nbsp; <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>R</kbd> moći &nbsp;·&nbsp; <kbd>D</kbd> <kbd>F</kbd> čarolije &nbsp;·&nbsp; <kbd>B</kbd> dućan &nbsp;·&nbsp; <kbd>Esc</kbd> postavke &nbsp;·&nbsp; <kbd>H</kbd> sve tipke &nbsp;·&nbsp; 👆 tablet: dodir i povlačenje</p>
 </div>
 
 <!-- POMOĆ -->
 <div id="help" class="overlay hidden">
   <div class="helpBox">
     <h2>❓ Kako se igra</h2>
-    🖱️ <b>Lijevi ili desni klik</b> — kreći se / napadni neprijatelja<br>
-    🎯 <b>Ciljanje</b> — pritisni moć (Q/W/E/R): vidiš <b>prsten dometa</b> i krug područja, pa <b>klikni cilj</b>; desni klik ili Esc odustaje<br>
+    🖱️ <b>Lijevi ili desni klik</b> — kreći se / napadni neprijatelja (klikni bilo gdje na njegovo tijelo — pod mišem zasvijetli crveni krug i pokazivač postane ⚔️ mač) • <b>drži tipku miša</b> — junak stalno ide za mišem<br>
+    🎯 <b>Ciljanje</b> — pritisni moć (Q/W/E/R): vidiš <b>prsten dometa</b>, krug područja ili strijelu (strijela pokazuje kamo projektil STVARNO leti), pa <b>klikni cilj</b> — klikneš li na junaka, moć ide točno na njega; desni klik ili Esc odustaje • ⚡ u postavkama možeš uključiti <b>brzo bacanje</b> (drži tipku = domet, pusti = baci)<br>
+    ⚔️ <b>A pa klik — napad u hodu</b>: junak ide onamo i usput napada svakog neprijatelja na kojeg naiđe<br>
+    ⏳ <b>Priprema</b> — prvih 30 sekundi (sat od -0:30) dućan je otvoren: kupi predmete! Vojnici, džungla i rune kreću u 0:00 uz zvuk roga (protiv botova možeš kliknuti ▶️ Kreni odmah)<br>
     🏠 <b>T — teleport kući!</b> Stoji se 3 sekunde (prekida se ako se mičeš ili te omame), pa si u bazi. Puni se 60 s<br>
     🌫️ <b>Magla rata</b> — vidiš samo gdje su tvoji! Neprijatelji se kriju u magli, <b>noću je vid kraći</b> — pazi na zasjede iz džungle<br>
     ⬆️ <b>Poeni vještina</b> — svaki level (do <b>18</b>!) daje 1 poen: moći Q/W/E imaju 3 ranga, ULTI 3 ranga (leveli 6/11/16), a <b>📊 Atributi+</b> gumb daje +2 svim atributima (6 puta)<br>
@@ -379,7 +386,7 @@
     ⚙️ <b>Esc</b> ili ⚙️ gumb — postavke (glasnoća, kvaliteta slike, kamera uz rub ekrana, brojevi štete) • 👆 <b>tablet</b>: dodir = hodaj/napadni, povuci prstom = kamera, dva prsta = zum, 📋 tablica, 🎯 kamera na junaka<br>
     ⚔️/🏹 <b>Blizina i Daljina</b> — značka kaže bori li se junak izbliza ili izdaleka<br>
     🐗 <b>Džungla</b> i 🐲 <b>Veliki Zmaj</b> • ✨ <b>rune</b> svake 2 min • 🌙 dan/noć • 💪 veliki vojnici • ⛲ fontana liječi<br>
-    🎥 <b>Razmak</b> — prati junaka • <b>strelice</b> ili miš uz rub ekrana — kamera • <b>kotačić</b> — zum • ⏸️ <b>P</b> pauza • <b>M</b> zvuk • <b>S</b> stani<br>
+    🎥 <b>Razmak</b> — prati junaka • <b>strelice</b> ili miš uz rub ekrana — kamera • <b>kotačić</b> — zum • ⏸️ <b>P</b> pauza • <b>M</b> zvuk • <b>S</b> stani • <b>A</b> napad u hodu<br>
     🏆 <b>Cilj:</b> sruši čuvarske kule pa crveni <b>prijestol 👑</b> — i čuvaj svoj!
   </div>
   <button id="helpClose">Razumijem! 👍</button>
@@ -388,6 +395,7 @@
 <!-- DUĆAN -->
 <div id="shop" class="hidden">
   <div class="shopHead"><span class="shopTitle">🛒 DUĆAN</span><input id="shopSearch" type="text" placeholder="🔍 Traži predmet…" autocomplete="off"><span id="shopGold">🪙 0</span><button id="shopClose">✖</button></div>
+  <div id="shopPrep" class="hidden">⏳ Priprema: još <b id="shopPrepT">30</b> s do bitke — kupi predmete!<button id="shopPrepGo">▶️ Kreni odmah</button></div>
   <div id="shopTabs"></div>
   <div id="shopBody"></div>
   <div id="shopDetail"></div>
@@ -410,6 +418,7 @@
     <div class="optRow"><span>🖼️ Kvaliteta slike</span><span class="optSeg" id="optQ"><button data-q="low">Niska</button><button data-q="med">Srednja</button><button data-q="high">Visoka</button></span></div>
     <div class="optRow"><span>✨ Efekti (sjaj, boje)</span><button class="optTog" id="optPost"></button></div>
     <div class="optRow" id="optEdgeRow"><span>🖱️ Kamera uz rub ekrana</span><button class="optTog" id="optEdge"></button></div>
+    <div class="optRow" id="optQuickRow"><span>⚡ Brzo bacanje moći<br><small>drži tipku = vidiš domet, pusti = baci prema mišu</small></span><button class="optTog" id="optQuick"></button></div>
     <div class="optRow"><span>💥 Brojevi štete</span><button class="optTog" id="optDmg"></button></div>
     <p class="optHint">Igra trza? Stavi kvalitetu na <b>Niska</b> i isključi efekte.<br>👆 Tablet: dodir = hodaj/napadni, povuci prstom = kamera, dva prsta = zum.</p>
     <div class="optBtns"><button id="optResume">▶️ Nastavi</button><button id="optQuit">🏠 Izlaz u izbornik</button></div>
