@@ -495,7 +495,7 @@ const HEROES = [
         tip:rk => '⚔️ ' + (160 + 90*rk) + ' štete + usporenje 50%',
         bot:{type:'zone', range:540},
         cast(u, aim, rk){
-          return spawnZone(u, aim, {castRange:560, r:300, delay:0.6, ticks:1, interval:0.5,
+          return spawnZone(u, aim, {r:300, delay:0.6, ticks:1, interval:0.5,
             dmg:160 + 90*rk, slow:{f:0.5, t:3}, castRange:560,
             color:'#38bdf8', emoji:'🌊'});
         }},
@@ -870,7 +870,7 @@ const HEROES = [
         tip:rk => '⚔️ 6 × ' + (40 + 28*rk) + ' štete + 🤢 otrov svima u krugu',
         bot:{type:'zone', range:600},
         cast(u, aim, rk){
-          return spawnZone(u, aim, {castRange:650, r:320, delay:0.6, ticks:6, interval:1.0,
+          return spawnZone(u, aim, {r:320, delay:0.6, ticks:6, interval:1.0,
             dmg:40 + 28*rk, poison:{dps:8 + 4*rk, t:3}, castRange:650,
             color:'#f59e0b', emoji:'🏺'});
         }},

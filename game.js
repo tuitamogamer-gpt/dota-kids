@@ -4099,8 +4099,6 @@ function drawBar(x, y, w, h, frac, fg, bg){
   ctx.fillRect(x + 1, y + 1, Math.max(0, (w - 2) * clamp(frac, 0, 1)), h - 2);
 }
 
-/* ❤️ traka života junaka (kao u LoL-u): crtice svakih 100 života, svjetliji trag izgubljenog života,
-   bijeli štit (Barijera), traka mane i kućica s levelom lijevo */
 /* 🖱️ okvir oko trake života jedinice pod mišem (crven za neprijatelja, zelen za prijatelja) */
 function drawHoverFrame(u, s){
   let r;
@@ -4116,6 +4114,8 @@ function drawHoverFrame(u, s){
   ctx.strokeRect(r[0], r[1], r[2], r[3]);
   ctx.globalAlpha = 1;
 }
+/* ❤️ traka života junaka (kao u LoL-u): crtice svakih 100 života, svjetliji trag izgubljenog života,
+   bijeli štit (Barijera), traka mane i kućica s levelom lijevo */
 function drawHeroBar(u, cx, cy){
   const w = 74, h = 9, x = cx - w / 2 + 8, y = cy - 11;
   const mine = u.team === myTeam, frac = clamp(u.hp / u.maxhp, 0, 1);
