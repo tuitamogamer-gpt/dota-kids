@@ -147,6 +147,10 @@
     background:linear-gradient(180deg, rgba(22,26,34,.97), rgba(10,12,17,.97)); border:2px solid #6b5a35; border-radius:10px; padding:10px 12px; color:#e5e7eb;
     box-shadow:0 12px 40px rgba(0,0,0,.6), inset 0 0 0 1px rgba(255,220,150,.08); }
   .shopHead{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  #shopPrep{ display:flex; align-items:center; gap:10px; margin:0 0 8px; padding:6px 10px; border-radius:8px; background:rgba(253,224,71,.12); border:1px solid rgba(253,224,71,.45); color:#fde047; font-weight:700; font-size:14px; }
+  #shopPrep.soon{ color:#fca5a5; border-color:rgba(252,165,165,.6); background:rgba(252,165,165,.12); }
+  #shopPrepGo{ margin-left:auto; background:#15803d; color:#fff; border:2px solid #86efac; border-radius:8px; padding:5px 12px; font:inherit; cursor:pointer; white-space:nowrap; }
+  #shopPrepGo:hover{ background:#16a34a; }
   .shopTitle{ font-size:18px; font-weight:bold; color:#f3d48a; letter-spacing:.5px; text-shadow:0 2px 4px #000; }
   #shopSearch{ flex:1; min-width:80px; font-family:inherit; font-size:13px; padding:6px 10px; border-radius:6px; border:1px solid #4b5563;
     background:#0b0e13; color:#fff; outline:none; }
@@ -391,6 +395,7 @@
 <!-- DUĆAN -->
 <div id="shop" class="hidden">
   <div class="shopHead"><span class="shopTitle">🛒 DUĆAN</span><input id="shopSearch" type="text" placeholder="🔍 Traži predmet…" autocomplete="off"><span id="shopGold">🪙 0</span><button id="shopClose">✖</button></div>
+  <div id="shopPrep" class="hidden">⏳ Priprema: još <b id="shopPrepT">30</b> s do bitke — kupi predmete!<button id="shopPrepGo">▶️ Kreni odmah</button></div>
   <div id="shopTabs"></div>
   <div id="shopBody"></div>
   <div id="shopDetail"></div>

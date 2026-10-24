@@ -2915,7 +2915,7 @@ function spawnWave(){
       if(waveCount % CFG.siegeEveryNthWave === 0) makeCreepOnLane(team, lane, false, true);
     }
   }
-  if(waveCount === 1) announce('⚔️ Vojnici kreću!', 'Prati ih niz stazu');
+  if(waveCount === 1) announce('⚔️ Bitka počinje!', 'Vojnici kreću na staze — prati ih!');
   if(waveCount % CFG.siegeEveryNthWave === 0 && waveCount > 1)
     feedMsg('💪 Stigli su veliki vojnici!', '#fde047');
 }
@@ -3376,6 +3376,19 @@ function startGame(heroIdx){
   beginPrep();
   sfx('levelup');
 }
+/* ⏳ odbrojavanje pripreme i gumb "Kreni odmah" u zaglavlju dućana (dućan je u pripremi otvoren i zaklanja sredinu ekrana) */
+let shopPrepShown = null, shopPrepSec = -1;
+function syncShopPrep(){
+  const el = document.getElementById('shopPrep');
+  if(!el) return;
+  const on = running && !gameOver && gameTime < 0;
+  if(on !== shopPrepShown){ el.classList.toggle('hidden', !on); shopPrepShown = on; }
+  if(!on) return;
+  const sec = Math.ceil(-gameTime);
+  if(sec !== shopPrepSec){ shopPrepSec = sec; document.getElementById('shopPrepT').textContent = sec; el.classList.toggle('soon', sec <= 5); }
+  const btn = document.getElementById('shopPrepGo'), solo = net.mode !== 'host' && net.mode !== 'guest';
+  if(btn.classList.contains('hidden') === solo) btn.classList.toggle('hidden', !solo);
+}
 /* ⏳ priprema na početku (kao u DotA prije roga): 30 s za kupovinu — sat kreće od -0:30, a vojnici,
    čudovišta u džungli, rune i pasivno zlato tek u 0:00; dućan se sam otvori */
 function beginPrep(){
@@ -3384,8 +3397,7 @@ function beginPrep(){
   prepTick = 0; prepShop = false;
   if(CFG.prepTime > 0 && !shopOpen){ toggleShop(); prepShop = true; }
 }
-function prepOver(){   // 📯 rog: bitka počinje
-  announce('⚔️ Bitka počinje!', 'Vojnici kreću na staze — sretno!');
+function prepOver(){   // 📯 rog: bitka počinje (najavu daje prvi val vojnika)
   sfx('horn');
   if(prepShop && shopOpen) toggleShop();
   prepShop = false;
@@ -4596,7 +4608,8 @@ function drawHud(){
 
   // ----- ⏳ priprema: odbrojavanje do roga i gumb "kreni odmah" (igra protiv botova) -----
   uiRects.prepSkip = null;
-  if(gameTime < 0 && !gameOver){
+  syncShopPrep();
+  if(gameTime < 0 && !gameOver && !shopOpen){   // dok je dućan otvoren, odbrojavanje i gumb su u dućanu
     const left = Math.ceil(-gameTime), solo = net.mode !== 'host' && net.mode !== 'guest';
     const bw = 340, bh = 62, bx = (VW - bw) / 2 - (solo ? 62 : 0), by = 80;
     drawFrame(bx, by, bw, bh, 10);
@@ -5343,6 +5356,7 @@ window.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('touchstart', () => { touchMode = true; }, { passive: true, capture: true });   // 👆 dodir bilo gdje = tablet
   buildSelectScreen();
   buildShopDom();
+  { const pg = document.getElementById('shopPrepGo'); if(pg) pg.addEventListener('click', skipPrep); }
   buildOptionsDom();
   setupInput();
   initNetUI();
