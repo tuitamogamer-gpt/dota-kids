@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.29: 3D modeli bliže LoL-u — "ručno oslikani" prijelazi, pravi sjajni metal, pregače, remenje, zakovice, amblemi i novi portreti!** 🎨⚔️✨ (v0.28: živa džungla, Scourge vojnici, Vatreni vuk)
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.30: svaki junak ima svoj potpisni detalj kao u LoL-u — Lavkov kraljevski plašt, Žarkovi goreći rogovi, Zubov gusarski povez, Bambusov slamnati šešir…** 🦁🔥🏴‍☠️ (v0.29: "ručno oslikani" modeli, pravi metal, pregače i remenje)
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -18,6 +18,31 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- 🦸 **Potpisni detalji svakog junaka** (v0.30) — kao kod LoL junaka, svatko ima svoj prepoznatljiv rekvizit koji priča njegovu priču i moći (smješten tako da se vidi i odozgo, iz kamere u igri):
+  - 🦁 **Lavko**: kraljevski plašt sa zlatnim rubom i velikim zlatnim lavljim suncem s rubinom na leđima
+  - 🔥 **Žarko**: rogovi koji gore na vrhovima, žar duž repa, zlatna narukvica s vatrenim draguljem
+  - ❄️ **Ledena**: ledeni naramenjaci od svjetlećih kristala i ledeni kristali oko kićanke kape
+  - 🏹 **Strijela**: smotana lovačka mreža na boku (njena moć) i ogrlica od očnjaka
+  - 🍄 **Listko**: crvene gljive s bijelim točkama, lišće i ružičasti cvijet na oklopu, vitica s listićima oko štapa
+  - ⚡ **Munja**: svjetleći vrh repa s iskrama i munje na nadlakticama
+  - 👑 **Skokica**: mala zlatna kruna s rubinom (žablji princ)
+  - 🧣 **Orlina**: pilotski šal u boji tima čiji dugi krajevi vijore iza leđa
+  - 🌙 **Luna**: svjetleći polumjeseci na vrhovima luka i srebrne naušnice
+  - 💣 **Tragač**: dvije dimne bombe sa svjetlećim fitiljem (njena moć) i bacački noževi za remenom
+  - 🧪 **Bodljo**: bočica zelene sluzi na boku i narukvice s bodljama
+  - 🐘 **Tutnjo**: zlatni ukras na čelu s rubinom, zlatni prstenovi na kljovama, crvene rese na ušima
+  - 🍯 **Zuja**: svjetleći vrhovi ticala i lončić meda s kapljicom
+  - 👓 **Mudra**: okrugle zlatne naočale i broš s polumjesecom
+  - 🍌 **Skakač**: banana za pojasom i crvene vrpce na vrhu zlatnog štapa
+  - 🐺 **Sivko**: plave ratničke pruge na licu, ogrlica od zuba i srebrni pun mjesec
+  - ⭐ **Mrak**: zvijezde i polumjesec na čarobnjačkom šeširu, ovratnik od perja, ljubičasti broš
+  - 🪸 **Pipko**: kruna od koralja i biserna ogrlica
+  - 🦏 **Rogo**: čelični obruč na rogu, šiljci na naramenjacima, crvene ratničke pruge
+  - 🎋 **Bambus**: slamnati šešir na leđima i tikvica s crvenom vrpcom
+  - 🌈 **Duga**: narukvice u bojama duge i svjetlucave zvjezdice oko roga
+  - 🏴‍☠️ **Zubo**: gusarski povez preko oka, zlatni zub i veliko zlatno sidro na pregači
+  - 🖼️ novi portreti 12 junaka iz Blendera s novim detaljima
 
 - ⚔️ **3D modeli bliže League of Legendsu** (v0.29):
   - 🎨 **"ručno oslikani" izgled svih modela** (kao teksture u LoL-u): uz pečenu okluziju svaki model dobiva prijelaz od tamnijeg podnožja prema svjetlijem vrhu, hladnije i zasićenije sjene, toplije svjetlo i blagi šum poteza kistom — sve u bojama vrhova, bez troška u igri
