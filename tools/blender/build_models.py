@@ -1519,6 +1519,8 @@ def quad(name, c, o):
             h.sphere((hx - 0.02, s * hr * 0.9, hz + hr * 0.4), (0.06, 0.1, 0.05), dark, rot=(s * 40, 0, 0))
         elif ears == 'horns':
             h.cyl((hx - 0.05, s * hr * 0.45, hz + hr * 0.7), (hx - 0.3, s * hr * 0.75, hz + hr * 1.6), 0.07, 0.0, o.get('hornC', '#fff1c9'), seg=8)
+    if o.get('extra'):   # ukrasi po vrsti (npr. plamen, peraje, munje, lišće zmajčića)
+        o['extra'](m, dict(L=L, W=W, H=H, bz=bz, br=br, hx=hx, hz=hz, hr=hr, fur=fur, belly=belly, dark=dark))
     # rep
     t = m.part('tail', (-0.48 * L, 0, bz + 0.05), 'body')
     tk = o.get('tail', 'thin')
@@ -1554,23 +1556,99 @@ def build_neutrals():
          dict(len=1.5, legH=0.42, wid=0.45, bodyR=0.42, snout='dragon', ears='horns', hornC='#fff1c9',
               tail='dragon', spikes='#c2410c', wings='#6b9e34', wingScale=1.3, neck=True, neckUp=0.2, headR=0.26,
               legR=0.12, glowEyes=True, eyeColor='#fde047', heavy=2.0, bellyPlates=True))
+    build_drakes()
+
+
+def build_drakes():
+    """🐉 zmajčići četiri elementa (kao u League of Legends): manji od Velikog Zmaja, kraća krila,
+    svaki sa svojim bojama i ukrasima — vatreni plamen na leđima, vodeni peraje i mjehuriće,
+    olujni krijestu od munja, šumski lišće i mahovinu"""
+    common = dict(len=1.2, legH=0.36, wid=0.36, bodyR=0.34, snout='dragon', ears='horns', tail='dragon',
+                  neck=True, neckUp=0.16, headR=0.24, legR=0.1, glowEyes=True, heavy=1.6, bellyPlates=True,
+                  wingScale=0.8, claws=True)
+
+    def spine(g, n=5):
+        """točke uzduž leđa (od vrata prema repu)"""
+        return [(0.36 * g['L'] - i * 0.17 * g['L'], 0, g['bz'] + g['br'] * 0.9) for i in range(n)]
+
+    def fire(m, g):
+        b, t = m['body'], m['head']
+        for i, (x, y, z) in enumerate(spine(g)):
+            hgt = 0.36 - abs(i - 1.5) * 0.05
+            b.cyl((x, 0, z - 0.02), (x - 0.08, 0, z + hgt), 0.11, 0.0, '#f97316', mat='glow', seg=6)   # plamen
+            b.cyl((x + 0.01, 0, z), (x - 0.05, 0, z + hgt * 0.62), 0.065, 0.0, '#fde047', mat='glow', seg=6)
+        for s in (1, -1):   # žar na obrazima
+            t.sphere((g['hx'] + 0.2, s * g['hr'] * 0.7, g['hz'] - 0.02), 0.045, '#fb923c', mat='glow', seg=(8, 6))
+
+    def water(m, g):
+        b, t = m['body'], m['head']
+        pts = spine(g, 6)
+        prof = [0.12, 0.26, 0.32, 0.28, 0.2, 0.1]
+        fin = [(x, 0, z - 0.04) for x, _, z in pts] + [(x - 0.05, 0, z + h) for (x, _, z), h in reversed(list(zip(pts, prof)))]
+        b.poly(fin, '#67e8f9', thick=0.02)   # leđna peraja
+        for s in (1, -1):   # peraje umjesto ušiju i mjehurići na bokovima
+            t.poly([(g['hx'] - 0.02, s * g['hr'] * 0.6, g['hz'] + 0.08), (g['hx'] - 0.28, s * g['hr'] * 1.5, g['hz'] + 0.22),
+                    (g['hx'] - 0.2, s * g['hr'] * 1.2, g['hz'] - 0.05)], '#22d3ee', thick=0.015)
+            for k in range(3):
+                b.sphere((0.15 - k * 0.2, s * (g['W'] + 0.02), g['bz'] + 0.05 + (k % 2) * 0.08), 0.04 + 0.01 * (k % 2), '#cffafe', mat='glow', seg=(8, 6))
+
+    def storm(m, g):
+        b, t = m['body'], m['head']
+        for i, (x, y, z) in enumerate(spine(g)):   # krijesta od munja (cik-cak)
+            h = 0.3 - abs(i - 1.5) * 0.04
+            b.poly([(x + 0.06, 0, z - 0.02), (x - 0.02, 0, z + h * 0.55), (x + 0.05, 0, z + h * 0.5), (x - 0.06, 0, z + h),
+                    (x - 0.02, 0, z + h * 0.42), (x - 0.08, 0, z + h * 0.46), (x - 0.04, 0, z - 0.02)], '#fde047', mat='glow', thick=0.02)
+        for s in (1, -1):   # svjetleći vrhovi rogova
+            t.sphere((g['hx'] - 0.3, s * g['hr'] * 0.75, g['hz'] + g['hr'] * 1.62), 0.05, '#fef08a', mat='glow', seg=(8, 6))
+
+    def forest(m, g):
+        b, t = m['body'], m['head']
+        leaf = ['#65a30d', '#4d7c0f', '#84cc16']
+        for i, (x, y, z) in enumerate(spine(g)):   # grmići lišća i cvjetovi na leđima
+            b.ico((x, 0, z + 0.04), (0.16, 0.14, 0.11), leaf[i % 3], sub=1, jitter=0.2, seed=40 + i)
+            if i % 2 == 0:
+                b.sphere((x + 0.03, 0.06, z + 0.13), 0.035, '#fde68a', seg=(8, 6))
+        for s in (1, -1):   # mahovina na bokovima
+            b.ico((0.0, s * g['W'] * 0.8, g['bz'] + 0.12), (0.2, 0.08, 0.1), '#3f6212', sub=1, jitter=0.25, seed=60 + s)
+        t.ico((g['hx'] - 0.02, 0, g['hz'] + g['hr'] * 0.95), (0.09, 0.08, 0.06), '#84cc16', sub=1, jitter=0.2, seed=71)
+
+    quad('mob_drake_fire', dict(fur='#c2410c', belly='#fcd34d', dark='#7c2d12', paw='#431407'),
+         dict(common, wings='#f97316', hornC='#fde68a', eyeColor='#fef08a', extra=fire))
+    quad('mob_drake_water', dict(fur='#0369a1', belly='#7dd3fc', dark='#0c4a6e', paw='#082f49'),
+         dict(common, wings='#22d3ee', hornC='#e0f2fe', eyeColor='#e0f2fe', extra=water))
+    quad('mob_drake_storm', dict(fur='#6d28d9', belly='#ddd6fe', dark='#2e1065', paw='#1e1b4b'),
+         dict(common, wings='#a78bfa', hornC='#4c1d95', eyeColor='#fde047', extra=storm))
+    quad('mob_drake_forest', dict(fur='#4d7c0f', belly='#d9f99d', dark='#365314', paw='#3f2a14'),
+         dict(common, wings='#65a30d', hornC='#a16207', eyeColor='#bef264', extra=forest))
 
 
 # ------------------------------------------------------------------ GRAĐEVINE
 # prozori kule: strana -Y u Blenderu gleda prema kameri u igri (three.js +Z)
-WINDOWS = {3: (-35, -90, -145), 5: (-60, -120)}
+WINDOWS = {3: (-25, -90, -155), 5: (-90,)}
+
+
+TOWER_CRYSTAL_Z = 3.75   # scene3d.js: TOWER_CRYSTAL_Z (sjaj, pucanj, krhotine)
 
 
 def build_tower():
     m = Model('tower')
     b = m.part('base', (0, 0, 0))
-    stones = ['#d8d0bf', '#cbc2ae', '#e2dbcc']
-    b.cyl((0, 0, 0), (0, 0, 0.3), 0.98, 0.92, '#a39a88', seg=10)
+    # topli kamen s više kontrasta (svijetli kamen se pod suncem i sjajem "ispere" u bijelo)
+    stones = ['#8f7f63', '#7f6f55', '#9c8c6f']
+    mort = '#5e5444'
+    # stepenasto osmerokutno postolje + četiri kamena potpornja
+    b.cyl((0, 0, 0), (0, 0, 0.16), 1.22, 1.18, '#554c40', seg=8)
+    b.cyl((0, 0, 0.16), (0, 0, 0.32), 1.04, 0.98, '#665c4e', seg=8)
+    for k in range(4):
+        a = k * 90 + 45
+        ca, sa = math.cos(RAD(a)), math.sin(RAD(a))
+        b.box((ca * 0.84, sa * 0.84, 0.72), (0.3, 0.26, 0.86), '#716552', rot=(0, 0, a), bevel=0.04)
+        b.cyl((ca * 0.9, sa * 0.9, 1.12), (ca * 0.78, sa * 0.78, 1.42), 0.15, 0.05, mort, seg=4)
     for i in range(6):
         z0 = 0.3 + i * 0.42
         r0 = 0.8 - i * 0.035
         b.cyl((0, 0, z0), (0, 0, z0 + 0.4), r0, r0 - 0.03, stones[i % 3], seg=10)
-        b.cyl((0, 0, z0 + 0.38), (0, 0, z0 + 0.44), r0 + 0.02, r0 + 0.01, '#b5ab97', seg=10)
+        b.cyl((0, 0, z0 + 0.38), (0, 0, z0 + 0.44), r0 + 0.02, r0 + 0.01, mort, seg=10)
         # istaknute cigle (svaki red pomaknut za pola cigle)
         for k in range(8):
             deg = k * 45 + (22.5 if i % 2 else 0)
@@ -1591,47 +1669,87 @@ def build_tower():
             b.box((x * 1.06, y * 1.06, zz), (0.04, 0.17, 0.03), '#6b4a2a', rot=(0, 0, a))   # prečka
     # trak u boji tima
     b.cyl((0, 0, 1.95), (0, 0, 2.15), 0.73, 0.73, '#ffffff', mat='team', seg=10)
-    # platforma + zupci
-    b.cyl((0, 0, 2.8), (0, 0, 3.0), 0.95, 0.95, '#bdb3a0', seg=12)
+    # dvije duge zastave tima sprijeda (vise s platforme, zlatna prečka gore)
+    for a in (-58, -122):
+        ca, sa = math.cos(RAD(a)), math.sin(RAD(a))
+        px, py, tx, ty = ca * 0.76, sa * 0.76, -sa, ca
+        b.poly([(px + tx * 0.15, py + ty * 0.15, 2.74), (px - tx * 0.15, py - ty * 0.15, 2.74), (px - tx * 0.15, py - ty * 0.15, 1.62),
+                (px, py, 1.48), (px + tx * 0.15, py + ty * 0.15, 1.62)], '#ffffff', mat='team', thick=0.014)
+        b.cyl((px - tx * 0.19, py - ty * 0.19, 2.76), (px + tx * 0.19, py + ty * 0.19, 2.76), 0.025, 0.025, '#e9bf62', seg=6)
+        b.sphere((px, py, 2.25), (0.05, 0.05, 0.06), '#f6d77a', seg=(8, 6))   # zlatni znak na zastavi
+    # platforma na konzolama + zupci
+    for i in range(12):
+        a = RAD(i * 30 + 15)
+        b.box((math.cos(a) * 0.8, math.sin(a) * 0.8, 2.7), (0.14, 0.12, 0.2), mort, rot=(0, 0, i * 30 + 15), bevel=0.02)
+    b.cyl((0, 0, 2.8), (0, 0, 3.0), 0.98, 0.98, '#716552', seg=12)
     for i in range(10):
         a = RAD(i * 36)
-        b.box((math.cos(a) * 0.86, math.sin(a) * 0.86, 3.12), (0.22, 0.2, 0.26), stones[i % 3], rot=(0, 0, i * 36), bevel=0.02)
-    # krov i zastavice
-    b.cyl((0, 0, 3.0), (0, 0, 3.15), 0.55, 0.55, '#a39a88', seg=10)
-    for a in (0, 90, 180, 270):
-        x, y = math.cos(RAD(a)) * 0.45, math.sin(RAD(a)) * 0.45
-        b.cyl((x, y, 3.1), (x, y, 3.7), 0.05, 0.05, '#7a4b25', seg=6)
-    b.cyl((0, 0, 3.65), (0, 0, 4.3), 0.75, 0.0, '#ffffff', mat='team', seg=10)
-    b.cyl((0, 0, 3.6), (0, 0, 3.7), 0.78, 0.78, '#8a8a8a', mat='team', seg=10)
-    b.cyl((0, 0, 4.25), (0, 0, 4.9), 0.025, 0.025, '#5b3a1e', seg=6)
-    fl = m.part('flag', (0, 0, 4.76), 'base')   # zastava se vijori (zaseban dio)
-    fl.poly([(0, 0.01, 4.9), (0, 0.01, 4.62), (0.24, 0.01, 4.74), (0.46, 0.01, 4.8)], '#ffffff', mat='team', thick=0.012)
-    for side in (1, -1):
-        b.poly([(0.7 * 0.98, side * 0.16, 2.75), (0.7 * 0.98, side * 0.16 - side * 0.0, 2.75),
-                (0.79, side * 0.3, 2.0), (0.82, side * 0.14, 1.85)], '#ffffff', mat='team')
-    # kristal (vrti se u igri)
-    cr = m.part('crystal', (0, 0, 3.3))
-    cr.ico((0, 0, 3.3), (0.2, 0.2, 0.32), '#ffffff', mat='teamglow', sub=0)
+        b.box((math.cos(a) * 0.88, math.sin(a) * 0.88, 3.12), (0.22, 0.2, 0.26), stones[i % 3], rot=(0, 0, i * 36), bevel=0.02)
+    # kruna umjesto krova: postolje, prsten tima i četiri zlatna luka koja drže lebdeći kristal
+    b.cyl((0, 0, 3.0), (0, 0, 3.2), 0.5, 0.42, mort, seg=10)
+    b.cyl((0, 0, 3.18), (0, 0, 3.25), 0.45, 0.45, '#ffffff', mat='team', seg=10)
+    for k in range(4):
+        a = RAD(k * 90 + 45)
+        ca, sa = math.cos(a), math.sin(a)
+        p0, p1, p2 = (ca * 0.36, sa * 0.36, 3.2), (ca * 0.56, sa * 0.56, 3.72), (ca * 0.3, sa * 0.3, 4.22)
+        b.cyl(p0, p1, 0.06, 0.05, '#d9a73e', seg=6)
+        b.cyl(p1, p2, 0.05, 0.015, '#e9bf62', seg=6)
+        b.sphere(p1, 0.065, '#fde68a', seg=(8, 6))
+    # zastava na koplju (stražnji kut, ne zaklanja kristal)
+    b.cyl((-0.64, 0.64, 3.0), (-0.64, 0.64, 4.62), 0.03, 0.025, '#5b3a1e', seg=6)
+    b.sphere((-0.64, 0.64, 4.64), 0.05, '#e9bf62', seg=(8, 6))
+    fl = m.part('flag', (-0.64, 0.64, 4.48), 'base')   # zastava se vijori (zaseban dio)
+    fl.poly([(-0.64, 0.65, 4.6), (-0.64, 0.65, 4.3), (-0.4, 0.65, 4.42), (-0.16, 0.65, 4.5)], '#ffffff', mat='team', thick=0.012)
+    # kristal (vrti se i lebdi u igri)
+    Z = TOWER_CRYSTAL_Z
+    cr = m.part('crystal', (0, 0, Z))
+    cr.ico((0, 0, Z), (0.3, 0.3, 0.48), '#ffffff', mat='teamglow', sub=0)
+    for k in range(3):   # mali kristali koji kruže
+        a = RAD(k * 120)
+        cr.ico((math.cos(a) * 0.5, math.sin(a) * 0.5, Z - 0.1), (0.07, 0.07, 0.12), '#ffffff', mat='teamglow', sub=0)
     m.finish()
 
-    # prijestol (Ancient)
+    # prijestol (Ancient) — "Drvo života": kameni podij sa zlatnim rubom, stupovi i drvo čije grane drže kristal
     m = Model('ancient')
     b = m.part('base', (0, 0, 0))
-    b.cyl((0, 0, 0), (0, 0, 0.3), 1.9, 1.8, '#9aa3ad', seg=12)
-    b.cyl((0, 0, 0.3), (0, 0, 0.55), 1.55, 1.48, '#b7bec6', seg=12)
-    b.cyl((0, 0, 0.55), (0, 0, 0.8), 1.2, 1.15, '#cfd5db', seg=12)
-    b.cyl((0, 0, 0.78), (0, 0, 0.86), 1.22, 1.22, '#ffffff', mat='team', seg=12)
-    for i in range(6):
-        a = RAD(i * 60 + 30)
-        x, y = math.cos(a) * 1.35, math.sin(a) * 1.35
-        b.cyl((x, y, 0.55), (x, y, 2.4), 0.13, 0.11, '#e5e7eb', seg=8)
-        b.box((x, y, 2.45), (0.32, 0.32, 0.14), '#cfd5db', rot=(0, 0, i * 60), bevel=0.02)
-        b.ico((x, y, 2.66), 0.12, '#ffffff', mat='teamglow', sub=0)
-    for i in range(3):
-        a = RAD(i * 120 + 90)
-        x, y = math.cos(a) * 1.0, math.sin(a) * 1.0
-        b.cyl((x, y, 0.8), (x * 0.7, y * 0.7, 1.7), 0.08, 0.03, '#f6c945', seg=6)
-    b.cyl((0, 0, 0.8), (0, 0, 1.1), 0.55, 0.45, '#9aa3ad', seg=10)
+    b.cyl((0, 0, 0), (0, 0, 0.28), 1.95, 1.86, '#645a4a', seg=16)
+    b.cyl((0, 0, 0.27), (0, 0, 0.32), 1.88, 1.88, '#e9bf62', seg=16)   # zlatni rub
+    b.cyl((0, 0, 0.32), (0, 0, 0.56), 1.58, 1.5, '#776c5a', seg=16)
+    b.cyl((0, 0, 0.56), (0, 0, 0.8), 1.24, 1.16, '#887c68', seg=16)
+    b.cyl((0, 0, 0.78), (0, 0, 0.86), 1.24, 1.24, '#ffffff', mat='team', seg=16, caps=False)   # traka tima (bez poklopca — inače prekrije vrh podija)
+    for k in range(2):   # stube sprijeda i straga
+        a = k * 180 + 90
+        ca, sa = math.cos(RAD(a)), math.sin(RAD(a))
+        for j in range(3):
+            r = 1.95 - j * 0.24
+            b.box((ca * (r - 0.02), sa * (r - 0.02), 0.1 + j * 0.24), (0.36, 0.7 - j * 0.08, 0.2), ['#6e6453', '#7d7260', '#8b806c'][j], rot=(0, 0, a), bevel=0.02)
+    for i in range(6):   # stupovi sa zlatnim kapitelima i svjetlima
+        a = RAD(i * 60)
+        x, y = math.cos(a) * 1.4, math.sin(a) * 1.4
+        b.cyl((x, y, 0.32), (x, y, 0.5), 0.2, 0.18, '#9c917b', seg=8)
+        b.cyl((x, y, 0.5), (x, y, 2.1), 0.13, 0.11, '#a3967b', seg=10)
+        b.cyl((x, y, 2.1), (x, y, 2.24), 0.2, 0.22, '#e9bf62', seg=8)
+        b.ico((x, y, 2.42), 0.13, '#ffffff', mat='teamglow', sub=0)
+    BARK, BARK2 = '#7a5230', '#5e3d22'
+    b.cyl((0, 0, 0.8), (0, 0, 1.3), 0.4, 0.28, BARK, seg=12, smooth=True)   # deblo
+    for k in range(5):   # korijenje preko podija
+        a = RAD(k * 72 + 10)
+        ca, sa = math.cos(a), math.sin(a)
+        b.cyl((ca * 0.2, sa * 0.2, 1.0), (ca * 0.7, sa * 0.7, 0.88), 0.14, 0.09, BARK2, seg=8, smooth=True)
+        b.cyl((ca * 0.7, sa * 0.7, 0.88), (ca * 1.12, sa * 1.12, 0.82), 0.09, 0.03, BARK2, seg=8, smooth=True)
+    leaves = ['#4d9a3a', '#5cad45', '#3f8a32']
+    for k in range(3):   # tri grane u luku oko kristala, krošnje na krajevima (sredina i prednja strana ostaju otvorene)
+        a = RAD(k * 120 + 90)
+        ca, sa = math.cos(a), math.sin(a)
+        pts = [(ca * 0.15, sa * 0.15, 1.25), (ca * 0.72, sa * 0.72, 1.7), (ca * 0.86, sa * 0.86, 2.45), (ca * 0.58, sa * 0.58, 2.95)]
+        rr = [0.17, 0.12, 0.08, 0.04]
+        for j in range(3):
+            b.cyl(pts[j], pts[j + 1], rr[j], rr[j + 1], BARK, seg=8, smooth=True)
+        b.ico((ca * 1.0, sa * 1.0, 2.62), (0.46, 0.46, 0.36), leaves[k], sub=2, jitter=0.18, seed=80 + k)
+        b.ico((ca * 0.66, sa * 0.66, 3.0), (0.3, 0.3, 0.24), leaves[(k + 1) % 3], sub=2, jitter=0.18, seed=90 + k)
+        for j in range(3):   # svjetleći plodovi u krošnji
+            aa = a + RAD(j * 40 - 40)
+            b.sphere((math.cos(aa) * 1.08, math.sin(aa) * 1.08, 2.45 + j * 0.12), 0.06, '#ffffff', mat='teamglow', seg=(8, 6))
     cr = m.part('crystal', (0, 0, 2.15))
     cr.ico((0, 0, 2.15), (0.55, 0.55, 0.85), '#ffffff', mat='teamglow', sub=0)
     cr.ico((0, 0, 2.15), (0.68, 0.68, 0.35), '#ffffff', mat='team', sub=0)
@@ -1647,8 +1765,8 @@ def build_tower():
     for i in range(16):
         a = RAD(i * 22.5)
         b.box((math.cos(a) * 2.9, math.sin(a) * 2.9, 0.18), (0.32, 0.3, 0.36), ['#aab2bb', '#c3c9d0'][i % 2], rot=(0, 0, i * 22.5), bevel=0.03)
-    b.cyl((0, 0, 0.3), (0, 0, 0.42), 3.08, 3.08, '#ffffff', mat='team', seg=24)
-    b.cyl((0, 0, 0.3), (0, 0, 0.34), 2.75, 2.75, '#2f9bd8', seg=24)
+    b.cyl((0, 0, 0.3), (0, 0, 0.42), 3.08, 3.08, '#ffffff', mat='team', seg=24, caps=False)   # prsten tima (bez poklopca — inače prekrije vodu)
+    b.cyl((0, 0, 0.3), (0, 0, 0.4), 2.75, 2.75, '#2f9bd8', seg=24)
     b.cyl((0, 0, 0.3), (0, 0, 1.4), 0.32, 0.25, '#b7bec6', seg=10)
     b.cyl((0, 0, 1.3), (0, 0, 1.55), 1.2, 1.3, '#cfd5db', seg=16)
     b.cyl((0, 0, 1.5), (0, 0, 1.56), 1.15, 1.15, '#4cb5ec', seg=16)
@@ -1667,8 +1785,8 @@ def build_tower():
 def build_barracks():
     m = Model('barracks')
     b = m.part('base', (0, 0, 0))
-    b.box((0, 0, 0.5), (1.7, 1.3, 1.0), '#d8d0bf', bevel=0.04)
-    b.box((0, 0, 0.08), (1.9, 1.5, 0.16), '#a39a88', bevel=0.03)
+    b.box((0, 0, 0.5), (1.7, 1.3, 1.0), '#b1a386', bevel=0.04)
+    b.box((0, 0, 0.08), (1.9, 1.5, 0.16), '#6c6253', bevel=0.03)
     for k in range(6):   # drvene grede
         b.box((-0.75 + k * 0.3, 0.66, 0.5), (0.08, 0.04, 0.95), '#7a4b25')
         b.box((-0.75 + k * 0.3, -0.66, 0.5), (0.08, 0.04, 0.95), '#7a4b25')
@@ -1676,8 +1794,8 @@ def build_barracks():
     rz, ez, ov, hx = 1.78, 1.0, 0.88, 1.0
     b.poly([(-hx, 0, rz), (hx, 0, rz), (hx, ov, ez), (-hx, ov, ez)], '#ffffff', mat='team', thick=0.09)
     b.poly([(hx, 0, rz), (-hx, 0, rz), (-hx, -ov, ez), (hx, -ov, ez)], '#ffffff', mat='team', thick=0.09)
-    b.poly([(0.85, -0.65, ez), (0.85, 0.65, ez), (0.85, 0, rz - 0.02)], '#d8d0bf', thick=0.12)
-    b.poly([(-0.85, 0.65, ez), (-0.85, -0.65, ez), (-0.85, 0, rz - 0.02)], '#d8d0bf', thick=0.12)
+    b.poly([(0.85, -0.65, ez), (0.85, 0.65, ez), (0.85, 0, rz - 0.02)], '#b1a386', thick=0.12)
+    b.poly([(-0.85, 0.65, ez), (-0.85, -0.65, ez), (-0.85, 0, rz - 0.02)], '#b1a386', thick=0.12)
     b.cyl((-hx - 0.04, 0, rz + 0.02), (hx + 0.04, 0, rz + 0.02), 0.06, 0.06, '#5b3a1e', seg=8)
     b.box((0, 0, 1.0), (1.95, 1.55, 0.06), '#5b3a1e')
     b.box((0.86, 0, 0.42), (0.1, 0.42, 0.7), '#5b3a1e', bevel=0.03)   # vrata
@@ -1709,11 +1827,11 @@ def build_barracks():
 
     m = Model('wall')
     w = m.part('mesh')
-    w.box((0, 0, 0.4), (1.0, 0.3, 0.8), '#cbc2ae', bevel=0.02)
-    w.box((0, 0, 0.12), (1.04, 0.36, 0.24), '#a39a88', bevel=0.02)
+    w.box((0, 0, 0.4), (1.0, 0.3, 0.8), '#a3967d', bevel=0.02)
+    w.box((0, 0, 0.12), (1.04, 0.36, 0.24), '#6c6253', bevel=0.02)
     for k in range(3):
-        w.box((-0.33 + k * 0.33, 0, 0.9), (0.2, 0.3, 0.2), ['#d8d0bf', '#e2dbcc'][k % 2], bevel=0.02)
-    w.cyl((0.5, 0, 0), (0.5, 0, 1.15), 0.2, 0.17, '#b5ab97', seg=8)
+        w.box((-0.33 + k * 0.33, 0, 0.9), (0.2, 0.3, 0.2), ['#b1a386', '#9c8f76'][k % 2], bevel=0.02)
+    w.cyl((0.5, 0, 0), (0.5, 0, 1.15), 0.2, 0.17, '#8f836c', seg=8)
     w.cyl((0.5, 0, 1.1), (0.5, 0, 1.3), 0.22, 0.0, '#ffffff', mat='team', seg=8)
     m.finish()
 
@@ -1772,15 +1890,23 @@ def build_scourge():
     for i in range(6):   # kandže koje drže kristal
         a = RAD(i * 60)
         ca, sa = math.cos(a), math.sin(a)
-        bone_spike(b, (ca * 0.75, sa * 0.75, 2.95), (ca * 0.2, sa * 0.2, 1.0), 0.75, 0.09, -0.15)
-    b.cyl((0, 0, 2.95), (0, 0, 3.1), 0.42, 0.36, '#3f3a47', seg=10)
-    b.cyl((-0.62, -0.62, 2.9), (-0.62, -0.62, 4.3), 0.03, 0.015, BONE2, seg=6)   # koštano koplje
-    skull(b, (-0.62, -0.62, 4.35), 0.5)
-    fl = m.part('flag', (-0.62, -0.62, 4.0), 'base')   # poderani barjak
-    fl.poly([(-0.62, -0.61, 4.18), (-0.62, -0.61, 3.78), (-0.4, -0.61, 3.86), (-0.3, -0.61, 3.96), (-0.2, -0.61, 3.9), (-0.16, -0.61, 4.12)],
+        bone_spike(b, (ca * 0.75, sa * 0.75, 2.95), (ca * 0.18, sa * 0.18, 1.0), 1.0, 0.09, -0.18)
+    for i in range(8):   # ljubičaste rune u prstenu ispod platforme
+        a = RAD(i * 45 + 22.5)
+        b.box((math.cos(a) * 0.66, math.sin(a) * 0.66, 2.45), (0.05, 0.1, 0.16), VOID, mat='glow', rot=(0, 0, i * 45 + 22.5))
+    b.cyl((0, 0, 2.95), (0, 0, 3.15), 0.44, 0.36, '#3f3a47', seg=10)
+    b.cyl((0, 0, 3.12), (0, 0, 3.18), 0.4, 0.4, VOID, mat='glow', seg=10)
+    b.cyl((-0.62, 0.62, 2.9), (-0.62, 0.62, 4.5), 0.03, 0.015, BONE2, seg=6)   # koštano koplje (stražnji kut)
+    skull(b, (-0.62, 0.62, 4.55), 0.5)
+    fl = m.part('flag', (-0.62, 0.62, 4.2), 'base')   # poderani barjak
+    fl.poly([(-0.62, 0.63, 4.38), (-0.62, 0.63, 3.98), (-0.4, 0.63, 4.06), (-0.3, 0.63, 4.16), (-0.2, 0.63, 4.1), (-0.16, 0.63, 4.32)],
             '#ffffff', mat='team', thick=0.012)
-    cr = m.part('crystal', (0, 0, 3.3))
-    cr.ico((0, 0, 3.3), (0.22, 0.22, 0.36), '#ffffff', mat='teamglow', sub=0)
+    Z = TOWER_CRYSTAL_Z
+    cr = m.part('crystal', (0, 0, Z))
+    cr.ico((0, 0, Z), (0.28, 0.28, 0.5), '#ffffff', mat='teamglow', sub=0)
+    for k in range(3):
+        a = RAD(k * 120 + 60)
+        cr.ico((math.cos(a) * 0.48, math.sin(a) * 0.48, Z - 0.12), (0.06, 0.06, 0.13), '#ffffff', mat='teamglow', sub=0)
     m.finish()
 
     # prijestol (Smrznuto srce): kruna od kostiju oko tamnog šiljatog kristala
@@ -1789,7 +1915,7 @@ def build_scourge():
     b.cyl((0, 0, 0), (0, 0, 0.3), 1.95, 1.8, '#2e2a36', seg=14)
     b.cyl((0, 0, 0.3), (0, 0, 0.55), 1.55, 1.45, DSTONE[0], seg=14)
     b.cyl((0, 0, 0.55), (0, 0, 0.8), 1.2, 1.1, DSTONE[2], seg=14)
-    b.cyl((0, 0, 0.78), (0, 0, 0.86), 1.22, 1.2, '#ffffff', mat='team', seg=14)
+    b.cyl((0, 0, 0.78), (0, 0, 0.86), 1.22, 1.2, '#ffffff', mat='team', seg=14, caps=False)
     for i in range(8):   # veliki koštani šiljci u krugu
         a = RAD(i * 45 + 22.5)
         ca, sa = math.cos(a), math.sin(a)
@@ -1818,8 +1944,8 @@ def build_scourge():
         b.box((math.cos(a) * 2.9, math.sin(a) * 2.9, 0.18), (0.32, 0.3, 0.36), DSTONE[i % 3], rot=(0, 0, i * 22.5), bevel=0.03)
         if i % 4 == 0:
             bone_spike(b, (math.cos(a) * 2.95, math.sin(a) * 2.95, 0.3), (math.cos(a) * 0.3, math.sin(a) * 0.3, 1.0), 0.9, 0.11, 0.1)
-    b.cyl((0, 0, 0.3), (0, 0, 0.42), 3.08, 3.08, '#ffffff', mat='team', seg=24)
-    b.cyl((0, 0, 0.3), (0, 0, 0.34), 2.75, 2.75, '#7e22ce', mat='glow', seg=24)
+    b.cyl((0, 0, 0.3), (0, 0, 0.42), 3.08, 3.08, '#ffffff', mat='team', seg=24, caps=False)
+    b.cyl((0, 0, 0.3), (0, 0, 0.4), 2.75, 2.75, '#7e22ce', mat='glow', seg=24)
     b.cyl((0, 0, 0.3), (0, 0, 1.4), 0.34, 0.26, DSTONE[1], seg=10)
     b.cyl((0, 0, 1.3), (0, 0, 1.55), 1.2, 1.3, DSTONE[2], seg=16)
     b.cyl((0, 0, 1.5), (0, 0, 1.56), 1.15, 1.15, '#9333ea', mat='glow', seg=16)
