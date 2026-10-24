@@ -924,8 +924,15 @@ def biped(name, c, opts):
             for zz, yy in ((1.5, 0.32), (1.38, 0.38)):
                 h.box(V(0.05, s * yy, zz), (0.15 * S, 0.03 * S, 0.035 * S), dark, rot=(s * 30, 0, 0))
         h.box(V(0.25, 0, 1.62), (0.12 * S, 0.035 * S, 0.03 * S), dark, rot=(0, -40, 0))
-    if opts.get('crescent'):
-        h.arc(V(0.33, 0, 1.6), 0.08 * S, 40, 320, 8, 0.016 * S, '#fff3b0', plane='yz', mat='glow')
+    if opts.get('crescent'):   # v0.30: polumjesec prati zaobljeno čelo (prije je stršao u zraku i vidio se odostraga)
+        cpts = []
+        for i in range(9):
+            a = RAD(40 + 280 * i / 8)
+            yy, zz = math.cos(a) * 0.08, 1.56 + math.sin(a) * 0.08
+            xx = hr[0] * math.sqrt(max(0.0, 1 - (yy / hr[1]) ** 2 - ((zz - hz) / hr[2]) ** 2)) + 0.012
+            cpts.append(V(xx, yy, zz))
+        for i in range(8):
+            h.cyl(cpts[i], cpts[i + 1], 0.016 * S, 0.016 * S, '#fff3b0', mat='glow', seg=6)
     if opts.get('hat') == 'beanie':
         h.sphere(V(-0.02, 0, 1.5), (0.37 * S, 0.39 * S, 0.24 * S), '#ffffff', mat='team', seg=(16, 8))
         h.cyl(V(-0.0, 0, 1.47), V(0, 0, 1.53), 0.4 * S, 0.4 * S, '#e8e8e8', seg=16, smooth=True)
@@ -1399,9 +1406,9 @@ def sig_ledena(k):
     for (dy, dz, rx) in ((0.0, 1.875, 0), (0.08, 1.83, -32), (-0.08, 1.83, 32)):
         h.ico(V(-0.06, dy, dz), (0.03 * S, 0.03 * S, 0.08 * S), '#bae6fd', mat='glow', sub=0, rot=(rx, 0, 0))
     for s in (1, -1):
-        base = Vector(V(-0.01, s * 0.33, 0.9))
-        for (dx, dy, dz), ln, rr, cc in (((0.0, 0.62, 0.78), 0.18, 0.036, '#bae6fd'), ((0.34, 0.7, 0.5), 0.13, 0.028, '#7dd3fc'),
-                                         ((-0.36, 0.66, 0.55), 0.14, 0.03, '#e0f2fe')):
+        base = Vector(V(-0.01, s * 0.35, 0.9))
+        for (dx, dy, dz), ln, rr, cc in (((0.0, 0.6, 0.8), 0.25, 0.048, '#7dd3fc'), ((0.36, 0.7, 0.5), 0.18, 0.036, '#38bdf8'),
+                                         ((-0.38, 0.65, 0.55), 0.19, 0.038, '#a5f3fc')):
             d = Vector((dx, s * dy, dz)).normalized()
             b.cyl(tuple(base), tuple(base + d * ln * S), rr * S, 0.0, cc, mat='glow', seg=5)
 
@@ -1426,11 +1433,11 @@ def sig_listko(k):
     """Listko: crvene gljive s bijelim točkama, svijetlo lišće i ružičasti cvijet na oklopu; vitica s listićima oko štapa"""
     b, R, V, S = k['b'], k['R'], k['V'], k['S']
     sc, sr = V(-0.13, 0, 0.74), (0.24 * S, 0.33 * S, 0.37 * S)
-    for i, (th, ph, sz) in enumerate(((182, 36, 1.0), (140, 34, 1.1), (196, 64, 0.95), (176, 14, 1.05))):
-        p = on_sphere(sc, sr, th, ph, 0.01 * S)
-        b.sphere(p, (0.085 * sz * S, 0.05 * sz * S, 0.018 * S), ('#84cc16', '#a3e635', '#65a30d', '#bef264')[i],
+    for i, (th, ph, sz) in enumerate(((186, 40, 1.0), (134, 22, 1.1), (236, 40, 0.95), (168, 2, 1.05))):
+        p = on_sphere(sc, sr, th, ph, 0.01 * S)   # gornji dio oklopa skriva glava, pa sve ide niže na leđa
+        b.sphere(p, (0.085 * sz * S, 0.05 * sz * S, 0.018 * S), ('#3f6212', '#15803d', '#f97316', '#4d7c0f')[i],
                  rot=(0, 90 - ph, th), seg=(10, 6))
-    for (th, ph, sz) in ((158, 56, 1.0), (212, 26, 0.85)):
+    for (th, ph, sz) in ((156, 32, 1.0), (214, 26, 0.85)):
         n = Vector(on_sphere((0, 0, 0), (1, 1, 1), th, ph))
         p = Vector(on_sphere(sc, sr, th, ph, -0.01 * S))
         up = (n + Vector((0, 0, 0.6))).normalized()   # gljive rastu malo prema gore
@@ -1445,8 +1452,8 @@ def sig_listko(k):
             dd = (u * math.cos(a) + w * math.sin(a)) * math.cos(RAD(42))
             b.sphere(tuple(cap + dd * cr[0] + up * math.sin(RAD(42)) * cr[2]), 0.014 * sz * S, '#ffffff', seg=(6, 4))
         b.sphere(tuple(cap + up * cr[2]), 0.015 * sz * S, '#ffffff', seg=(6, 4))
-    n = Vector(on_sphere((0, 0, 0), (1, 1, 1), 228, 46))
-    fc = Vector(on_sphere(sc, sr, 228, 46, 0.012 * S))
+    n = Vector(on_sphere((0, 0, 0), (1, 1, 1), 190, 8))
+    fc = Vector(on_sphere(sc, sr, 190, 8, 0.012 * S))
     u, w = _frame(n)
     for kk in range(5):
         a = math.tau * kk / 5
@@ -1470,12 +1477,12 @@ def sig_munja(k):
     """Munja: svjetleći vrh repa s iskrama i munje na nadlakticama"""
     t, V, S = k['t'], k['V'], k['S']
     if t:
-        t.sphere(V(-0.64, 0, 1.09), 0.06 * S, '#fde047', mat='glow', seg=(10, 8))
+        t.sphere(V(-0.64, 0, 1.1), 0.07 * S, '#fde047', mat='glow', seg=(10, 8))
         for (dy, dz) in ((0.07, 0.04), (-0.06, 0.07), (0.03, -0.08), (-0.05, -0.04)):
             t.sphere(V(-0.65, dy, 1.09 + dz), 0.016 * S, '#fef9c3', mat='glow', seg=(6, 4))
     for side, arm in ((1, k['L']), (-1, k['R'])):
-        arm.box(V(0.004, side * 0.398, 0.805), (0.022 * S, 0.012 * S, 0.075 * S), '#fde047', mat='glow', rot=(0, 25, 0))
-        arm.box(V(0.012, side * 0.407, 0.745), (0.022 * S, 0.012 * S, 0.075 * S), '#fde047', mat='glow', rot=(0, -25, 0))
+        arm.box(V(0.004, side * 0.4, 0.81), (0.032 * S, 0.014 * S, 0.1 * S), '#fde047', mat='glow', rot=(0, 25, 0))
+        arm.box(V(0.014, side * 0.41, 0.73), (0.032 * S, 0.014 * S, 0.1 * S), '#fde047', mat='glow', rot=(0, -25, 0))
 
 
 def sig_skokica(k):
