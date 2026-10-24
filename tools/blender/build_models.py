@@ -1106,7 +1106,7 @@ def biped(name, c, opts):
             deg = RAD(k * 30 + 15)
             b.sphere(V(math.cos(deg) * 0.343, math.sin(deg) * 0.343, 0.439), 0.014 * S, '#f6c945', seg=(6, 4))
         # v0.29: pregača (tabard) sprijeda i straga — tamnija boja tima, zlatni rub i znak
-        for sx in (1, -1):
+        for sx in ((1,) if opts.get('cape') else (1, -1)):   # ispod plašta nema stražnje pregače (probijala bi plašt)
             xt, xb, zt, zb, wt, wb = 0.312 * sx, 0.348 * sx, 0.6, 0.35, 0.085, 0.1
             b.poly([V(xt, -wt * sx, zt), V(xt, wt * sx, zt), V(xb, wb * sx, zb), V(xb, -wb * sx, zb)], '#9a9a9a', mat='team', thick=0.014)
             for yy in (-1, 1):
@@ -1294,9 +1294,341 @@ def biped(name, c, opts):
         for (zz, yy) in ((0.92, 0), (0.74, 0.17), (0.74, -0.17), (0.56, 0), (0.78, 0)):
             b.ico(V(-0.32 - (0.04 if yy == 0 and zz == 0.74 else 0), yy, zz), (0.06 * S, 0.11 * S, 0.1 * S), sh[1], sub=1)
         b.cyl(V(-0.08, 0, 0.42), V(-0.08, 0, 0.48), 0.36 * S, 0.35 * S, sh[2], seg=16)
+    # v0.30: potpisni detalj junaka (SIGS, definirano ispod)
+    sig = SIGS.get(name[5:]) if name.startswith('hero_') else None
+    if sig:
+        sig(dict(m=m, b=b, h=h, R=R, L=L, V=V, S=S, hz=hz, hr=hr, fur=fur, belly=belly, dark=dark, limb=limb,
+                 hR=hR, hL=hL, t=m.parts.get('tail'), opts=opts))
     biped_anims(m, kind=opts.get('atk', 'melee'), wings=bool(opts.get('wings')), tail=bool(opts.get('tail')),
                 arm_wings=bool(arm_wings))
     return m.finish()
+
+
+# ------------------------------------------------------------------ v0.30 POTPISNI DETALJI JUNAKA
+# Svaki junak dobiva svoj prepoznatljiv rekvizit (kao LoL junaci): poziva ih biped() na kraju, s
+# dijelovima modela i mjerama tijela. Koordinate su u prostoru modela (V množi mjerilom S).
+def _strap_pt(V, S, a_deg, out=0.0):
+    """točka na remenu preko prsa (isti nagib i polumjeri kao strap() u biped())"""
+    ct, st = math.cos(RAD(42)), math.sin(RAD(42))
+    rad = (0.30 * S, 0.30 * S, 0.345 * S)
+    d = Vector((math.cos(RAD(a_deg)), math.sin(RAD(a_deg)) * ct, math.sin(RAD(a_deg)) * st))
+    kk = 1.0 / math.sqrt((d.x / rad[0]) ** 2 + (d.y / rad[1]) ** 2 + (d.z / rad[2]) ** 2)
+    return Vector(V(0, 0, 0.70)) + d * (kk + out)
+
+
+def sig_vitez(k):
+    """Lavko: kraljevski plašt (opts cape) sa zlatnim rubom, kopčama s draguljem i lavljim znakom"""
+    b, V, S = k['b'], k['V'], k['S']
+    edge = [V(-0.345, -0.33, 0.42), V(-0.365, 0, 0.36), V(-0.345, 0.33, 0.42)]
+    for i in range(2):
+        b.cyl(edge[i], edge[i + 1], 0.013 * S, 0.013 * S, '#f6c945', seg=6)
+    for s in (1, -1):
+        b.cyl(V(-0.172, s * 0.25, 1.0), V(-0.345, s * 0.33, 0.42), 0.011 * S, 0.011 * S, '#f6c945', seg=6)
+        b.sphere(V(-0.16, s * 0.25, 1.0), 0.036 * S, '#f6c945', seg=(10, 8))
+        b.sphere(V(-0.128, s * 0.25, 1.0), 0.016 * S, '#ffffff', mat='teamglow', seg=(8, 6))
+    b.sphere(V(-0.29, 0, 0.66), (0.02 * S, 0.06 * S, 0.06 * S), '#f6c945', seg=(10, 8))
+    for i in range(10):
+        a = math.tau * i / 10
+        b.cyl(V(-0.29, math.cos(a) * 0.05, 0.66 + math.sin(a) * 0.05), V(-0.297, math.cos(a) * 0.095, 0.66 + math.sin(a) * 0.095),
+              0.017 * S, 0.0, '#f6c945', seg=4)
+
+
+def sig_zarko(k):
+    """Žarko: rogovi s plamenim vrhovima, žar na repu, zlatna narukvica s vatrenim draguljem"""
+    h, V, S = k['h'], k['V'], k['S']
+    for s in (1, -1):
+        h.sphere(V(-0.25, s * 0.26, 1.87), 0.04 * S, '#ff7a1a', mat='glow', seg=(8, 6))
+        h.sphere(V(-0.262, s * 0.265, 1.925), 0.026 * S, '#ffe26b', mat='glow', seg=(8, 6))
+    t = k['t']
+    if t:
+        for (x, z, r) in ((-0.3, 0.617, 0.022), (-0.42, 0.583, 0.02), (-0.56, 0.582, 0.017)):
+            t.sphere(V(x, 0, z), r * S, '#ff7a1a', mat='glow', seg=(8, 6))
+    R = k['R']
+    R.cyl(V(0.0077, -0.329, 0.78), V(0.0046, -0.3215, 0.82), 0.077 * S, 0.075 * S, '#f6c945', seg=12, caps=False)
+    R.sphere(V(0.006, -0.404, 0.8), 0.021 * S, '#ff5a1f', mat='glow', seg=(8, 6))
+
+
+def sig_ledena(k):
+    """Ledena: ledeni kristali oko kićanke kape i svjetleća pahulja na šalu"""
+    h, b, V, S = k['h'], k['b'], k['V'], k['S']
+    for (dy, dz, rx) in ((0.0, 1.875, 0), (0.08, 1.83, -32), (-0.08, 1.83, 32)):
+        h.ico(V(-0.06, dy, dz), (0.028 * S, 0.028 * S, 0.075 * S), '#bae6fd', mat='glow', sub=0, rot=(rx, 0, 0))
+    for ang in (0, 60, 120):
+        b.box(V(0.242, 0, 0.97), (0.008 * S, 0.012 * S, 0.085 * S), '#e0f2fe', mat='glow', rot=(ang, 0, 0))
+    b.sphere(V(0.246, 0, 0.97), 0.014 * S, '#ffffff', mat='glow', seg=(6, 4))
+
+
+def sig_strijela(k):
+    """Strijela: ogrlica od očnjaka i zlatna meta na tobolcu"""
+    b, V, S = k['b'], k['V'], k['S']
+    b.arc(V(0.02, 0, 0.965), 0.205 * S, -60, 60, 8, 0.006 * S, '#3b2414', plane='xy', seg=4)
+    for y, z in ((-0.07, 0.94), (0.0, 0.93), (0.07, 0.94)):
+        x = 0.02 + math.sqrt(0.205 ** 2 - y ** 2)
+        b.cyl(V(x, y, z + 0.02), V(x + 0.01, y, z - 0.05), 0.016 * S, 0.0, '#fffaf0', seg=5)
+    b.sphere(V(-0.385, 0.02, 0.85), (0.012 * S, 0.042 * S, 0.042 * S), '#f6c945', seg=(10, 8))
+    b.sphere(V(-0.396, 0.02, 0.85), (0.008 * S, 0.022 * S, 0.022 * S), '#ef4444', seg=(8, 6))
+
+
+def sig_listko(k):
+    """Listko: lišće i gljivice na oklopu, vitica s listićima oko štapa"""
+    b, R, V, S = k['b'], k['R'], k['V'], k['S']
+    sc, sr = V(-0.13, 0, 0.74), (0.24 * S, 0.33 * S, 0.37 * S)
+    for i, (th, ph) in enumerate(((170, 30), (200, 45), (150, 50), (185, 62))):
+        p = on_sphere(sc, sr, th, ph, 0.008 * S)
+        b.sphere(p, (0.06 * S, 0.035 * S, 0.016 * S), ['#65a30d', '#84cc16'][i % 2], rot=(0, 90 - ph, th), seg=(8, 6))
+    for (th, ph) in ((160, 58), (205, 52)):
+        p = Vector(on_sphere(sc, sr, th, ph, -0.004 * S))
+        n = Vector(on_sphere((0, 0, 0), (1, 1, 1), th, ph))
+        b.cyl(tuple(p), tuple(p + n * 0.05 * S), 0.012 * S, 0.01 * S, '#fff7e6', seg=6)
+        b.sphere(tuple(p + n * 0.06 * S), (0.036 * S, 0.036 * S, 0.022 * S), '#ef4444', rot=(0, 90 - ph, th), seg=(10, 6))
+    hR = k['hR']
+    for i, zz in enumerate((-0.12, 0.08, 0.28, 0.46)):
+        a = i * 1.9
+        c0 = hR + Vector((math.cos(a) * 0.04 * S, math.sin(a) * 0.04 * S, zz * S))
+        R.sphere(tuple(c0), (0.032 * S, 0.018 * S, 0.01 * S), '#4d7c0f', rot=(0, 30, math.degrees(a)), seg=(8, 5))
+
+
+def sig_munja(k):
+    """Munja: svjetleći vrh repa s iskrama i munje na podlakticama"""
+    t, V, S = k['t'], k['V'], k['S']
+    if t:
+        t.sphere(V(-0.64, 0, 1.09), 0.05 * S, '#fde047', mat='glow', seg=(10, 8))
+        for (dy, dz) in ((0.06, 0.03), (-0.05, 0.06), (0.02, -0.07)):
+            t.sphere(V(-0.64, dy, 1.09 + dz), 0.014 * S, '#fef9c3', mat='glow', seg=(6, 4))
+    for side, arm in ((1, k['L']), (-1, k['R'])):
+        arm.box(V(0.013, side * 0.414, 0.735), (0.014 * S, 0.008 * S, 0.055 * S), '#fde047', mat='glow', rot=(0, 25, 0))
+        arm.box(V(0.016, side * 0.416, 0.69), (0.014 * S, 0.008 * S, 0.055 * S), '#fde047', mat='glow', rot=(0, -25, 0))
+
+
+def sig_skokica(k):
+    """Skokica: mala zlatna kruna s rubinom (žablji princ)"""
+    h, V, S = k['h'], k['V'], k['S']
+    x0 = -0.08
+    h.cyl(V(x0, 0, 1.6), V(x0, 0, 1.66), 0.085 * S, 0.095 * S, '#f6c945', seg=14, caps=False)
+    for i in range(5):
+        a = math.tau * i / 5
+        x, y = x0 + math.cos(a) * 0.092, math.sin(a) * 0.092
+        h.cyl(V(x, y, 1.655), V(x, y, 1.72), 0.024 * S, 0.0, '#f6c945', seg=5)
+        h.sphere(V(x, y, 1.726), 0.012 * S, '#f6c945', seg=(6, 4))
+    h.sphere(V(x0 + 0.095, 0, 1.63), 0.016 * S, '#ef4444', mat='glow', seg=(8, 6))
+
+
+def sig_orlina(k):
+    """Orlina: pilotski šal u boji tima s dugim krajem koji se vijori"""
+    b, V, S = k['b'], k['V'], k['S']
+    b.cyl(V(0, 0, 0.93), V(0, 0, 1.0), 0.25 * S, 0.22 * S, '#ffffff', mat='team', seg=16, smooth=True)
+    b.box(V(-0.23, -0.07, 0.9), (0.05 * S, 0.09 * S, 0.2 * S), '#d8d8d8', mat='team', rot=(10, -40, 15), bevel=0.012)
+    b.box(V(-0.33, -0.12, 0.83), (0.045 * S, 0.08 * S, 0.16 * S), '#c8c8c8', mat='team', rot=(15, -60, 20), bevel=0.012)
+
+
+def sig_luna(k):
+    """Luna: svjetleći polumjeseci na krajevima luka i srebrne naušnice"""
+    L, h, V, S = k['L'], k['h'], k['V'], k['S']
+    ctr = k['hL'] + Vector((0.02, 0.02, 0)) + Vector((-0.28 * S, 0, 0))
+    for sg in (1, -1):
+        tip = ctr + Vector((math.cos(RAD(62)) * 0.42 * S, 0, sg * math.sin(RAD(62)) * 0.42 * S))
+        L.arc(tuple(tip), 0.045 * S, 40, 320, 7, 0.009 * S, '#fef9c3', plane='xz', mat='glow', seg=4)
+    for s in (1, -1):
+        for f in (0.35, 0.55):
+            p = Vector(V(-0.02, s * 0.22, 1.55)).lerp(Vector(V(-0.05, s * 0.33, 1.85)), f)
+            h.sphere(tuple(p + Vector((0, s * (0.12 * (1 - f) * S + 0.006), 0))), 0.016 * S, '#e2e8f0', seg=(6, 4))
+
+
+def sig_tragac(k):
+    """Tragač: kesa zlatnika na boku (ucjena!) i tri bacačka noža za remenom"""
+    b, V, S = k['b'], k['V'], k['S']
+    b.sphere(V(-0.02, -0.325, 0.55), (0.07 * S, 0.05 * S, 0.075 * S), '#7a4b25', seg=(12, 8))
+    b.cyl(V(-0.02, -0.325, 0.615), V(-0.02, -0.325, 0.635), 0.035 * S, 0.03 * S, '#f6c945', seg=8)
+    for (dx, dy) in ((0.0, 0.0), (0.025, 0.012), (-0.02, -0.01)):
+        b.cyl(V(-0.02 + dx, -0.325 + dy, 0.64), V(-0.02 + dx, -0.325 + dy, 0.652), 0.022 * S, 0.022 * S, '#f6c945', seg=10)
+    for a in (22, 38, 54):
+        p = _strap_pt(V, S, a, 0.018 * S)
+        b.cyl(tuple(p + Vector((0, 0, 0.03 * S))), tuple(p), 0.012 * S, 0.012 * S, '#3b2414', seg=6)
+        b.cyl(tuple(p), tuple(p - Vector((0, 0, 0.075 * S))), 0.016 * S, 0.0, '#e2e8f0', seg=4)
+
+
+def sig_jez(k):
+    """Bodljo: bočica zelene ljepljive sluzi na boku i kožne narukvice s bodljama"""
+    b, V, S = k['b'], k['V'], k['S']
+    b.cyl(V(-0.01, -0.33, 0.5), V(-0.01, -0.33, 0.585), 0.044 * S, 0.04 * S, '#4ade80', mat='glow', seg=10)
+    b.cyl(V(-0.01, -0.33, 0.585), V(-0.01, -0.33, 0.62), 0.02 * S, 0.018 * S, '#d1fae5', seg=8)
+    b.cyl(V(-0.01, -0.33, 0.615), V(-0.01, -0.33, 0.645), 0.022 * S, 0.02 * S, '#a16207', seg=8)
+    b.cyl(V(-0.01, -0.33, 0.5), V(-0.01, -0.33, 0.51), 0.046 * S, 0.046 * S, '#d1fae5', seg=10)
+    for side, arm in ((1, k['L']), (-1, k['R'])):
+        arm.cyl(V(0.0154, side * 0.3485, 0.68), V(0.02, side * 0.36, 0.62), 0.08 * S, 0.082 * S, '#5b3a1e', seg=12)
+        for kq in range(3):
+            a = RAD(-40 + kq * 40)
+            dv = Vector((math.sin(a) * 0.4, side * math.cos(a), 0)).normalized()
+            base = Vector(V(0.018, side * 0.354, 0.65)) + dv * 0.075 * S
+            arm.cyl(tuple(base), tuple(base + dv * 0.06 * S), 0.018 * S, 0.0, '#e8d5b5', seg=5)
+
+
+def sig_slon(k):
+    """Tutnjo: zlatni ukras na čelu s rubinom i resicama, zlatni prstenovi na kljovama, rese na ušima"""
+    h, V, S = k['h'], k['V'], k['S']
+    hc, rad = V(0, 0, k['hz']), tuple(r * S for r in k['hr'])
+    fp = Vector(on_sphere(hc, rad, 0, 45, 0.006 * S))
+    h.sphere(tuple(fp), (0.02 * S, 0.1 * S, 0.07 * S), '#f6c945', rot=(0, -45, 0), seg=(12, 8))
+    h.sphere(tuple(fp + Vector((0.016 * S, 0, 0.016 * S))), (0.014 * S, 0.034 * S, 0.034 * S), '#dc2626', mat='glow', rot=(0, -45, 0), seg=(10, 8))
+    for kd in (-1, 0, 1):
+        h.sphere(on_sphere(hc, rad, kd * 9, 31, 0.012 * S), 0.014 * S, '#f6c945', seg=(6, 4))
+    for s_ in (1, -1):
+        b0, tp = Vector(V(0.36, s_ * 0.15, 1.1)), Vector(V(0.62, s_ * 0.19, 1.0))
+        d = tp - b0
+        p0 = b0 + d * 0.28
+        h.cyl(tuple(p0), tuple(p0 + d.normalized() * 0.025 * S), 0.034 * S, 0.033 * S, '#f6c945', seg=10, caps=False)
+        h.cyl(V(-0.08, s_ * 0.46, 1.12), V(-0.08, s_ * 0.465, 1.04), 0.008 * S, 0.008 * S, '#dc2626', seg=5)
+        h.sphere(V(-0.08, s_ * 0.465, 1.03), 0.022 * S, '#f6c945', seg=(8, 6))
+
+
+def sig_pcela(k):
+    """Zuja: svjetleći vrhovi ticala i lončić meda (s kapljicom) na boku"""
+    h, b, V, S = k['h'], k['b'], k['V'], k['S']
+    for s in (1, -1):
+        h.sphere(V(0.272, s * 0.232, 1.985), 0.042 * S, '#fde047', mat='glow', seg=(8, 6))
+    b.sphere(V(-0.01, -0.33, 0.54), (0.07 * S, 0.07 * S, 0.06 * S), '#c2410c', seg=(12, 8))
+    b.cyl(V(-0.01, -0.33, 0.585), V(-0.01, -0.33, 0.61), 0.05 * S, 0.055 * S, '#9a3412', seg=12)
+    b.cyl(V(-0.01, -0.33, 0.6), V(-0.01, -0.33, 0.613), 0.047 * S, 0.047 * S, '#fbbf24', mat='glow', seg=12)
+    b.sphere(V(0.05, -0.33, 0.585), (0.016 * S, 0.016 * S, 0.03 * S), '#fbbf24', mat='glow', seg=(6, 5))
+    b.box(V(0.057, -0.33, 0.54), (0.012 * S, 0.05 * S, 0.035 * S), '#fef3c7', bevel=0.004)
+
+
+def sig_sova(k):
+    """Mudra: okrugle zlatne naočale i broš s polumjesecom"""
+    h, b, V, S = k['h'], k['b'], k['V'], k['S']
+    for s in (1, -1):
+        h.arc(V(0.425, s * 0.15, 1.36), 0.108 * S, 0, 360, 14, 0.009 * S, '#f6c945', plane='yz', seg=5)
+        h.cyl(V(0.42, s * 0.258, 1.38), V(0.2, s * 0.36, 1.43), 0.008 * S, 0.008 * S, '#f6c945', seg=5)
+    h.cyl(V(0.425, -0.045, 1.4), V(0.425, 0.045, 1.4), 0.008 * S, 0.008 * S, '#f6c945', seg=5)
+    b.arc(V(0.215, 0, 0.92), 0.04 * S, 50, 310, 8, 0.01 * S, '#f6c945', plane='yz', seg=5)
+
+
+def sig_majmun(k):
+    """Skakač: banana za pojasom i crvene vrpce na vrhu zlatnog štapa"""
+    b, R, V, S = k['b'], k['R'], k['V'], k['S']
+    p0, p1, p2 = V(0.0, -0.335, 0.6), V(0.03, -0.35, 0.52), V(0.09, -0.345, 0.47)
+    b.cyl(p0, p1, 0.022 * S, 0.03 * S, '#facc15', seg=8, smooth=True)
+    b.cyl(p1, p2, 0.03 * S, 0.014 * S, '#facc15', seg=8, smooth=True)
+    b.sphere(p1, 0.03 * S, '#facc15', seg=(8, 6))
+    b.cyl(p0, V(-0.005, -0.335, 0.625), 0.01 * S, 0.008 * S, '#78350f', seg=5)
+    b.sphere(p2, 0.012 * S, '#78350f', seg=(6, 4))
+    top = k['hR'] + Vector((0, 0, 0.62 * S))
+    for dy, rot in ((0.012, 14), (-0.012, -10)):
+        R.box(tuple(top + Vector((0.03 * S, dy * S, -0.08 * S))), (0.008 * S, 0.026 * S, 0.12 * S), '#ef4444', rot=(0, rot, 0), bevel=0.003)
+
+
+def sig_vuk(k):
+    """Sivko: plave ratničke pruge na obrazima, ogrlica od zuba i srebrni pun mjesec"""
+    h, b, V, S = k['h'], k['b'], k['V'], k['S']
+    hc, rad = V(0, 0, k['hz']), tuple(r * S for r in k['hr'])
+    for s in (1, -1):
+        for ph in (-4, -12):
+            h.box(on_sphere(hc, rad, s * 46, ph, 0.004 * S), (0.012 * S, 0.075 * S, 0.016 * S), '#3b82f6', rot=(0, 0, s * 46), bevel=0.004)
+    b.arc(V(0.02, 0, 0.885), 0.225 * S, -55, 55, 8, 0.006 * S, '#3b2414', plane='xy', seg=4)
+    for y in (-0.1, 0.1):
+        x = 0.02 + math.sqrt(0.225 ** 2 - y ** 2)
+        b.cyl(V(x, y, 0.875), V(x + 0.008, y, 0.81), 0.016 * S, 0.0, '#fffaf0', seg=5)
+    b.sphere(V(0.252, 0, 0.84), (0.012 * S, 0.045 * S, 0.045 * S), '#e2e8f0', seg=(12, 8))
+
+
+def sig_gavran(k):
+    """Mrak: zvijezde i polumjesec na šeširu, ovratnik od perja i ljubičasti broš"""
+    h, b, V, S = k['h'], k['b'], k['V'], k['S']
+
+    def cone_pt(z, ang):
+        tt = (z - 1.58) / 0.62
+        r = 0.3 * (1 - tt) + 0.006
+        xc = -0.02 - 0.12 * tt
+        return V(xc + math.cos(RAD(ang)) * r, math.sin(RAD(ang)) * r, z)
+    for z, ang, rr in ((1.8, 30, 0.024), (1.95, -20, 0.02), (1.74, -60, 0.018)):
+        h.ico(cone_pt(z, ang), rr * S, '#fde047', mat='glow', sub=0)
+    h.arc(cone_pt(1.87, 0), 0.035 * S, 60, 300, 7, 0.008 * S, '#fef9c3', plane='yz', mat='glow', seg=4)
+    for i in range(7):
+        a = RAD(110 + i * (140 / 6))
+        b.cyl(V(math.cos(a) * 0.2, math.sin(a) * 0.2, 0.93), V(math.cos(a) * 0.38, math.sin(a) * 0.38, 1.05),
+              0.05 * S, 0.0, '#1f2430' if i % 2 else '#3f4452', seg=6)
+    b.sphere(V(0.215, 0, 0.9), (0.012 * S, 0.034 * S, 0.034 * S), '#f6c945', seg=(8, 6))
+    b.sphere(V(0.228, 0, 0.9), 0.022 * S, '#a78bfa', mat='glow', seg=(8, 6))
+
+
+def sig_hobotnica(k):
+    """Pipko: kruna od koralja i biserna ogrlica"""
+    h, b, V, S = k['h'], k['b'], k['V'], k['S']
+    hc, rad = V(0, 0, k['hz']), tuple(r * S for r in k['hr'])
+    for i, th in enumerate((10, 82, 154, 226, 298)):
+        base = Vector(on_sphere(hc, rad, th, 66, -0.02 * S))
+        n = Vector(on_sphere((0, 0, 0), (1, 1, 1), th, 66))
+        d = (n + Vector((0, 0, 1.2))).normalized()
+        tip = base + d * 0.17 * S
+        cc = ('#fb923c', '#f97316')[i % 2]
+        h.cyl(tuple(base), tuple(tip), 0.03 * S, 0.012 * S, cc, seg=7, smooth=True)
+        mid = base + d * 0.09 * S
+        side = Vector((-math.sin(RAD(th)), math.cos(RAD(th)), 0))
+        h.cyl(tuple(mid), tuple(mid + (side * 0.6 + d * 0.8).normalized() * 0.08 * S), 0.018 * S, 0.008 * S, cc, seg=6, smooth=True)
+        h.sphere(tuple(tip), 0.016 * S, '#fdba74', seg=(6, 4))
+    for i in range(9):
+        a = RAD(-64 + i * 16)
+        b.sphere(V(0.02 + math.cos(a) * 0.235, math.sin(a) * 0.235, 0.88), 0.019 * S, '#f8fafc', seg=(8, 6))
+
+
+def sig_nosorog(k):
+    """Rogo: čelični obruč na rogu, šiljci na naramenjacima i crvena ratnička pruga"""
+    h, b, V, S = k['h'], k['b'], k['V'], k['S']
+    b0, tp = Vector(V(0.5, 0, 1.24)), Vector(V(0.66, 0, 1.56))
+    d = tp - b0
+    p0 = b0 + d * 0.12
+    h.cyl(tuple(p0), tuple(p0 + d.normalized() * 0.035 * S), 0.066 * S, 0.064 * S, '#cfd8e3', seg=12)
+    for s in (1, -1):
+        b.cyl(V(-0.02, s * 0.33, 0.99), V(-0.06, s * 0.38, 1.12), 0.03 * S, 0.0, '#cfd8e3', seg=6)
+        b.cyl(V(0.05, s * 0.37, 0.96), V(0.07, s * 0.46, 1.05), 0.025 * S, 0.0, '#cfd8e3', seg=6)
+    hc, rad = V(0, 0, k['hz']), tuple(r * S for r in k['hr'])
+    h.box(on_sphere(hc, rad, 0, 40, 0.004 * S), (0.012 * S, 0.24 * S, 0.026 * S), '#dc2626', rot=(0, -40, 0), bevel=0.005)
+
+
+def sig_panda(k):
+    """Bambus: slamnati šešir na leđima i tikvica s crvenom vrpcom na boku"""
+    b, V, S = k['b'], k['V'], k['S']
+    hb, ha = Vector(V(-0.28, 0, 0.72)), Vector(V(-0.39, 0, 0.77))
+    b.cyl(tuple(hb), tuple(ha), 0.27 * S, 0.0, '#d9b56a', seg=18)
+    b.cyl(tuple(hb), tuple(hb.lerp(ha, 0.04)), 0.275 * S, 0.27 * S, '#a07a3a', seg=18, caps=False)
+    for r_ in (0.18, 0.09):
+        c0 = hb.lerp(ha, 1 - r_ / 0.27)
+        b.cyl(tuple(c0), tuple(c0 + (ha - hb).normalized() * 0.006 * S), r_ * S + 0.004, r_ * S + 0.002, '#b8914a', seg=16, caps=False)
+    b.sphere(V(-0.01, -0.33, 0.5), (0.055 * S, 0.055 * S, 0.065 * S), '#b45309', seg=(10, 8))
+    b.sphere(V(-0.01, -0.33, 0.585), (0.035 * S, 0.035 * S, 0.04 * S), '#b45309', seg=(10, 8))
+    b.cyl(V(-0.01, -0.33, 0.55), V(-0.01, -0.33, 0.56), 0.04 * S, 0.04 * S, '#dc2626', seg=10, caps=False)
+    b.cyl(V(-0.01, -0.33, 0.62), V(-0.01, -0.33, 0.645), 0.015 * S, 0.013 * S, '#78350f', seg=6)
+
+
+def sig_jednorog(k):
+    """Duga: narukvice u bojama duge i svjetlucave zvjezdice oko roga"""
+    h, V, S = k['h'], k['V'], k['S']
+    for side, arm in ((1, k['L']), (-1, k['R'])):
+        for z0, cc in ((0.655, '#f472b6'), (0.632, '#60a5fa')):
+            arm.cyl(V(0.018, side * 0.355, z0), V(0.019, side * 0.357, z0 - 0.016), 0.075 * S, 0.075 * S, cc, seg=12, caps=False)
+    tip = Vector(V(0.42, 0, 2.02))
+    for off, r in (((0.06, 0.07, -0.02), 0.022), ((-0.03, -0.08, 0.03), 0.018), ((0.02, 0.02, 0.09), 0.016)):
+        h.ico(tuple(tip + Vector(off) * S), r * S, '#fff7ae', mat='glow', sub=0)
+
+
+def sig_morskipas(k):
+    """Zubo: gusarski povez preko oka, zlatni zub i zlatno sidro na šalu"""
+    h, b, V, S = k['h'], k['b'], k['V'], k['S']
+    h.sphere(V(0.4, 0.15, 1.37), (0.03 * S, 0.105 * S, 0.11 * S), '#111827', seg=(12, 8))
+    h.arc(V(0, 0, 1.45), 0.415 * S, 28, 300, 16, 0.012 * S, '#111827', plane='xy', seg=5)
+    a = RAD(-64 + 5 * 16)
+    tx, ty = 0.27 + math.cos(a) * 0.23, math.sin(a) * 0.23
+    h.cyl(V(tx, ty, 1.121), V(tx + 0.005, ty, 1.072), 0.026 * S, 0.0, '#f6c945', seg=5)
+    b.cyl(V(0.245, 0, 0.99), V(0.245, 0, 0.94), 0.007 * S, 0.007 * S, '#f6c945', seg=5)
+    b.cyl(V(0.245, -0.02, 0.98), V(0.245, 0.02, 0.98), 0.006 * S, 0.006 * S, '#f6c945', seg=5)
+    b.arc(V(0.245, 0, 0.955), 0.022 * S, 200, 340, 6, 0.006 * S, '#f6c945', plane='yz', seg=4)
+
+
+SIGS = {'vitez': sig_vitez, 'zarko': sig_zarko, 'ledena': sig_ledena, 'strijela': sig_strijela, 'listko': sig_listko,
+        'munja': sig_munja, 'skokica': sig_skokica, 'orlina': sig_orlina, 'luna': sig_luna, 'tragac': sig_tragac,
+        'jez': sig_jez, 'slon': sig_slon, 'pcela': sig_pcela, 'sova': sig_sova, 'majmun': sig_majmun, 'vuk': sig_vuk,
+        'gavran': sig_gavran, 'hobotnica': sig_hobotnica, 'nosorog': sig_nosorog, 'panda': sig_panda,
+        'jednorog': sig_jednorog, 'morskipas': sig_morskipas}
 
 
 HEROES = {
@@ -1313,7 +1645,7 @@ HEROES = {
                        headR=(0.42, 0.44, 0.38), blush=False, cheekFluff=False, scarf=True)),
     'vitez': (dict(fur='#e9a93b', belly='#f9e3ad', muzzle='#fbe8bb', nose='#4a2a1a', dark='#9c5a1c'),
               dict(ears='round', mane='#b5541e', tail='thin', tuft='#b5541e', weapon='sword', shield=True,
-                   crown=True, brows='#7a3b12', chest='#cfd8e3', shoulders='#cfd8e3', boots='#5b3a1e', atk='melee')),
+                   crown=True, brows='#7a3b12', chest='#cfd8e3', shoulders='#cfd8e3', boots='#5b3a1e', atk='melee', cape=True)),
     'zarko': (dict(fur='#e4572e', belly='#ffcf56', dark='#8f2414', inner='#ffcf56'),
               dict(snout='dragon', horns='#fff1c9', wings='#ff8a4c', wingScale=1.25, tail='long', tailFlame=True,
                    weapon='orb', orb='#ffb020', crest='#ffcf56', scarf=True, bellyPlates=True, atk='mage')),
