@@ -57,6 +57,8 @@ const MODEL_SCALE = {
   hero: 50, creep_melee: 34, creep_ranged: 32, creep_siege: 40,
   tower: 35, ancient: 48, fountain: 42,
 };
+/* ☀️ osvjetljenje dana: umjerenije nebo i ekspozicija — vrhovi krošnji i svijetli kamen se više ne "isperu" u bijelo */
+const LIGHT = { exposure: 1.0, sunK: 0.98, hemi0: 0.28, hemiK: 0.32 };
 const TOWER_CRYSTAL_Z = 3.75;   // visina kristala na kuli (u jedinicama modela; tools/blender: TOWER_CRYSTAL_Z)
 
 /* ================= Blender modeli (GLB) ================= */
@@ -407,7 +409,7 @@ function initScene3D(glCanvas){
   if('outputEncoding' in renderer3 && THREE.sRGBEncoding !== undefined)
     renderer3.outputEncoding = THREE.sRGBEncoding;
   renderer3.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer3.toneMappingExposure = 1.05;
+  renderer3.toneMappingExposure = LIGHT.exposure;
 
   scene3 = new THREE.Scene();
   scene3.background = new THREE.Color(0x9fdcff);
@@ -420,7 +422,7 @@ function initScene3D(glCanvas){
 
   camera3 = new THREE.PerspectiveCamera(50, 1, 10, 14000);
 
-  hemiLight = new THREE.HemisphereLight(0xdff2ff, 0x5a7d3c, 0.75);
+  hemiLight = new THREE.HemisphereLight(0xc9e2ff, 0x5a7d3c, LIGHT.hemi0 + LIGHT.hemiK);
   scene3.add(hemiLight);
 
   sunLight = new THREE.DirectionalLight(0xfff2d0, 1.1);
@@ -500,7 +502,7 @@ function resize3D(){
    Na sporim uređajima se samo isključi; tipka K ih pali/gasi. */
 const POST = { on: true, composer: null, bloom: null, grade: null, auto: true, frames: 0, acc: 0, last: 0 };
 const GRADE_SHADER = {
-  uniforms: { tDiffuse: { value: null }, exposure: { value: 1.05 }, sat: { value: 1.1 }, contrast: { value: 1.06 },
+  uniforms: { tDiffuse: { value: null }, exposure: { value: LIGHT.exposure }, sat: { value: 1.02 }, contrast: { value: 1.06 },
     vig: { value: 0.28 }, night: { value: 0 } },
   vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: `
@@ -569,8 +571,8 @@ function applyDayNight(gt){
   if(typeof nightForceT !== 'undefined' && nightForceT > 0) target = Math.min(target, 0.04);   // 🌑 Vječna noć
   dayK = lerp(dayK, target, 0.04);
   const k = dayK;
-  sunLight.intensity = 0.16 + 0.94 * k;
-  hemiLight.intensity = 0.3 + 0.45 * k;
+  sunLight.intensity = 0.16 + LIGHT.sunK * k;
+  hemiLight.intensity = LIGHT.hemi0 + LIGHT.hemiK * k;
   scene3.background.copy(DAY_SKY.night).lerp(DAY_SKY.day, k);
   scene3.fog.color.copy(scene3.background);
   sunLight.color.copy(DAY_SKY.sunNight).lerp(DAY_SKY.sunDay, k);
@@ -1005,10 +1007,19 @@ function hash01(x, y, k){
   const s = Math.sin(x * 12.9898 + y * 78.233 + k * 37.719) * 43758.5453;
   return s - Math.floor(s);
 }
+/* 🌳 priroda i ukrasi: mat Lambert (kao teren) — bez odsjaja okoline koji je krošnje činio plastičnima i bijelima
+   na vrhu; boje su dublje, a materijal je i brži na tabletima */
+function natureMat(){
+  if(!matCache.nature){
+    matCache.nature = new THREE.MeshLambertMaterial({ vertexColors: true });
+    matCache.nature.userData.shared = true;
+  }
+  return matCache.nature;
+}
 function instancedFrom(name, items, color){
   const geo = mergedModelGeo(name);
   if(!geo || !items.length) return null;
-  const mat = modelMat('VC', 0, 'n');
+  const mat = natureMat();
   const im = new THREE.InstancedMesh(geo, mat, items.length);
   const dummy = new THREE.Object3D();
   items.forEach((it, i) => {
@@ -1065,11 +1076,23 @@ function buildTrees3D(){
     const v = Math.floor(r * 3);
     const gh = groundHeight(t.x, t.y);
     const dire = scourgeSide(t.x, t.y) > 220 && MODELS.tpl.tree_dead0;
-    if(dire && t.kind === '🌲') add('tree_dpine' + v, { x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.68, sy: 0.9 + r * 0.25 });
-    else if(dire && hash01(t.x, t.y, 4) < 0.7) add('tree_dead' + v, { x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.82 });
-    else if(t.kind === '🌲') add('tree_pine' + v, { x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.68, sy: 0.9 + r * 0.25 });
-    else if(hash01(t.x, t.y, 9) < 0.3 && MODELS.tpl.tree_birch0) add('tree_birch' + (v % 2), { x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.7 });
-    else add('tree_oak' + v, { x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.78 });
+    const S = 1.15;   // stabla malo veća (krošnje; sudar ostaje isti)
+    if(dire && t.kind === '🌲') add('tree_dpine' + v, { x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.68 * S, sy: 0.9 + r * 0.25 });
+    else if(dire && hash01(t.x, t.y, 4) < 0.7) add('tree_dead' + v, { x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.82 * S });
+    else if(t.kind === '🌲') add('tree_pine' + v, { x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.68 * S, sy: 0.9 + r * 0.25 });
+    else if(hash01(t.x, t.y, 9) < 0.3 && MODELS.tpl.tree_birch0) add('tree_birch' + (v % 2), { x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.7 * S });
+    else add('tree_oak' + v, { x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.78 * S });
+  }
+  // 🌿 grmlje uz stabla: šume izgledaju gušće (samo ukras — ne smeta kretanju)
+  if(MODELS.tpl.bush0) for(const t of trees){
+    if(scourgeSide(t.x, t.y) > 200 || hash01(t.x, t.y, 13) > 0.6) continue;
+    const nb = hash01(t.x, t.y, 14) < 0.35 ? 2 : 1;
+    for(let k = 0; k < nb; k++){
+      const a = hash01(t.x, t.y, 15 + k) * TAU, d = 46 + hash01(t.x, t.y, 17 + k) * 34;
+      const x = t.x + Math.cos(a) * d, y = t.y + Math.sin(a) * d;
+      if(LANE_LIST.some(l => distToPath(LANE_PTS[l], x, y) < 110)) continue;
+      add('bush0', { x, y, h: groundHeight(x, y) - 1, rot: a, s: 26 + hash01(t.x, t.y, 19 + k) * 14 });
+    }
   }
   // ukrasi: kamenje, grmlje, gljive, panjevi — samo za ljepotu
   const free = (x, y, pad) => {
@@ -1083,7 +1106,7 @@ function buildTrees3D(){
     for(const t of trees) if(distXY(x, y, t.x, t.y) < 55) return false;
     return true;
   };
-  const decoKinds = ['rock0', 'rock1', 'rock2', 'bush0', 'bush0', 'mushroom0', 'bush0', 'rock1'];
+  const decoKinds = ['rock0', 'bush0', 'bush0', 'mushroom0', 'bush0', 'rock1', 'bush0', 'mushroom0'];   // manje kamenja (bilo je kao konfeti)
   let n = 0;
   for(let i = 0; i < 2000 && n < Math.round(110 * MAP_S * MAP_S); i++){
     const x = hash01(i, 3, 7) * WORLD, y = hash01(i, 11, 5) * WORLD;
@@ -1928,7 +1951,7 @@ function buildCreepMesh(u){
     return g;
   }
   const name = u.siege ? 'creep_siege' : (u.rangedCreep ? 'creep_ranged' : 'creep_melee');
-  if(MODELS.ready && addModel(g, name, u.team, MODEL_SCALE[name] * (u.superCreep ? 1.18 : 1))){
+  if(MODELS.ready && addModel(g, themed(name, u.team), u.team, MODEL_SCALE[name] * (u.superCreep ? 1.18 : 1))){   // ☠️ Scourge ima svoje vojnike
     if(u.superCreep){
       const aura = new THREE.Sprite(glowMat(TEAM_COLOR[u.team]));
       aura.scale.set(70, 70, 1); aura.position.y = 30;
@@ -1951,8 +1974,12 @@ function buildNeutralMesh(u){
   const ct = CAMP_TYPES[key] || {};
   const dk = u.drake && DRAKES[u.drake];
   const own = dk && MODELS.tpl['mob_drake_' + u.drake];   // 🐉 vlastiti model zmajčića za svaki element
-  if(MODELS.ready && addModel(g, own ? 'mob_drake_' + u.drake : 'mob_' + (ct.model || key), TEAM_NEUTRAL, u.r * 2.2)){
-    if(ct.look) g.userData.baseLook = ct.look;   // 🔵 plavi golem / 🔴 vatreni vuk: obojeni model
+  let mn = own ? 'mob_drake_' + u.drake : 'mob_' + (ct.model || key);
+  const fb = !MODELS.tpl[mn] && ct.fallback;              // stari GLB bez modela (npr. vatrenog vuka): obojeni zamjenski model
+  if(fb) mn = 'mob_' + ct.fallback;
+  if(MODELS.ready && addModel(g, mn, TEAM_NEUTRAL, u.r * 2.2)){
+    if(ct.look) g.userData.baseLook = ct.look;   // 🔵 plavi golem: obojeni model
+    if(fb && ct.fallbackLook) g.userData.baseLook = ct.fallbackLook;
     if(dk && !own) g.userData.baseLook = dk.look; // stari GLB bez zmajčića: obojeni Veliki Zmaj
     if(dk) g.userData.drakeEl = u.drake;
     if(ct.buff || dk){   // svjetleći krug ispod čudovišta s buffom / zmajčića

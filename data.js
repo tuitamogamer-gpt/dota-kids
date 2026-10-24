@@ -1879,7 +1879,7 @@ const CAMP_TYPES = {
   drake:  { n:1, emoji:'🐉', name:'Zmajčić',     hp:1900, dmg:58, range:90, atkCd:1.3, speed:110, r:25, gold:150, xp:200, hpRegen:3, drake:true, model:'boss' },
   boss:   { n:1, emoji:'🐲', name:'Veliki Zmaj', hp:2600, dmg:78, range:95, atkCd:1.3, speed:110, r:34, gold:260, xp:300, boss:true, hpRegen:4 },
   golem:  { n:1, emoji:'🗿', name:'Plavi golem', hp:1500, dmg:62, range:85, atkCd:1.4, speed:100, r:27, gold:170, xp:170, stunHit:true, hpRegen:2, buff:'blue', look:'c' },
-  redbuff:{ n:1, emoji:'🐺', name:'Vatreni vuk', hp:1150, dmg:52, range:70, atkCd:1.15, speed:130, r:25, gold:120, xp:130, hpRegen:2, buff:'red', look:'r', model:'wolves' },
+  redbuff:{ n:1, emoji:'🐺', name:'Vatreni vuk', hp:1150, dmg:52, range:70, atkCd:1.15, speed:130, r:25, gold:120, xp:130, hpRegen:2, buff:'red', model:'redwolf', fallback:'wolves', fallbackLook:'r' },
 };
 const CAMP_SPOTS = [
   { x:850,  y:1300, type:'boars'  },
