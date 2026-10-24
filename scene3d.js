@@ -1465,119 +1465,178 @@ function buildPlayerRing(){
   scene3.add(playerRing3);
 }
 
-/* ---------- indikatori ciljanja moći ---------- */
+/* ---------- indikatori ciljanja moći (v0.31) ----------
+   Sve leži NA terenu: vrhovi prate visinu tla (i vodu u rijeci), pa se krug više ne skriva pod nasipom.
+   Strijela projektila pokazuje PRAVI domet i širinu (prije je išla samo do miša), skok i juriš do mjesta
+   slijetanja, a krug djelovanja leži točno gdje će moć pasti (unutar dometa ili na jedinici pod mišem). */
+const IND_LIFT = 3.5;
+function indH(x, z){ return Math.max(groundHeight(x, z), 6.4) + IND_LIFT; }   // u rijeci iznad vode
+function drapeMesh(maxV, color, opacity){
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(maxV * 3);
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage));
+  const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide,
+    polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -6 });
+  const m = new THREE.Mesh(geo, mat);
+  m.frustumCulled = false; m.visible = false; m.renderOrder = 5;
+  m.userData.pos = pos;
+  scene3.add(m);
+  return m;
+}
+function drapeDone(m){ m.geometry.attributes.position.needsUpdate = true; m.visible = true; }
+// prsten: traka između polumjera r1 i r2
+function annulusMesh(NA, color, opacity){
+  const m = drapeMesh(NA * 2, color, opacity), idx = [];
+  for(let i = 0; i < NA; i++){ const j = (i + 1) % NA; idx.push(i * 2, j * 2, i * 2 + 1, i * 2 + 1, j * 2, j * 2 + 1); }
+  m.geometry.setIndex(idx); m.userData.NA = NA;
+  return m;
+}
+function setAnnulus(m, cx, cz, r1, r2){
+  const NA = m.userData.NA, p = m.userData.pos;
+  for(let i = 0, k = 0; i < NA; i++){
+    const a = i / NA * TAU, ca = Math.cos(a), sa = Math.sin(a);
+    let x = cx + ca * r1, z = cz + sa * r1;
+    p[k++] = x; p[k++] = indH(x, z); p[k++] = z;
+    x = cx + ca * r2; z = cz + sa * r2;
+    p[k++] = x; p[k++] = indH(x, z); p[k++] = z;
+  }
+  drapeDone(m);
+}
+// pun krug: polarna mreža (NR prstenova × NA kutova), da i velik krug prati brežuljke
+function discMesh(NR, NA, color, opacity){
+  const m = drapeMesh(1 + NR * NA, color, opacity), idx = [];
+  for(let i = 0; i < NA; i++) idx.push(0, 1 + i, 1 + (i + 1) % NA);
+  for(let r = 0; r < NR - 1; r++) for(let i = 0; i < NA; i++){
+    const j = (i + 1) % NA, a = 1 + r * NA + i, b = 1 + r * NA + j, c = a + NA, d = b + NA;
+    idx.push(a, c, b, b, c, d);
+  }
+  m.geometry.setIndex(idx); m.userData.NR = NR; m.userData.NA = NA;
+  return m;
+}
+function setDisc(m, cx, cz, R){
+  const NR = m.userData.NR, NA = m.userData.NA, p = m.userData.pos;
+  p[0] = cx; p[1] = indH(cx, cz); p[2] = cz;
+  let k = 3;
+  for(let r = 1; r <= NR; r++){
+    const rr = R * r / NR;
+    for(let i = 0; i < NA; i++){
+      const a = i / NA * TAU, x = cx + Math.cos(a) * rr, z = cz + Math.sin(a) * rr;
+      p[k++] = x; p[k++] = indH(x, z); p[k++] = z;
+    }
+  }
+  drapeDone(m);
+}
+// traka duž pravca (tijelo strijele, rubovi, vrh): od (x0,z0) u smjeru (ux,uz), širina w0 → w1, bočni pomak off
+function stripMesh(NL, color, opacity){
+  const m = drapeMesh((NL + 1) * 2, color, opacity), idx = [];
+  for(let i = 0; i < NL; i++){ const a = i * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
+  m.geometry.setIndex(idx); m.userData.NL = NL;
+  return m;
+}
+function setStrip(m, x0, z0, ux, uz, len, w0, w1, off){
+  const NL = m.userData.NL, p = m.userData.pos, nx = -uz, nz = ux;
+  for(let i = 0, k = 0; i <= NL; i++){
+    const t = i / NL, L = len * t, w = (w0 + (w1 - w0) * t) / 2;
+    for(let s = -1; s <= 1; s += 2){
+      const x = x0 + ux * L + nx * (off + s * w), z = z0 + uz * L + nz * (off + s * w);
+      p[k++] = x; p[k++] = indH(x, z); p[k++] = z;
+    }
+  }
+  drapeDone(m);
+}
 function ensureCastInd(){
   if(castInd) return castInd;
-  const ring = new THREE.Mesh(
-    new THREE.RingGeometry(0.965, 1, 64),
-    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5,
-      side: THREE.DoubleSide, depthWrite: false }));
-  ring.rotation.x = -Math.PI / 2;
-  ring.visible = false;
-  scene3.add(ring);
-  const aoe = new THREE.Mesh(
-    new THREE.CircleGeometry(1, 48),
-    new THREE.MeshBasicMaterial({ color: 0xfde047, transparent: true, opacity: 0.3,
-      side: THREE.DoubleSide, depthWrite: false }));
-  aoe.rotation.x = -Math.PI / 2;
-  aoe.visible = false;
-  scene3.add(aoe);
-  const lineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
-  const line = new THREE.Line(lineGeo,
-    new THREE.LineBasicMaterial({ color: 0xfde047, transparent: true, opacity: 0.8 }));
-  line.visible = false;
-  scene3.add(line);
-  // 🎯 strelica za "skillshot" (kao u LoL-u): široka prozirna traka s vrhom strelice
-  const sh = new THREE.Shape();
-  sh.moveTo(0, -0.5); sh.lineTo(0.84, -0.5); sh.lineTo(0.84, -0.85); sh.lineTo(1, 0); sh.lineTo(0.84, 0.85); sh.lineTo(0.84, 0.5); sh.lineTo(0, 0.5); sh.closePath();
-  const shotGeo = new THREE.ShapeGeometry(sh);
-  const shotMesh = new THREE.Mesh(shotGeo, new THREE.MeshBasicMaterial({ color: 0xfde047, transparent: true, opacity: 0.38, side: THREE.DoubleSide, depthWrite: false }));
-  const shotEdge = new THREE.LineSegments(new THREE.EdgesGeometry(shotGeo), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 }));
-  shotMesh.rotation.x = shotEdge.rotation.x = -Math.PI / 2;
-  const shot = new THREE.Group();
-  shot.add(shotMesh, shotEdge);
-  shot.visible = false;
-  shot.renderOrder = 4;
-  scene3.add(shot);
-  // svijetli rub kruga djelovanja
-  const aoeRim = new THREE.Mesh(new THREE.RingGeometry(0.93, 1, 64),
-    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false }));
-  aoeRim.rotation.x = -Math.PI / 2;
-  aoeRim.visible = false;
-  scene3.add(aoeRim);
-  castInd = { ring, aoe, line, shot, shotMesh, aoeRim };
+  castInd = {
+    range: annulusMesh(128, 0xffffff, 0.6),       // domet oko junaka
+    fill: discMesh(6, 56, 0xfde047, 0.3),         // krug djelovanja
+    rim: annulusMesh(72, 0xffffff, 0.9),          // svijetli rub kruga (kao u LoL-u)
+    body: stripMesh(36, 0xfde047, 0.4),           // strijela: tijelo
+    edgeL: stripMesh(36, 0xffffff, 0.9),          //   i bijeli rubovi
+    edgeR: stripMesh(36, 0xffffff, 0.9),
+    head: stripMesh(6, 0xfde047, 0.7),            //   i vrh
+    hover: annulusMesh(48, 0xef4444, 0.95),       // jedinica pod mišem / meta moći
+  };
   return castInd;
+}
+function hideCastInd(){
+  if(castInd) for(const k in castInd) castInd[k].visible = false;
+}
+/* što igrač trenutno cilja (moć, čarolija prizivača ili predmet) */
+function pendingDef(){
+  if(!pendingCast || !player || player.dead) return null;
+  if(pendingCast.sum != null){
+    const sp = player.summoners && SUMMONER_BY_ID[player.summoners[pendingCast.sum]];
+    if(!sp) return null;
+    if(sp.target === 'unit') return { target: 'point', castRange: sp.range || 500, color: sp.color, unitAim: true };
+    return { target: 'point', castRange: sp.range || 500, color: sp.color, line: sp.id === 'flash', lineW: 44 };
+  }
+  if(pendingCast.item != null){
+    const it = player.items[pendingCast.item];
+    return it && it.active ? { target: 'point', castRange: it.active.castRange || 600, color: '#bae6fd', aoe: it.active.aoe || 0 } : null;
+  }
+  const ab = player.abilities[pendingCast.i];
+  return ab ? ab.def : null;
 }
 function syncCastIndicator(){
   const ci = ensureCastInd();
-  // indikator radi i pri CILJANJU i pri LEBDENJU nad gumbom moći
+  hideCastInd();
+  if(!running || !player || gameOver) return;
+  // radi pri ciljanju (i držanju tipke kod brzog bacanja), napadu u hodu i lebdenju nad gumbom moći
   let def = null, mode = null;
-  if(pendingCast && player && !player.dead){
-    if(pendingCast.sum != null){
-      const sp = player.summoners && SUMMONER_BY_ID[player.summoners[pendingCast.sum]];
-      def = sp ? { target: 'point', castRange: sp.range || 500, color: sp.color, aoe: sp.id === 'flash' ? 0 : 60, line: sp.id === 'flash' } : null;
-    } else if(pendingCast.item != null){
-      const it = player.items[pendingCast.item];
-      def = it && it.active ? { target: 'point', castRange: it.active.castRange || 600, color: '#bae6fd' } : null;
-    } else def = player.abilities[pendingCast.i].def;
-    mode = def ? 'pending' : null;
-  }
-  else if(hoverUi && hoverUi.type === 'abil' && player && !player.dead && running && !gameOver){
+  if(pendingCast && !player.dead){ def = pendingDef(); mode = def ? 'pending' : null; }
+  else if(hoverUi && hoverUi.type === 'abil' && !player.dead){
     const ab = player.abilities[hoverUi.i];
     if(ab && ab.rank > 0 && !ab.def.passive){ def = ab.def; mode = 'hover'; }
   }
-  ci.shot.visible = false; ci.aoeRim.visible = false;
-  if(!def){
-    ci.ring.visible = ci.aoe.visible = ci.line.visible = false;
-    return;
+  const px = player.x, pz = player.y;
+  const col = new THREE.Color(def && def.color ? def.color : '#fde047');
+  if(amovePending && !player.dead && !def){   // ⚔️ napad u hodu: crveni krug dometa napada
+    const r = player.atkRange + 40;
+    setAnnulus(ci.range, px, pz, r - 6, r);
+    ci.range.material.color.set('#f87171');
   }
-  const pgh = groundHeight(player.x, player.y);
+  // ⭕ jedinica pod mišem: crveni krug za neprijatelja, zeleni za prijatelja; pri ciljanju u boji moći
+  const hu = hoverUnit;
+  if(hu && !hu.dead && !hu.removeMe){
+    const r = unitHitShape(hu).R * 1.45;
+    setAnnulus(ci.hover, hu.x, hu.y, r - 5, r);
+    ci.hover.material.color.set(mode === 'pending' ? col : (hu.team === player.team ? '#4ade80' : (hu.team === TEAM_NEUTRAL ? '#fbbf24' : '#ef4444')));
+  }
+  if(!def) return;
   if(def.target === 'point'){
     const cr = def.castRange || 600;
-    ci.ring.visible = true;
-    ci.ring.position.set(player.x, pgh + 2.2, player.y);
-    ci.ring.scale.set(cr, cr, 1);
-    ci.ring.material.color.set('#ffffff');
-    if(mode === 'pending'){
-      const aim = clampRange(player, { x: mouse.wx, y: mouse.wy }, cr);
-      const agh = groundHeight(aim.x, aim.y);
-      if(def.aoe){
-        ci.aoe.visible = true;
-        ci.aoe.position.set(aim.x, agh + 2, aim.y);
-        ci.aoe.scale.set(def.aoe, def.aoe, 1);
-        ci.aoe.material.color.set(def.color || '#fde047');
-        ci.aoeRim.visible = true;   // svijetli rub (kao u LoL-u)
-        ci.aoeRim.position.set(aim.x, agh + 2.6, aim.y);
-        ci.aoeRim.scale.set(def.aoe, def.aoe, 1);
-      } else ci.aoe.visible = false;
-      ci.line.visible = false;
-      if(def.line){   // strelica od junaka do cilja
-        const len = Math.max(40, distXY(player.x, player.y, aim.x, aim.y));
-        ci.shot.visible = true;
-        ci.shot.position.set(player.x, Math.max(pgh, agh) + 4, player.y);
-        ci.shot.rotation.y = -Math.atan2(aim.y - player.y, aim.x - player.x);
-        ci.shot.scale.set(len, 1, def.lineW || 64);
-        ci.shotMesh.material.color.set(def.color || '#fde047');
-      }
-    } else {
-      ci.aoe.visible = false;
-      ci.line.visible = false;
+    setAnnulus(ci.range, px, pz, cr - 6, cr);
+    ci.range.material.color.set('#ffffff');
+    if(mode !== 'pending') return;
+    const raw = aimPoint();
+    const aim = clampRange(player, raw, cr);
+    let dx = raw.x - px, dz = raw.y - pz, L = Math.hypot(dx, dz);
+    if(L < 1){ dx = Math.cos(player.dir || 0); dz = Math.sin(player.dir || 0); L = 1; }
+    const ux = dx / L, uz = dz / L;
+    if(def.line){   // projektil leti do kraja dometa; skok i juriš staju na mjestu slijetanja
+      const len = def.lineFull ? cr : Math.max(30, Math.min(L, cr));
+      const W = def.lineW || 60, head = Math.min(len * 0.35, Math.max(40, W * 0.9));
+      setStrip(ci.body, px, pz, ux, uz, len - head, W, W, 0);
+      setStrip(ci.edgeL, px, pz, ux, uz, len - head, 5, 5, W / 2);
+      setStrip(ci.edgeR, px, pz, ux, uz, len - head, 5, 5, -W / 2);
+      setStrip(ci.head, px + ux * (len - head), pz + uz * (len - head), ux, uz, head, W * 1.6, 0, 0);
+      ci.body.material.color.copy(col); ci.head.material.color.copy(col);
+    }
+    const R = def.aoe || (def.line ? 0 : (def.unitAim ? 60 : 34));   // bez kruga djelovanja: mala oznaka mjesta (skok, treptaj)
+    if(R){
+      setDisc(ci.fill, aim.x, aim.y, R);
+      ci.fill.material.color.copy(col);
+      ci.fill.material.opacity = def.aoe ? 0.3 : 0.18;
+      const rw = clamp(R * 0.05, 6, 12);
+      setAnnulus(ci.rim, aim.x, aim.y, R - rw, R);
     }
   }
-  else if(def.selfAoe){
-    // krug djelovanja oko junaka, u boji moći
-    ci.aoe.visible = true;
-    ci.aoe.position.set(player.x, pgh + 2, player.y);
-    ci.aoe.scale.set(def.selfAoe, def.selfAoe, 1);
-    ci.aoe.material.color.set(def.color || '#fde047');
-    ci.ring.visible = true;
-    ci.ring.position.set(player.x, pgh + 2.2, player.y);
-    ci.ring.scale.set(def.selfAoe, def.selfAoe, 1);
-    ci.ring.material.color.set(def.color || '#fde047');
-    ci.line.visible = false;
-  }
-  else {
-    ci.ring.visible = ci.aoe.visible = ci.line.visible = false;
+  else if(def.selfAoe){   // krug djelovanja oko junaka
+    setDisc(ci.fill, px, pz, def.selfAoe);
+    ci.fill.material.color.copy(col);
+    ci.fill.material.opacity = 0.26;
+    const rw = clamp(def.selfAoe * 0.04, 6, 12);
+    setAnnulus(ci.rim, px, pz, def.selfAoe - rw, def.selfAoe);
   }
 }
 
@@ -2154,23 +2213,67 @@ function ensureUnitMesh(u){
 /* ---------- zone, projektili, oznake, munje, rune ---------- */
 /* zone moći: po emojiju moći biramo 3D efekt */
 const ZONE_FX = { '☄️': 'meteor', '❄️': 'snow', '🏹': 'arrows', '🌱': 'roots', '🥶': 'ice', '🌊': 'wave', '🍯': 'swarm', '🏺': 'swarm', '🐦‍⬛': 'crows', '🪶': 'feathers' };
+/* v0.31: krug zone (meteor, kiša strijela, korijenje…) leži NA terenu kao i indikatori ciljanja — prije je bio
+   ravan disk koji se na nasipu i u rijeci skrivao pod tlom, pa se nije vidjelo kamo moć pada */
+function zoneDrapeH(x, z, gh){ return Math.max(groundHeight(x, z), 6.4) + 3 - gh; }
+function zoneDiscGeo(cx, cz, R, gh, NR, NA){
+  const pos = new Float32Array((1 + NR * NA) * 3), idx = [];
+  for(let i = 0; i < NA; i++) idx.push(0, 1 + i, 1 + (i + 1) % NA);
+  for(let r = 0; r < NR - 1; r++) for(let i = 0; i < NA; i++){
+    const j = (i + 1) % NA, a = 1 + r * NA + i, b = 1 + r * NA + j;
+    idx.push(a, a + NA, b, b, a + NA, b + NA);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage));
+  geo.setIndex(idx);
+  geo.userData = { NR, NA };
+  zoneDiscSet(geo, cx, cz, R, gh);
+  return geo;
+}
+function zoneDiscSet(geo, cx, cz, R, gh){
+  const { NR, NA } = geo.userData, p = geo.attributes.position.array;
+  p[0] = 0; p[1] = zoneDrapeH(cx, cz, gh); p[2] = 0;
+  let k = 3;
+  for(let r = 1; r <= NR; r++){
+    const rr = Math.max(0.5, R * r / NR);
+    for(let i = 0; i < NA; i++){
+      const a = i / NA * TAU, dx = Math.cos(a) * rr, dz = Math.sin(a) * rr;
+      p[k++] = dx; p[k++] = zoneDrapeH(cx + dx, cz + dz, gh); p[k++] = dz;
+    }
+  }
+  geo.attributes.position.needsUpdate = true;
+}
+function zoneRingGeo(cx, cz, r1, r2, gh, NA){
+  const pos = new Float32Array(NA * 2 * 3), idx = [];
+  for(let i = 0; i < NA; i++){
+    const j = (i + 1) % NA;
+    idx.push(i * 2, j * 2, i * 2 + 1, i * 2 + 1, j * 2, j * 2 + 1);
+    const a = i / NA * TAU, ca = Math.cos(a), sa = Math.sin(a);
+    for(let q = 0; q < 2; q++){
+      const r = q ? r2 : r1, dx = ca * r, dz = sa * r, o = (i * 2 + q) * 3;
+      pos[o] = dx; pos[o + 1] = zoneDrapeH(cx + dx, cz + dz, gh) + 0.4; pos[o + 2] = dz;
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setIndex(idx);
+  return geo;
+}
+function zoneMat(color, opacity){
+  return new THREE.MeshBasicMaterial({ color, transparent: true, opacity, side: THREE.DoubleSide, depthWrite: false,
+    polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -6 });
+}
 function buildZoneMesh(z){
   const g = new THREE.Group();
   const ud = g.userData;
-  const ring = new THREE.Mesh(
-    new THREE.RingGeometry(Math.max(4, z.r - 7), z.r, 48),
-    new THREE.MeshBasicMaterial({ color: z.color, transparent: true, opacity: 0.85,
-      side: THREE.DoubleSide, depthWrite: false }));
-  ring.rotation.x = -Math.PI / 2;
-  ring.position.y = 2.4;
+  const gh = groundHeight(z.x, z.y);
+  const ring = new THREE.Mesh(zoneRingGeo(z.x, z.y, Math.max(4, z.r - 8), z.r, gh, 64), zoneMat(z.color, 0.9));
+  ring.renderOrder = 5;
   g.add(ring);
-  const fill = new THREE.Mesh(
-    new THREE.CircleGeometry(z.r, 40),
-    new THREE.MeshBasicMaterial({ color: z.color, transparent: true, opacity: 0.22,
-      side: THREE.DoubleSide, depthWrite: false }));
-  fill.rotation.x = -Math.PI / 2;
-  fill.position.y = 2.0;
+  const fill = new THREE.Mesh(zoneDiscGeo(z.x, z.y, z.r, gh, 5, 48), zoneMat(z.color, 0.22));
+  fill.renderOrder = 5;
   g.add(fill);
+  ud.gh = gh;
   ud.kind = MODELS.ready ? (ZONE_FX[z.emoji] || null) : null;
   ud.tk = z.ticksLeft;
   if(ud.kind === 'meteor'){
@@ -2262,8 +2365,8 @@ function syncZone(z, g, tAnim, dt){
   }
   if(!z.started){
     const f = Math.min(1, z.t / z.delay);
-    ud.fill.scale.set(Math.max(0.01, f), Math.max(0.01, f), 1);
-    ud.fill.material.opacity = 0.22;
+    zoneDiscSet(ud.fill.geometry, z.x, z.y, z.r * Math.max(0.02, f), ud.gh);   // punjenje raste do ruba (vrijeme do udara)
+    ud.fill.material.opacity = 0.26;
     if(ud.spr) ud.spr.visible = false;
     if(ud.bees) ud.bees.visible = false;
     if(ud.meteor){
@@ -2280,7 +2383,7 @@ function syncZone(z, g, tAnim, dt){
       fxSpawn(z.x + Math.cos(a) * d, z.y + Math.sin(a) * d, g.position.y + 4, '#7dd3fc', { spd: 20, up: 50, grav: 0, life: 0.6, size: 18 });
     }
   } else {
-    ud.fill.scale.set(1, 1, 1);
+    if(!ud.full){ zoneDiscSet(ud.fill.geometry, z.x, z.y, z.r, ud.gh); ud.full = true; }
     ud.fill.material.opacity = 0.2 + 0.12 * Math.abs(Math.sin(tAnim * 9));
     if(ud.meteor) ud.meteor.visible = false;
     if(ud.bees) ud.bees.visible = true;
@@ -3820,16 +3923,54 @@ const _plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -40);
 const _hit = new THREE.Vector3();
 const _v3 = new THREE.Vector3();
 
+/* v0.31: točka na terenu ispod miša — zraka iz kamere "korača" po visinskoj mreži terena (groundHeight)
+   umjesto raycasta kroz 114 tisuća trokuta, pa se smije računati u svakoj sličici (nišan prati miš i kad
+   se kamera pomiče) */
 function screenToWorld(sx, sy, fast){
   if(!camera3) return { x: cam.x, y: cam.y };
   _ndc.set(sx / VW * 2 - 1, -(sy / VH) * 2 + 1);
   _ray.setFromCamera(_ndc, camera3);
-  if(!fast && groundMesh){
-    const hits = _ray.intersectObject(groundMesh, false);
-    if(hits.length) return { x: hits[0].point.x, y: hits[0].point.z };
+  const o = _ray.ray.origin, d = _ray.ray.direction;
+  if(!fast && d.y < -1e-3){
+    const above = t => o.y + d.y * t > groundHeight(o.x + d.x * t, o.z + d.z * t);
+    let t = Math.max(0, (95 - o.y) / d.y), prev = t;   // kreni iznad najviših vrhova terena
+    for(let k = 0; k < 90; k++, prev = t, t += 12){
+      if(above(t)) continue;
+      let a = prev, b = t;   // zraka je ušla u teren: suzi interval
+      for(let s = 0; s < 10; s++){ const m = (a + b) / 2; if(above(m)) a = m; else b = m; }
+      return { x: o.x + d.x * b, y: o.z + d.z * b };
+    }
   }
   if(_ray.ray.intersectPlane(_plane, _hit)) return { x: _hit.x, y: _hit.z };
   return { x: cam.x, y: cam.y };
+}
+/* v0.31: jedinica pod mišem bira se po njenom TIJELU na ekranu (kao u LoL-u) — uspravna "kapsula" od
+   stopala do vrha glave. Prije se gledala samo točka na tlu iza jedinice, pa je klik na glavu junaka
+   promašio i junak je samo otišao onamo. */
+function unitHitShape(u){
+  const H = barHeight(u) * (u.kind === 'hero' ? 0.86 : 0.9);
+  const R = u.kind === 'hero' ? Math.max(26, (u.r || 22) * 1.2) :
+            u.kind === 'creep' ? Math.max(17, (u.r || 16) * 1.2) :
+            isStructure(u) ? (u.r || 40) * 0.95 : Math.max(18, (u.r || 20) * 1.1);
+  return { H, R };
+}
+function pickUnitScreen(sx, sy, pad, filter){
+  if(!camera3) return null;
+  let best = null, bs = 1e9;
+  for(const u of units){
+    if(u.dead || u.removeMe || u === player || !seenByPlayer(u)) continue;
+    if(filter && !filter(u)) continue;
+    const gh = groundHeight(u.x, u.y), hs = unitHitShape(u);
+    const a = worldToScreen(u.x, gh, u.y), b = worldToScreen(u.x, gh + hs.H, u.y);
+    const m = worldToScreen(u.x, gh + hs.H * 0.5, u.y), c = worldToScreen(u.x + hs.R, gh + hs.H * 0.5, u.y);
+    if(!a || !b || !m || !c) continue;
+    const pr = Math.hypot(c.x - m.x, c.y - m.y) + (pad || 0);
+    const dd = distToSeg(sx, sy, a.x, a.y, b.x, b.y);
+    if(dd > pr) continue;
+    const s = dd / pr - (u.kind === 'hero' ? 0.25 : 0);   // junaci imaju malu prednost pred vojnicima
+    if(s < bs){ bs = s; best = u; }
+  }
+  return best;
 }
 function worldToScreen(x, h, y){
   _v3.set(x, h, y).project(camera3);
@@ -3853,9 +3994,7 @@ function clearScene3D(){
   shake.amp = 0; shake.t = 0; cine.on = false;
   for(const s of spellLights){ s.L.intensity = 0; s.peak = 0; }
   if(playerRing3){ scene3.remove(playerRing3); playerRing3 = null; }
-  if(castInd){
-    castInd.ring.visible = castInd.aoe.visible = castInd.line.visible = false;
-  }
+  hideCastInd();
 }
 
 /* ================= 3D PREGLED JUNAKA (ekran odabira) ================= */

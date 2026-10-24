@@ -172,7 +172,7 @@ const HEROES = [
     abilities:[
       { key:'Q', name:'Vatrena kugla', emoji:'🔥', cd:6, mana:45, color:'#fb923c',
         desc:'Ispali vatrenu kuglu prema cilju',
-        target:'point', castRange:760, line:true,
+        target:'point', castRange:760, line:true, lineFull:true, lineW:68,
         tip:rk => '⚔️ ' + (70 + 45*rk) + ' štete prvom pogođenom',
         bot:{type:'shot', range:680},
         cast(u, aim, rk){
@@ -202,7 +202,7 @@ const HEROES = [
         }},
       { key:'R', name:'Zmajev dah', emoji:'🐲', cd:70, mana:130, ult:true, color:'#ef4444',
         desc:'ULTI: Ogromna vatrena lopta koja probija sve na svom putu',
-        target:'point', castRange:950, line:true,
+        target:'point', castRange:950, line:true, lineFull:true, lineW:132,
         tip:rk => '⚔️ ' + (170 + 90*rk) + ' štete SVIMA na putu + usporenje',
         bot:{type:'shot', range:820},
         cast(u, aim, rk){
@@ -224,7 +224,7 @@ const HEROES = [
     abilities:[
       { key:'Q', name:'Ledena strijela', emoji:'🧊', cd:6, mana:40, color:'#38bdf8',
         desc:'Ledena strijela ranjava i jako usporava',
-        target:'point', castRange:740, line:true,
+        target:'point', castRange:740, line:true, lineFull:true, lineW:64,
         tip:rk => '⚔️ ' + (58 + 40*rk) + ' štete + usporenje ' + Math.round((0.3 + 0.05*rk) * 100) + '%',
         bot:{type:'shot', range:660},
         cast(u, aim, rk){
@@ -234,7 +234,7 @@ const HEROES = [
         }},
       { key:'W', name:'Trbušno klizanje', emoji:'🛷', cd:11, mana:50, color:'#7dd3fc',
         desc:'Klizni na trbuhu po ledu — oštetiš i usporiš sve preko kojih prijeđeš',
-        target:'point', castRange:480, line:true,
+        target:'point', castRange:480, line:true, lineW:140,
         tip:rk => '⚔️ ' + (40 + 30*rk) + ' štete + 🐌 usporenje 40% 2 s svima na putu',
         bot:{type:'gap', range:450},
         cast(u, aim, rk){
@@ -283,7 +283,7 @@ const HEROES = [
     abilities:[
       { key:'Q', name:'Probojna strijela', emoji:'🎯', cd:7, mana:40, color:'#fbbf24',
         desc:'Strijela koja probija sve na svom putu',
-        target:'point', castRange:860, line:true,
+        target:'point', castRange:860, line:true, lineFull:true, lineW:56,
         tip:rk => '⚔️ ' + (62 + 42*rk) + ' štete SVIMA na putu',
         bot:{type:'shot', range:760},
         cast(u, aim, rk){
@@ -292,7 +292,7 @@ const HEROES = [
         }},
       { key:'W', name:'Lovačka mreža', emoji:'🕸️', cd:12, mana:55, color:'#a3e635',
         desc:'Baci mrežu — prvi neprijatelj kojeg pogodi ostane zarobljen na mjestu',
-        target:'point', castRange:700, line:true,
+        target:'point', castRange:700, line:true, lineFull:true, lineW:72,
         tip:rk => '⚔️ ' + (40 + 30*rk) + ' štete + 🕸️ ne može se micati ' + (1.2 + 0.3*rk).toFixed(1) + ' s',
         bot:{type:'shot', range:650},
         cast(u, aim, rk){
@@ -335,7 +335,7 @@ const HEROES = [
     abilities:[
       { key:'Q', name:'Trnova kugla', emoji:'🌰', cd:6, mana:40, color:'#84cc16',
         desc:'Baci bodljikavu kuglu koja usporava',
-        target:'point', castRange:720, line:true,
+        target:'point', castRange:720, line:true, lineFull:true, lineW:64,
         tip:rk => '⚔️ ' + (60 + 40*rk) + ' štete + usporenje 25%',
         bot:{type:'shot', range:640},
         cast(u, aim, rk){
@@ -402,7 +402,7 @@ const HEROES = [
         }},
       { key:'W', name:'Bljesak', emoji:'🌀', cd:9, mana:40, color:'#fde047',
         desc:'Munjevito juriš prema cilju i ošteti sve na putu',
-        target:'point', castRange:330, line:true,
+        target:'point', castRange:330, line:true, lineW:160,
         tip:rk => '⚔️ ' + (25 + 18*rk) + ' štete na putu juriša',
         bot:{type:'gap', range:330},
         cast(u, aim, rk){
@@ -448,7 +448,7 @@ const HEROES = [
     abilities:[
       { key:'Q', name:'Jezičina', emoji:'👅', cd:9, mana:50, color:'#f472b6',
         desc:'Izbaci jezik — prvog pogođenog povuče k sebi i kratko omami!',
-        target:'point', castRange:560, line:true,
+        target:'point', castRange:560, line:true, lineFull:true, lineW:56,
         tip:rk => '⚔️ ' + (55 + 35*rk) + ' štete + povlačenje + omama ' + (0.4 + 0.1*rk).toFixed(1) + ' s',
         bot:{type:'shot', range:540},
         cast(u, aim, rk){
@@ -495,7 +495,7 @@ const HEROES = [
         tip:rk => '⚔️ ' + (160 + 90*rk) + ' štete + usporenje 50%',
         bot:{type:'zone', range:540},
         cast(u, aim, rk){
-          return spawnZone(u, aim, {r:300, delay:0.6, ticks:1, interval:0.5,
+          return spawnZone(u, aim, {castRange:560, r:300, delay:0.6, ticks:1, interval:0.5,
             dmg:160 + 90*rk, slow:{f:0.5, t:3}, castRange:560,
             color:'#38bdf8', emoji:'🌊'});
         }},
@@ -513,7 +513,7 @@ const HEROES = [
     abilities:[
       { key:'Q', name:'Pero-oštrica', emoji:'🪶', cd:6, mana:40, color:'#e2e8f0',
         desc:'Munjevito brzo pero — pogađa izdaleka',
-        target:'point', castRange:900, line:true,
+        target:'point', castRange:900, line:true, lineFull:true, lineW:52,
         tip:rk => '⚔️ ' + (66 + 44*rk) + ' štete izdaleka',
         bot:{type:'shot', range:800},
         cast(u, aim, rk){
@@ -577,7 +577,7 @@ const HEROES = [
     abilities:[
       { key:'Q', name:'Sveta strijela', emoji:'🌠', cd:9, mana:50, color:'#e9d5ff',
         desc:'Mjesečeva strijela leti JAKO daleko — što dulje leti, jače omami i ranjava!',
-        target:'point', castRange:1100, line:true,
+        target:'point', castRange:1100, line:true, lineFull:true, lineW:60,
         tip:rk => '⚔️ do ' + (90 + 70*rk) + ' štete, omama do ' + (1.2 + 0.3*rk).toFixed(1) + ' s (raste s daljinom)',
         bot:{type:'shot', range:900},
         cast(u, aim, rk){
@@ -604,7 +604,7 @@ const HEROES = [
         }},
       { key:'E', name:'Mjesečev skok', emoji:'🌜', cd:12, mana:50, color:'#bae6fd',
         desc:'Skoči naprijed i potrči brže 2 sekunde',
-        target:'point', castRange:400, line:true,
+        target:'point', castRange:400, line:true, lineW:50,
         tip:rk => '🌜 skok ' + 400 + ' + ubrzanje ' + Math.round((0.2 + 0.05*rk) * 100) + '%',
         bot:{type:'gap', range:400},
         cast(u, aim, rk){
@@ -640,7 +640,7 @@ const HEROES = [
     abilities:[
       { key:'Q', name:'Leteća zvijezda', emoji:'💫', cd:8, mana:45, color:'#fbbf24',
         desc:'Baci oštru zvijezdu koja ranjava i kratko omami',
-        target:'point', castRange:600, line:true,
+        target:'point', castRange:600, line:true, lineFull:true, lineW:52,
         tip:rk => '⚔️ ' + (60 + 45*rk) + ' štete + omama 0.4 s',
         bot:{type:'shot', range:560},
         cast(u, aim, rk){
@@ -683,9 +683,10 @@ const HEROES = [
         bot:{type:'track', range:650},
         cast(u, aim, rk){
           let best = null, bd = 260;
+          const p = clampRange(u, aim, 700);   // v0.31: isti domet kao indikator
           for(const e of units){
             if(e.kind !== 'hero' || e.team === u.team || e.dead || e.removeMe) continue;
-            const d = distXY(aim.x, aim.y, e.x, e.y);
+            const d = distXY(p.x, p.y, e.x, e.y);
             if(d < bd){ bd = d; best = e; }
           }
           if(!best) return false;
@@ -730,7 +731,7 @@ const HEROES = [
         }},
       { key:'W', name:'Ljepljiva sluz', emoji:'🟢', cd:8, mana:45, color:'#84cc16',
         desc:'Baci ljepljivu grudu — prvi pogođeni se zalijepi i uspori',
-        target:'point', castRange:650, line:true,
+        target:'point', castRange:650, line:true, lineFull:true, lineW:64,
         tip:rk => '⚔️ ' + (40 + 30*rk) + ' štete + usporenje ' + Math.round((0.3 + 0.05*rk) * 100) + '% na 3 s',
         bot:{type:'shot', range:600},
         cast(u, aim, rk){
@@ -739,7 +740,7 @@ const HEROES = [
         }},
       { key:'E', name:'Klupko', emoji:'🌰', cd:12, mana:55, color:'#a16207',
         desc:'Smotaj se u bodljikavo klupko i otkotrljaj se — prvi neprijatelj na putu bude omamljen',
-        target:'point', castRange:520, line:true,
+        target:'point', castRange:520, line:true, lineW:68,
         tip:rk => '⚔️ ' + (50 + 35*rk) + ' štete + 💫 omama ' + (0.6 + 0.15*rk).toFixed(2) + ' s',
         bot:{type:'gap', range:500},
         cast(u, aim, rk){
@@ -781,7 +782,7 @@ const HEROES = [
         }},
       { key:'W', name:'Surla-zamah', emoji:'🌀', cd:7, mana:40, color:'#a5b4fc',
         desc:'Zamahni surlom ispred sebe — velika šteta u pravcu',
-        target:'point', castRange:320, line:true,
+        target:'point', castRange:320, line:true, lineW:180,
         tip:rk => '⚔️ ' + (80 + 55*rk) + ' štete svima u pravcu zamaha',
         bot:{type:'shot', range:300},
         cast(u, aim, rk){
@@ -834,7 +835,7 @@ const HEROES = [
     abilities:[
       { key:'Q', name:'Otrovni ubod', emoji:'🐝', cd:7, mana:45, color:'#facc15',
         desc:'Pošalji pčelu — ubod otruje neprijatelja koji gubi život nekoliko sekundi',
-        target:'point', castRange:700, line:true,
+        target:'point', castRange:700, line:true, lineFull:true, lineW:60,
         tip:rk => '⚔️ ' + (35 + 25*rk) + ' štete + 🤢 otrov ' + (10 + 7*rk) + '/s na 4 s',
         bot:{type:'shot', range:640},
         cast(u, aim, rk){
@@ -869,7 +870,7 @@ const HEROES = [
         tip:rk => '⚔️ 6 × ' + (40 + 28*rk) + ' štete + 🤢 otrov svima u krugu',
         bot:{type:'zone', range:600},
         cast(u, aim, rk){
-          return spawnZone(u, aim, {r:320, delay:0.6, ticks:6, interval:1.0,
+          return spawnZone(u, aim, {castRange:650, r:320, delay:0.6, ticks:6, interval:1.0,
             dmg:40 + 28*rk, poison:{dps:8 + 4*rk, t:3}, castRange:650,
             color:'#f59e0b', emoji:'🏺'});
         }},
@@ -944,7 +945,7 @@ const HEROES = [
     abilities:[
       { key:'Q', name:'Štap-udarac', emoji:'🥢', cd:9, mana:50, color:'#fbbf24',
         desc:'Štap se produži i udari sve u pravcu — kratka omama',
-        target:'point', castRange:420, line:true,
+        target:'point', castRange:420, line:true, lineW:140,
         tip:rk => '⚔️ ' + (65 + 45*rk) + ' štete + omama ' + (0.5 + 0.2*rk).toFixed(1) + ' s svima u pravcu',
         bot:{type:'shot', range:400},
         cast(u, aim, rk){
@@ -963,7 +964,7 @@ const HEROES = [
         }},
       { key:'W', name:'Majmunski skok', emoji:'🐵', cd:10, mana:45, color:'#86efac',
         desc:'Skoči na mjesto i kratko potrči brže',
-        target:'point', castRange:450, line:true,
+        target:'point', castRange:450, line:true, lineW:50,
         tip:rk => '🐵 skok 450 + ubrzanje ' + Math.round((0.15 + 0.05*rk) * 100) + '% na 2 s',
         bot:{type:'gap', range:450},
         cast(u, aim, rk){
@@ -974,7 +975,7 @@ const HEROES = [
         }},
       { key:'E', name:'Banana', emoji:'🍌', cd:10, mana:45, color:'#fde047',
         desc:'Baci koru od banane — tko je pogodi, oklizne se i padne',
-        target:'point', castRange:650, line:true,
+        target:'point', castRange:650, line:true, lineFull:true, lineW:68,
         tip:rk => '⚔️ ' + (35 + 25*rk) + ' štete + 💫 omama ' + (0.8 + 0.2*rk).toFixed(1) + ' s',
         bot:{type:'shot', range:600},
         cast(u, aim, rk){
@@ -1024,7 +1025,7 @@ const HEROES = [
         }},
       { key:'W', name:'Ugriz', emoji:'🦷', cd:8, mana:40, color:'#fca5a5',
         desc:'Skoči na neprijatelja i ugrizi ga — rana krvari još 3 sekunde',
-        target:'point', castRange:300, line:true,
+        target:'point', castRange:300, line:true, lineW:50, aoe:110,
         tip:rk => '⚔️ ' + (50 + 40*rk) + ' štete + 🩸 ' + (8 + 6*rk) + '/s na 3 s',
         bot:{type:'gap', range:300},
         cast(u, aim, rk){
@@ -1089,7 +1090,7 @@ const HEROES = [
         }},
       { key:'W', name:'Zamjena', emoji:'🔁', cd:14, mana:60, color:'#c4b5fd',
         desc:'Zamijeni mjesto s neprijateljskim junakom — povuci ga k svojima!',
-        target:'point', castRange:520, aoe:140,
+        target:'point', castRange:520, aoe:150,
         tip:rk => '🔁 zamjena mjesta + ⚔️ ' + (40 + 30*rk) + ' štete + 🐌 usporenje 2 s',
         bot:{type:'swap', range:520},
         cast(u, aim, rk){
@@ -1139,7 +1140,7 @@ const HEROES = [
     abilities:[
       { key:'Q', name:'Mlaz tinte', emoji:'🖤', cd:8, mana:45, color:'#312e81',
         desc:'Ispljuni tintu — pogođeni ne vidi dobro i promašuje napade',
-        target:'point', castRange:650, line:true,
+        target:'point', castRange:650, line:true, lineFull:true, lineW:68,
         tip:rk => '⚔️ ' + (45 + 35*rk) + ' štete + 😵 promašuje ' + Math.round((0.4 + 0.1*rk) * 100) + '% 3 s',
         bot:{type:'shot', range:600},
         cast(u, aim, rk){
@@ -1149,7 +1150,7 @@ const HEROES = [
         }},
       { key:'W', name:'Pipci', emoji:'🐙', cd:10, mana:50, color:'#818cf8',
         desc:'Ispruži pipke u pravcu — zgrabi neprijatelje i povuci ih k sebi',
-        target:'point', castRange:380, line:true,
+        target:'point', castRange:380, line:true, lineW:160,
         tip:rk => '⚔️ ' + (40 + 30*rk) + ' štete + povlačenje ' + (140 + 20*rk) + ' + 🐌 usporenje',
         bot:{type:'shot', range:350},
         cast(u, aim, rk){
@@ -1218,7 +1219,7 @@ const HEROES = [
     abilities:[
       { key:'Q', name:'Juriš', emoji:'🏃', cd:13, mana:60, color:'#fbbf24',
         desc:'Jurni ravno naprijed — prvi neprijatelj kojeg zakačiš odleti i omami se',
-        target:'point', castRange:900, line:true,
+        target:'point', castRange:900, line:true, lineW:68,
         tip:rk => '🏃 juriš do 900 • ⚔️ ' + (70 + 50*rk) + ' štete + omama ' + (1.2 + 0.3*rk).toFixed(1) + ' s',
         bot:{type:'gap', range:900},
         cast(u, aim, rk){
@@ -1346,7 +1347,7 @@ const HEROES = [
     abilities:[
       { key:'Q', name:'Dugin snop', emoji:'🌈', cd:8, mana:60, color:'#f0abfc',
         desc:'Ispali dugu koja prolazi kroz sve neprijatelje na putu i uspori ih',
-        target:'point', castRange:750, line:true,
+        target:'point', castRange:750, line:true, lineFull:true, lineW:80,
         tip:rk => '⚔️ ' + (70 + 45*rk) + ' štete svima na putu + 🐌 usporenje',
         bot:{type:'shot', range:700},
         cast(u, aim, rk){
@@ -1371,7 +1372,7 @@ const HEROES = [
         }},
       { key:'E', name:'Dugin most', emoji:'🌉', cd:16, mana:60, color:'#f0abfc',
         desc:'Prošeći po dugi do novog mjesta — ti i prijatelji uz dugu dobijete brzinu',
-        target:'point', castRange:550, line:true,
+        target:'point', castRange:550, line:true, lineW:60,
         tip:rk => '🌈 skok do 550 + 🏃 +' + (20 + 8*rk) + '% brzine tebi i prijateljima uz dugu 3 s',
         bot:{type:'escape', range:500},
         cast(u, aim, rk){
