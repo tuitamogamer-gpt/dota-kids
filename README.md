@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.31: ciljanje mišem kao u LoL-u — klik na tijelo junaka pogađa, indikatori leže na terenu i pokazuju pravi domet, napad u hodu (A), brzo bacanje moći!** 🎯🖱️⚔️ (v0.30: potpisni detalj svakog junaka)
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.31: ciljanje mišem kao u LoL-u — klik na tijelo junaka pogađa, indikatori leže na terenu i pokazuju pravi domet, napad u hodu (A), brzo bacanje moći, 30 s pripreme za kupovinu na početku!** 🎯🖱️⚔️🛒 (v0.30: potpisni detalj svakog junaka)
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -19,7 +19,8 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
 
 ## Što je u igri
 
-- 🎯 **Ciljanje mišem i indikatori kao u LoL-u** (v0.31) — popravci po prijavama testera:
+- 🎯 **Ciljanje mišem, indikatori i priprema** (v0.31) — popravci po prijavama testera:
+  - ⏳ **30 sekundi pripreme na početku** (kao u DotA prije roga): sat kreće od **-0:30**, dućan se sam otvori da kupiš predmete, a vojnici, čudovišta u džungli, rune i pasivno zlato kreću tek u **0:00** uz zvuk roga; zadnjih 5 sekundi otkucava; u igri protiv botova gumb **▶️ Kreni odmah** preskače čekanje
   - 🖱️ **klik na junaka pogađa bilo gdje na tijelu** (glava, trbuh, noge): jedinica pod mišem bira se po svom tijelu na ekranu, a ne po točki na tlu iza nje — prije je klik na glavu protivnika promašio i junak je samo otišao iza njega
   - ⭕ **jedinica pod mišem zasvijetli**: crveni krug pod neprijateljem (zeleni pod prijateljem, žuti pod čudovištem), okvir oko njegove trake života, a pokazivač postaje ⚔️ mač; pri ciljanju moći pokazivač je 🎯 nišan
   - 🏹 **strijela projektila pokazuje PRAVI domet i širinu** — vatrena kugla leti 760 i strijela je toliko duga (prije je išla samo do miša, pa je izgledala kratko); skokovi i juriši pokazuju točno mjesto slijetanja i širinu udarca
