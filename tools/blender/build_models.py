@@ -980,9 +980,15 @@ def biped(name, c, opts):
             a = RAD(k * 72)
             h.sphere(V(0.02 + math.cos(a) * 0.05, 0.12 + math.sin(a) * 0.05, 1.81), (0.035 * S, 0.035 * S, 0.02 * S), '#f9a8d4', seg=(7, 5))
         h.sphere(V(0.02, 0.12, 1.82), 0.025 * S, '#fde047', seg=(7, 5))
-    if opts.get('boltMark'):
-        h.box(V(0.34, 0.015, 1.5), (0.02 * S, 0.035 * S, 0.09 * S), '#fde047', mat='glow', rot=(28, 0, 0))
-        h.box(V(0.375, -0.02, 1.425), (0.02 * S, 0.035 * S, 0.09 * S), '#fde047', mat='glow', rot=(28, 0, 0))
+    if opts.get('boltMark'):   # v0.30: veća munja-cik-cak na čelu, prati zaobljenu glavu (vidi se i odozgo)
+        bpts = []
+        for (yy, zz) in ((0.05, 1.57), (-0.03, 1.49), (0.035, 1.47), (-0.03, 1.39)):
+            xx = hr[0] * math.sqrt(max(0.0, 1 - (yy / hr[1]) ** 2 - ((zz - hz) / hr[2]) ** 2)) + 0.008
+            bpts.append(V(xx, yy, zz))
+        for i in range(3):
+            h.cyl(bpts[i], bpts[i + 1], 0.022 * S, 0.022 * S, '#fde047', mat='glow', seg=6)
+            h.sphere(bpts[i + 1], 0.022 * S, '#fde047', mat='glow', seg=(6, 4))
+        h.cyl(bpts[3], (bpts[3][0] + 0.02 * S, bpts[3][1] - 0.01 * S, bpts[3][2] - 0.05 * S), 0.022 * S, 0.0, '#fde047', mat='glow', seg=6)
     if opts.get('fangs'):
         for s in (1, -1):
             h.cyl(V(0.44, s * 0.06, 1.14), V(0.45, s * 0.065, 1.08), 0.016 * S, 0.0, '#ffffff', seg=4)
