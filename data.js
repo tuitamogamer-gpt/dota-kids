@@ -19,7 +19,8 @@ const TEAM_NAME  = ['Plavi', 'Crveni', 'Neutralni'];
 
 const CFG = {
   waveEvery: 28,
-  firstWave: 10,
+  prepTime: 30,        // ⏳ priprema na početku: 30 s za kupovinu (sat kreće od -0:30, vojnici kreću u 0:00)
+  firstWave: 0,        // prvi val vojnika: koliko sekundi nakon 0:00
   meleePerWave: 3,
   rangedPerWave: 1,
   siegeEveryNthWave: 3,

@@ -522,6 +522,7 @@ let pendingCast = null;     // {i} — moć čeka klik na cilj ({item} predmet, 
 let hoverUnit = null;       // 🖱️ jedinica pod mišem (po tijelu na ekranu) — meta klika i moći
 let amovePending = false;   // ⚔️ A: sljedeći klik je napad u hodu
 let holdMove = null;        // 🖱️ držiš tipku miša na tlu: junak stalno ide prema mišu
+let prepShop = false, prepTick = 0;   // ⏳ priprema: dućan otvoren sam od sebe / zadnja otkucana sekunda
 let pickedSummoners = DEFAULT_SUMMONERS.slice();   // ✨ odabir na ekranu junaka (pamti se u pregledniku)
 try { const ps = JSON.parse(localStorage.getItem('dk_summoners') || 'null'); if(Array.isArray(ps) && ps.length === 2 && ps.every(id => SUMMONER_BY_ID[id]) && ps[0] !== ps[1]) pickedSummoners = ps; } catch(e){}
 let touchMode = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);   // 👆 tablet / mobitel
@@ -641,7 +642,7 @@ function makeCreep(team, lane, ranged, siege){
 // vojarna srušena → protivnički vojnici na toj stazi postaju SUPER (kao u DotA)
 function makeCreepOnLane(team, lane, ranged, siege){
   const u = makeCreep(team, lane, ranged, siege);
-  const tier = Math.floor(gameTime / CFG.creepScaleEvery);   // vojnici s vremenom jačaju
+  const tier = Math.max(0, Math.floor(gameTime / CFG.creepScaleEvery));   // vojnici s vremenom jačaju
   if(tier > 0){
     const k = 1 + CFG.creepScalePct * tier;
     u.maxhp = u.hp = Math.round(u.maxhp * k);
@@ -702,7 +703,10 @@ function makeAncient(team){
 /* ---------- džungla: kampovi ---------- */
 function initCamps(){
   camps = CAMP_SPOTS.map(s => ({ x: s.x, y: s.y, type: s.type, units: [], respawnT: 0 }));
-  for(const c of camps) spawnCamp(c);
+  for(const c of camps){
+    if(CFG.prepTime > 0) c.respawnT = CFG.prepTime;   // ⏳ čudovišta se pojave u 0:00, nakon pripreme
+    else spawnCamp(c);
+  }
 }
 function spawnCamp(c){
   const t = CAMP_TYPES[c.type];
@@ -2700,7 +2704,7 @@ function updateUnit(u, dt){
       u.hp = Math.min(u.maxhp, u.hp + u.maxhp * 0.06 * dt);
       u.mp = Math.min(u.maxmp, u.mp + u.maxmp * 0.06 * dt);
     }
-    u.gold += CFG.passiveGold * dt;
+    if(gameTime > 0) u.gold += CFG.passiveGold * dt;   // pasivno zlato teče od 0:00 (ne u pripremi)
   }
 
   if(isStructure(u) && u.hp < u.maxhp){   // 🛡️ backdoor: sama obnova dok nema neprijateljskih vojnika
@@ -2917,7 +2921,12 @@ function spawnWave(){
 }
 
 function update(dt){
+  const wasPrep = gameTime < 0;
   gameTime += dt;
+  if(wasPrep){   // ⏳ priprema: zadnjih 5 sekundi otkucava, u 0:00 svira rog
+    if(gameTime >= 0) prepOver();
+    else { const s = Math.ceil(-gameTime); if(s <= 5 && s !== prepTick){ prepTick = s; sfx('tick'); } }
+  }
   if(cam.follow && player && !player.dead){
     cam.x = lerp(cam.x, player.x, Math.min(1, dt * 7));
     cam.y = lerp(cam.y, player.y, Math.min(1, dt * 7));
@@ -2960,7 +2969,7 @@ function update(dt){
     }
   }
 
-  runeTimer -= dt;
+  if(gameTime >= 0) runeTimer -= dt;   // rune tek nakon pripreme
   if(runeTimer <= 0){
     runeTimer = CFG.runeEvery;
     const sp = RUNE_SPOTS[runeSpotI];
@@ -2988,10 +2997,10 @@ function update(dt){
   for(let i = wards.length - 1; i >= 0; i--){ wards[i].t -= dt; if(wards[i].t <= 0) wards.splice(i, 1); }
   updateShrines(dt);
   updateCouriers(dt);
-  updateExtraRunes(dt);
+  if(gameTime >= 0) updateExtraRunes(dt);   // rune zlata u 0:00, mudrosti u 7:00
   updatePings(dt);
   {   // 💪 vojnici jačaju svakih 7.5 min
-    const tier = Math.floor(gameTime / CFG.creepScaleEvery);
+    const tier = Math.max(0, Math.floor(gameTime / CFG.creepScaleEvery));
     if(tier > creepTier){ creepTier = tier; announce('💪 Vojnici su ojačali!', '+' + Math.round(CFG.creepScalePct * 100 * tier) + '% života i štete na obje strane'); }
   }
   // 🛡️ Glif utvrde: odbrojavanje; tim bez čovjeka ga sam koristi kad mu kula pada
@@ -3364,7 +3373,31 @@ function startGame(heroIdx){
   document.getElementById('select').classList.add('hidden');
   announce('🏰 Sruši crveni prijestol! 👑', 'Pritisni Q, W ili E da naučiš prvu moć!');
   refreshShop();
+  beginPrep();
   sfx('levelup');
+}
+/* ⏳ priprema na početku (kao u DotA prije roga): 30 s za kupovinu — sat kreće od -0:30, a vojnici,
+   čudovišta u džungli, rune i pasivno zlato tek u 0:00; dućan se sam otvori */
+function beginPrep(){
+  gameTime = -CFG.prepTime;
+  waveTimer = CFG.prepTime + CFG.firstWave;
+  prepTick = 0; prepShop = false;
+  if(CFG.prepTime > 0 && !shopOpen){ toggleShop(); prepShop = true; }
+}
+function prepOver(){   // 📯 rog: bitka počinje
+  announce('⚔️ Bitka počinje!', 'Vojnici kreću na staze — sretno!');
+  sfx('horn');
+  if(prepShop && shopOpen) toggleShop();
+  prepShop = false;
+}
+function skipPrep(){   // ▶️ igra protiv botova: ne čekaj do kraja pripreme
+  if(gameTime >= 0 || gameOver || net.mode === 'host' || net.mode === 'guest') return;
+  const rem = -gameTime;
+  gameTime = 0;
+  waveTimer = Math.max(0, waveTimer - rem);
+  for(const c of camps) if(c.respawnT > 0) c.respawnT = Math.max(0.01, c.respawnT - rem);
+  sfx('click');
+  prepOver();
 }
 
 function endGame(winTeam){
@@ -3482,6 +3515,8 @@ function sfx(name){
     case 'win':     tone(523, 0.16, 'triangle', 0.11); tone(659, 0.16, 'triangle', 0.11, 0, 0.14); tone(784, 0.16, 'triangle', 0.11, 0, 0.28); tone(1046, 0.4, 'triangle', 0.12, 0, 0.42); break;
     case 'lose':    tone(330, 0.22, 'sawtooth', 0.09, 0, 0); tone(277, 0.22, 'sawtooth', 0.09, 0, 0.2); tone(220, 0.45, 'sawtooth', 0.1, 0, 0.4); break;
     case 'click':   tone(1000, 0.04, 'sine', 0.035); break;
+    case 'tick':    tone(880, 0.06, 'sine', 0.05); break;
+    case 'horn':    tone(147, 1.1, 'sawtooth', 0.07, 165); tone(220, 1.1, 'triangle', 0.07, 247, 0.03); tone(294, 0.9, 'sine', 0.05, 330, 0.06); break;
   }
 }
 function sfxAt(name, x, y){
@@ -3586,7 +3621,7 @@ function hudHit(sx, sy){
   const R = uiRects;
   for(const L of [R.learn, R.abil, R.sum, R.inv, R.qb, R.buff, chatOpen ? R.chat : null])
     for(const r of L || []) if(r && inRect(sx, sy, r)) return true;
-  for(const r of [R.buyback, R.statBtn, R.glyph, R.tp, R.shop, R.mute, R.help, R.opts, R.score, R.center, R.mini,
+  for(const r of [R.prepSkip, R.buyback, R.statBtn, R.glyph, R.tp, R.shop, R.mute, R.help, R.opts, R.score, R.center, R.mini,
     R.neutral, R.passive, R.talent && R.talent.a, R.talent && R.talent.b]) if(r && inRect(sx, sy, r)) return true;
   return hudPanelAt(sx, sy);
 }
@@ -3619,6 +3654,7 @@ function setupInput(){
     if(ac() && AC.state === 'suspended') AC.resume();
     if(!running || gameOver) return;
     if(button === 0){
+      if(uiRects.prepSkip && inRect(sx, sy, uiRects.prepSkip)){ skipPrep(); return; }
       if(inRect(sx, sy, uiRects.opts)){ toggleOptions(); return; }
       if(uiRects.score && inRect(sx, sy, uiRects.score)){ scoreOpen = !scoreOpen; sfx('click'); return; }
       if(uiRects.center && inRect(sx, sy, uiRects.center)){ cam.follow = true; if(player){ cam.x = player.x; cam.y = player.y; } sfx('click'); return; }
@@ -3782,6 +3818,7 @@ function setupInput(){
     if(inRect(mouse.sx, mouse.sy, uiRects.mute)) hoverUi = { type: 'mute' };
     if(inRect(mouse.sx, mouse.sy, uiRects.help)) hoverUi = { type: 'help' };
     for(const k of ['opts', 'score', 'center']) if(uiRects[k] && inRect(mouse.sx, mouse.sy, uiRects[k])) hoverUi = { type: k };
+    if(uiRects.prepSkip && inRect(mouse.sx, mouse.sy, uiRects.prepSkip)) hoverUi = { type: 'prep' };
     if(!running) hudCv.style.cursor = hoverUi ? 'pointer' : 'default';   // u igri pokazivač postavlja refreshPointer()
     if(!invDrag || !invDrag.moved) updateHudTip();
   }
@@ -4532,10 +4569,10 @@ function drawHud(){
   ctx.fillText('⚔️', tx + tw / 2, 30);
   ctx.fillStyle = TEAM_LIGHT[1];
   ctx.fillText(kills[1], tx + tw - 60, 30);
-  const mm = Math.floor(gameTime / 60), ss = Math.floor(gameTime % 60);
+  const gtA = gameTime < 0 ? Math.ceil(-gameTime) : Math.floor(gameTime), mm = Math.floor(gtA / 60), ss = gtA % 60;
   ctx.font = fontTxt(13, true);
-  ctx.fillStyle = '#cbd5e1';
-  ctx.fillText((isNight ? '🌙 ' : '☀️ ') + mm + ':' + (ss < 10 ? '0' : '') + ss, tx + tw / 2, 50);
+  ctx.fillStyle = gameTime < 0 ? '#fde047' : '#cbd5e1';
+  ctx.fillText((isNight ? '🌙 ' : '☀️ ') + (gameTime < 0 ? '-' : '') + mm + ':' + (ss < 10 ? '0' : '') + ss, tx + tw / 2, 50);
   if(ancients[0]) drawBar(tx + 14, 56, 100, 8, ancients[0].hp / ancients[0].maxhp, TEAM_COLOR[0]);
   if(ancients[1]) drawBar(tx + tw - 114, 56, 100, 8, ancients[1].hp / ancients[1].maxhp, TEAM_COLOR[1]);
   ctx.font = fontEmoji(11);
@@ -4555,6 +4592,30 @@ function drawHud(){
     ctx.fillStyle = f.color;
     ctx.fillText(f.txt, 12, y);
     ctx.globalAlpha = 1;
+  }
+
+  // ----- ⏳ priprema: odbrojavanje do roga i gumb "kreni odmah" (igra protiv botova) -----
+  uiRects.prepSkip = null;
+  if(gameTime < 0 && !gameOver){
+    const left = Math.ceil(-gameTime), solo = net.mode !== 'host' && net.mode !== 'guest';
+    const bw = 340, bh = 62, bx = (VW - bw) / 2 - (solo ? 62 : 0), by = 80;
+    drawFrame(bx, by, bw, bh, 10);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = fontTxt(16, true); ctx.fillStyle = '#fde047';
+    ctx.fillText('🛒 PRIPREMA — kupi predmete!', bx + bw / 2, by + 18);
+    ctx.font = fontTxt(13, true); ctx.fillStyle = left <= 5 ? '#fca5a5' : '#e5e7eb';
+    ctx.fillText('⚔️ Vojnici kreću za ' + left + ' s', bx + bw / 2, by + 38);
+    drawBar(bx + 20, by + bh - 12, bw - 40, 6, clamp(1 + gameTime / CFG.prepTime, 0, 1), '#fde047');
+    if(solo){
+      const r = { x: bx + bw + 10, y: by + 12, w: 114, h: 38 };
+      const hov = hoverUi && hoverUi.type === 'prep';
+      ctx.fillStyle = hov ? '#16a34a' : '#15803d';
+      ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 9); ctx.fill();
+      ctx.strokeStyle = '#86efac'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.font = fontTxt(14, true); ctx.fillStyle = '#fff';
+      ctx.fillText('▶️ Kreni odmah', r.x + r.w / 2, r.y + r.h / 2 + 1);
+      uiRects.prepSkip = r;
+    }
   }
 
   // ----- velika najava -----

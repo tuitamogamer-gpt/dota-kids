@@ -378,7 +378,9 @@ function mergeById(arr, list, makeFn, updFn){
   return out;
 }
 function applySnapshot(d){
+  const wasPrep = gameTime < 0;
   gameTime = d.gt;
+  if(wasPrep && gameTime >= 0) prepOver();   // 📯 i gost čuje rog
   kills = d.ks;
   const seen = new Set();
   for(const b of d.u){
@@ -593,6 +595,7 @@ function startMatchHost(hostIdx, guestIdx, botIdcs){
   document.getElementById('select').classList.add('hidden');
   announce('⚔️ 1 NA 1!', 'Sruši protivnikov prijestol! 👑');
   refreshShop();
+  beginPrep();
   sfx('levelup');
 }
 function startMatchGuest(d){
@@ -609,5 +612,7 @@ function startMatchGuest(d){
   cam.x = FOUNTAIN[1].x; cam.y = FOUNTAIN[1].y; cam.zoom = 0.9; cam.follow = true;
   document.getElementById('select').classList.add('hidden');
   banner = { txt: '⚔️ 1 NA 1!', sub: 'Sruši plavi prijestol! 👑', t: 0, dur: 3 };
+  gameTime = -CFG.prepTime; prepShop = false;   // ⏳ priprema: domaćin šalje sat, dućan se sam otvori
+  if(CFG.prepTime > 0 && !shopOpen){ toggleShop(); prepShop = true; }
   sfx('levelup');
 }
