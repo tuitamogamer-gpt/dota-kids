@@ -3127,6 +3127,14 @@ function buildTerrain(){
     t.arc(rand(0, WORLD), rand(0, WORLD), rand(30, 130), 0, TAU);
     t.fill();
   }
+  // 🌲 šumsko tlo: ispod stabala tamnija, gušća trava — šume se odvajaju od svijetlih livada
+  for(const tr of trees){
+    const r = 120 + (tr.size || 50) * 1.2;
+    const g = t.createRadialGradient(tr.x, tr.y, r * 0.15, tr.x, tr.y, r);
+    g.addColorStop(0, 'rgba(30,66,26,0.3)'); g.addColorStop(0.6, 'rgba(36,76,30,0.16)'); g.addColorStop(1, 'rgba(36,76,30,0)');
+    t.fillStyle = g;
+    t.beginPath(); t.arc(tr.x, tr.y, r, 0, TAU); t.fill();
+  }
   for(let i = 0; i < Math.round(200 * MAP_S * MAP_S); i++){
     t.fillStyle = choice(['#fef08a', '#fda4af', '#e9d5ff', '#ffffff']);
     t.beginPath();
@@ -3204,7 +3212,7 @@ function buildTerrain(){
     t.fillStyle = grad('rgba(128,128,128,0)', 'rgba(128,128,128,0.6)');
     t.fillRect(0, 0, WORLD, WORLD);
     t.globalCompositeOperation = 'multiply';
-    t.fillStyle = grad('rgba(255,255,255,0)', 'rgba(120,104,140,0.75)');
+    t.fillStyle = grad('rgba(255,255,255,0)', 'rgba(132,116,150,0.62)');
     t.fillRect(0, 0, WORLD, WORLD);
     t.globalCompositeOperation = 'source-over';
     for(let i = 0; i < Math.round(160 * MAP_S * MAP_S); i++){

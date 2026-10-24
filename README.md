@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.27: novi dizajn — četiri prava zmajčića, nove kule s lebdećim kristalima, Sentinelov prijestol "Drvo života", popločani trgovi u bazama i rub mape bez šava!** 🎨🐉🏰 (v0.26: zmajčići, igranje na tabletu, postavke)
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.28: živa džungla (bogatije drveće, grmlje, šumsko tlo), mekše svjetlo, Scourge vojnici-kosturi i pravi Vatreni vuk!** 🌳☠️🔥 (v0.27: zmajčići, nove kule, "Drvo života")
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -18,6 +18,14 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- 🌳 **Džungla, svjetlo i vojnici** (v0.28):
+  - 🌲 **živa džungla**: drveće, grmlje i kamenje su mat (bez plastičnog odsjaja koji je krošnje činio bijelima), zelene boje su bogatije, krošnje malo veće, a uz stabla raste grmlje — šume izgledaju gušće; ispod stabala je tamnije šumsko tlo pa se šume odvajaju od svijetlih livada
+  - 🪨 manje kamenja i sivo umjesto bijelog (prije je džungla izgledala kao da je posuta konfetima); na Scourge strani svjetliji tamni borovi i mrtvo drveće s jarkim crvenim i ljubičastim lišćem
+  - ☀️ **mekše svjetlo**: slabije plavkasto nebo i umjerenija ekspozicija — vrhovi krošnji, kamen i junaci se više ne "isperu" u bijelo, boje su dublje
+  - ☠️ **Scourge vojnici** imaju svoj izgled (kao Dire u DotA): kostur-vitezovi s rogatim kacigama, nazubljenim mačem i štitom s lubanjom, tamni čarobnjaci s kapuljačom i lubanjom na štapu, koštana opsadna kola s lubanjom na ovnu
+  - 🔥 **pravi Vatreni vuk** (crveni buff): tamnocrveno krzno, plamena griva i leđa, svjetleće oči; svetište tamnijeg kamena
+  - 🏰 **zgrade bez "ispranog" bijelog**: kule, prijestoli, vojarne, fontane i svetišta imaju vlastiti materijal sa slabijim odsjajem, pa se vidi pravi topli kamen; **zidine oko baza su kamene** (samo vrhovi stupova u boji tima, prije su bile cijele plave kao plastika), šatori isto; svetište u mirovanju ima mali sjaj samo oko kugle; Scourge fontana opet ljubičasta
 
 - 🎨 **Dizajn i 3D modeli** (v0.27):
   - 🐉 **četiri prava zmajčića** iz Blendera umjesto prebojanog Velikog Zmaja: 🔥 vatreni (plamen na leđima, žar na obrazima), 💧 vodeni (leđna peraja, peraje na glavi, mjehurići), ⚡ olujni (krijesta od munja, svjetleći rogovi), 🌿 šumski (lišće, cvjetići i mahovina); oko svakog lete čestice njegovog elementa

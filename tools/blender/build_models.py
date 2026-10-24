@@ -1411,6 +1411,126 @@ def build_creeps():
     m.anim('attack', 14, {'ram': [(0, Z, Z), (4, Z, (-0.27, 0, 0)), (5, Z, (-0.28, 0, 0)), (7, Z, (0.3, 0, 0)), (9, Z, (0.24, 0, 0)), (14, Z, Z)],   # udar u 7. kadru
                           'body': [(0, Z, Z), (4, (0, -2, 0), (-0.02, 0, 0)), (7, (0, 3, 0), (0.05, 0, 0)), (14, Z, Z)]})
     m.finish()
+    build_creeps_scourge()
+
+
+def build_creeps_scourge():
+    """☠️ Scourge vojnici (kao u DotA: Dire izgleda drukčije od Radianta) — slatki, ne strašni:
+    kostur-vitez s rogatom kacigom, tamni čarobnjak s lubanjom na štapu, koštana opsadna kola"""
+    IRON, IRON2, DARKW = '#4a4352', '#5b5466', '#2e2a36'
+    # --- pješak: kostur-vitez
+    m = Model('creep_melee_d')
+    for side, nm in ((1, 'legL'), (-1, 'legR')):
+        lg = m.part(nm, (0, side * 0.12, 0.34))
+        lg.cyl((0, side * 0.12, 0.36), (0, side * 0.12, 0.1), 0.05, 0.045, BONE2, seg=8)   # koštane noge
+        lg.sphere((0, side * 0.12, 0.23), 0.06, BONE, seg=(8, 6))                         # koljeno
+        lg.sphere((0.04, side * 0.12, 0.06), (0.11, 0.075, 0.065), IRON)
+    b = m.part('body', (0, 0, 0.36))
+    b.cyl((0, 0, 0.34), (0, 0, 0.78), 0.25, 0.21, IRON, seg=12)                           # tamni oklop
+    b.cyl((0, 0, 0.6), (0, 0, 0.7), 0.235, 0.225, '#ffffff', mat='team', seg=12)         # traka tima
+    for k in range(3):                                                                     # rebra ispod oklopa
+        b.box((0.2, 0, 0.4 + k * 0.05), (0.04, 0.22, 0.025), BONE, bevel=0.005)
+    b.sphere((0.06, 0, 0.66), (0.17, 0.19, 0.15), IRON2, seg=(12, 7))
+    h = m.part('head', (0, 0, 0.8), 'body')
+    h.sphere((0, 0, 1.0), (0.25, 0.26, 0.25), BONE, seg=(14, 10))                         # lubanja
+    h.sphere((0.12, 0, 0.88), (0.13, 0.16, 0.08), BONE2, seg=(10, 6))                     # čeljust
+    for s in (1, -1):
+        h.sphere((0.21, s * 0.09, 1.0), (0.05, 0.065, 0.07), '#1a0f24', seg=(10, 7))      # očne duplje
+        h.sphere((0.24, s * 0.09, 1.0), (0.025, 0.03, 0.035), VOID, mat='glow', seg=(8, 6))   # ljubičasti sjaj
+        for k in range(2):
+            h.box((0.22, s * (0.035 + k * 0.05), 0.86), (0.03, 0.03, 0.04), '#f8f4ea', bevel=0.004)   # zubići
+    h.sphere((-0.02, 0, 1.1), (0.28, 0.29, 0.2), IRON, seg=(14, 8))                       # kaciga
+    for s in (1, -1):                                                                      # koštani rogovi
+        h.cyl((-0.02, s * 0.2, 1.18), (-0.1, s * 0.36, 1.42), 0.05, 0.0, BONE, seg=8)
+    h.box((0.2, 0, 1.14), (0.05, 0.3, 0.05), IRON2, bevel=0.01)
+    for side, nm in ((1, 'armL'), (-1, 'armR')):
+        a = m.part(nm, (0, side * 0.24, 0.7), 'body')
+        a.cyl((0, side * 0.25, 0.72), (0.02, side * 0.29, 0.5), 0.045, 0.04, BONE2, seg=8)
+        a.sphere((0.03, side * 0.3, 0.46), 0.06, BONE)
+        a.sphere((0.0, side * 0.26, 0.74), (0.09, 0.08, 0.06), IRON2, seg=(10, 7))          # naramenica
+        bone_spike(a, (0.0, side * 0.28, 0.78), (0, side * 0.5, 1.0), 0.16, 0.035, 0.0)
+    R, L = m['armR'], m['armL']
+    hR = Vector((0.03, -0.3, 0.46))
+    d = Vector((0.94, 0, 0.34))
+    R.box(hR + d * 0.3, (0.44, 0.07, 0.02), '#a9a2b4', rot=(90, -20, 0), bevel=0.006)     # tamni mač
+    for k in range(3):                                                                     # nazubljena oštrica
+        R.cyl(hR + d * (0.2 + k * 0.12) + Vector((0, 0, 0.03)), hR + d * (0.24 + k * 0.12) + Vector((0, 0, 0.09)), 0.02, 0.0, '#a9a2b4', seg=4)
+    R.box(hR + d * 0.06, (0.05, 0.18, 0.035), BONE2, rot=(0, -20, 0))
+    R.sphere(hR + d * 0.06 + Vector((0.01, 0, 0)), 0.02, VOID, mat='glow', seg=(6, 4))
+    n = Vector((0.55, 0.83, 0)).normalized()
+    cc = Vector((0.1, 0.36, 0.5))
+    L.cyl(cc - n * 0.025, cc + n * 0.025, 0.18, 0.18, DARKW, seg=12)                      # štit
+    L.cyl(cc + n * 0.02, cc + n * 0.04, 0.15, 0.15, '#ffffff', mat='team', seg=12)
+    skull(L, tuple(cc + n * 0.07), 0.55, face=tuple(n))
+    biped_anims(m, kind='melee', tail=False)
+    m.finish()
+
+    # --- strijelac: tamni čarobnjak s kapuljačom i lubanjom na štapu
+    m = Model('creep_ranged_d')
+    b = m.part('body', (0, 0, 0.3))
+    for side, nm in ((1, 'legL'), (-1, 'legR')):
+        lg = m.part(nm, (0, side * 0.11, 0.3))
+        lg.sphere((0.04, side * 0.11, 0.06), (0.1, 0.07, 0.06), DARKW)
+        lg.cyl((0, side * 0.11, 0.3), (0, side * 0.11, 0.08), 0.05, 0.045, BONE2, seg=8)
+    b.cyl((0, 0, 0.12), (0, 0, 0.78), 0.3, 0.16, DSTONE[0], seg=12)                       # tamna haljina
+    b.cyl((0, 0, 0.12), (0, 0, 0.2), 0.305, 0.285, '#ffffff', mat='team', seg=12, caps=False)   # rub u boji tima
+    b.cyl((0, 0, 0.5), (0, 0, 0.55), 0.22, 0.21, VOID, mat='glow', seg=12, caps=False)    # svjetleći pojas
+    h = m.part('head', (0, 0, 0.78), 'body')
+    h.sphere((0, 0, 0.98), (0.25, 0.26, 0.25), DSTONE[1], seg=(14, 10))                   # kapuljača
+    h.cyl((0, 0, 1.12), (-0.16, 0, 1.5), 0.2, 0.0, DSTONE[1], seg=12)                     # šiljati vrh kapuljače
+    h.sphere((0.1, 0, 0.96), (0.17, 0.19, 0.18), '#120a1a', seg=(12, 8))                  # tama ispod kapuljače
+    for s in (1, -1):
+        h.sphere((0.24, s * 0.07, 0.98), (0.03, 0.04, 0.035), '#c084fc', mat='glow', seg=(8, 6))   # oči
+    h.cyl((0.02, 0, 1.08), (0.02, 0, 1.12), 0.27, 0.26, '#ffffff', mat='team', seg=14, caps=False)
+    for side, nm in ((1, 'armL'), (-1, 'armR')):
+        a = m.part(nm, (0, side * 0.2, 0.66), 'body')
+        a.cyl((0, side * 0.21, 0.68), (0.03, side * 0.26, 0.46), 0.06, 0.07, DSTONE[0], seg=8)
+        a.sphere((0.04, side * 0.27, 0.42), 0.05, BONE)
+    R = m['armR']
+    hR = Vector((0.04, -0.27, 0.42))
+    R.cyl(hR - Vector((0, 0, 0.3)), hR + Vector((0, 0, 0.5)), 0.022, 0.026, '#3b2f2f', seg=6)
+    skull(R, tuple(hR + Vector((0.02, 0, 0.56))), 0.45)
+    R.sphere(hR + Vector((0, 0, 0.7)), 0.07, '#ffffff', mat='teamglow')
+    for k in range(3):
+        a = RAD(k * 120)
+        R.cyl(hR + Vector((0, 0, 0.6)), hR + Vector((math.cos(a) * 0.08, math.sin(a) * 0.08, 0.76)), 0.012, 0.004, BONE, seg=4)
+    biped_anims(m, kind='mage', tail=False)
+    m.finish()
+
+    # --- opsadna kola: tamna drvena kola s koštanim šiljcima i lubanjom na ovnu
+    m = Model('creep_siege_d')
+    base = m.part('body', (0, 0, 0.3))
+    base.box((0, 0, 0.36), (1.2, 0.62, 0.14), '#3b2f2f', bevel=0.02)
+    base.box((-0.05, 0, 0.62), (0.9, 0.56, 0.4), '#4a3a3a', bevel=0.03)
+    base.cyl((-0.5, 0, 0.82), (0.45, 0, 0.82), 0.32, 0.32, '#ffffff', mat='team', seg=4)   # krov u boji tima
+    base.box((-0.05, 0, 1.06), (0.98, 0.06, 0.06), '#2e2a36')
+    for y in (0.3, -0.3):
+        base.box((-0.05, y, 0.62), (0.92, 0.03, 0.08), '#2e2a36')
+        for k in range(3):   # koštani šiljci uz bokove
+            bone_spike(base, (-0.4 + k * 0.35, y * 1.05, 0.5), (0.2, y * 2.0, 0.6), 0.22, 0.035, 0.1)
+    base.cyl((-0.45, 0, 1.06), (-0.45, 0, 1.5), 0.02, 0.02, BONE2, seg=6)
+    base.poly([(-0.45, 0.01, 1.5), (-0.45, 0.01, 1.28), (-0.3, 0.01, 1.33), (-0.2, 0.01, 1.3), (-0.12, 0.01, 1.42)], '#ffffff', mat='team')
+    ram = m.part('ram', (0.1, 0, 0.6), 'body')
+    ram.cyl((-0.4, 0, 0.6), (0.82, 0, 0.6), 0.09, 0.09, '#3b2f2f', seg=10, smooth=True)
+    skull(ram, (0.86, 0, 0.62), 1.15)
+    for s in (1, -1):
+        ram.cyl((0.84, s * 0.1, 0.7), (0.76, s * 0.24, 0.84), 0.045, 0.0, BONE, seg=6)
+    for i, (x, y) in enumerate(((0.38, 0.34), (0.38, -0.34), (-0.38, 0.34), (-0.38, -0.34))):
+        w = m.part('wheel%d' % i, (x, y, 0.22))
+        w.cyl((x, y - 0.05, 0.22), (x, y + 0.05, 0.22), 0.22, 0.22, '#2e2a36', seg=12)
+        w.cyl((x, y - 0.06, 0.22), (x, y + 0.06, 0.22), 0.06, 0.06, BONE2, seg=8)
+        w.box((x, y + 0.055 * (1 if y > 0 else -1), 0.22), (0.4, 0.02, 0.04), '#1a0f24')
+        w.box((x, y + 0.055 * (1 if y > 0 else -1), 0.22), (0.04, 0.02, 0.4), '#1a0f24')
+    Z = (0, 0, 0)
+    wheels = ['wheel%d' % i for i in range(4)]
+    m.anim('idle', 48, {'body': [(0, Z, Z), (24, Z, (0, 0, -0.01)), (48, Z, Z)],
+                        'ram': [(0, Z, Z), (24, Z, (-0.02, 0, 0)), (48, Z, Z)]})
+    m.anim('walk', 20, {**{w: [(0, Z), (20, (0, 360, 0))] for w in wheels},
+                        'body': [(0, (2, 0, 0), Z), (10, (-2, 0, 0), (0, 0, 0.015)), (20, (2, 0, 0), Z)]},
+           linear=wheels)
+    m.anim('attack', 14, {'ram': [(0, Z, Z), (4, Z, (-0.27, 0, 0)), (5, Z, (-0.28, 0, 0)), (7, Z, (0.3, 0, 0)), (9, Z, (0.24, 0, 0)), (14, Z, Z)],
+                          'body': [(0, Z, Z), (4, (0, -2, 0), (-0.02, 0, 0)), (7, (0, 3, 0), (0.05, 0, 0)), (14, Z, Z)]})
+    m.finish()
 
 
 # ------------------------------------------------------------------ ČETVERONOŠCI (džungla)
@@ -1546,7 +1666,7 @@ def build_neutrals():
     quad('mob_boars', dict(fur='#8b5a3c', belly='#b98a63', dark='#4a2c18', snoutC='#e9a3a0'),
          dict(len=1.1, legH=0.22, wid=0.3, bodyR=0.28, snout='pig', ears='pointy', tail='thin', bristle=True,
               headR=0.22, legR=0.07))
-    quad('mob_wolves', dict(fur='#8f96a3', belly='#d9dde3', dark='#4b5160', tip='#ffffff'),
+    quad('mob_wolves', dict(fur='#6b7280', belly='#c5cad3', dark='#374151', tip='#e5e7eb'),
          dict(len=1.25, legH=0.34, wid=0.26, bodyR=0.25, snout='wolf', ears='pointy', tail='bushy',
               headR=0.2, legR=0.065, eyeColor='#f6c945', glowEyes=False, fangs=True, ruff=True))
     quad('mob_bear', dict(fur='#7b4a2a', belly='#a8774f', dark='#3d2414', snoutC='#d6b48c'),
@@ -1557,6 +1677,19 @@ def build_neutrals():
               tail='dragon', spikes='#c2410c', wings='#6b9e34', wingScale=1.3, neck=True, neckUp=0.2, headR=0.26,
               legR=0.12, glowEyes=True, eyeColor='#fde047', heavy=2.0, bellyPlates=True))
     build_drakes()
+
+    def flame_mane(m, g):   # 🔥 plamena griva i leđa (svijetli), žar na repu
+        b, h = m['body'], m['head']
+        for i in range(5):
+            x = 0.32 * g['L'] - i * 0.15 * g['L']
+            hgt = 0.26 - i * 0.03
+            b.cyl((x, 0, g['bz'] + g['br'] * 0.8), (x - 0.07, 0, g['bz'] + g['br'] * 0.8 + hgt), 0.08, 0.0, '#f97316', mat='glow', seg=6)
+            b.cyl((x + 0.01, 0, g['bz'] + g['br'] * 0.8), (x - 0.04, 0, g['bz'] + g['br'] * 0.8 + hgt * 0.6), 0.05, 0.0, '#fde047', mat='glow', seg=6)
+        for s in (1, -1):
+            h.cyl((g['hx'] - 0.08, s * g['hr'] * 0.5, g['hz'] + 0.05), (g['hx'] - 0.26, s * g['hr'] * 0.9, g['hz'] + 0.2), 0.07, 0.0, '#fb923c', mat='glow', seg=6)
+    quad('mob_redwolf', dict(fur='#9a3412', belly='#fdba74', dark='#431407', tip='#fde047', paw='#2a0d05'),
+         dict(len=1.3, legH=0.36, wid=0.28, bodyR=0.27, snout='wolf', ears='pointy', tail='bushy',
+              headR=0.22, legR=0.07, eyeColor='#fde047', glowEyes=True, fangs=True, ruff=True, claws=True, extra=flame_mane))
 
 
 def build_drakes():
@@ -1945,10 +2078,10 @@ def build_scourge():
         if i % 4 == 0:
             bone_spike(b, (math.cos(a) * 2.95, math.sin(a) * 2.95, 0.3), (math.cos(a) * 0.3, math.sin(a) * 0.3, 1.0), 0.9, 0.11, 0.1)
     b.cyl((0, 0, 0.3), (0, 0, 0.42), 3.08, 3.08, '#ffffff', mat='team', seg=24, caps=False)
-    b.cyl((0, 0, 0.3), (0, 0, 0.4), 2.75, 2.75, '#4c1d95', mat='glow', seg=24)   # tamna ljubičasta tekućina (jarka je bliještala)
+    b.cyl((0, 0, 0.3), (0, 0, 0.4), 2.75, 2.75, '#6b21a8', mat='glow', seg=24)   # tamna ljubičasta tekućina (crvenkasta — inače je tonska krivulja pretvori u plavu)
     b.cyl((0, 0, 0.3), (0, 0, 1.4), 0.34, 0.26, DSTONE[1], seg=10)
     b.cyl((0, 0, 1.3), (0, 0, 1.55), 1.2, 1.3, DSTONE[2], seg=16)
-    b.cyl((0, 0, 1.5), (0, 0, 1.56), 1.15, 1.15, '#6d28d9', mat='glow', seg=16)
+    b.cyl((0, 0, 1.5), (0, 0, 1.56), 1.15, 1.15, '#86198f', mat='glow', seg=16)
     for i in range(4):
         a = RAD(i * 90 + 45)
         skull(b, (math.cos(a) * 1.25, math.sin(a) * 1.25, 1.42), 1.0)
@@ -2001,7 +2134,7 @@ def build_scourge():
     for v in range(3):
         m = Model('tree_dead%d' % v)
         p = m.part('mesh')
-        trunk = '#3b2f2f' if v != 1 else '#463838'
+        trunk = '#5b4747' if v != 1 else '#6a5252'
         pts = [(0, 0, 0), (0.06, 0.02, 0.5), (-0.04, 0.05, 1.0), (0.05, -0.02, 1.45)]
         rr = [0.2, 0.14, 0.11, 0.07]
         for i in range(3):
@@ -2015,7 +2148,7 @@ def build_scourge():
             p.cyl(base, mid, 0.05, 0.03, trunk, seg=6)
             p.cyl(mid, tip, 0.03, 0.0, trunk, seg=5)
             if k % 2 == 0:
-                p.ico(tip, 0.13 + rnd.uniform(0, 0.06), ['#7f1d1d', '#581c87', '#6b2135'][(k + v) % 3], sub=1, jitter=0.25, seed=v * 20 + k)
+                p.ico(tip, 0.13 + rnd.uniform(0, 0.06), ['#b91c1c', '#7e22ce', '#9d174d'][(k + v) % 3], sub=1, jitter=0.25, seed=v * 20 + k)
         for k in range(3):   # korijenje
             a = k * 2.1 + v
             p.cyl((0, 0, 0.05), (math.cos(a) * 0.35, math.sin(a) * 0.35, -0.02), 0.09, 0.03, trunk, seg=6)
@@ -2023,13 +2156,13 @@ def build_scourge():
     for v in range(3):   # tamni borovi (pepeljasti vrhovi)
         m = Model('tree_dpine%d' % v)
         p = m.part('mesh')
-        p.cyl((0, 0, 0), (0, 0, 0.7), 0.13, 0.1, '#3b2f2f', seg=6)
+        p.cyl((0, 0, 0), (0, 0, 0.7), 0.13, 0.1, '#5b4747', seg=6)
         tiers = 3 + (v % 2)
         for i in range(tiers):
             z0 = 0.45 + i * 0.55
             r0 = 0.82 - i * 0.17
-            p.cyl((0, 0, z0), (0, 0, z0 + 0.95 - i * 0.08), r0, 0.0, ['#1f3b36', '#24443d', '#1a332f'][(i + v) % 3], seg=8)
-            p.cyl((0, 0, z0 + 0.02), (0, 0, z0 + 0.1), r0 * 0.94, r0 * 0.88, '#6b6475', seg=8)   # pepeo
+            p.cyl((0, 0, z0), (0, 0, z0 + 0.95 - i * 0.08), r0, 0.0, ['#355e55', '#3d6a60', '#2f554d'][(i + v) % 3], seg=8)
+            p.cyl((0, 0, z0 + 0.02), (0, 0, z0 + 0.1), r0 * 0.94, r0 * 0.88, '#8d8698', seg=8)   # pepeo
         m.finish()
     # kosti na tlu (ukras Scourge strane)
     m = Model('bones0')
@@ -2196,18 +2329,18 @@ def build_nature():
             z0 = 0.45 + i * 0.55
             r0 = 0.85 - i * 0.17
             p.cyl((0, 0, z0), (0, 0, z0 + 0.95 - i * 0.08), r0, 0.0,
-                  ['#2e7d4f', '#358f5a', '#276b43'][(i + v) % 3], seg=8)
-            if v == 2:
-                p.cyl((0, 0, z0 + 0.02), (0, 0, z0 + 0.12), r0 * 0.92, r0 * 0.85, '#f1f5f9', seg=8)
+                  ['#3a8f5c', '#44a066', '#33804f'][(i + v) % 3], seg=8)
+            if v == 2:   # svjetliji rub iglica (prije snijeg — čudno usred ljetne livade)
+                p.cyl((0, 0, z0 + 0.02), (0, 0, z0 + 0.12), r0 * 0.92, r0 * 0.85, '#7fbf7a', seg=8)
         m.finish()
     for v in range(3):
         m = Model('rock%d' % v)
         p = m.part('mesh')
-        p.ico((0, 0, 0.18), (0.55, 0.45, 0.38), ['#9ca3af', '#a8a29e', '#94a3b8'][v], sub=1, jitter=0.18, seed=40 + v)
-        p.ico((0.35, 0.25, 0.1), (0.25, 0.22, 0.2), '#8b939f', sub=1, jitter=0.2, seed=50 + v)
+        p.ico((0, 0, 0.18), (0.55, 0.45, 0.38), ['#80868f', '#8a847d', '#7a8494'][v], sub=1, jitter=0.18, seed=40 + v)
+        p.ico((0.35, 0.25, 0.1), (0.25, 0.22, 0.2), '#727a85', sub=1, jitter=0.2, seed=50 + v)
         if v == 1:
-            p.ico((-0.3, -0.2, 0.08), (0.2, 0.18, 0.15), '#9ca3af', sub=1, jitter=0.2, seed=60)
-        p.ico((0.05, -0.1, 0.42), (0.3, 0.25, 0.08), '#6aa84f', sub=1, jitter=0.2, seed=70 + v)  # mahovina
+            p.ico((-0.3, -0.2, 0.08), (0.2, 0.18, 0.15), '#80868f', sub=1, jitter=0.2, seed=60)
+        p.ico((0.05, -0.1, 0.42), (0.3, 0.25, 0.08), '#5a9a40', sub=1, jitter=0.2, seed=70 + v)  # mahovina
         m.finish()
     m = Model('bush0')
     p = m.part('mesh')
@@ -2251,7 +2384,7 @@ def build_env():
         p.cyl((0.03, 0, 1.2), (-0.28, -0.12, 1.6), 0.05, 0.03, '#e5e7eb', seg=5)
         blobs = [((0.05, 0, 1.85), 0.5), ((0.35, 0.2, 1.6), 0.36), ((-0.32, -0.15, 1.7), 0.38), ((0.0, 0.3, 2.1), 0.3)]
         for i, (c0, r) in enumerate(blobs[:3 + v]):
-            p.ico(c0, (r, r, r * 0.9), ['#a3e635', '#bef264', '#84cc16'][i % 3], sub=1, jitter=0.14, seed=120 + v * 10 + i)
+            p.ico(c0, (r, r, r * 0.9), ['#8bc34a', '#9ccc65', '#7cb342'][i % 3], sub=1, jitter=0.14, seed=120 + v * 10 + i)
         m.finish()
     # panj
     m = Model('stump0')
@@ -2387,13 +2520,13 @@ def build_env():
     # svetište: kameni podest s kristalnom kuglom koja svijetli (boja tima)
     m = Model('shrine0')
     p = m.part('mesh')
-    p.cyl((0, 0, 0), (0, 0, 0.14), 0.7, 0.66, '#a39a88', seg=12)
-    p.cyl((0, 0, 0.14), (0, 0, 0.26), 0.5, 0.46, '#cbc2ae', seg=12)
+    p.cyl((0, 0, 0), (0, 0, 0.14), 0.7, 0.66, '#6c6253', seg=12)
+    p.cyl((0, 0, 0.14), (0, 0, 0.26), 0.5, 0.46, '#91856f', seg=12)
     for k in range(4):
         a = RAD(k * 90 + 45)
-        p.cyl((math.cos(a) * 0.45, math.sin(a) * 0.45, 0.26), (math.cos(a) * 0.45, math.sin(a) * 0.45, 0.9), 0.06, 0.05, '#d8d0bf', seg=7)
+        p.cyl((math.cos(a) * 0.45, math.sin(a) * 0.45, 0.26), (math.cos(a) * 0.45, math.sin(a) * 0.45, 0.9), 0.06, 0.05, '#a89a7d', seg=7)
         p.sphere((math.cos(a) * 0.45, math.sin(a) * 0.45, 0.94), 0.07, '#ffffff', mat='team', seg=(7, 5))
-    p.cyl((0, 0, 0.26), (0, 0, 0.55), 0.14, 0.1, '#d8d0bf', seg=8)
+    p.cyl((0, 0, 0.26), (0, 0, 0.55), 0.14, 0.1, '#a89a7d', seg=8)
     p.sphere((0, 0, 0.75), 0.22, '#dff6ff', mat='teamglow', seg=(14, 10))
     p.arc((0, 0, 0.75), 0.3, 0, 360, 14, 0.02, '#fde047', plane='xy', mat='glow')
     m.finish()
