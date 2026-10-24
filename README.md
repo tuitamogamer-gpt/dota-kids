@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.25: detalji iz League of Legends — čarolije prizivača (D / F), plavi i crveni buff u džungli, traka buffova, obnova vojarni, ACE, trake života i strelice ciljanja kao u LoL-u!** ⚡🔵🔴
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.26: zmajčići na rijeci s trajnim bonusima za tim, igranje na tabletu (dodir, povlačenje, zum s dva prsta) i izbornik postavki (glasnoća, kvaliteta slike, kamera uz rub ekrana)!** 🐉👆⚙️
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -18,6 +18,13 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- 🐉 **Zmajčići, tablet i postavke** (v0.26):
+  - 🐉 **zmajčići na rijeci** (dolje desno, umjesto Mede Brunde): 🔥 *Vatreni* (+6% štete), 💧 *Vodeni* (+3 obnove života i +1,5 mane), ⚡ *Olujni* (+5% brzine), 🌿 *Šumski* (+3 oklopa) — tim koji ubije zmajčića dobiva **trajni bonus za sve junake** i bonusi se zbrajaju; novi zmajčić (drugog elementa) dolazi nakon 2,5 min. Vide se na minimapi u boji elementa, u traci buffova (×2, ×3…) i u tablici; botovi ih love u paru od 5. minute
+  - 👆 **igranje na tabletu**: dodir = hodaj / napadni / gumb, povlačenje prstom = kamera, dva prsta = zum; gumbi 📋 tablica i 🎯 kamera na junaka; držiš prst na predmetu = opis, a 1 s = prodaja (uz potvrdu)
+  - ⚙️ **postavke** (gumb gore desno ili **Esc**): glasnoća, zvuk, kvaliteta slike (niska / srednja / visoka — niska je brža na slabijim tabletima), efekti, kamera uz rub ekrana, brojevi štete; igra pamti izbor, a protiv botova stoji dok su postavke otvorene
+  - 🖱️ **kamera uz rub ekrana** kao u DotA i LoL-u: miš uz sam rub pomiče kameru
+  - 🐞 popravci: klik na ploču HUD-a više ne šalje junaka tamo ispod nje; gost u multiplayeru sada vidi Vatrenog vuka (a ne vepra)
 
 - ⚡ **Detalji iz League of Legends** (v0.25):
   - ✨ **čarolije prizivača** na tipkama **D** i **F**: ⚡ *Bljesak*, 💚 *Iscjeljenje*, 🔥 *Zapaljenje* (gori i slabije se liječi), 👻 *Duh*, 🫧 *Barijera* (štit), 🐌 *Iscrpljenost*, 🌩️ *Kazna* (za džunglu i zmaja) — biraš ih na ekranu junaka (igra pamti izbor), okrugli gumbi u petom stupcu naredbene kartice; botovi ih biraju po ulozi i koriste
@@ -187,12 +194,16 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
 | B | dućan |
 | 1–6 | aktivni predmet iz torbe |
 | O | otkup (kad si mrtav) |
-| F | Glif utvrde (kule 5 s neranjive) |
+| D / F | čarolije prizivača |
+| Y | Glif utvrde (kule 5 s neranjive) |
 | Tab | tablica rezultata |
 | S | stani |
 | razmaknica | kamera prati junaka |
-| strelice / kotačić | kamera / zum |
+| strelice / miš uz rub / kotačić | kamera / zum |
+| Esc | postavke |
 | P / M / H | pauza / zvuk / pomoć |
+
+**👆 Na tabletu:** dodir = kreći se / napadni / gumb • povuci prstom = kamera • dva prsta = zum • 📋 tablica • 🎯 kamera na junaka • drži prst na predmetu = opis (1 s = prodaja).
 
 ## Tehnologija
 
