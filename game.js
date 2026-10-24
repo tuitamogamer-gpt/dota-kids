@@ -3587,7 +3587,7 @@ function playerCommandFor(h, wx, wy, tgt, opts){
     h.moveTarget = null;
     markers.push({ x: t.x, y: t.y, t: 0, color: t.team === h.team ? '#fde047' : '#f87171', r: t.r + 14 });
   } else {
-    const dest = tgt && !tgt.dead && !tgt.removeMe ? { x: tgt.x, y: tgt.y } : { x: wx, y: wy };   // klik na prijatelja: idi do njega
+    const dest = { x: wx, y: wy };   // klik na prijatelja ili prazno tlo: idi točno onamo
     h.attackTarget = null;
     h.moveTarget = { x: clamp(dest.x, 40, WORLD - 40), y: clamp(dest.y, 40, WORLD - 40) };
     if(opts.amove) h.amove = true;
