@@ -25,10 +25,10 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
   - ❄️ **Ledena**: ledeni naramenjaci od svjetlećih kristala i ledeni kristali oko kićanke kape
   - 🏹 **Strijela**: smotana lovačka mreža na boku (njena moć) i ogrlica od očnjaka
   - 🍄 **Listko**: crvene gljive s bijelim točkama, lišće i ružičasti cvijet na oklopu, vitica s listićima oko štapa
-  - ⚡ **Munja**: svjetleći vrh repa s iskrama i munje na nadlakticama
+  - ⚡ **Munja**: velika svjetleća munja-cik-cak na čelu (vidi se i odozgo), svjetleći vrh repa s iskrama i munje na nadlakticama
   - 👑 **Skokica**: mala zlatna kruna s rubinom (žablji princ)
   - 🧣 **Orlina**: pilotski šal u boji tima čiji dugi krajevi vijore iza leđa
-  - 🌙 **Luna**: svjetleći polumjeseci na vrhovima luka i srebrne naušnice
+  - 🌙 **Luna**: svjetleći polumjeseci na vrhovima luka i srebrne naušnice; polumjesec na čelu sada prati zaobljeno čelo (prije je stršao u zraku i odostraga se vidio kao "S" iznad glave)
   - 💣 **Tragač**: dvije dimne bombe sa svjetlećim fitiljem (njena moć) i bacački noževi za remenom
   - 🧪 **Bodljo**: bočica zelene sluzi na boku i narukvice s bodljama
   - 🐘 **Tutnjo**: zlatni ukras na čelu s rubinom, zlatni prstenovi na kljovama, crvene rese na ušima
@@ -43,6 +43,7 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
   - 🌈 **Duga**: narukvice u bojama duge i svjetlucave zvjezdice oko roga
   - 🏴‍☠️ **Zubo**: gusarski povez preko oka, zlatni zub i veliko zlatno sidro na pregači
   - 🖼️ novi portreti 12 junaka iz Blendera s novim detaljima
+  - ⚙️ bez troška u igri: +2 poziva crtanja i +0,4 % trokuta u ispitnoj sceni (7 junaka + 12 vojnika), modeli 5,1 MB (+0,1 MB)
 
 - ⚔️ **3D modeli bliže League of Legendsu** (v0.29):
   - 🎨 **"ručno oslikani" izgled svih modela** (kao teksture u LoL-u): uz pečenu okluziju svaki model dobiva prijelaz od tamnijeg podnožja prema svjetlijem vrhu, hladnije i zasićenije sjene, toplije svjetlo i blagi šum poteza kistom — sve u bojama vrhova, bez troška u igri
