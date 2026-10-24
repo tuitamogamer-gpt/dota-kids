@@ -1870,9 +1870,11 @@ function buildNeutralMesh(u){
   const key = u.campType || (u.camp && u.camp.type) || 'boars';
   const ct = CAMP_TYPES[key] || {};
   if(MODELS.ready && addModel(g, 'mob_' + (ct.model || key), TEAM_NEUTRAL, u.r * 2.2)){
+    const dk = u.drake && DRAKES[u.drake];
     if(ct.look) g.userData.baseLook = ct.look;   // 🔵 plavi golem / 🔴 vatreni vuk: obojeni model
-    if(ct.buff){   // svjetleći krug ispod čudovišta s buffom
-      const col = JUNGLE_BUFFS[ct.buff].color;
+    if(dk) g.userData.baseLook = dk.look;         // 🐉 zmajčić u boji elementa
+    if(ct.buff || dk){   // svjetleći krug ispod čudovišta s buffom / zmajčića
+      const col = dk ? dk.color : JUNGLE_BUFFS[ct.buff].color;
       const ring = new THREE.Mesh(new THREE.RingGeometry(u.r + 22, u.r + 30, 40),
         new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.75, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
       ring.rotation.x = -Math.PI / 2; ring.position.y = 3;

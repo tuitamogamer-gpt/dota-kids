@@ -162,7 +162,7 @@ function updateHudTip(){
     const key = 'buff' + r.b.name + Math.ceil(r.b.t);
     if(key === hudTipKey) return;
     hudTipKey = key;
-    showItemTip(simpleTipHtml(r.b.e + ' ' + escHtml(r.b.name), escHtml(r.b.desc), (r.b.good ? '✅ Pomaže ti' : '⚠️ Šteti ti') + (r.b.t < 600 ? ' · još ' + Math.ceil(r.b.t) + ' s' : '')), r);
+    showItemTip(simpleTipHtml(r.b.e + ' ' + escHtml(r.b.name), escHtml(r.b.desc), (r.b.good ? '✅ Pomaže ti' : '⚠️ Šteti ti') + (r.b.perm ? ' · ♾️ trajno, cijelom timu' : (r.b.t < 600 ? ' · još ' + Math.ceil(r.b.t) + ' s' : ''))), r);
     return;
   }
   if(t === 'abil' || t === 'learn' || t === 'pas' || t === 'stat' || t === 'glyph' || t === 'tp' || t === 'shop' || t === 'sum'){
