@@ -1490,7 +1490,7 @@ function takeDrake(src, el){
     if(el === 'forest') recomputeAttrStats(h);   // oklop se računa u statistici junaka
   }
   const n = drakeN(team, el);
-  feedMsg('🐉 ' + (src.emoji || '') + ' ' + (src.name || '') + ' — tim ' + TEAM_NAME[team] + ' je ubio ' + d.name.toLowerCase() + '!', d.color);
+  feedMsg('🐉 ' + (src.emoji || '') + ' ' + (src.name || '') + ' — tim ' + TEAM_NAME[team] + ' je ubio ' + d.acc + '!', d.color);
   announce(d.emoji + ' ' + d.name + (n > 1 ? ' ×' + n : '') + '!', 'Tim ' + TEAM_NAME[team] + ' zauvijek dobiva: ' + d.desc);
   if(team === myTeam) sfx('levelup');
 }

@@ -1853,10 +1853,10 @@ const JUNGLE_BUFFS = {
 /* 🐉 ZMAJČIĆI (kao zmajevi u League of Legends): na rijeci dolje desno živi zmajčić jednog elementa.
    Tim koji ga ubije dobiva TRAJNI bonus za sve svoje junake — bonusi se zbrajaju! Novi dolazi nakon 2,5 min. */
 const DRAKES = {
-  fire:   { emoji:'🔥', name:'Vatreni zmajčić', color:'#fb923c', look:'r', desc:'+6% štete junaka (udarci i moći)' },
-  water:  { emoji:'💧', name:'Vodeni zmajčić',  color:'#38bdf8', look:'c', desc:'+3 obnove života i +1,5 obnove mane' },
-  storm:  { emoji:'⚡', name:'Olujni zmajčić',  color:'#c084fc', look:'k', desc:'+5% brzine kretanja' },
-  forest: { emoji:'🌿', name:'Šumski zmajčić',  color:'#4ade80', look:'p', desc:'+3 oklopa' },
+  fire:   { emoji:'🔥', name:'Vatreni zmajčić', acc:'vatrenog zmajčića', color:'#fb923c', look:'r', desc:'+6% štete junaka (udarci i moći)' },
+  water:  { emoji:'💧', name:'Vodeni zmajčić',  acc:'vodenog zmajčića',  color:'#38bdf8', look:'c', desc:'+3 obnove života i +1,5 obnove mane' },
+  storm:  { emoji:'⚡', name:'Olujni zmajčić',  acc:'olujnog zmajčića',  color:'#c084fc', look:'k', desc:'+5% brzine kretanja' },
+  forest: { emoji:'🌿', name:'Šumski zmajčić',  acc:'šumskog zmajčića',  color:'#4ade80', look:'p', desc:'+3 oklopa' },
 };
 const DRAKE_KEYS = ['fire', 'water', 'storm', 'forest'];
 /* botovi: po vrsti junaka */
