@@ -148,6 +148,9 @@ function addRim(m){
 }
 /* variant 'b' = građevine (kule, prijestoli, vojarne, fontane, svetišta): slabiji odsjaj okoline i hrapaviji kamen —
    inače se svijetli kamen pod suncem + studijskim odsjajem "ispere" u bijelo */
+const METAL_ENV = { day: 1.15, night: 0.45 };
+let CHAR_ROUGH = 0.62;   // likovi: blagi sjaj (oslikani odsjaj kao u LoL-u); prije 0.78
+const metalMats = [];   // noću metal slabije odsijava (okolina je studijsko svjetlo)
 function modelMat(name, team, look, variant){
   const key = 'M' + name + '|' + team + '|' + look + (variant ? '|' + variant : '');
   if(matCache[key]) return matCache[key];
@@ -158,8 +161,11 @@ function modelMat(name, team, look, variant){
   } else if(name === 'TEAMGLOW'){
     m = new THREE.MeshBasicMaterial({ color: new THREE.Color(TEAM_LIGHT[team] || '#ffffff').lerp(new THREE.Color('#ffffff'), 0.25) });
   } else {
-    m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: variant === 'b' ? 0.92 : 0.78, metalness: 0,
-      color: name === 'TEAM' ? tc : 0xffffff, envMapIntensity: variant === 'b' ? 0.12 : 0.45 });
+    const metal = name === 'METAL';   // v0.29: zlato i čelik (sjaj i odsjaj okoline, kao u LoL-u)
+    m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: metal ? 0.3 : (variant === 'b' ? 0.92 : CHAR_ROUGH),
+      metalness: metal ? 0.75 : 0, color: name === 'TEAM' ? tc : 0xffffff,
+      envMapIntensity: metal ? METAL_ENV.day : (variant === 'b' ? 0.12 : 0.45) });
+    if(metal) metalMats.push(m);
     if(look === 'f'){ m.emissive = new THREE.Color(0xffffff); m.emissiveIntensity = 0.32; }
     if(look === 'c') m.color.lerp(new THREE.Color('#5fb8ff'), 0.7);
     if(look === 'p') m.color.lerp(new THREE.Color('#86efac'), 0.6);
@@ -609,6 +615,7 @@ function applyDayNight(gt){
   sunLight.color.copy(DAY_SKY.sunNight).lerp(DAY_SKY.sunDay, k);
   if(waterMesh) waterMesh.material.uniforms.night.value = 1 - k;
   RIM.strength.value = 0.26 + 0.24 * (1 - k);   // noću obrisi jače svijetle (mjesečina)
+  for(const mm of metalMats) mm.envMapIntensity = METAL_ENV.night + (METAL_ENV.day - METAL_ENV.night) * k;
   RIM.color.value.setRGB(0.88 - 0.25 * (1 - k), 0.92 - 0.1 * (1 - k), 1.0);
 }
 
