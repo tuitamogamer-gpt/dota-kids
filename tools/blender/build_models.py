@@ -2078,10 +2078,10 @@ def build_scourge():
         if i % 4 == 0:
             bone_spike(b, (math.cos(a) * 2.95, math.sin(a) * 2.95, 0.3), (math.cos(a) * 0.3, math.sin(a) * 0.3, 1.0), 0.9, 0.11, 0.1)
     b.cyl((0, 0, 0.3), (0, 0, 0.42), 3.08, 3.08, '#ffffff', mat='team', seg=24, caps=False)
-    b.cyl((0, 0, 0.3), (0, 0, 0.4), 2.75, 2.75, '#4c1d95', mat='glow', seg=24)   # tamna ljubičasta tekućina (jarka je bliještala)
+    b.cyl((0, 0, 0.3), (0, 0, 0.4), 2.75, 2.75, '#6b21a8', mat='glow', seg=24)   # tamna ljubičasta tekućina (crvenkasta — inače je tonska krivulja pretvori u plavu)
     b.cyl((0, 0, 0.3), (0, 0, 1.4), 0.34, 0.26, DSTONE[1], seg=10)
     b.cyl((0, 0, 1.3), (0, 0, 1.55), 1.2, 1.3, DSTONE[2], seg=16)
-    b.cyl((0, 0, 1.5), (0, 0, 1.56), 1.15, 1.15, '#6d28d9', mat='glow', seg=16)
+    b.cyl((0, 0, 1.5), (0, 0, 1.56), 1.15, 1.15, '#86198f', mat='glow', seg=16)
     for i in range(4):
         a = RAD(i * 90 + 45)
         skull(b, (math.cos(a) * 1.25, math.sin(a) * 1.25, 1.42), 1.0)

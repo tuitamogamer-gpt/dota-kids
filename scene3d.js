@@ -146,8 +146,10 @@ function addRim(m){
   };
   m.customProgramCacheKey = () => 'rim1';
 }
-function modelMat(name, team, look){
-  const key = 'M' + name + '|' + team + '|' + look;
+/* variant 'b' = građevine (kule, prijestoli, vojarne, fontane, svetišta): slabiji odsjaj okoline i hrapaviji kamen —
+   inače se svijetli kamen pod suncem + studijskim odsjajem "ispere" u bijelo */
+function modelMat(name, team, look, variant){
+  const key = 'M' + name + '|' + team + '|' + look + (variant ? '|' + variant : '');
   if(matCache[key]) return matCache[key];
   let m;
   const tc = TEAM_COLOR[team] || '#ffffff';
@@ -156,8 +158,8 @@ function modelMat(name, team, look){
   } else if(name === 'TEAMGLOW'){
     m = new THREE.MeshBasicMaterial({ color: new THREE.Color(TEAM_LIGHT[team] || '#ffffff').lerp(new THREE.Color('#ffffff'), 0.25) });
   } else {
-    m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.78, metalness: 0,
-      color: name === 'TEAM' ? tc : 0xffffff, envMapIntensity: 0.45 });
+    m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: variant === 'b' ? 0.92 : 0.78, metalness: 0,
+      color: name === 'TEAM' ? tc : 0xffffff, envMapIntensity: variant === 'b' ? 0.12 : 0.45 });
     if(look === 'f'){ m.emissive = new THREE.Color(0xffffff); m.emissiveIntensity = 0.32; }
     if(look === 'c') m.color.lerp(new THREE.Color('#5fb8ff'), 0.7);
     if(look === 'p') m.color.lerp(new THREE.Color('#86efac'), 0.6);
@@ -178,7 +180,7 @@ function themed(name, team){ return team === TEAM_RED && MODELS.tpl[name + '_d']
 /* strana mape: >0 = Scourge (gore desno), <0 = Sentinel; prijelaz uz rijeku */
 function scourgeSide(x, y){ return (x - y) / Math.SQRT2; }
 /* novi primjerak modela (dijeli geometriju i materijale s predloškom) */
-function modelInstance(name, team, scale){
+function modelInstance(name, team, scale, variant){
   const tpl = MODELS.tpl[name];
   if(!tpl) return null;
   const obj = tpl.clone(true);
@@ -188,13 +190,14 @@ function modelInstance(name, team, scale){
   obj.traverse(o => {
     if(!o.isMesh) return;
     const mn = o.userData.matName;
-    o.material = modelMat(mn, team, 'n');
+    o.material = modelMat(mn, team, 'n', variant);
     o.castShadow = mn !== 'GLOW' && mn !== 'TEAMGLOW';
     meshes.push(o);
   });
   obj.userData.meshes = meshes;
   obj.userData.team = team;
   obj.userData.look = 'n';
+  obj.userData.variant = variant || '';
   obj.userData.parts = {};
   obj.traverse(o => {
     const i = o.name.lastIndexOf('_');
@@ -206,7 +209,7 @@ function setModelLook(obj, look){
   const ud = obj.userData;
   if(!ud.meshes || ud.look === look) return;
   ud.look = look;
-  for(const m of ud.meshes) m.material = modelMat(m.userData.matName, ud.team, look);
+  for(const m of ud.meshes) m.material = modelMat(m.userData.matName, ud.team, look, ud.variant);
 }
 
 /* ---------- animacije (AnimationMixer po jedinici) ---------- */
@@ -269,6 +272,33 @@ function mergedModelGeo(name){
   }
   MODELS.merged[name] = geo;
   return geo;
+}
+
+/* spojena geometrija s grupama po materijalu (VC / TEAM / GLOW…) — za instancirane zgrade (zidine, šatori),
+   da kamen ostane kamen, a samo ukrasi budu u boji tima */
+function mergedModelGeoMulti(name){
+  const key = name + '|multi';
+  if(MODELS.merged[key] !== undefined) return MODELS.merged[key];
+  const tpl = MODELS.tpl[name];
+  let res = null;
+  if(tpl && THREE.mergeBufferGeometries){
+    const byMat = {};
+    tpl.updateMatrixWorld(true);
+    tpl.traverse(o => {
+      if(!o.isMesh) return;
+      const g = o.geometry.clone();
+      g.applyMatrix4(o.matrixWorld);
+      for(const k of Object.keys(g.attributes)) if(!['position', 'normal', 'color'].includes(k)) g.deleteAttribute(k);
+      const mn = o.userData.matName || 'VC';
+      (byMat[mn] = byMat[mn] || []).push(g);
+    });
+    const names = Object.keys(byMat);
+    const perMat = names.map(n => byMat[n].length > 1 ? THREE.mergeBufferGeometries(byMat[n], false) : byMat[n][0]);
+    const geo = perMat.length ? THREE.mergeBufferGeometries(perMat, true) : null;
+    if(geo){ geo.userData.shared = true; res = { geo, names }; }
+  }
+  MODELS.merged[key] = res;
+  return res;
 }
 
 /* ---------- zajednički resursi ---------- */
@@ -1325,9 +1355,9 @@ function buildStatic3D(){
         if(distXY(x, y, FOUNTAIN[team].x, FOUNTAIN[team].y) < 200) continue;
         segs.push({ x, y, h: groundHeight(x, y) - 1, rot: -a - Math.PI / 2, s: 34 });
       }
-      const geo = mergedModelGeo(themed('wall', team));
-      if(geo && segs.length){
-        const im = new THREE.InstancedMesh(geo, modelMat('TEAM', team, 'n'), segs.length);
+      const mm = mergedModelGeoMulti(themed('wall', team));   // kamen + vrhovi stupova u boji tima
+      if(mm && segs.length){
+        const im = new THREE.InstancedMesh(mm.geo, mm.names.map(n => modelMat(n, team, 'n', 'b')), segs.length);
         segs.forEach((it, i) => {
           _dummy.position.set(it.x, it.h, it.y);
           _dummy.rotation.set(0, it.rot, 0);
@@ -1352,9 +1382,9 @@ function buildStatic3D(){
         const x = f.x + Math.cos(a) * 250 * MAP_S, y = f.y + Math.sin(a) * 250 * MAP_S;
         tents.push({ x, y, h: groundHeight(x, y) - 1, rot: -a, s: 44 });
       }
-      const geo = mergedModelGeo('tent0');
-      if(geo){
-        const im = new THREE.InstancedMesh(geo, modelMat('TEAM', team, 'n'), tents.length);
+      const mt = mergedModelGeoMulti('tent0');
+      if(mt){
+        const im = new THREE.InstancedMesh(mt.geo, mt.names.map(n => modelMat(n, team, 'n', 'b')), tents.length);
         tents.forEach((it, i) => {
           _dummy.position.set(it.x, it.h, it.y); _dummy.rotation.set(0, it.rot, 0); _dummy.scale.setScalar(it.s); _dummy.updateMatrix();
           im.setMatrixAt(i, _dummy.matrix);
@@ -1380,13 +1410,13 @@ function buildStatic3D(){
     }
     // 🕊️ svetišta
     for(const s of SHRINE_SPOTS){
-      const m = modelInstance('shrine0', s.team, 70);
+      const m = modelInstance('shrine0', s.team, 70, 'b');
       if(!m) continue;
       const gh = groundHeight(s.x, s.y);
       m.position.set(s.x, gh - 1, s.y);
       staticGroup.add(m);
       const glow = new THREE.Sprite(glowMat(TEAM_LIGHT[s.team]));
-      glow.scale.set(110, 110, 1);
+      glow.scale.set(52, 52, 1);
       glow.position.set(s.x, gh + 52, s.y);
       staticGroup.add(glow);
       shrineObjs.push({ m, glow, team: s.team, x: s.x, y: s.y, gh });
@@ -1395,7 +1425,7 @@ function buildStatic3D(){
   for(let team = 0; team < 2; team++){
     const f = FOUNTAIN[team];
     const gh = groundHeight(f.x, f.y);
-    const m = MODELS.ready ? modelInstance(themed('fountain', team), team, MODEL_SCALE.fountain) : null;
+    const m = MODELS.ready ? modelInstance(themed('fountain', team), team, MODEL_SCALE.fountain, 'b') : null;
     if(m){
       m.position.set(f.x, gh - 2, f.y);
       m.scale.y *= 0.55;   // niža fontana — junaci stoje u njoj
@@ -2012,7 +2042,7 @@ function buildNeutralMesh(u){
 }
 function buildBarracksMesh(u){
   const g = new THREE.Group();
-  const m = MODELS.ready ? modelInstance(themed('barracks', u.team), u.team, 44) : null;
+  const m = MODELS.ready ? modelInstance(themed('barracks', u.team), u.team, 44, 'b') : null;
   if(m){ g.add(m); g.userData.model = m; g.rotation.y = -Math.atan2(WORLD / 2 - u.y, WORLD / 2 - u.x); return g; }
   const box = new THREE.Mesh(cachedGeo('barrBox', () => new THREE.BoxGeometry(80, 50, 60)), lambMat(TEAM_LIGHT[u.team]));
   box.position.y = 25;
@@ -2023,7 +2053,7 @@ function buildBarracksMesh(u){
 function buildTowerMesh(u){
   const g = new THREE.Group();
   if(MODELS.ready){
-    const m = modelInstance(themed('tower', u.team), u.team, MODEL_SCALE.tower * (u.isGuard ? 0.92 : 1));
+    const m = modelInstance(themed('tower', u.team), u.team, MODEL_SCALE.tower * (u.isGuard ? 0.92 : 1), 'b');
     if(m){
       g.add(m);
       g.userData.model = m;
@@ -2052,7 +2082,7 @@ function buildTowerMesh(u){
 function buildAncientMesh(u){
   const g = new THREE.Group();
   const ud = g.userData;
-  const m = MODELS.ready ? modelInstance(themed('ancient', u.team), u.team, MODEL_SCALE.ancient) : null;
+  const m = MODELS.ready ? modelInstance(themed('ancient', u.team), u.team, MODEL_SCALE.ancient, 'b') : null;
   if(m){
     g.add(m);
     ud.model = m;
@@ -3702,7 +3732,7 @@ function syncScene(tAnim){
   shrineObjs.forEach((so, i) => {
     const s = (typeof shrines !== 'undefined' && shrines[i]) || null;
     const active = s && s.t > 0, ready = !s || s.cd <= 0;
-    const base = active ? 150 + Math.sin(tAnim * 9) * 40 : (ready ? 90 + Math.sin(tAnim * 2) * 10 : 40);
+    const base = active ? 140 + Math.sin(tAnim * 9) * 35 : (ready ? 52 + Math.sin(tAnim * 2) * 6 : 26);   // u mirovanju mali sjaj samo oko kugle (veliki je prekrivao cijelo svetište bijelim)
     so.glow.scale.set(base, base, 1);
     so.glow.position.y = so.gh + 52 + (active ? Math.sin(tAnim * 6) * 8 : 0);
     if(active && Math.random() < dt * 40){
