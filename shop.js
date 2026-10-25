@@ -104,6 +104,7 @@ function showItemTip(html, rect, side){
   const w = el.offsetWidth, hh = el.offsetHeight;
   let x, y;
   if(side === 'left'){ x = rect.x - w - 10; y = rect.y + rect.h / 2 - hh / 2; }
+  else if(side === 'below'){ x = rect.x + rect.w / 2 - w / 2; y = rect.y + rect.h + 8; }   // gumbi gore desno
   else { x = rect.x + rect.w / 2 - w / 2; y = rect.y - hh - 10; }
   el.style.left = Math.round(clamp(x, 6, innerWidth - w - 6)) + 'px';
   el.style.top = Math.round(clamp(y, 6, innerHeight - hh - 6)) + 'px';
@@ -153,9 +154,26 @@ function simpleTipHtml(title, text, foot){
 }
 /* opisi na HUD-u (torba, moći, pasiva, gumbi) — poziva game.js kad se promijeni hoverUi */
 let hudTipKey = null;
+/* gumbi gore desno: što rade i koja je tipka */
+const TOP_TIPS = {
+  dance: ['💃 Ples', 'Tvoj junak zapleše i kaže nešto smiješno — vide ga i drugi!', 'Tipka J'],
+  center: ['🎯 Kamera', 'Kamera se vrati na tvog junaka i prati ga.', 'Razmaknica'],
+  score: ['📋 Tablica', 'Ubojstva, smrti, asistencije, zlato i predmeti svih junaka.', 'Tab (ili ovaj gumb)'],
+  opts: ['⚙️ Postavke', 'Glasnoća, glasovi junaka, najavljivač, kvaliteta slike, kamera…', 'Tipka Esc'],
+  mute: ['🔊 Zvuk', 'Uključi ili isključi sav zvuk i glasove.', 'Tipka M'],
+  help: ['❓ Pomoć', 'Sve tipke i kako se igra.', 'Tipka H'],
+};
 function updateHudTip(){
   if(!player || !hoverUi){ if(hudTipKey) hideItemTip(); return; }
   const t = hoverUi.type;
+  if(TOP_TIPS[t]){
+    const rect = uiRects[t];
+    if(!rect) return hideItemTip();
+    if(hudTipKey === 'top' + t) return;
+    hudTipKey = 'top' + t;
+    showItemTip(simpleTipHtml(...TOP_TIPS[t]), rect, 'below');
+    return;
+  }
   if(t === 'buff'){
     const r = uiRects.buff && uiRects.buff[hoverUi.i];
     if(!r) return hideItemTip();
