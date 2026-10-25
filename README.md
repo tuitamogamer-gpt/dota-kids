@@ -28,6 +28,7 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
   - 🚶 **ponekad dok hodaš ili napadaš** — kratka replika, ali ne na svaki klik (hodanje najviše svakih 12 s, napad svakih 7 s); držanje miša ne priča
   - 🔇 govori **samo jedan glas u isto vrijeme** — važnija replika (ulti, pobjeda, pogibija) prekida manje važnu, a manje važna ne prekida važniju; prati 🔊 glasnoću i 🎵 zvuk, a u ⚙️ postavkama ih možeš **isključiti** (🗣️ Glasovi junaka)
   - 📱 radi i na iPadu/iPhoneu (zvuk se „otključa” prvim dodirom) i u mrežnoj igri (gost čuje svog junaka)
+  - ⚡ učitana replika krene istog trena, pa se ne preskoči ni kad igra na tren zastane (npr. prvi ulti na slabijem tabletu) (v0.33)
   - 📝 replike i odabrani glasovi su u [`voices.js`](voices.js); igra učitava samo replike tvog junaka i ulti ostalih junaka u meču
 
 - 🎯 **Ciljanje mišem, indikatori i priprema** (v0.31) — popravci po prijavama testera:
