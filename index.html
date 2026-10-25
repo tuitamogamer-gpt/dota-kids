@@ -287,9 +287,11 @@
 
   /* ---------- kraj igre ---------- */
   #end{ background:rgba(8,28,21,.8); }   /* prozirnije: iza se vidi pobjednički ples junaka */
+  #endHead{ display:contents; }          /* 📱 na niskom ekranu emoji i naslov idu u isti red */
   #endEmoji{ font-size:56px; }
   #end h1{ font-size:54px; text-shadow:0 5px 0 rgba(0,0,0,.4); margin:2px 0 12px; }
-  #endTable{ max-width:96vw; overflow-x:auto; }
+  #endTable{ max-width:96vw; overflow-x:auto; flex-shrink:0; }   /* ne stišće se (inače sakrije retke) — radije se pomiče cijeli ekran */
+  #againBtn{ position:sticky; bottom:8px; z-index:2; }
   .endT{ border-collapse:collapse; background:rgba(10,14,20,.82); border:1px solid #6b5a35; border-radius:10px; overflow:hidden; min-width:min(820px, 96vw); }
   .endT th, .endT td{ padding:3px 12px; font-size:15px; color:#e5e7eb; text-align:center; white-space:nowrap; }
   .endT .etTeam th{ text-align:left; font-size:17px; padding:8px 12px; letter-spacing:.5px; }
@@ -315,18 +317,42 @@
 
   #err{ position:fixed; left:10px; top:10px; z-index:99; display:none; background:#b91c1c; color:#fff;
     padding:8px 14px; border-radius:10px; font-size:13px; max-width:70vw; }
+  /* 💻 laptop (niži prozor): 10 junaka (5 na 5) mora stati — zaglavlje stupaca samo jednom, dva retka ispod u jednom */
+  @media (max-height: 760px){
+    #endEmoji{ font-size:40px; }
+    #end h1{ font-size:44px; margin:0 0 8px; }
+    .endT .etTeam th{ padding:5px 12px; }
+    .endT .etTeam.t1 + .etHead{ display:none; }
+    .etHero img{ width:26px; height:26px; }
+    .etItem{ width:32px; height:23px; }
+    .etNeut{ width:23px; height:23px; }
+    .etMvp{ display:inline-block; margin:6px 10px 8px; }
+  }
   /* 📱 nizak ekran (mobitel položen): zbijeniji završni ekran, dućan preko cijele visine, zbijenije postavke */
   @media (max-height: 560px){
-    #endEmoji{ font-size:30px; }
-    #end h1{ font-size:32px; margin:0 0 6px; }
-    .endT th, .endT td{ padding:2px 8px; font-size:12.5px; }
-    .endT .etTeam th{ font-size:14px; padding:4px 10px; }
-    .etHero img{ width:24px; height:24px; }
-    .etMvp{ margin:4px 0 6px; font-size:13px; }
+    #endHead{ display:flex; align-items:center; justify-content:center; gap:12px; margin:0 0 4px; }
+    #endEmoji{ font-size:24px; }
+    #end h1{ font-size:28px; margin:0; }
+    .endT th, .endT td{ padding:1px 8px; font-size:12px; }
+    .endT .etTeam th{ font-size:13px; padding:3px 10px; }
+    .endT .etHead th{ font-size:10px; }
+    .etHero{ gap:6px; }
+    .etHero img{ width:20px; height:20px; }
+    .etItem{ width:26px; height:19px; }
+    .etNeut{ width:19px; height:19px; }
+    .etWin{ font-size:11px; padding:1px 6px; }
+    .etMvp{ margin:3px 8px 4px; font-size:12.5px; }
+    #againBtn{ font-size:18px; padding:6px 26px; box-shadow:0 4px 0 #b45309; }
     #shop{ top:6px; bottom:6px; right:6px; max-height:none; z-index:25; }
     #shopBody{ min-height:60px; }
     .optBox{ padding:12px 18px; }
     .optRow{ padding:5px 0; }
+  }
+  @media (max-height: 400px){   /* 📱 mali mobitel s trakom preglednika */
+    .endT th, .endT td{ padding:0 8px; }
+    .etHero img{ width:18px; height:18px; }
+    .etItem{ height:17px; }
+    .etNeut{ width:17px; height:17px; }
   }
 </style>
 </head>
@@ -339,7 +365,7 @@
 <div id="select" class="overlay">
   <header>
     <h1>🏰 DOTA Kids 3D ⚔️</h1>
-    <p class="sub">Odaberi junaka i sruši protivnički prijestol! Ti + 4 bota 🔵 protiv 5 botova 🔴 (5 na 5) <span class="ver">v0.36</span></p>
+    <p class="sub">Odaberi junaka i sruši protivnički prijestol! Ti + 4 bota 🔵 protiv 5 botova 🔴 (5 na 5) <span class="ver">v0.37</span></p>
   </header>
   <div id="loadBar">⏳ Učitavam 3D modele…</div>
   <div class="selWrap">
@@ -362,10 +388,10 @@
   <div class="btnRow">
     <button id="startBtn" class="bigBtn" disabled>▶️ ZAIGRAJ</button>
     <button id="randomBtn" class="rndBtn" title="Nasumični junak">🎲<span class="lbl"> Nasumično</span></button>
-    <button id="mpToggle" class="ghostBtn" title="1 na 1 protiv prijatelja preko interneta">👥<span class="lbl"> S prijateljem</span></button>
+    <button id="mpToggle" class="ghostBtn" title="Ti protiv prijatelja preko interneta (5 na 5 s botovima)">👥<span class="lbl"> S prijateljem</span></button>
   </div>
   <div id="mpBox" class="hidden">
-    <div class="mpTitle">🌐 1 na 1 protiv prijatelja — svaki vodi sredinu, botovi pomažu</div>
+    <div class="mpTitle">🌐 Ti protiv prijatelja, 5 na 5 — svaki vodi sredinu, po 4 bota pomažu</div>
     <div class="mpRow">
       <button id="mpHost" class="mpBtn">📡 Napravi sobu</button>
       <span class="mpOr">ili upiši kod:</span>
@@ -460,8 +486,7 @@
 <!-- KRAJ IGRE -->
 <div id="end" class="overlay hidden">
   <div id="confetti"></div>
-  <div id="endEmoji"></div>
-  <h1 id="endTitle"></h1>
+  <div id="endHead"><div id="endEmoji"></div><h1 id="endTitle"></h1></div>
   <div id="endTable"></div>
   <button id="againBtn" class="bigBtn">🔄 Igraj ponovo!</button>
 </div>

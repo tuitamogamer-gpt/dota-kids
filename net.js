@@ -3,7 +3,7 @@
    DOTA Kids 3D — MULTIPLAYER (PeerJS, P2P, domaćin = autoritet)
    - Domaćin vrti cijelu simulaciju i šalje snapshot ~12×/s.
    - Gost šalje samo naredbe (klik, moći, kupovine...).
-   - 1 na 1: domaćin = plavi mid, gost = crveni mid, 4 bota.
+   - 1 na 1 u timovima 5 na 5: domaćin = plavi mid, gost = crveni mid, po 4 bota.
    ============================================================ */
 
 const net = {
@@ -616,7 +616,7 @@ function startMatchHost(hostIdx, guestIdx, botIdcs){
   cam.x = player.x; cam.y = player.y; cam.zoom = 0.9; cam.follow = true;
   running = true;
   document.getElementById('select').classList.add('hidden');
-  localBanner('⚔️ 1 NA 1!', 'Sruši crveni prijestol! 👑');   // gost ima svoju ("Sruši plavi prijestol!")
+  localBanner(`⚔️ ${CFG.teamSize} NA ${CFG.teamSize}!`, 'Sruši crveni prijestol! 👑');   // gost ima svoju ("Sruši plavi prijestol!")
   refreshShop();
   beginPrep();
   sfx('levelup');
@@ -634,7 +634,7 @@ function startMatchGuest(d){
   running = true;
   cam.x = FOUNTAIN[1].x; cam.y = FOUNTAIN[1].y; cam.zoom = 0.9; cam.follow = true;
   document.getElementById('select').classList.add('hidden');
-  banner = { txt: '⚔️ 1 NA 1!', sub: 'Sruši plavi prijestol! 👑', t: 0, dur: 3 };
+  banner = { txt: `⚔️ ${CFG.teamSize} NA ${CFG.teamSize}!`, sub: 'Sruši plavi prijestol! 👑', t: 0, dur: 3 };
   annLog = []; VOX.annSeen = 0;   // 📣 najave stižu u snimkama (av)
   gameTime = -CFG.prepTime; prepShop = false;   // ⏳ priprema: domaćin šalje sat, dućan se sam otvori
   if(CFG.prepTime > 0 && !shopOpen){ toggleShop(); prepShop = true; }
