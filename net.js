@@ -177,6 +177,7 @@ function onNetData(d){
       }
       break;
     case 'cast': if(net.mode === 'host' && remoteHero) castAbility(remoteHero, d.i, { x: d.x, y: d.y }); break;
+    case 'emote': if(net.mode === 'host' && remoteHero) startDance(remoteHero); break;   // 💃
     case 'learn': if(net.mode === 'host' && remoteHero) learnAbility(remoteHero, d.i); break;
     case 'stats': if(net.mode === 'host' && remoteHero) learnStats(remoteHero); break;
     case 'buy': if(net.mode === 'host' && remoteHero && ITEM_BY_ID[d.id]) tryBuy(remoteHero, ITEM_BY_ID[d.id]); break;
@@ -233,6 +234,7 @@ function heroExtras(h){
     ia: h.itemAttr ? [h.itemAttr.str, h.itemAttr.agi, h.itemAttr.int] : [0, 0, 0],
     ar: +(unitArmor(h)).toFixed(1), asb: +(h.atkSpdBonus || 0).toFixed(3), ls: h.lifesteal || 0, ev: h.evasion || 0,
     nt: h.neutral ? h.neutral.id : 0,                                     // 🌰 neutralni predmet
+    rc: h.dead && h.recap ? h.recap : 0,                                  // 💀 pregled pogibije
   };
 }
 const CAMP_KEYS = Object.keys(CAMP_TYPES);   // isti data.js kod domaćina i gosta
@@ -249,6 +251,7 @@ function buildSnapshot(){
     if(u.atkN){ b.an = u.atkN % 1000; if(u.atkInt) b.ai = +u.atkInt.toFixed(2); if(u.atkHeavy) b.ah = 1; }   // 3D animacije napada i čaranja
     if(u.castN){ b.cn = u.castN % 1000; b.cf = u.castFx; if(u.castAim) b.ca = [Math.round(u.castAim.x), Math.round(u.castAim.y)]; }
     if(u.knockN) b.kn = u.knockN % 1000;   // odbačaj
+    if(u.danceN){ b.dz = u.danceN % 1000; if(u.danceT > 0) b.dc = 1; }   // 💃 ples
     if(u.charge) b.ch = 1;                 // juriš
     if(u.cycloneT > 0) b.cy = 1;           // 🌪️ u vihoru
     if(u.sumN){ b.sn = u.sumN % 1000; b.sf = u.sumFx; if(u.sumAim) b.sa = [Math.round(u.sumAim.x), Math.round(u.sumAim.y)]; if(u.smiteAt) b.sm2 = [Math.round(u.smiteAt.x), Math.round(u.smiteAt.y)]; }
@@ -287,6 +290,7 @@ function buildSnapshot(){
     fl: floats.map(f => ({ x: Math.round(f.x), y: Math.round(f.y), hh: Math.round(f.h), tx: f.txt, cl: f.color, sz: f.size, t: +f.t.toFixed(2) })),
     fd: feed.map(f => ({ tx: f.txt, cl: f.color, t: +f.t.toFixed(2) })),
     bn: banner ? { tx: banner.txt, sb: banner.sub, t: banner.t, dr: banner.dur } : 0,
+    av: annLog.filter(a => gameTime - a.t < 3).map(a => [a.n, a.key, a.team]),   // 📣 najave iz zadnje 3 s
     me: remoteHero ? heroExtras(remoteHero) : 0,
     nf: +nightForceT.toFixed(1),
     gl: [Math.round(glyph[0].t * 10), Math.round(glyph[0].cd), Math.round(glyph[1].t * 10), Math.round(glyph[1].cd)],
@@ -399,6 +403,7 @@ function applySnapshot(d){
       u.barrierHp = b.br || 0; u.barrierT = b.br ? 1 : 0;
       u.jbuff = { blue: b.jb ? b.jb[0] : 0, red: b.jb ? b.jb[1] : 0 }; u.atkInt = b.ai || null; u.atkHeavy = !!b.ah;
     u.knockN = b.kn || 0; u.charge = b.ch ? { net: true } : null;
+    u.danceN = b.dz || 0; u.danceT = b.dc ? 1 : 0;   // 💃
     if(u.kind === 'hero'){
       u.level = b.l; u.dead = !!b.dd;
       u.mp = b.mp; u.maxmp = b.mm;
@@ -439,6 +444,7 @@ function applySnapshot(d){
       if(player.abilities[j]){ player.abilities[j].rank = a[0]; player.abilities[j].cd = a[1]; }
     });
     player.neutral = e.nt ? ITEM_BY_ID[e.nt] || null : null;
+    player.recap = e.rc || null;
     player.items = e.it.map((id, k) => ITEM_BY_ID[id] && ((e.ip || []).includes(k) ? pendingItem(ITEM_BY_ID[id]) : ITEM_BY_ID[id])).filter(Boolean);
     player.backpack = (e.bp || []).map(s => { const pend = s[0] === '*', it = ITEM_BY_ID[pend ? s.slice(1) : s]; return it && (pend ? pendingItem(it) : it); }).filter(Boolean);
     if(e.ia) player.itemAttr = { str: e.ia[0], agi: e.ia[1], int: e.ia[2] };
@@ -470,6 +476,7 @@ function applySnapshot(d){
   floats = d.fl.map(f => ({ x: f.x, y: f.y, h: f.hh, txt: f.tx, color: f.cl, size: f.sz, t: f.t }));
   feed = d.fd.map(f => ({ txt: f.tx, color: f.cl, t: f.t }));
   banner = d.bn ? { txt: d.bn.tx, sub: d.bn.sb, t: d.bn.t, dur: d.bn.dr } : null;
+  for(const a of d.av || []) if(a[0] > VOX.annSeen){ VOX.annSeen = a[0]; annPlay(a[1], a[2]); }   // 📣 iz perspektive gosta
   nightForceT = d.nf || 0;
   if(d.gl){ glyph[0].t = d.gl[0] / 10; glyph[0].cd = d.gl[1]; glyph[1].t = d.gl[2] / 10; glyph[1].cd = d.gl[3]; }
   if(d.dr) teamDrakes = d.dr.map(s => [...s].map(c => DRAKE_KEYS[+c]).filter(Boolean));
@@ -612,6 +619,7 @@ function startMatchGuest(d){
   cam.x = FOUNTAIN[1].x; cam.y = FOUNTAIN[1].y; cam.zoom = 0.9; cam.follow = true;
   document.getElementById('select').classList.add('hidden');
   banner = { txt: '⚔️ 1 NA 1!', sub: 'Sruši plavi prijestol! 👑', t: 0, dur: 3 };
+  annLog = []; VOX.annSeen = 0;   // 📣 najave stižu u snimkama (av)
   gameTime = -CFG.prepTime; prepShop = false;   // ⏳ priprema: domaćin šalje sat, dućan se sam otvori
   if(CFG.prepTime > 0 && !shopOpen){ toggleShop(); prepShop = true; }
   sfx('levelup');

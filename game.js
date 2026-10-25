@@ -529,7 +529,7 @@ let touchMode = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches)
 let scoreOpen = false;      // 📋 tablica otvorena gumbom (na tabletu nema tipke Tab)
 let mouseIn = false;        // miš je iznad igre (za rubno pomicanje kamere)
 /* ⚙️ postavke (pamte se u pregledniku) */
-const SETTINGS = { vol: 0.8, quality: touchMode ? 'med' : 'high', edgePan: true, dmgNums: true, quickCast: false, voices: true };
+const SETTINGS = { vol: 0.8, quality: touchMode ? 'med' : 'high', edgePan: true, dmgNums: true, quickCast: false, voices: true, announcer: true, diff: 'normal' };
 try {
   const s = JSON.parse(localStorage.getItem('dk_settings') || '{}');
   if(typeof s.vol === 'number') SETTINGS.vol = clamp(s.vol, 0, 1);
@@ -538,6 +538,8 @@ try {
   if(typeof s.dmgNums === 'boolean') SETTINGS.dmgNums = s.dmgNums;
   if(typeof s.quickCast === 'boolean') SETTINGS.quickCast = s.quickCast;
   if(typeof s.voices === 'boolean') SETTINGS.voices = s.voices;
+  if(typeof s.announcer === 'boolean') SETTINGS.announcer = s.announcer;
+  if(['easy', 'normal', 'hard'].includes(s.diff)) SETTINGS.diff = s.diff;
 } catch(e){}
 function saveSettings(){ try { localStorage.setItem('dk_settings', JSON.stringify(SETTINGS)); } catch(e){} }
 let ancients = [null, null];
@@ -946,6 +948,39 @@ function healCircle(u, r, amt){
 }
 
 /* ================= Šteta i smrt ================= */
+/* 💀 pregled pogibije (kao u LoL-u): tko ti je i čime nanio štetu u zadnjih 15 s */
+function dmgLabel(src, kind){
+  if(kind === 'atk') return '⚔️ Napadi';
+  const ab = src && src.kind === 'hero' && (src.curAb || (src.lastAb && gameTime - (src.lastAbT || -99) < 8 ? src.lastAb : null));
+  return ab ? ab.emoji + ' ' + ab.name : '✨ Čarolije';
+}
+function noteDamage(t, src, n, kind){
+  const log = t.dmgLog || (t.dmgLog = []);
+  while(log.length && gameTime - log[0].t > 15) log.shift();
+  let g, name, icon, hero = null;
+  if(!src){ g = 'x'; name = 'Otrov i ostalo'; icon = '☠️'; }
+  else if(src.kind === 'hero'){ g = 'h' + src.id; name = src.name; icon = src.emoji; hero = src.hero && src.hero.id; }
+  else if(isStructure(src)){ g = 'tower'; name = 'Kula'; icon = '🏰'; }
+  else if(src.kind === 'creep'){ g = 'creep'; name = 'Vojnici'; icon = '⚔️'; }
+  else { g = 'n' + (src.name || ''); name = src.name || 'Čudovište'; icon = src.emoji || '🐾'; }
+  log.push({ t: gameTime, g, name, icon, hero, team: src ? src.team : -1, n, lab: dmgLabel(src, kind) });
+}
+function buildRecap(t, killerName){
+  const by = new Map();
+  let total = 0;
+  for(const e of t.dmgLog || []){
+    if(gameTime - e.t > 15) continue;
+    let r = by.get(e.g);
+    if(!r){ r = { name: e.name, icon: e.icon, hero: e.hero, team: e.team, n: 0, parts: {} }; by.set(e.g, r); }
+    r.n += e.n; total += e.n;
+    r.parts[e.lab] = (r.parts[e.lab] || 0) + e.n;
+  }
+  t.dmgLog = [];
+  const rows = [...by.values()].sort((a, b) => b.n - a.n).slice(0, 4).map(r => ({
+    name: r.name, icon: r.icon, hero: r.hero, team: r.team, n: Math.round(r.n),
+    parts: Object.entries(r.parts).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => [k, Math.round(v)]) }));
+  return { killer: killerName, total: Math.round(total), rows };
+}
 function applyDamage(t, amount, src, kind){
   if(!t || t.dead || t.removeMe || t.invuln || gameOver) return;
   if(t.cycloneT > 0) return;   // 🌪️ u vihoru: ništa ga ne može ozlijediti
@@ -988,6 +1023,7 @@ function applyDamage(t, amount, src, kind){
   amount = Math.max(1, Math.round(amount));
   const hp0 = t.hp;
   t.hp -= amount;
+  if(t.kind === 'hero' && isHuman(t)) noteDamage(t, src, Math.min(hp0, amount), kind);   // 💀 za pregled pogibije
   if(kind === 'atk' && src && !src.dead && !isStructure(t)){   // 🦇 krađa života udarcima
     const ls = Math.max(src.lifesteal || 0, src.auraLs || 0) + (src.lsBoostT > 0 ? 1.5 : 0);
     if(ls > 0){
@@ -1071,6 +1107,7 @@ function kill(t, src){
         }
         feedMsg('🐲 ' + src.emoji + ' ' + src.name + ' je porazio Velikog Zmaja!', '#fde047');
         announce('🐲 Veliki Zmaj je poražen!', src.emoji + ' ' + src.name + ' dobiva Zmajev blagoslov!');
+        annEvent('dragon', src.team);
         for(const h of units){
           if(h.kind === 'hero' && h.team === src.team) h.gold += 200;
         }
@@ -1097,7 +1134,7 @@ function kill(t, src){
       announce('🛡️ Zmajev štit!', t.emoji + ' ' + t.name + ' se vraća za 3 sekunde!');
     }
     t.moveTarget = null; t.attackTarget = null;
-    t.tpChannel = 0;
+    t.tpChannel = 0; t.danceT = 0;
     // zapamti ucjenu PRIJE čišćenja statusa
     const wasTracked = t.status.trackT > 0;
     const trackBonusVal = t.trackBonus || 100;
@@ -1138,20 +1175,24 @@ function kill(t, src){
       const MULTI = { 2: '⚔️⚔️ Dvostruko ubojstvo!', 3: '🔥 Trostruko ubojstvo!', 4: '💥 ULTRA ubojstvo!', 5: '🌋 POKOLJ!' };
       const STREAK = { 3: ['🔥', 'je u nizu ubojstava!'], 4: ['😤', 'DOMINIRA!'], 5: ['💪', 'MEGA ubojstvo!'], 6: ['⚡', 'je NEZAUSTAVLJIV!'],
         7: ['🤯', 'je NEVJEROJATAN!'], 8: ['👹', 'je ČUDOVIŠTE!'], 9: ['🌟', 'je BOŽANSKI!'] };
+      const MULTI_VO = { 2: 'double_kill', 3: 'triple_kill', 4: 'ultra_kill', 5: 'rampage' };   // 📣 najavljivač
+      const STREAK_VO = { 3: 'killing_spree', 4: 'dominating', 5: 'mega_kill', 6: 'unstoppable', 7: 'incredible', 8: 'monster_kill', 9: 'godlike' };
       const mk = MULTI[Math.min(5, credit.multiN)];
       const st = credit.streak >= 10 ? ['👑', 'je IZNAD BOŽANSKOG!'] : STREAK[credit.streak];
-      if(mk && credit.multiN >= 2){ announce(mk, who + (st ? ' ' + st[1] : '')); milestoneAnn = true; }
-      else if(st){ announce(st[0] + ' ' + who + ' ' + st[1], credit.streak + ' ubojstava zaredom!'); milestoneAnn = true; }
+      if(mk && credit.multiN >= 2){ announce(mk, who + (st ? ' ' + st[1] : '')); annEvent(MULTI_VO[Math.min(5, credit.multiN)]); milestoneAnn = true; }
+      else if(st){ announce(st[0] + ' ' + who + ' ' + st[1], credit.streak + ' ubojstava zaredom!'); annEvent(credit.streak >= 10 ? 'beyond_godlike' : STREAK_VO[credit.streak]); milestoneAnn = true; }
       // 🛑 prekinut niz: ubojica dobiva dodatno zlato za tuđi niz
       if(victimStreak >= 3){
         const bonus = CFG.shutdownGold * (victimStreak - 1);
         credit.gold += bonus;
         feedMsg('🛑 ' + who + ' je prekinuo niz od ' + victimStreak + ' (' + t.emoji + ' ' + t.name + ') +' + bonus + ' 💰', TEAM_COLOR[credit.team]);
+        annEvent('shutdown');
         if(credit.isPlayer) addFloat(credit.x, credit.y - 30, '🛑 Prekinut niz! +' + bonus + ' 💰', '#fde047', 16);
       }
     }
     else if(src && src.kind === 'creep') killerName = '⚔️ Vojnici';
     else if(src && src.kind === 'neutral') killerName = src.emoji + ' ' + src.name;
+    if(isHuman(t)) t.recap = buildRecap(t, killerName);   // 💀 pregled pogibije
     // 💰 Ucjena (Track): smrt označenog donosi dodatno zlato ubojici i Tragaču
     if(wasTracked){
       if(credit){
@@ -1187,10 +1228,11 @@ function kill(t, src){
         giveXp(h, 70);
     }
     feedMsg(killerName + '  ⚔️  ' + t.emoji + ' ' + t.name, TEAM_COLOR[1 - t.team]);
-    if(!firstBlood){ firstBlood = true; announce('🩸 Prva krv!', killerName); }
+    if(!firstBlood){ firstBlood = true; announce('🩸 Prva krv!', killerName); annEvent('first_blood'); }
     // 💀 ACE (kao u LoL-u): pao je cijeli tim
     else if(units.filter(h => h.kind === 'hero' && h.team === t.team).every(h => h.dead)){
       announce('💀 ACE!', 'Cijeli tim ' + TEAM_NAME[t.team] + ' je pao — sada guraj!');
+      annEvent('ace');
       feedMsg('💀 ACE! Tim ' + TEAM_NAME[t.team] + ' je pao', TEAM_COLOR[1 - t.team]);
       milestoneAnn = true;
     }
@@ -1206,10 +1248,12 @@ function kill(t, src){
     if(denied){
       feedMsg('⛔ ' + (src.emoji || '') + ' ' + (src.name || '') + ' je uskratio svoj toranj!', TEAM_COLOR[t.team]);
       announce('⛔ Toranj uskraćen!', 'Tim ' + TEAM_NAME[1 - t.team] + ' dobiva samo pola zlata');
+      annEvent('tower_denied');
       if(src.kind === 'hero') src.denies++;
     } else {
       feedMsg('🏰 Srušen toranj tima ' + TEAM_NAME[t.team] + '!', TEAM_COLOR[1 - t.team]);
       announce('🏰 BUM!', 'Toranj tima ' + TEAM_NAME[t.team] + ' je srušen!');
+      annEvent('tower', t.team);
     }
     const tg = Math.round(CFG.towerGoldTeam * (denied ? 0.5 : 1));
     for(const h of units){
@@ -1224,6 +1268,7 @@ function kill(t, src){
       if(!stillGuarded && ancients[t.team]){
         ancients[t.team].invuln = false;
         announce('⚠️ Prijestol tima ' + TEAM_NAME[t.team] + ' je ranjiv!', 'Napadnite ga!');
+        annEvent('throne', t.team);
       }
     }
     if(t.tier === 2 && t.lane){   // pala unutarnja kula → vojarna te staze je ranjiva
@@ -1247,6 +1292,7 @@ function kill(t, src){
     feedMsg('🏚️ Srušena vojarna tima ' + TEAM_NAME[t.team] + ' (' + LANE_NAME[t.lane] + ')!', TEAM_COLOR[enemy]);
     announce(all ? '💪💪 MEGA VOJNICI!' : '💪 Super vojnici!',
       'Vojnici tima ' + TEAM_NAME[enemy] + ' na stazi ' + LANE_NAME[t.lane] + ' su sada jači!');
+    annEvent('barracks', t.team);
     for(const h of units){
       if(h.kind === 'hero' && h.team === enemy){
         h.gold += CFG.barracksGoldTeam;
@@ -1501,6 +1547,7 @@ function takeDrake(src, el){
   const n = drakeN(team, el);
   feedMsg('🐉 ' + (src.emoji || '') + ' ' + (src.name || '') + ' — tim ' + TEAM_NAME[team] + ' je ubio ' + d.acc + '!', d.color);
   announce(d.emoji + ' ' + d.name + (n > 1 ? ' ×' + n : '') + '!', 'Tim ' + TEAM_NAME[team] + ' zauvijek dobiva: ' + d.desc);
+  annEvent('drake', team);
   if(team === myTeam) sfx('levelup');
 }
 /* ✨ čarolija prizivača (D / F) — kao u League of Legends */
@@ -1642,6 +1689,7 @@ function castAbility(u, i, aim){
   }
   const ab = u.abilities[i];
   if(!ab) return;
+  u.danceT = 0;                            // 💃 i ples
   if(u.tpChannel > 0) cancelTeleport(u);   // bacanje moći prekida teleport
   if(u.status.invisT > 0 && !ab.def.passive) u.status.invisT = 0;   // i nevidljivost
   if(ab.def.passive && ab.rank > 0){
@@ -1665,7 +1713,10 @@ function castAbility(u, i, aim){
     if(isHuman(u)) addFloat(u.x, u.y, 'Nema mane! 💧', '#7dd3fc', 14);
     return;
   }
+  u.curAb = ab.def;   // 💀 za pregled pogibije: šteta tijekom bacanja ide na ovu moć
   const ok = ab.def.cast(u, aim || { x: u.x + Math.cos(u.dir || 0) * 200, y: u.y + Math.sin(u.dir || 0) * 200 }, ab.rank);
+  u.curAb = null;
+  if(ok !== false){ u.lastAb = ab.def; u.lastAbT = gameTime; }   // projektili i zone koji stignu kasnije
   if(ok === false){
     if(isHuman(u)) addFloat(u.x, u.y, 'Nema mete! 🤔', '#e5e7eb', 13);
     return;
@@ -2255,6 +2306,15 @@ function botUseAbilities(u, eh){
   }
 }
 
+/* 🤖 težina botova (igra protiv botova): protivnički botovi na "Lako" sporije reagiraju, rjeđe bacaju moći i
+   koriste predmete, oprezniji su, ne otkupljuju se i zarađuju manje zlata; na "Teško" brži su i hrabriji.
+   Saveznici i botovi u mrežnoj igri su uvijek normalni. */
+const BOT_DIFF = {
+  easy:   { think: [0.9, 1.3], abil: 0.35, items: 0.5, sum: 0.4, brave: 1.35, back: 1.05, chase: 0.12, flee: 0.42, deny: 0.1, gold: 0.75, buyback: false },
+  normal: { think: [0.4, 0.6], abil: 1, items: 1, sum: 1, brave: 0.8, back: 1.25, chase: 0.25, flee: 0.3, deny: 0.35, gold: 1, buyback: true },
+  hard:   { think: [0.3, 0.42], abil: 1, items: 1, sum: 1, brave: 0.65, back: 1.45, chase: 0.32, flee: 0.25, deny: 0.5, gold: 1.25, buyback: true },
+};
+function botDiff(u){ return (u.team !== myTeam && net.mode !== 'host' && BOT_DIFF[SETTINGS.diff]) || BOT_DIFF.normal; }
 /* snaga junaka za procjenu borbe: level + vrijednost predmeta, puta koliko mu je ostalo života */
 function botFightScore(h){ return (h.level + netWorth(h) / 800) * (0.35 + 0.65 * h.hp / h.maxhp); }
 /* botovi koriste aktivne predmete (jednostavna pravila) */
@@ -2307,7 +2367,8 @@ function botThink(u){
   if(u.hp < u.maxhp * 0.42 && u.gold >= pot.cost + 60 && gameTime > (u.potT || 0) && b.state !== 'retreat'){
     u.potT = gameTime + 9; u.gold -= pot.cost; heal(u, pot.heal);
   }
-  if(u.hp < u.maxhp * 0.3){
+  const bd = botDiff(u);   // 🤖 težina
+  if(u.hp < u.maxhp * bd.flee){
     if(Math.random() < 0.3 && dist(u, player || u) < 2500){ say(u, CHAT_LINES[1]); addPing(u, u.x, u.y); }   // 🆘
     b.state = 'retreat';
     u.attackTarget = null;
@@ -2316,9 +2377,9 @@ function botThink(u){
   }
   botShopping(u);
   const eh = nearestEnemyOf(u, 620, e => e.kind === 'hero');
-  botUseAbilities(u, eh);
-  botUseItems(u, eh);
-  botUseSummoners(u, eh);
+  if(Math.random() < bd.abil) botUseAbilities(u, eh);
+  if(Math.random() < bd.items) botUseItems(u, eh);
+  if(Math.random() < bd.sum) botUseSummoners(u, eh);
 
   const tw = nearestEnemyOf(u, 430, e => e.kind === 'tower');
   if(tw && countOwnCreepsNear(u.team, tw, 320) === 0){
@@ -2330,11 +2391,11 @@ function botThink(u){
     // ⚖️ procjena borbe: napadaj samo kad tvoja strana nije puno slabija (inače se povuci k svojoj kuli)
     const side = team => units.reduce((a, h) => a + (h.kind === 'hero' && h.team === team && !h.dead && dist(h, u) < 800 ? botFightScore(h) : 0), 0);
     const mine = side(u.team), theirs = side(eh.team);
-    if(eh.hp < eh.maxhp * 0.25 || (u.hp / u.maxhp > 0.45 && mine >= theirs * 0.8)){
+    if(eh.hp < eh.maxhp * bd.chase || (u.hp / u.maxhp > 0.45 && mine >= theirs * bd.brave)){
       u.attackTarget = eh;
       return;
     }
-    if(theirs > mine * 1.25){
+    if(theirs > mine * bd.back){
       u.attackTarget = null;
       u.moveTarget = stepToward(u, fountain, 320);
       return;
@@ -2357,7 +2418,7 @@ function botThink(u){
     u.attackTarget = anc;
     return;
   }
-  if(Math.random() < 0.35){   // ⛔ botovi ponekad uskrate vlastitog vojnika (kao pravi igrači)
+  if(Math.random() < bd.deny){   // ⛔ botovi ponekad uskrate vlastitog vojnika (kao pravi igrači)
     const dn = deniableNear(u, u.atkRange + 120);
     if(dn){ u.attackTarget = dn; return; }
   }
@@ -2590,7 +2651,7 @@ function updateUnit(u, dt){
       u.deadT -= dt;
       if(u.buybackCd > 0) u.buybackCd -= dt;
       // botovi se otkupljuju kasnije u igri kad su bogati
-      if(u.bot && u.deadT > 12 && gameTime > 420 && u.buybackCd <= 0 && u.gold > buybackCost(u) * 2.5) buyback(u);
+      if(u.bot && botDiff(u).buyback && u.deadT > 12 && gameTime > 420 && u.buybackCd <= 0 && u.gold > buybackCost(u) * 2.5) buyback(u);
       else if(u.deadT <= 0) respawn(u);
     }
     return;
@@ -2620,6 +2681,16 @@ function updateUnit(u, dt){
     }
   }
   u.flash = Math.max(0, u.flash - dt);
+  if(u.bot && u.kind === 'hero'){   // 🤖 težina: protivnički botovi na "Lako" zarađuju manje zlata, na "Teško" više
+    const gm = botDiff(u).gold;
+    if(gm !== 1 && u.goldSeen != null && u.gold > u.goldSeen) u.gold = u.goldSeen + (u.gold - u.goldSeen) * gm;
+    u.goldSeen = u.gold;
+  }
+  if(u.danceCd > 0) u.danceCd -= dt;
+  if(u.danceT > 0){   // 💃 ples prestaje čim se junak makne, napadne, bude omamljen ili teleportira
+    u.danceT -= dt;
+    if(u.moveTarget || u.attackTarget || st.stun > 0 || u.tpChannel > 0) u.danceT = 0;
+  }
   u.atkTimer -= dt;
   if(u.cycloneT > 0) u.cycloneT -= dt;          // 🌪️ vihor
   if(u.sumCd){ u.sumCd[0] = Math.max(0, u.sumCd[0] - dt); u.sumCd[1] = Math.max(0, u.sumCd[1] - dt); }
@@ -2766,7 +2837,7 @@ function updateUnit(u, dt){
     if(u.returning) u.hp = Math.min(u.maxhp, u.hp + u.maxhp * 0.35 * dt);
   } else if(u.kind === 'hero' && u.bot){
     u.bot.thinkT -= dt;
-    if(u.bot.thinkT <= 0){ u.bot.thinkT = rand(0.4, 0.6); botThink(u); }
+    if(u.bot.thinkT <= 0){ const th = botDiff(u).think; u.bot.thinkT = rand(th[0], th[1]); botThink(u); }
   }
 
   if(u.tauntT > 0){   // 📢 Izazov: mora napadati izazivača
@@ -2804,6 +2875,7 @@ function updateUnit(u, dt){
 function respawn(u){
   u.dead = false;
   u.windup = null;
+  u.recap = null;
   u.hp = u.maxhp;
   u.mp = u.maxmp;
   const f = FOUNTAIN[u.team];
@@ -2916,7 +2988,7 @@ function spawnWave(){
       if(waveCount % CFG.siegeEveryNthWave === 0) makeCreepOnLane(team, lane, false, true);
     }
   }
-  if(waveCount === 1) announce('⚔️ Bitka počinje!', 'Vojnici kreću na staze — prati ih!');
+  if(waveCount === 1){ announce('⚔️ Bitka počinje!', 'Vojnici kreću na staze — prati ih!'); annEvent('battle'); }
   if(waveCount % CFG.siegeEveryNthWave === 0 && waveCount > 1)
     feedMsg('💪 Stigli su veliki vojnici!', '#fde047');
 }
@@ -3025,6 +3097,7 @@ function update(dt){
   if(nightNow !== isNight){
     isNight = nightNow;
     announce(isNight ? '🌙 Pada noć...' : '☀️ Svanulo je!', isNight ? 'Vid je kraći — pazi na zasjede!' : '');
+    annEvent(isNight ? 'night' : 'day');
   }
 
   // magla rata: osvježi vid oba tima
@@ -3397,6 +3470,7 @@ function beginPrep(){
   waveTimer = CFG.prepTime + CFG.firstWave;
   prepTick = 0; prepShop = false;
   if(CFG.prepTime > 0 && !shopOpen){ toggleShop(); prepShop = true; }
+  annLog = []; annEvent('welcome');   // 📣 "Welcome to Dota Kids!"
 }
 function prepOver(){   // 📯 rog: bitka počinje (najavu daje prvi val vojnika)
   sfx('horn');
@@ -3426,6 +3500,7 @@ function endGameView(winTeam){
   if(typeof hideItemTip === 'function') hideItemTip();   // opis predmeta ne smije ostati preko završnog ekrana
   if(shopOpen) toggleShop();
   announce(won ? '🏆 POBJEDA!' : '💔 PORAZ...', won ? 'Neprijateljski prijestol se raspada!' : 'Naš prijestol je pao...');
+  voxSay('ann', won ? 'victory' : 'defeat');   // i kod gosta (svatko iz svoje perspektive)
   startCinematic(ANCIENT_POS[1 - winTeam]);   // kamera leti do prijestola koji se raspada
   sfx(won ? 'win' : 'lose');
   setTimeout(() => showEndScreen(winTeam, won), 3200);
@@ -3459,6 +3534,8 @@ function endTableHtml(winTeam){
   }
   html += '</table>';
   if(mvp) html += `<div class="etMvp">👑 Najbolji igrač: <b>${mvp.emoji} ${mvp.name}</b> — ${mvp.kills} / ${mvp.deaths} / ${mvp.assists}</div>`;
+  if(net.mode !== 'host' && net.mode !== 'guest')
+    html += `<div class="etMvp">🤖 Botovi: <b>${{ easy: '🐣 Lako', normal: '⚔️ Normalno', hard: '🔥 Teško' }[SETTINGS.diff]}</b></div>`;
   return html;
 }
 function showEndScreen(winTeam, won){
@@ -3536,17 +3613,26 @@ function sfxAt(name, x, y){
   if(distXY(x, y, cam.x, cam.y) < 1300) sfx(name);
 }
 
-/* 🗣️ Glasovi junaka (voices.js, Fish Audio): govori samo jedan glas — važnija replika prekida manje važnu */
-const VOX = { buf: {}, ld: {}, cur: null, pri: -1, until: 0, req: 0, pendPri: -1, pendT: 0, el: null, useEl: false,
-  unlocked: false, nextChat: 0, hero: null };
-const VOX_PRI = { move1: 1, move2: 1, attack: 1, pick: 2, respawn: 2, ult: 3, kill: 3, death: 3 };
+/* 🗣️ Glasovi junaka i 📣 najavljivač (voices.js, Fish Audio): govori samo jedan glas.
+   Puno važnija replika (+2) prekida trenutnu, ostale važnije od čavrljanja čekaju u redu (do 4 s), čavrljanje se preskoči. */
+const VOX = { buf: {}, ld: {}, cur: null, curAnn: false, pri: -1, until: 0, req: 0, el: null, useEl: false,
+  unlocked: false, nextChat: 0, hero: null, queue: [], annN: 0, annSeen: 0 };
+const VOX_PRI = { move1: 1, move2: 1, attack: 1, pick: 2, respawn: 2, taunt: 2, ult: 3, kill: 3, death: 3 };
+// 📣 važnost najava (nenavedene — ubojstva i nizovi — su 5)
+const ANN_PRI = { welcome: 3, battle: 3, night: 3, day: 3, tower_enemy: 4, tower_ours: 4, tower_denied: 4,
+  barracks_enemy: 4, barracks_ours: 4, throne_enemy: 4, throne_ours: 4, dragon_ours: 4, dragon_enemy: 4,
+  drake_ours: 4, drake_enemy: 4, victory: 6, defeat: 6 };
+let annLog = [];   // zadnje najave — domaćin ih šalje gostu u snimci (av)
 const VOX_SILENT = 'data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAAAAAAA/+M4wAAAAAAAAAAAAEluZm8AAAAPAAAAAwAAAbAAqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV////////////////////////////////////////////AAAAAExhdmM2MC4zMQAAAAAAAAAAAAAAACQC8AAAAAAAAAGw9wruFgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/+MYxAAAAANIAAAAAExBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV/+MYxDsAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV/+MYxHYAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV';
-function voxSrc(id, key){
-  if(typeof VOICES === 'undefined' || !VOICES[id]) return null;
+function voxSrc(id, key){   // id junaka ili 'ann' (najavljivač)
+  if(typeof VOICES === 'undefined') return null;
+  const ann = id === 'ann';
+  if(ann ? (typeof ANNOUNCER === 'undefined' || key === 'voice' || !ANNOUNCER[key]) : !VOICES[id]) return null;
   if(VOICE_LOCAL) return 'assets/voice/' + id + '/' + key + '.mp3';
-  const f = (VOICE_REMOTE[id] || '').split(' ')[VOICE_KEYS.indexOf(key)];
+  const f = ann ? (typeof ANN_REMOTE !== 'undefined' && ANN_REMOTE[key]) : (VOICE_REMOTE[id] || '').split(' ')[VOICE_KEYS.indexOf(key)];
   return f ? VOICE_REMOTE_BASE + f + '.mp3' : null;
 }
+const voxOn = ann => !muted && SETTINGS.vol > 0 && (ann ? SETTINGS.announcer : SETTINGS.voices);
 function voxWarm(src){ const el = new Audio(); el.preload = 'auto'; el.src = src; return src; }   // napuni predmemoriju preglednika
 // učitaj repliku: Web Audio (točno i radi na iPadu); ako ne ide (file://, poslužitelj ne dopušta), običan <audio>
 // VOX.buf čuva gotove replike (AudioBuffer ili adresu za <audio>) da voxSay može krenuti odmah
@@ -3562,11 +3648,13 @@ function voxLoad(id, key){
     .then(b => (VOX.buf[k] = b))
     .catch(() => { VOX.useEl = true; return (VOX.buf[k] = voxWarm(src)); }));
 }
-function voxStop(){
+function voxStop(){   // zaustavi trenutnu repliku (red čekanja ostaje)
   if(VOX.cur){ VOX.cur.stop(); VOX.cur = null; }
   VOX.until = 0; VOX.pri = -1;
 }
-function voxStart(x, pri, gain){
+function voxHush(){ VOX.queue.length = 0; voxStop(); }   // utišano / isključeno: i red čekanja
+function voxEnded(cur){ if(VOX.cur === cur){ voxStop(); voxNext(); } }
+function voxStart(x, pri, gain, ann){
   voxStop();
   const v = clamp(SETTINGS.vol * gain, 0, 1);
   const cur = {};
@@ -3577,41 +3665,64 @@ function voxStart(x, pri, gain){
     s.buffer = x; g.gain.value = v;
     s.connect(g); g.connect(a.destination);
     s.start();
-    s.onended = () => { if(VOX.cur === cur) voxStop(); };
+    s.onended = () => voxEnded(cur);
     cur.stop = () => { try { s.stop(); } catch(e){} };
     VOX.until = performance.now() + x.duration * 1000;
   } else {
     const el = VOX.el || (VOX.el = new Audio());
-    el.onended = () => { if(VOX.cur === cur) voxStop(); };
+    el.onended = () => voxEnded(cur);
     el.src = x; el.volume = v;
     const p = el.play();
-    if(p && p.catch) p.catch(() => { if(VOX.cur === cur) voxStop(); });
+    if(p && p.catch) p.catch(() => voxEnded(cur));
     cur.stop = () => { try { el.pause(); } catch(e){} };
-    VOX.until = performance.now() + 4000;
+    VOX.until = performance.now() + 6000;
   }
-  VOX.cur = cur; VOX.pri = pri;
+  VOX.cur = cur; VOX.pri = pri; VOX.curAnn = !!ann;
+}
+// gotova replika: odmah, prekini (puno važnija) ili u red (do 3, najvažnije prve)
+function voxOffer(x, pri, gain, ann, force){
+  const now = performance.now();
+  if(force || !VOX.cur || now >= VOX.until || pri >= VOX.pri + 2){ voxStart(x, pri, gain, ann); return; }
+  if(pri < 2) return;
+  const q = VOX.queue;
+  q.push({ x, pri, gain, ann, t: now });
+  q.sort((a, b) => b.pri - a.pri || a.t - b.t);
+  if(q.length > 3) q.length = 3;
+}
+function voxNext(){
+  const now = performance.now();
+  while(VOX.queue.length){
+    const e = VOX.queue.shift();
+    if(now - e.t < 4000 && voxOn(e.ann)){ voxStart(e.x, e.pri, e.gain, e.ann); return; }   // zastarjelo ili isključeno — preskoči
+  }
 }
 // opt: { pri, gain, force } — force: prekini što god govori (pregled glasa u izborniku)
 function voxSay(id, key, opt){
   opt = opt || {};
-  if(muted || !SETTINGS.voices || SETTINGS.vol <= 0 || !voxSrc(id, key)) return;
-  const pri = opt.pri != null ? opt.pri : (VOX_PRI[key] || 1);
+  const ann = id === 'ann';
+  if(!voxOn(ann) || !voxSrc(id, key)) return;
+  const pri = opt.pri != null ? opt.pri : ann ? (ANN_PRI[key] || 5) : (VOX_PRI[key] || 1);
   const now = performance.now();
-  if(!opt.force){
-    if(VOX.cur && now < VOX.until && pri <= VOX.pri) return;   // već govori nešto jednako važno
-    if(VOX.pendPri > pri && now - VOX.pendT < 1500) return;    // važnija replika se upravo učitava
-  }
-  VOX.pendPri = pri; VOX.pendT = now;
-  const token = ++VOX.req;
+  if(!opt.force && pri < 2 && VOX.cur && now < VOX.until && pri < VOX.pri + 2) return;   // čavrljanje dok netko govori
+  if(opt.force) VOX.queue.length = 0;
+  const token = opt.force ? ++VOX.req : 0;
   const ready = VOX.buf[id + '/' + key];
-  if(ready){ VOX.pendPri = -1; voxStart(ready, pri, opt.gain || 1); return; }   // već učitano — odmah, i kad kadar kasni (prvi ulti, slab tablet)
+  if(ready){ voxOffer(ready, pri, opt.gain || 1, ann, opt.force); return; }   // već učitano — odmah, i kad kadar kasni (prvi ulti, slab tablet)
   voxLoad(id, key).then(x => {
-    if(token !== VOX.req) return;
-    VOX.pendPri = -1;
-    if(!x || performance.now() - now > 1500 || muted || !SETTINGS.voices) return;   // prekasno — preskoči
-    if(!opt.force && VOX.cur && performance.now() < VOX.until && pri <= VOX.pri) return;
-    voxStart(x, pri, opt.gain || 1);
+    if(opt.force && token !== VOX.req) return;   // u međuvremenu je kliknut drugi junak
+    if(!x || performance.now() - now > 2500 || !voxOn(ann)) return;   // prekasno — preskoči
+    voxOffer(x, pri, opt.gain || 1, ann, opt.force);
   });
+}
+// 📣 najava (domaćin / igra protiv botova): odmah se čuje, a gost je dobije u snimci; team = čiji je toranj, tko je ubio zmaja…
+function annEvent(key, team){
+  const tm = team == null ? -1 : team;
+  annLog.push({ n: ++VOX.annN, key, team: tm, t: gameTime });
+  if(annLog.length > 8) annLog.shift();
+  annPlay(key, tm);
+}
+function annPlay(key, team){   // "ours" / "enemy" iz perspektive tima ovog igrača
+  voxSay('ann', team >= 0 ? key + (team === myTeam ? '_ours' : '_enemy') : key);
 }
 // iPad/iPhone: <audio> smije svirati tek nakon dodira — "otključaj" ga tihim zvukom pri prvom dodiru/kliku
 function voxUnlock(){
@@ -3621,6 +3732,18 @@ function voxUnlock(){
   el.src = VOX_SILENT;
   const p = el.play();
   if(p && p.catch) p.catch(() => {});
+}
+/* 💃 ples (tipka J ili gumb 💃): junak zapleše i kaže šaljivu repliku — kao /dance u LoL-u; vide ga svi (i u mrežnoj igri) */
+function startDance(u){
+  if(!u || u.dead || u.kind !== 'hero' || gameOver || (u.danceCd || 0) > 0 || u.status.stun > 0) return;
+  if(u.tpChannel > 0) cancelTeleport(u);
+  u.moveTarget = null; u.attackTarget = null; u.windup = null;
+  u.danceT = 3; u.danceCd = 5; u.danceN = (u.danceN || 0) + 1;
+}
+function pressDance(){
+  if(!player || player.dead) return;
+  if(net.mode === 'guest') sendNet({ c: 'emote' });
+  else startDance(player);
 }
 // naredbe igrača: ponekad kratka replika (hodanje rjeđe, napad na junaka češće)
 function voxCommand(isMove, tgt, opts){
@@ -3635,17 +3758,27 @@ function voxCommand(isMove, tgt, opts){
 }
 // svaki kadar: ulti, pobjeda, pogibija i povratak — radi i za mrežnog gosta (gleda castN/dead/kills iz snapshota)
 function voxWatch(){
-  if(VOX.cur && (muted || !SETTINGS.voices)) voxStop();
+  if(VOX.cur && !voxOn(VOX.curAnn)) voxHush();
+  else if(VOX.cur && performance.now() > VOX.until + 1500) voxEnded(VOX.cur);   // kraj se nije javio — idi dalje
   if(!running || !player || !player.hero || typeof VOICES === 'undefined') return;
   const pid = player.hero.id;
-  if(VOX.hero !== pid){ VOX.hero = pid; for(const k of VOICE_KEYS) voxLoad(pid, k); }
+  if(VOX.hero !== pid){
+    VOX.hero = pid;
+    for(const k of VOICE_KEYS) voxLoad(pid, k);
+    if(SETTINGS.announcer && typeof ANN_KEYS !== 'undefined') for(const k of ANN_KEYS) voxLoad('ann', k);
+  }
   for(const u of units){
     if(u.kind !== 'hero' || !u.hero) continue;
     const w = u.vox;
     if(!w){
-      u.vox = { cn: u.castN || 0, dead: !!u.dead, kills: u.kills || 0 };
+      u.vox = { cn: u.castN || 0, dead: !!u.dead, kills: u.kills || 0, dn: u.danceN || 0 };
       if(u !== player) voxLoad(u.hero.id, 'ult');   // tuđe ulti čuješ kad su blizu
       continue;
+    }
+    if((u.danceN || 0) !== w.dn){   // 💃 ples: šaljiva replika
+      w.dn = u.danceN || 0;
+      if(u === player) voxSay(pid, 'taunt');
+      else if(!u.dead && seenByPlayer(u) && distXY(u.x, u.y, cam.x, cam.y) < 1300) voxSay(u.hero.id, 'taunt', { pri: 2, gain: 0.8 });
     }
     if((u.castN || 0) !== w.cn){
       w.cn = u.castN || 0;
@@ -3798,6 +3931,7 @@ function setupInput(){
       if(uiRects.prepSkip && inRect(sx, sy, uiRects.prepSkip)){ skipPrep(); return; }
       if(inRect(sx, sy, uiRects.opts)){ toggleOptions(); return; }
       if(uiRects.score && inRect(sx, sy, uiRects.score)){ scoreOpen = !scoreOpen; sfx('click'); return; }
+      if(uiRects.dance && inRect(sx, sy, uiRects.dance)){ pressDance(); return; }
       if(uiRects.center && inRect(sx, sy, uiRects.center)){ cam.follow = true; if(player){ cam.x = player.x; cam.y = player.y; } sfx('click'); return; }
       for(const lr of uiRects.learn){
         if(inRect(sx, sy, lr)){
@@ -4086,6 +4220,7 @@ function setupInput(){
     if(k === 'k'){ const on = togglePost(); feedMsg(on ? '✨ Efekti uključeni (sjaj, boje)' : '✨ Efekti isključeni', '#e5e7eb'); }
     if(k === 'g' && player){ chatOpen = !chatOpen; return; }
     if(k === 'v' && player){ if(net.mode === 'guest') netPing(mouse.wx, mouse.wy); else addPing(player, mouse.wx, mouse.wy); }
+    if(k === 'j') pressDance();   // 💃 ples
     if(chatOpen && k >= '1' && k <= '6'){
       const ci = parseInt(k, 10) - 1;
       if(net.mode === 'guest') netChat(ci); else sendChat(player, ci);
@@ -4146,6 +4281,7 @@ function syncOptionsDom(){
   tog('optDmg', SETTINGS.dmgNums);
   tog('optMute', !muted);
   tog('optVoices', SETTINGS.voices);
+  tog('optAnn', SETTINGS.announcer);
   $('optEdgeRow').classList.toggle('hidden', touchMode);   // na tabletu nema miša
   $('optQuickRow').classList.toggle('hidden', touchMode);   // ni tipkovnice
   $('optQuit').classList.toggle('hidden', !running);
@@ -4172,6 +4308,10 @@ function buildOptionsDom(){
   $('optVoices').addEventListener('click', () => {
     SETTINGS.voices = !SETTINGS.voices; saveSettings(); syncOptionsDom(); sfx('click');
     if(SETTINGS.voices && player && player.hero) voxSay(player.hero.id, 'pick', { force: true });   // poslušaj svoj glas
+  });
+  $('optAnn').addEventListener('click', () => {
+    SETTINGS.announcer = !SETTINGS.announcer; saveSettings(); syncOptionsDom(); sfx('click');
+    if(SETTINGS.announcer) voxSay('ann', 'welcome', { force: true });   // poslušaj najavljivača
   });
   $('optResume').addEventListener('click', toggleOptions);
   $('optQuit').addEventListener('click', () => {
@@ -4200,6 +4340,11 @@ function buildSelectScreen(){
     document.querySelectorAll('#roleTabs button').forEach(x => x.classList.toggle('on', x === b));
     document.querySelectorAll('.card').forEach(c => c.classList.toggle('off', b.dataset.f !== 'all' && c.dataset.r !== b.dataset.f));
   }));
+  const syncDiff = () => document.querySelectorAll('#diffTabs button').forEach(x => x.classList.toggle('on', x.dataset.d === SETTINGS.diff));
+  document.querySelectorAll('#diffTabs button').forEach(b => b.addEventListener('click', () => {   // 🤖 težina botova
+    SETTINGS.diff = b.dataset.d; saveSettings(); syncDiff(); sfx('click');
+  }));
+  syncDiff();
   document.getElementById('startBtn').addEventListener('click', () => {
     if(net.conn){ netReady(); return; }   // multiplayer: čekaj oba igrača
     if(selectedHero >= 0) startGame(selectedHero);
@@ -5133,6 +5278,8 @@ function drawHud(){
       uiRects.center = { x: VW - 224, y: 12, w: 38, h: 32 };
       topBtns.push(['📋', uiRects.score, scoreOpen], ['🎯', uiRects.center, cam.follow]);
     }
+    uiRects.dance = { x: VW - (touchMode ? 268 : 180), y: 12, w: 38, h: 32 };   // 💃 ples (J)
+    topBtns.push(['💃', uiRects.dance, player.danceT > 0]);
     for(const [em, r, on] of topBtns){
       drawFrame(r.x, r.y, r.w, r.h, 7);
       if(on){ ctx.strokeStyle = '#fde047'; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(r.x + 2, r.y + 2, r.w - 4, r.h - 4, 6); ctx.stroke(); }
@@ -5175,17 +5322,19 @@ function drawHud(){
     if(player.dead && !gameOver){   // na kraju igre ne prekrivaj završni ekran
       ctx.fillStyle = 'rgba(15,23,42,0.45)';
       ctx.fillRect(0, 0, VW, VH);
+      const rc = player.recap && player.recap.rows && player.recap.rows.length ? player.recap : null;
+      const ty = rc ? VH * 0.26 + 72 : VH * 0.42;   // 💀 s pregledom pogibije sve malo više (ali ispod najave "Ne brini!")
       ctx.textAlign = 'center';
       ctx.font = fontTxt(36, true);
       ctx.strokeStyle = 'rgba(0,0,0,0.8)';
       ctx.lineWidth = 6;
-      ctx.strokeText('⏳ Oživljavaš za ' + Math.ceil(player.deadT) + 's', VW / 2, VH * 0.42);
+      ctx.strokeText('⏳ Oživljavaš za ' + Math.ceil(player.deadT) + 's', VW / 2, ty);
       ctx.fillStyle = '#fff';
-      ctx.fillText('⏳ Oživljavaš za ' + Math.ceil(player.deadT) + 's', VW / 2, VH * 0.42);
+      ctx.fillText('⏳ Oživljavaš za ' + Math.ceil(player.deadT) + 's', VW / 2, ty);
       if(!player.reviveAt){
         const cost = buybackCost(player);
         const can = player.buybackCd <= 0 && player.gold >= cost;
-        const br = { x: VW / 2 - 130, y: VH * 0.42 + 30, w: 260, h: 44 };
+        const br = { x: VW / 2 - 155, y: ty + 30, w: 310, h: 44 };
         uiRects.buyback = br;
         ctx.fillStyle = can ? '#b45309' : '#334155';
         ctx.beginPath(); ctx.roundRect(br.x, br.y, br.w, br.h, 12); ctx.fill();
@@ -5197,6 +5346,7 @@ function drawHud(){
         ctx.fillStyle = can ? '#fff' : '#94a3b8';
         ctx.fillText(player.buybackCd > 0 ? '⏱️ Otkup za ' + Math.ceil(player.buybackCd) + ' s' : '💰 Otkup odmah (' + cost + ' zlata, tipka O)', br.x + br.w / 2, br.y + br.h / 2);
       }
+      if(rc) drawRecap(rc, ty + (player.reviveAt ? 34 : 92));
     }
   }
   if(keys['tab'] || scoreOpen) drawScoreboard();
@@ -5204,6 +5354,39 @@ function drawHud(){
   // ----- minimapa -----
   const ML = hudLayout();
   drawMinimap(ML.ms, ML.mx, ML.my);
+}
+
+/* 💀 pregled pogibije (kao u LoL-u): tko ti je nanio štetu u zadnjih 15 s, čime i koliko */
+function drawRecap(rc, y0){
+  const L = hudLayout();
+  const rowH = 42, head = 48;
+  const n = Math.max(1, Math.min(rc.rows.length, Math.floor((L.py - 46 - y0 - head - 8) / rowH)));
+  const w = Math.min(470, VW - 40), h = head + n * rowH + 8, x = (VW - w) / 2;
+  drawFrame(x, y0, w, h, 12);
+  ctx.save();
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.font = fontTxt(15, true); ctx.fillStyle = '#fecaca';
+  ctx.fillText('💀 Ubio te: ' + rc.killer, x + 14, y0 + 17);
+  ctx.font = fontTxt(11.5); ctx.fillStyle = '#cbd5e1';
+  ctx.fillText('Šteta u zadnjih 15 sekundi — ukupno ' + rc.total, x + 14, y0 + 35);
+  const max = rc.rows[0].n || 1;
+  for(let i = 0; i < n; i++){
+    const r = rc.rows[i], ry = y0 + head + i * rowH, s = rowH - 8;
+    const pim = r.hero && GFX.heroes[r.hero];
+    if(imgReady(pim)) ctx.drawImage(pim, x + 12, ry + 4, s, s);
+    else { ctx.font = fontEmoji(22); ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.fillText(r.icon, x + 12 + s / 2, ry + rowH / 2); }
+    const bx = x + 22 + s, bw = w - (22 + s) - 70;
+    ctx.textAlign = 'left'; ctx.font = fontTxt(13, true); ctx.fillStyle = r.team >= 0 ? TEAM_LIGHT[r.team] : '#e5e7eb';
+    ctx.fillText(r.name, bx, ry + 10);
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(bx, ry + 18, bw, 6);
+    ctx.fillStyle = r.team === TEAM_BLUE ? '#60a5fa' : r.team === TEAM_RED ? '#f87171' : '#fbbf24';
+    ctx.fillRect(bx, ry + 18, Math.max(2, bw * r.n / max), 6);
+    ctx.font = fontTxt(10.5); ctx.fillStyle = '#cbd5e1';
+    ctx.fillText(r.parts.map(p => p[0] + ' ' + p[1]).join('  ·  '), bx, ry + 33);
+    ctx.textAlign = 'right'; ctx.font = fontTxt(16, true); ctx.fillStyle = '#fff';
+    ctx.fillText(String(r.n), x + w - 14, ry + rowH / 2);
+  }
+  ctx.restore();
 }
 
 /* ================= Tablica rezultata (Tab) ================= */
