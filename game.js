@@ -5323,7 +5323,7 @@ function drawHud(){
       ctx.fillStyle = 'rgba(15,23,42,0.45)';
       ctx.fillRect(0, 0, VW, VH);
       const rc = player.recap && player.recap.rows && player.recap.rows.length ? player.recap : null;
-      const ty = rc ? VH * 0.3 : VH * 0.42;   // 💀 s pregledom pogibije sve malo više
+      const ty = rc ? VH * 0.26 + 72 : VH * 0.42;   // 💀 s pregledom pogibije sve malo više (ali ispod najave "Ne brini!")
       ctx.textAlign = 'center';
       ctx.font = fontTxt(36, true);
       ctx.strokeStyle = 'rgba(0,0,0,0.8)';
@@ -5331,11 +5331,10 @@ function drawHud(){
       ctx.strokeText('⏳ Oživljavaš za ' + Math.ceil(player.deadT) + 's', VW / 2, ty);
       ctx.fillStyle = '#fff';
       ctx.fillText('⏳ Oživljavaš za ' + Math.ceil(player.deadT) + 's', VW / 2, ty);
-      if(rc) drawRecap(rc, ty + (player.reviveAt ? 34 : 92));
       if(!player.reviveAt){
         const cost = buybackCost(player);
         const can = player.buybackCd <= 0 && player.gold >= cost;
-        const br = { x: VW / 2 - 130, y: ty + 30, w: 260, h: 44 };
+        const br = { x: VW / 2 - 155, y: ty + 30, w: 310, h: 44 };
         uiRects.buyback = br;
         ctx.fillStyle = can ? '#b45309' : '#334155';
         ctx.beginPath(); ctx.roundRect(br.x, br.y, br.w, br.h, 12); ctx.fill();
@@ -5347,6 +5346,7 @@ function drawHud(){
         ctx.fillStyle = can ? '#fff' : '#94a3b8';
         ctx.fillText(player.buybackCd > 0 ? '⏱️ Otkup za ' + Math.ceil(player.buybackCd) + ' s' : '💰 Otkup odmah (' + cost + ' zlata, tipka O)', br.x + br.w / 2, br.y + br.h / 2);
       }
+      if(rc) drawRecap(rc, ty + (player.reviveAt ? 34 : 92));
     }
   }
   if(keys['tab'] || scoreOpen) drawScoreboard();
@@ -5363,6 +5363,7 @@ function drawRecap(rc, y0){
   const n = Math.max(1, Math.min(rc.rows.length, Math.floor((L.py - 46 - y0 - head - 8) / rowH)));
   const w = Math.min(470, VW - 40), h = head + n * rowH + 8, x = (VW - w) / 2;
   drawFrame(x, y0, w, h, 12);
+  ctx.save();
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
   ctx.font = fontTxt(15, true); ctx.fillStyle = '#fecaca';
   ctx.fillText('💀 Ubio te: ' + rc.killer, x + 14, y0 + 17);
@@ -5385,6 +5386,7 @@ function drawRecap(rc, y0){
     ctx.textAlign = 'right'; ctx.font = fontTxt(16, true); ctx.fillStyle = '#fff';
     ctx.fillText(String(r.n), x + w - 14, ry + rowH / 2);
   }
+  ctx.restore();
 }
 
 /* ================= Tablica rezultata (Tab) ================= */
