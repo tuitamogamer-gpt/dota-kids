@@ -529,7 +529,7 @@ let touchMode = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches)
 let scoreOpen = false;      // 📋 tablica otvorena gumbom (na tabletu nema tipke Tab)
 let mouseIn = false;        // miš je iznad igre (za rubno pomicanje kamere)
 /* ⚙️ postavke (pamte se u pregledniku) */
-const SETTINGS = { vol: 0.8, quality: touchMode ? 'med' : 'high', edgePan: true, dmgNums: true, quickCast: false };
+const SETTINGS = { vol: 0.8, quality: touchMode ? 'med' : 'high', edgePan: true, dmgNums: true, quickCast: false, voices: true };
 try {
   const s = JSON.parse(localStorage.getItem('dk_settings') || '{}');
   if(typeof s.vol === 'number') SETTINGS.vol = clamp(s.vol, 0, 1);
@@ -537,6 +537,7 @@ try {
   if(typeof s.edgePan === 'boolean') SETTINGS.edgePan = s.edgePan;
   if(typeof s.dmgNums === 'boolean') SETTINGS.dmgNums = s.dmgNums;
   if(typeof s.quickCast === 'boolean') SETTINGS.quickCast = s.quickCast;
+  if(typeof s.voices === 'boolean') SETTINGS.voices = s.voices;
 } catch(e){}
 function saveSettings(){ try { localStorage.setItem('dk_settings', JSON.stringify(SETTINGS)); } catch(e){} }
 let ancients = [null, null];
@@ -3535,6 +3536,130 @@ function sfxAt(name, x, y){
   if(distXY(x, y, cam.x, cam.y) < 1300) sfx(name);
 }
 
+/* 🗣️ Glasovi junaka (voices.js, Fish Audio): govori samo jedan glas — važnija replika prekida manje važnu */
+const VOX = { buf: {}, ld: {}, cur: null, pri: -1, until: 0, req: 0, pendPri: -1, pendT: 0, el: null, useEl: false,
+  unlocked: false, nextChat: 0, hero: null };
+const VOX_PRI = { move1: 1, move2: 1, attack: 1, pick: 2, respawn: 2, ult: 3, kill: 3, death: 3 };
+const VOX_SILENT = 'data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAAAAAAA/+M4wAAAAAAAAAAAAEluZm8AAAAPAAAAAwAAAbAAqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV////////////////////////////////////////////AAAAAExhdmM2MC4zMQAAAAAAAAAAAAAAACQC8AAAAAAAAAGw9wruFgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/+MYxAAAAANIAAAAAExBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV/+MYxDsAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV/+MYxHYAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV';
+function voxSrc(id, key){
+  if(typeof VOICES === 'undefined' || !VOICES[id]) return null;
+  if(VOICE_LOCAL) return 'assets/voice/' + id + '/' + key + '.mp3';
+  const f = (VOICE_REMOTE[id] || '').split(' ')[VOICE_KEYS.indexOf(key)];
+  return f ? VOICE_REMOTE_BASE + f + '.mp3' : null;
+}
+function voxWarm(src){ const el = new Audio(); el.preload = 'auto'; el.src = src; return src; }   // napuni predmemoriju preglednika
+// učitaj repliku: Web Audio (točno i radi na iPadu); ako ne ide (file://, poslužitelj ne dopušta), običan <audio>
+function voxLoad(id, key){
+  const k = id + '/' + key;
+  if(VOX.ld[k]) return VOX.ld[k];
+  const src = voxSrc(id, key);
+  if(!src) return (VOX.ld[k] = Promise.resolve(null));
+  const a = !VOX.useEl && location.protocol !== 'file:' && typeof fetch === 'function' ? ac() : null;
+  if(!a) return (VOX.ld[k] = Promise.resolve(voxWarm(src)));
+  return (VOX.ld[k] = fetch(src).then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); })
+    .then(ab => new Promise((res, rej) => a.decodeAudioData(ab, res, rej)))
+    .then(b => (VOX.buf[k] = b))
+    .catch(() => { VOX.useEl = true; return voxWarm(src); }));
+}
+function voxStop(){
+  if(VOX.cur){ VOX.cur.stop(); VOX.cur = null; }
+  VOX.until = 0; VOX.pri = -1;
+}
+function voxStart(x, pri, gain){
+  voxStop();
+  const v = clamp(SETTINGS.vol * gain, 0, 1);
+  const cur = {};
+  if(typeof x !== 'string'){   // AudioBuffer
+    const a = ac();
+    if(a.state === 'suspended') a.resume();
+    const s = a.createBufferSource(), g = a.createGain();
+    s.buffer = x; g.gain.value = v;
+    s.connect(g); g.connect(a.destination);
+    s.start();
+    s.onended = () => { if(VOX.cur === cur) voxStop(); };
+    cur.stop = () => { try { s.stop(); } catch(e){} };
+    VOX.until = performance.now() + x.duration * 1000;
+  } else {
+    const el = VOX.el || (VOX.el = new Audio());
+    el.onended = () => { if(VOX.cur === cur) voxStop(); };
+    el.src = x; el.volume = v;
+    const p = el.play();
+    if(p && p.catch) p.catch(() => { if(VOX.cur === cur) voxStop(); });
+    cur.stop = () => { try { el.pause(); } catch(e){} };
+    VOX.until = performance.now() + 4000;
+  }
+  VOX.cur = cur; VOX.pri = pri;
+}
+// opt: { pri, gain, force } — force: prekini što god govori (pregled glasa u izborniku)
+function voxSay(id, key, opt){
+  opt = opt || {};
+  if(muted || !SETTINGS.voices || SETTINGS.vol <= 0 || !voxSrc(id, key)) return;
+  const pri = opt.pri != null ? opt.pri : (VOX_PRI[key] || 1);
+  const now = performance.now();
+  if(!opt.force){
+    if(VOX.cur && now < VOX.until && pri <= VOX.pri) return;   // već govori nešto jednako važno
+    if(VOX.pendPri > pri && now - VOX.pendT < 1500) return;    // važnija replika se upravo učitava
+  }
+  VOX.pendPri = pri; VOX.pendT = now;
+  const token = ++VOX.req;
+  voxLoad(id, key).then(x => {
+    if(token !== VOX.req) return;
+    VOX.pendPri = -1;
+    if(!x || performance.now() - now > 1500 || muted || !SETTINGS.voices) return;   // prekasno — preskoči
+    if(!opt.force && VOX.cur && performance.now() < VOX.until && pri <= VOX.pri) return;
+    voxStart(x, pri, opt.gain || 1);
+  });
+}
+// iPad/iPhone: <audio> smije svirati tek nakon dodira — "otključaj" ga tihim zvukom pri prvom dodiru/kliku
+function voxUnlock(){
+  if(VOX.unlocked) return;
+  VOX.unlocked = true;
+  const el = VOX.el || (VOX.el = new Audio());
+  el.src = VOX_SILENT;
+  const p = el.play();
+  if(p && p.catch) p.catch(() => {});
+}
+// naredbe igrača: ponekad kratka replika (hodanje rjeđe, napad na junaka češće)
+function voxCommand(isMove, tgt, opts){
+  if(!player || !player.hero || (opts && opts.silent)) return;
+  const now = performance.now();
+  if(now < VOX.nextChat) return;
+  const atk = (opts && opts.amove) || !isMove;
+  const chance = !atk ? 0.3 : (tgt && tgt.kind === 'hero' ? 1 : 0.35);
+  if(Math.random() >= chance) return;
+  VOX.nextChat = now + (atk ? 7000 : 12000);
+  voxSay(player.hero.id, atk ? 'attack' : (Math.random() < 0.5 ? 'move1' : 'move2'));
+}
+// svaki kadar: ulti, pobjeda, pogibija i povratak — radi i za mrežnog gosta (gleda castN/dead/kills iz snapshota)
+function voxWatch(){
+  if(VOX.cur && (muted || !SETTINGS.voices)) voxStop();
+  if(!running || !player || !player.hero || typeof VOICES === 'undefined') return;
+  const pid = player.hero.id;
+  if(VOX.hero !== pid){ VOX.hero = pid; for(const k of VOICE_KEYS) voxLoad(pid, k); }
+  for(const u of units){
+    if(u.kind !== 'hero' || !u.hero) continue;
+    const w = u.vox;
+    if(!w){
+      u.vox = { cn: u.castN || 0, dead: !!u.dead, kills: u.kills || 0 };
+      if(u !== player) voxLoad(u.hero.id, 'ult');   // tuđe ulti čuješ kad su blizu
+      continue;
+    }
+    if((u.castN || 0) !== w.cn){
+      w.cn = u.castN || 0;
+      if(/:R$/.test(u.castFx || '')){
+        if(u === player) voxSay(pid, 'ult');
+        else if(!u.dead && seenByPlayer(u) && distXY(u.x, u.y, cam.x, cam.y) < 1300) voxSay(u.hero.id, 'ult', { pri: 2, gain: 0.8 });
+      }
+    }
+    if(u === player){
+      if(u.dead && !w.dead) voxSay(pid, 'death');
+      else if(!u.dead && w.dead) voxSay(pid, 'respawn');
+      else if((u.kills || 0) > w.kills) voxSay(pid, 'kill');
+    }
+    w.dead = !!u.dead; w.kills = u.kills || 0;
+  }
+}
+
 /* ================= Unos ================= */
 function pickEnemyAt(wx, wy, team){
   let best = null, bd = 1e9;
@@ -3611,6 +3736,7 @@ function playerCommandFor(h, wx, wy, tgt, opts){
 function playerCommand(wx, wy, tgt, opts){
   if(!player || player.dead || gameOver) return false;
   const isMove = !(tgt && canAttackTarget(player, tgt));
+  voxCommand(isMove, tgt, opts);
   if(net.mode === 'guest'){
     netCmd(wx, wy, tgt === undefined ? undefined : (tgt ? tgt.id : null), opts && opts.amove, opts && opts.silent);
     if(!(opts && opts.silent)) sfx('click');
@@ -4016,6 +4142,7 @@ function syncOptionsDom(){
   tog('optQuick', SETTINGS.quickCast);
   tog('optDmg', SETTINGS.dmgNums);
   tog('optMute', !muted);
+  tog('optVoices', SETTINGS.voices);
   $('optEdgeRow').classList.toggle('hidden', touchMode);   // na tabletu nema miša
   $('optQuickRow').classList.toggle('hidden', touchMode);   // ni tipkovnice
   $('optQuit').classList.toggle('hidden', !running);
@@ -4039,6 +4166,10 @@ function buildOptionsDom(){
   $('optQuick').addEventListener('click', () => { SETTINGS.quickCast = !SETTINGS.quickCast; saveSettings(); syncOptionsDom(); sfx('click'); });
   $('optDmg').addEventListener('click', () => { SETTINGS.dmgNums = !SETTINGS.dmgNums; saveSettings(); syncOptionsDom(); sfx('click'); });
   $('optMute').addEventListener('click', () => { muted = !muted; syncOptionsDom(); sfx('click'); });
+  $('optVoices').addEventListener('click', () => {
+    SETTINGS.voices = !SETTINGS.voices; saveSettings(); syncOptionsDom(); sfx('click');
+    if(SETTINGS.voices && player && player.hero) voxSay(player.hero.id, 'pick', { force: true });   // poslušaj svoj glas
+  });
   $('optResume').addEventListener('click', toggleOptions);
   $('optQuit').addEventListener('click', () => {
     if(confirm('Izaći iz igre u izbornik? Ova igra će se prekinuti.')) location.reload();
@@ -4059,7 +4190,7 @@ function buildSelectScreen(){
   });
   cards.innerHTML = html;
   HEROES.forEach((h, i) => {
-    document.getElementById('card-' + i).addEventListener('click', () => { selectHero(i); sfx('click'); });
+    document.getElementById('card-' + i).addEventListener('click', () => { selectHero(i); sfx('click'); voxSay(h.id, 'pick', { force: true }); });
   });
   // filtar: svi / blizina / daljina
   document.querySelectorAll('#roleTabs button').forEach(b => b.addEventListener('click', () => {
@@ -4073,7 +4204,7 @@ function buildSelectScreen(){
   document.getElementById('randomBtn').addEventListener('click', () => {
     const vis = HEROES.map((h, i) => i).filter(i => !document.getElementById('card-' + i).classList.contains('off'));
     const i = vis[Math.floor(Math.random() * vis.length)];
-    selectHero(i); sfx('click');
+    selectHero(i); sfx('click'); voxSay(HEROES[i].id, 'pick', { force: true });
     document.getElementById('card-' + i).scrollIntoView({ block: 'nearest' });
   });
   document.getElementById('mpToggle').addEventListener('click', e => {
@@ -5304,6 +5435,7 @@ function frame(now){
     edgePan(dt);
   }
   if(net.mode === 'host') maybeSendSnapshot(now);
+  voxWatch();
 
   applyDayNight(gameTime);
   updateCamera3();
@@ -5354,6 +5486,7 @@ window.addEventListener('DOMContentLoaded', () => {
   resize();
   window.addEventListener('resize', resize);
   window.addEventListener('touchstart', () => { touchMode = true; }, { passive: true, capture: true });   // 👆 dodir bilo gdje = tablet
+  for(const ev of ['touchend', 'pointerdown', 'keydown']) window.addEventListener(ev, voxUnlock, { passive: true, capture: true });   // 🗣️ iPad: dopusti glasove
   buildSelectScreen();
   buildShopDom();
   { const pg = document.getElementById('shopPrepGo'); if(pg) pg.addEventListener('click', skipPrep); }
