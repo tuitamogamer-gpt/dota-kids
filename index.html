@@ -317,7 +317,7 @@
 <div id="select" class="overlay">
   <header>
     <h1>🏰 DOTA Kids 3D ⚔️</h1>
-    <p class="sub">Odaberi junaka i sruši protivnički prijestol! Ti + 2 bota 🔵 protiv 3 bota 🔴 <span class="ver">v0.31</span></p>
+    <p class="sub">Odaberi junaka i sruši protivnički prijestol! Ti + 2 bota 🔵 protiv 3 bota 🔴 <span class="ver">v0.32</span></p>
   </header>
   <div id="loadBar">⏳ Učitavam 3D modele…</div>
   <div class="selWrap">
@@ -358,6 +358,7 @@
     🎯 <b>Ciljanje</b> — pritisni moć (Q/W/E/R): vidiš <b>prsten dometa</b>, krug područja ili strijelu (strijela pokazuje kamo projektil STVARNO leti), pa <b>klikni cilj</b> — klikneš li na junaka, moć ide točno na njega; desni klik ili Esc odustaje • ⚡ u postavkama možeš uključiti <b>brzo bacanje</b> (drži tipku = domet, pusti = baci)<br>
     ⚔️ <b>A pa klik — napad u hodu</b>: junak ide onamo i usput napada svakog neprijatelja na kojeg naiđe<br>
     ⏳ <b>Priprema</b> — prvih 30 sekundi (sat od -0:30) dućan je otvoren: kupi predmete! Vojnici, džungla i rune kreću u 0:00 uz zvuk roga (protiv botova možeš kliknuti ▶️ Kreni odmah)<br>
+    🗣️ <b>Junaci govore!</b> Svaki ima svoj glas: javi se kad ga odabereš, kad baci ulti, pobijedi junaka, padne i vrati se (ponekad i dok hoda ili napada) • ulti protivnika u blizini isto čuješ • glasove isključiš u ⚙️ postavkama<br>
     🏠 <b>T — teleport kući!</b> Stoji se 3 sekunde (prekida se ako se mičeš ili te omame), pa si u bazi. Puni se 60 s<br>
     🌫️ <b>Magla rata</b> — vidiš samo gdje su tvoji! Neprijatelji se kriju u magli, <b>noću je vid kraći</b> — pazi na zasjede iz džungle<br>
     ⬆️ <b>Poeni vještina</b> — svaki level (do <b>18</b>!) daje 1 poen: moći Q/W/E imaju 3 ranga, ULTI 3 ranga (leveli 6/11/16), a <b>📊 Atributi+</b> gumb daje +2 svim atributima (6 puta)<br>
@@ -383,7 +384,7 @@
     🌿 <b>Tango</b> i 💧 <b>Bistrina</b> polako vraćaju život i manu • 🧀 drugi put kad padne Zmaj ostavlja <b>sir</b> • 🛑 ubiješ li junaka u nizu, dobivaš dodatno zlato<br>
     📋 <b>Tab</b> — tablica rezultata (ubojstva, smrti, asistencije, zlato)<br>
     🐉 <b>Zmajčići</b> na rijeci (dolje desno): 🔥 vatreni, 💧 vodeni, ⚡ olujni ili 🌿 šumski — ubij ga s timom i <b>cijeli tim zauvijek dobiva bonus</b> (bonusi se zbrajaju); novi dolazi nakon 2,5 min<br>
-    ⚙️ <b>Esc</b> ili ⚙️ gumb — postavke (glasnoća, kvaliteta slike, kamera uz rub ekrana, brojevi štete) • 👆 <b>tablet</b>: dodir = hodaj/napadni, povuci prstom = kamera, dva prsta = zum, 📋 tablica, 🎯 kamera na junaka<br>
+    ⚙️ <b>Esc</b> ili ⚙️ gumb — postavke (glasnoća, glasovi junaka, kvaliteta slike, kamera uz rub ekrana, brojevi štete) • 👆 <b>tablet</b>: dodir = hodaj/napadni, povuci prstom = kamera, dva prsta = zum, 📋 tablica, 🎯 kamera na junaka<br>
     ⚔️/🏹 <b>Blizina i Daljina</b> — značka kaže bori li se junak izbliza ili izdaleka<br>
     🐗 <b>Džungla</b> i 🐲 <b>Veliki Zmaj</b> • ✨ <b>rune</b> svake 2 min • 🌙 dan/noć • 💪 veliki vojnici • ⛲ fontana liječi<br>
     🎥 <b>Razmak</b> — prati junaka • <b>strelice</b> ili miš uz rub ekrana — kamera • <b>kotačić</b> — zum • ⏸️ <b>P</b> pauza • <b>M</b> zvuk • <b>S</b> stani • <b>A</b> napad u hodu<br>
@@ -415,6 +416,7 @@
     <h2>⚙️ Postavke</h2>
     <div class="optRow"><span>🔊 Glasnoća</span><span class="optCtl"><input id="optVol" type="range" min="0" max="100" step="5"><b id="optVolV"></b></span></div>
     <div class="optRow"><span>🎵 Zvuk</span><button class="optTog" id="optMute"></button></div>
+    <div class="optRow"><span>🗣️ Glasovi junaka</span><button class="optTog" id="optVoices"></button></div>
     <div class="optRow"><span>🖼️ Kvaliteta slike</span><span class="optSeg" id="optQ"><button data-q="low">Niska</button><button data-q="med">Srednja</button><button data-q="high">Visoka</button></span></div>
     <div class="optRow"><span>✨ Efekti (sjaj, boje)</span><button class="optTog" id="optPost"></button></div>
     <div class="optRow" id="optEdgeRow"><span>🖱️ Kamera uz rub ekrana</span><button class="optTog" id="optEdge"></button></div>
@@ -442,6 +444,7 @@
 </script>
 <script src="lib/peerjs.min.js"></script>
 <script src="data.js"></script>
+<script src="voices.js"></script>
 <script src="scene3d.js"></script>
 <script src="net.js"></script>
 <script src="game.js"></script>

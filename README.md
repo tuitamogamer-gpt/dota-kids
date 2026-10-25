@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.31: ciljanje mišem kao u LoL-u — klik na tijelo junaka pogađa, indikatori leže na terenu i pokazuju pravi domet, napad u hodu (A), brzo bacanje moći, 30 s pripreme za kupovinu na početku!** 🎯🖱️⚔️🛒 (v0.30: potpisni detalj svakog junaka)
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.32: junaci govore! Svaki od 22 junaka ima svoj glas na hrvatskom (Fish Audio) — javljaju se kad ih odabereš, kad bace ulti, pobijede, padnu i vrate se u igru!** 🗣️🦁🐝🦈 (v0.31: ciljanje mišem kao u LoL-u, 30 s pripreme)
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -18,6 +18,16 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- 🗣️ **Glasovi junaka** (v0.32) — kao u LoL-u i DotA, svaki junak ima **svoj glas i 8 replika na hrvatskom** (176 replika, napravljeno s [Fish Audio](https://fish.audio)):
+  - 🎙️ **22 različita glasa** po karakteru: hrabri Lavko, vatreni Žarko, hladna Ledena, lukava Strijela, spori Listko, munjeviti Munja, razigrana Skokica, ponosna Orlina, tajanstvena Luna, šaptač Tragač, gunđalo Bodljo, duboki Tutnjo, zujava Zuja, mudra bakica Mudra, vragolan Skakač, hrapavi Sivko, dramatični Mrak, svečani Pipko, glasni Rogo, mirni Bambus, čarobna Duga i gladni Zubo
+  - 👆 **odabir** — klikneš junaka na početnom ekranu i on se predstavi („Lavko, hrabri vitez, spreman za boj!”)
+  - 🌟 **ulti** — svaki junak vikne svoj ulti („Zmajev dah! Sve u plamen!”, „Stampedo! Zemlja se trese!”), a **ulti protivnika i suigrača u blizini** isto čuješ
+  - 🏆 **pobjeda nad junakom**, 💀 **pogibija** („Mijau… još mi je ostalo osam života.”) i ⏳ **povratak u igru**
+  - 🚶 **ponekad dok hodaš ili napadaš** — kratka replika, ali ne na svaki klik (hodanje najviše svakih 12 s, napad svakih 7 s); držanje miša ne priča
+  - 🔇 govori **samo jedan glas u isto vrijeme** — važnija replika (ulti, pobjeda, pogibija) prekida manje važnu, a manje važna ne prekida važniju; prati 🔊 glasnoću i 🎵 zvuk, a u ⚙️ postavkama ih možeš **isključiti** (🗣️ Glasovi junaka)
+  - 📱 radi i na iPadu/iPhoneu (zvuk se „otključa” prvim dodirom) i u mrežnoj igri (gost čuje svog junaka)
+  - 📝 replike i odabrani glasovi su u [`voices.js`](voices.js); igra učitava samo replike tvog junaka i ulti ostalih junaka u meču
 
 - 🎯 **Ciljanje mišem, indikatori i priprema** (v0.31) — popravci po prijavama testera:
   - ⏳ **30 sekundi pripreme na početku** (kao u DotA prije roga): sat kreće od **-0:30**, dućan se sam otvori da kupiš predmete, a vojnici, čudovišta u džungli, rune i pasivno zlato kreću tek u **0:00** uz zvuk roga; zadnjih 5 sekundi otkucava; u igri protiv botova gumb **▶️ Kreni odmah** preskače čekanje
@@ -274,7 +284,11 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
 ## Tehnologija
 
 Čisti JavaScript + [Three.js](https://threejs.org/) (r149, vendoran u `lib/` zajedno s GLTFLoaderom i RoomEnvironmentom) — bez build koraka.
-`data.js` (junaci, predmeti, konfiguracija) • `game.js` (logika, AI, HUD) • `scene3d.js` (3D prikaz, modeli, animacije, čestice) • `net.js` (multiplayer) • `2d-verzija/` (originalna 2D verzija).
+`data.js` (junaci, predmeti, konfiguracija) • `voices.js` (glasovi junaka) • `game.js` (logika, AI, HUD) • `scene3d.js` (3D prikaz, modeli, animacije, čestice) • `net.js` (multiplayer) • `2d-verzija/` (originalna 2D verzija).
+
+### 🗣️ Glasovi junaka (Fish Audio)
+
+Replike su u [`voices.js`](voices.js) (svaki junak: Fish Audio glas + 8 replika; oznake poput `[excited]` ili `[sighing]` govore glumcu kako da izgovori). Zvuk je napravljen modelom **s2.1-pro** (na hrvatskom je zvučao prirodnije od modela drama-3). Linkovi generiranih datoteka su u [`tools/voice/urls.json`](tools/voice/urls.json), a `python3 tools/voice/gen.py` ih upisuje u `voices.js`. Igra ih zasad pušta izravno s Fish Audio poslužitelja (trajni linkovi); kad je pristup `*.fish.audio` dopušten, `python3 tools/voice/dl.py` preuzme sve u `assets/voice/<junak>/<replika>.mp3`, skrati tišinu, izjednači glasnoću i prebaci igru na lokalne datoteke (`VOICE_LOCAL = true`).
 
 ### 🧸 3D modeli (Blender)
 
