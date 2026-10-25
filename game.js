@@ -2312,7 +2312,7 @@ function botUseAbilities(u, eh){
 const BOT_DIFF = {
   easy:   { think: [0.9, 1.3], abil: 0.35, items: 0.5, sum: 0.4, brave: 1.35, back: 1.05, chase: 0.12, flee: 0.42, deny: 0.1, gold: 0.75, buyback: false },
   normal: { think: [0.4, 0.6], abil: 1, items: 1, sum: 1, brave: 0.8, back: 1.25, chase: 0.25, flee: 0.3, deny: 0.35, gold: 1, buyback: true },
-  hard:   { think: [0.3, 0.42], abil: 1, items: 1, sum: 1, brave: 0.65, back: 1.45, chase: 0.32, flee: 0.25, deny: 0.5, gold: 1.15, buyback: true },
+  hard:   { think: [0.3, 0.42], abil: 1, items: 1, sum: 1, brave: 0.65, back: 1.45, chase: 0.32, flee: 0.25, deny: 0.5, gold: 1.25, buyback: true },
 };
 function botDiff(u){ return (u.team !== myTeam && net.mode !== 'host' && BOT_DIFF[SETTINGS.diff]) || BOT_DIFF.normal; }
 /* snaga junaka za procjenu borbe: level + vrijednost predmeta, puta koliko mu je ostalo života */
