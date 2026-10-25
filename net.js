@@ -234,6 +234,7 @@ function heroExtras(h){
     ia: h.itemAttr ? [h.itemAttr.str, h.itemAttr.agi, h.itemAttr.int] : [0, 0, 0],
     ar: +(unitArmor(h)).toFixed(1), asb: +(h.atkSpdBonus || 0).toFixed(3), ls: h.lifesteal || 0, ev: h.evasion || 0,
     nt: h.neutral ? h.neutral.id : 0,                                     // 🌰 neutralni predmet
+    rc: h.dead && h.recap ? h.recap : 0,                                  // 💀 pregled pogibije
   };
 }
 const CAMP_KEYS = Object.keys(CAMP_TYPES);   // isti data.js kod domaćina i gosta
@@ -443,6 +444,7 @@ function applySnapshot(d){
       if(player.abilities[j]){ player.abilities[j].rank = a[0]; player.abilities[j].cd = a[1]; }
     });
     player.neutral = e.nt ? ITEM_BY_ID[e.nt] || null : null;
+    player.recap = e.rc || null;
     player.items = e.it.map((id, k) => ITEM_BY_ID[id] && ((e.ip || []).includes(k) ? pendingItem(ITEM_BY_ID[id]) : ITEM_BY_ID[id])).filter(Boolean);
     player.backpack = (e.bp || []).map(s => { const pend = s[0] === '*', it = ITEM_BY_ID[pend ? s.slice(1) : s]; return it && (pend ? pendingItem(it) : it); }).filter(Boolean);
     if(e.ia) player.itemAttr = { str: e.ia[0], agi: e.ia[1], int: e.ia[2] };

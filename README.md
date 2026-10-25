@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.33: junaci govore engleski! Svih 22 junaka dobilo je nove glasove i replike na engleskom, kao u pravom LoL-u i DotA-i (Fish Audio, glumački model drama-3) — javljaju se kad ih odabereš, kad bace ulti, pobijede, padnu i vrate se u igru!** 🗣️🇬🇧🦁🐝🦈 (v0.32: glasovi junaka, v0.31: ciljanje mišem kao u LoL-u, 30 s pripreme)
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.34: 📣 najavljivač kao u DotA-i („First blood!”, „Double kill!”, „Rampage!”, „Victory!”), 🤖 težina botova (Lako / Normalno / Teško), 💀 pregled pogibije kao u LoL-u i 💃 ples na tipku J sa šaljivom replikom svakog junaka!** (v0.33: glasovi junaka na engleskom, v0.31: ciljanje mišem kao u LoL-u, 30 s pripreme)
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -18,6 +18,15 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- 📣 **Najavljivač, težina botova, pregled pogibije i ples** (v0.34):
+  - 📣 **najavljivač kao u DotA-i** — dubok, gromki glas (na engleskom) najavljuje važne trenutke: „Welcome to Dota Kids!”, „Let the battle begin!”, **„First blood!”**, višestruka ubojstva (**„Double kill!”, „Triple kill!”, „Ultra kill!”, „Rampage!”**), nizove (**„Killing spree!”, „Dominating!”, „Mega kill!”, „Unstoppable!”, „Incredible!”, „Monster kill!”, „Godlike!”, „Beyond godlike!”**), „Shut down!”, „Ace!”, srušene kule i vojarne, ranjiv prijestol, Velikog Zmaja i zmajčiće, noć i dan, te **„Victory!” / „Defeat…”**
+  - 👂 svatko čuje iz **perspektive svog tima**: „Enemy tower destroyed!” kad padne protivnička kula, a „Our tower has fallen!” kad padne naša — radi i za gosta u mrežnoj igri
+  - 🔇 junaci i najavljivač **ne pričaju u isto vrijeme**: puno važnija replika prekida trenutnu, a ostale pričekaju na red (npr. prvo „First blood!”, pa tvoj junak „Justice wins!”); najavljivača isključiš u ⚙️ postavkama (📣 Najavljivač)
+  - 🤖 **težina botova** na ekranu odabira: **🐣 Lako** (protivnički botovi sporije reagiraju, rjeđe bacaju moći i koriste predmete, oprezniji su, ne otkupljuju se i zarađuju 25% manje zlata), **⚔️ Normalno** (kao prije) i **🔥 Teško** (brži, hrabriji, 15% više zlata); saveznici su uvijek normalni, igra pamti izbor, a završni ekran pokazuje težinu. U simulacijama protivnički tim na „Lako” završi s ~5–9 tisuća neto vrijednosti, na „Teško” s 14–36 tisuća
+  - 💀 **pregled pogibije kao u LoL-u**: kad pogineš, vidiš tko te ubio i tko ti je u zadnjih 15 sekundi nanio koliko štete — s portretom junaka, trakom i čime (npr. „🔥 Vatrena kugla 230 · ⚔️ Napadi 190”), uključujući kule, vojnike i čudovišta; i gost u mrežnoj igri dobiva svoj pregled
+  - 💃 **ples na tipku J** (ili gumb 💃 gore desno): junak zapleše pobjednički ples, iznad glave mu zasviraju 🎶 i kaže **šaljivu repliku** — svih 22 ima svoju („Ha! Even my mane can dance!”, „Bzzz! Honey dance time!”, „Arr! Eight arms, eight times the dancing!”…); prestaje čim kreneš, napadneš ili baciš moć, a vide (i čuju) ga i drugi, i u mrežnoj igri
+  - 🦁 Lavko ima novi, plemeniti glas (njegov stari epski glas sada je najavljivač)
 
 - 🗣️ **Glasovi junaka** (v0.32, na engleskom od v0.33) — kao u LoL-u i DotA, svaki junak ima **svoj glas i 8 replika na engleskom** (176 replika, napravljeno s [Fish Audio](https://fish.audio)):
   - 🇬🇧 **engleski kao u pravim igrama** — djeca usput uče engleski, a imena junaka ostaju naša (Lavko, Žarko, Zuja, Zubo…) i izgovaraju se kako treba
@@ -275,6 +284,7 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
 | D / F | čarolije prizivača |
 | Y | Glif utvrde (kule 5 s neranjive) |
 | Tab | tablica rezultata |
+| J | 💃 ples (i šaljiva replika) |
 | S | stani |
 | razmaknica | kamera prati junaka |
 | strelice / miš uz rub / kotačić | kamera / zum |
@@ -290,7 +300,7 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
 
 ### 🗣️ Glasovi junaka (Fish Audio)
 
-Replike su u [`voices.js`](voices.js) (svaki junak: Fish Audio glas + 8 replika na engleskom; upute poput `[proud and heroic]` ili `<whisper>…</whisper>` govore glumcu kako da izgovori, a imena su napisana kako se izgovaraju na engleskom, npr. Zharko, Zooya). Zvuk je napravljen glumačkim modelom **drama-3** (čist i izražajan; s2.1-pro je na engleskom dodavao jeku). Linkovi generiranih datoteka su u [`tools/voice/urls.json`](tools/voice/urls.json) (stari hrvatski glasovi iz v0.32 ostaju u [`tools/voice/urls_hr.json`](tools/voice/urls_hr.json)), `python3 tools/voice/rec.py junak ključ=task_id …` dodaje nove, a `python3 tools/voice/gen.py` ih upisuje u `voices.js`. Igra ih zasad pušta izravno s Fish Audio poslužitelja (trajni linkovi); kad je pristup `*.fish.audio` dopušten, `python3 tools/voice/dl.py` preuzme sve u `assets/voice/<junak>/<replika>.mp3`, skrati tišinu, izjednači glasnoću i prebaci igru na lokalne datoteke (`VOICE_LOCAL = true`).
+Replike su u [`voices.js`](voices.js) (svaki junak: Fish Audio glas + 9 replika na engleskom, uključujući `taunt` za ples; najavljivač `ANNOUNCER` s 32 najave; upute poput `[proud and heroic]` ili `<whisper>…</whisper>` govore glumcu kako da izgovori, a imena su napisana kako se izgovaraju na engleskom, npr. Zharko, Zooya). Zvuk je napravljen glumačkim modelom **drama-3** (čist i izražajan; s2.1-pro je na engleskom dodavao jeku). Linkovi generiranih datoteka su u [`tools/voice/urls.json`](tools/voice/urls.json) (stari hrvatski glasovi iz v0.32 ostaju u [`tools/voice/urls_hr.json`](tools/voice/urls_hr.json)), `python3 tools/voice/rec.py junak ključ=task_id …` dodaje nove, a `python3 tools/voice/gen.py` ih upisuje u `voices.js`. Igra ih zasad pušta izravno s Fish Audio poslužitelja (trajni linkovi); kad je pristup `*.fish.audio` dopušten, `python3 tools/voice/dl.py` preuzme sve u `assets/voice/<junak>/<replika>.mp3`, skrati tišinu, izjednači glasnoću i prebaci igru na lokalne datoteke (`VOICE_LOCAL = true`).
 
 ### 🧸 3D modeli (Blender)
 
