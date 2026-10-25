@@ -13,7 +13,7 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 1. Igrač 1 klikne **📡 Napravi sobu** i dobije kod od 4 znaka
 2. Igrač 2 upiše kod i klikne **🔌 Uđi**
 3. Oba odaberu junake i stisnu **✅ SPREMAN!**
-4. Domaćin je 🔵 plavi mid, gost 🔴 crveni mid — svaki sa 2 bota saveznika, pravi 3v3!
+4. Domaćin je 🔵 plavi mid, gost 🔴 crveni mid — svaki sa 4 bota saveznika, pravi 5v5!
 
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
@@ -269,7 +269,7 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
   - 🌊 Animirana rijeka, okretni 3D pregled junaka na ekranu odabira
 - 🎨 **AI ilustracije** (v0.5): naslikani portreti svih 10 junaka (select ekran, HUD i 3D glave u igri), portreti čudovišta iz džungle, slikovite teksture trave/staze/rijeke i epska splash pozadina — uz automatski fallback na emoji ako se slike ne učitaju
 - 🗺️ **Kompletna mapa**: 3 staze, rijeka u udolini, baze na platoima (high/low ground — pucanje uzbrdo promaši 25%!), šuma, kule, fontane
-- 🤖 **3 protiv 3**: ti + 2 bota protiv 3 bota — botovi farmaju, koriste moći i ultije, uče vještine, slažu recepte, idu u džunglu, bježe teleportom
+- 🤖 **5 protiv 5** (od v0.37; prije 3 protiv 3): ti + 4 bota protiv 5 botova — sredina sama, na bočnim stazama po dvoje; botovi farmaju, koriste moći i ultije, uče vještine, slažu recepte, idu u džunglu, bježe teleportom
 - 🦁 **22 junaka-životinje**: svaki ima ✨ **urođenu pasivu** i 4 aktivne moći (Q/W/E/R); ULTI se otključava na levelu 6
   - Lavko 🦁, Žarko 🐉, Ledena 🐧, Strijela 🦊, Listko 🐢, Munja 🐯, Skokica 🐸 (kuka jezikom!), Orlina 🦅, Luna 🐱 (Mirana-stil: Sveta strijela + timska nevidljivost), Tragač 🦝 (Gondar-stil: sjena, podmukli udarci i Ucjena s bonus zlatom), Bodljo 🦔, Tutnjo 🐘, Zuja 🐝, Mudra 🦉, Skakač 🐵, Sivko 🐺, Mrak 🐦‍⬛, Pipko 🐙, Rogo 🦏, Bambus 🐼
 - 🐺 **DotA creep aggro**: creepovi se biju s creepovima, siege vojnici ruše građevine, a napadneš li junaka — njegovi creepovi (i kula!) okreću se na tebe na 2.3 s

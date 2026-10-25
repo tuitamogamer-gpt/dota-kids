@@ -143,7 +143,7 @@ function tryStartMatch(){
   if(net.myPick < 0 || net.otherPick < 0) return;
   const pool = shuffle(HEROES.map((h, i) => i)
     .filter(i => i !== net.myPick && i !== net.otherPick));
-  const bots = pool.slice(0, 4);
+  const bots = pool.slice(0, 2 * (CFG.teamSize - 1));   // 👥 po 4 bota u svakom timu
   genTrees();
   sendNet({ c: 'start', host: net.myPick, guest: net.otherPick, bots, trees });
   startMatchHost(net.myPick, net.otherPick, bots);
@@ -605,10 +605,9 @@ function startMatchHost(hostIdx, guestIdx, botIdcs){
   if(net.otherSum) remoteHero.summoners = net.otherSum.slice();
   remoteHero.human = true;
   remoteHero.bot = null;
-  makeHero(HEROES[botIdcs[0]], TEAM_BLUE, false, 'top');
-  makeHero(HEROES[botIdcs[1]], TEAM_BLUE, false, 'bot');
-  makeHero(HEROES[botIdcs[2]], TEAM_RED, false, 'top');
-  makeHero(HEROES[botIdcs[3]], TEAM_RED, false, 'bot');
+  const nb = CFG.teamSize - 1;   // 👥 botovi: prvo plavi, pa crveni (staze po LANE_PLAN)
+  for(let i = 0; i < nb; i++) makeHero(HEROES[botIdcs[i]], TEAM_BLUE, false, LANE_PLAN[i + 1]);
+  for(let i = 0; i < nb; i++) makeHero(HEROES[botIdcs[nb + i]], TEAM_RED, false, LANE_PLAN[i + 1]);
   for(const h of units){
     if(h.kind === 'hero' && h.bot) botSpendPoints(h);
   }
