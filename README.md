@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.34: 📣 najavljivač kao u DotA-i („First blood!”, „Double kill!”, „Rampage!”, „Victory!”), 🤖 težina botova (Lako / Normalno / Teško), 💀 pregled pogibije kao u LoL-u i 💃 ples na tipku J sa šaljivom replikom svakog junaka!** (v0.33: glasovi junaka na engleskom, v0.31: ciljanje mišem kao u LoL-u, 30 s pripreme)
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.35: u mrežnoj igri svatko vidi samo svoje — „Bravo!”, „Ne brini!”, „ULTI dostupan!”, zlato za ubojstvo i buffove svog tima; gost dobiva i svoje zvukove.** (v0.34: 📣 najavljivač, 🤖 težina botova, 💀 pregled pogibije, 💃 ples na J)
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -18,6 +18,13 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- 🌐 **Mrežna igra: svatko vidi svoje** (v0.35) — popravci za igru 1 na 1 preko interneta:
+  - 🎉 **osobne najave** idu samo onome kome pripadaju: tko ubije junaka vidi „Bravo!”, a tko padne „Ne brini!” (prije je gost vidio domaćinove najave, npr. „Bravo! Pobijedio si Rogo!” kad je upravo on poginuo); i gost sada dobiva „🌟 ULTI dostupan!” i „🎓 Talent!”, a otkup mu makne „Ne brini!”
+  - 🏆 na kraju igre svatko zadrži **svoju** najavu („POBJEDA!” ili „PORAZ…”) — prije bi je kod gosta za tren prepisala domaćinova
+  - 💰 **osobne poruke iznad junaka** (zlato za ubojstvo, asistenciju, kulu, „Nema mane!”, „Teleport prekinut!”…) vidi samo njihov vlasnik — i gost sada vidi svoje zlato, a domaćin više ne vidi tuđe
+  - 🔵🔴 poruka o buffu iz džungle stiže samo timu koji ga ima
+  - 🔊 gost čuje zvuk kad pobijedi junaka i kad dobije level (kao domaćin)
 
 - 📣 **Najavljivač, težina botova, pregled pogibije i ples** (v0.34):
   - 📣 **najavljivač kao u DotA-i** — dubok, gromki glas (na engleskom) najavljuje važne trenutke: „Welcome to Dota Kids!”, „Let the battle begin!”, **„First blood!”**, višestruka ubojstva (**„Double kill!”, „Triple kill!”, „Ultra kill!”, „Rampage!”**), nizove (**„Killing spree!”, „Dominating!”, „Mega kill!”, „Unstoppable!”, „Incredible!”, „Monster kill!”, „Godlike!”, „Beyond godlike!”**), „Shut down!”, „Ace!”, srušene kule i vojarne, ranjiv prijestol, Velikog Zmaja i zmajčiće, noć i dan, te **„Victory!” / „Defeat…”**

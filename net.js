@@ -287,9 +287,11 @@ function buildSnapshot(){
     rn: runes.length ? [{ x: runes[0].x, y: runes[0].y, di: RUNE_TYPES.indexOf(runes[0].def) }] : [],
     mk: markers.map(m => ({ x: Math.round(m.x), y: Math.round(m.y), t: +m.t.toFixed(2), r: Math.round(m.r), ir: m.isRing ? 1 : 0, cl: m.color })),
     ln: lines.map(l => ({ x1: Math.round(l.x1), y1: Math.round(l.y1), x2: Math.round(l.x2), y2: Math.round(l.y2), t: +l.t.toFixed(2), lf: l.life, cl: l.color, w: l.w })),
-    fl: floats.map(f => ({ x: Math.round(f.x), y: Math.round(f.y), hh: Math.round(f.h), tx: f.txt, cl: f.color, sz: f.size, t: +f.t.toFixed(2) })),
-    fd: feed.map(f => ({ tx: f.txt, cl: f.color, t: +f.t.toFixed(2) })),
-    bn: banner ? { tx: banner.txt, sb: banner.sub, t: banner.t, dr: banner.dur } : 0,
+    fl: floats.map(f => { const o = { x: Math.round(f.x), y: Math.round(f.y), hh: Math.round(f.h), tx: f.txt, cl: f.color, sz: f.size, t: +f.t.toFixed(2) }; if(f.team >= 0) o.tm = f.team; return o; }),
+    fd: feed.map(f => f.team >= 0 ? { tx: f.txt, cl: f.color, t: +f.t.toFixed(2), tm: f.team } : { tx: f.txt, cl: f.color, t: +f.t.toFixed(2) }),
+    // najave: zajednička (za sve) i gostova osobna (Bravo!, Ne brini!, ulti…) — gost prikaže svaku novu (po id-u)
+    bn: netBanner && gameTime - netBanner.t0 < 3 ? [netBanner.id, netBanner.txt, netBanner.sub] : 0,
+    gb: guestBanner && gameTime - guestBanner.t0 < 3 ? [guestBanner.id, guestBanner.txt, guestBanner.sub] : 0,
     av: annLog.filter(a => gameTime - a.t < 3).map(a => [a.n, a.key, a.team]),   // 📣 najave iz zadnje 3 s
     me: remoteHero ? heroExtras(remoteHero) : 0,
     nf: +nightForceT.toFixed(1),
@@ -473,9 +475,12 @@ function applySnapshot(d){
       return { x1: l.x1, y1: l.y1, x2: l.x2, y2: l.y2, t: l.t, life: l.lf, color: l.cl, w: l.w || 4 };
     });
   }
-  floats = d.fl.map(f => ({ x: f.x, y: f.y, h: f.hh, txt: f.tx, color: f.cl, size: f.sz, t: f.t }));
-  feed = d.fd.map(f => ({ txt: f.tx, color: f.cl, t: f.t }));
-  banner = d.bn ? { txt: d.bn.tx, sub: d.bn.sb, t: d.bn.t, dur: d.bn.dr } : null;
+  floats = d.fl.map(f => ({ x: f.x, y: f.y, h: f.hh, txt: f.tx, color: f.cl, size: f.sz, t: f.t, team: f.tm == null ? -1 : f.tm }));
+  feed = d.fd.map(f => ({ txt: f.tx, color: f.cl, t: f.t, team: f.tm == null ? -1 : f.tm }));
+  {   // nova najava (zajednička ili moja osobna); lokalne (pobjeda/poraz) domaćin ne prepisuje
+    const nb = [d.bn, d.gb].filter(b => Array.isArray(b) && b[0] > (net.bannerSeen || 0)).sort((a, b) => a[0] - b[0]).pop();
+    if(nb){ net.bannerSeen = nb[0]; banner = nb[1] ? { txt: nb[1], sub: nb[2] || '', t: 0, dur: 3 } : null; }
+  }
   for(const a of d.av || []) if(a[0] > VOX.annSeen){ VOX.annSeen = a[0]; annPlay(a[1], a[2]); }   // 📣 iz perspektive gosta
   nightForceT = d.nf || 0;
   if(d.gl){ glyph[0].t = d.gl[0] / 10; glyph[0].cd = d.gl[1]; glyph[1].t = d.gl[2] / 10; glyph[1].cd = d.gl[3]; }
@@ -543,10 +548,14 @@ function guestFrame(dt){
     const ab = player && !player.dead ? player.abilities[pendingCast.i] : null;
     if(!ab || ab.rank <= 0) pendingCast = null;
   }
-  // zvuk smrti
+  if(banner){ banner.t += dt; if(banner.t > banner.dur + 0.4) banner = null; }   // najava izblijedi i kod gosta
+  // zvukovi: smrt, pobjeda nad junakom, level
   if(player){
     if(player.dead && !net.wasDead) sfx('death');
     net.wasDead = player.dead;
+    if(net.lastKills != null && player.kills > net.lastKills) sfx('kill');
+    if(net.lastLevel != null && player.level > net.lastLevel) sfx('levelup');
+    net.lastKills = player.kills; net.lastLevel = player.level;
   }
 }
 
@@ -568,7 +577,8 @@ function resetMatchState(){
   gameTime = 0; waveTimer = CFG.firstWave; waveCount = 0;
   firstBlood = false; gameOver = false; paused = false;
   quickBuy = null; shopSel = null; invDrag = null; hideItemTip();   // nova igra: bez stare brze kupnje i opisa
-  banner = null;
+  banner = null; netBanner = guestBanner = null; net.bannerSeen = 0;
+  net.lastKills = net.lastLevel = null;
   remoteHero = null;
   net.guestUnits.clear();
   net.ringBuilt = false;
@@ -600,7 +610,7 @@ function startMatchHost(hostIdx, guestIdx, botIdcs){
   cam.x = player.x; cam.y = player.y; cam.zoom = 0.9; cam.follow = true;
   running = true;
   document.getElementById('select').classList.add('hidden');
-  announce('⚔️ 1 NA 1!', 'Sruši protivnikov prijestol! 👑');
+  localBanner('⚔️ 1 NA 1!', 'Sruši crveni prijestol! 👑');   // gost ima svoju ("Sruši plavi prijestol!")
   refreshShop();
   beginPrep();
   sfx('levelup');
