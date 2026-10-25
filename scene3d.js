@@ -3367,6 +3367,7 @@ function castFx(u, g, key){
 
 /* ================= glavna sinkronizacija ================= */
 function pickStatusEmoji(u){
+  if(u.danceT > 0) return '🎶';
   if(u.status.stun > 0) return '⭐';
   if(u.status.immuneT > 0) return '👑';
   if(u.status.rageT > 0) return '😡';
@@ -3422,8 +3423,8 @@ function animateUnit(u, g, now, dt){
   }
   const moving = gameTime - (u.lastMoveT == null ? -9 : u.lastMoveT) < 0.15;
   const stunned = u.status && u.status.stun > 0;
-  if(typeof winnerTeam !== 'undefined' && winnerTeam != null && u.kind === 'hero' && u.team === winnerTeam && a.acts.victory)
-    animBase(a, 'victory', 1, now);
+  if(((typeof winnerTeam !== 'undefined' && winnerTeam != null && u.kind === 'hero' && u.team === winnerTeam) || u.danceT > 0) && a.acts.victory)
+    animBase(a, 'victory', 1, now);   // pobjednički ples (i 💃 ples na tipku J)
   else if(u.tpChannel > 0 && a.acts.channel) animBase(a, 'channel', 1, now);
   else if(moving && !stunned) animBase(a, 'walk', 0.7 + (u.speed || 150) / 240, now);
   else {
