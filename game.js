@@ -4372,6 +4372,7 @@ function buildSelectScreen(){
     const box = document.getElementById('mpBox');
     box.classList.toggle('hidden');
     e.currentTarget.classList.toggle('on', !box.classList.contains('hidden'));
+    document.getElementById('diffTabs').classList.toggle('mpOff', !box.classList.contains('hidden'));   // 🤖 u igri s prijateljem ne vrijedi
   });
   document.getElementById('helpClose').addEventListener('click', toggleHelp);
   document.getElementById('againBtn').addEventListener('click', () => location.reload());
