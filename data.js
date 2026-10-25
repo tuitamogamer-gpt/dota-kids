@@ -18,6 +18,7 @@ const TEAM_DARK  = ['#1e3a8a', '#7f1d1d', '#92400e'];
 const TEAM_NAME  = ['Plavi', 'Crveni', 'Neutralni'];
 
 const CFG = {
+  teamSize: 5,         // 👥 5 na 5 (kao u DotA i LoL): ti + 4 bota protiv 5 botova
   waveEvery: 28,
   prepTime: 30,        // ⏳ priprema na početku: 30 s za kupovinu (sat kreće od -0:30, vojnici kreću u 0:00)
   firstWave: 0,        // prvi val vojnika: koliko sekundi nakon 0:00
@@ -94,6 +95,8 @@ const CFG = {
   creepAggroCd: 3,          // pa se smire
 };
 
+// staze junaka u timu (prvi je igrač / čovjek): sredina sama, na bočnim stazama po dvoje (kao u DotA)
+const LANE_PLAN = ['mid', 'top', 'bot', 'top', 'bot'];
 function xpNeed(level){ return 55 + level * 60; }
 
 /* ---------------- JUNACI ---------------- */

@@ -3,7 +3,7 @@
    DOTA Kids 3D — MULTIPLAYER (PeerJS, P2P, domaćin = autoritet)
    - Domaćin vrti cijelu simulaciju i šalje snapshot ~12×/s.
    - Gost šalje samo naredbe (klik, moći, kupovine...).
-   - 1 na 1: domaćin = plavi mid, gost = crveni mid, 4 bota.
+   - 1 na 1 u timovima 5 na 5: domaćin = plavi mid, gost = crveni mid, po 4 bota.
    ============================================================ */
 
 const net = {
@@ -143,7 +143,7 @@ function tryStartMatch(){
   if(net.myPick < 0 || net.otherPick < 0) return;
   const pool = shuffle(HEROES.map((h, i) => i)
     .filter(i => i !== net.myPick && i !== net.otherPick));
-  const bots = pool.slice(0, 4);
+  const bots = pool.slice(0, 2 * (CFG.teamSize - 1));   // 👥 po 4 bota u svakom timu
   genTrees();
   sendNet({ c: 'start', host: net.myPick, guest: net.otherPick, bots, trees });
   startMatchHost(net.myPick, net.otherPick, bots);
@@ -605,10 +605,9 @@ function startMatchHost(hostIdx, guestIdx, botIdcs){
   if(net.otherSum) remoteHero.summoners = net.otherSum.slice();
   remoteHero.human = true;
   remoteHero.bot = null;
-  makeHero(HEROES[botIdcs[0]], TEAM_BLUE, false, 'top');
-  makeHero(HEROES[botIdcs[1]], TEAM_BLUE, false, 'bot');
-  makeHero(HEROES[botIdcs[2]], TEAM_RED, false, 'top');
-  makeHero(HEROES[botIdcs[3]], TEAM_RED, false, 'bot');
+  const nb = CFG.teamSize - 1;   // 👥 botovi: prvo plavi, pa crveni (staze po LANE_PLAN)
+  for(let i = 0; i < nb; i++) makeHero(HEROES[botIdcs[i]], TEAM_BLUE, false, LANE_PLAN[i + 1]);
+  for(let i = 0; i < nb; i++) makeHero(HEROES[botIdcs[nb + i]], TEAM_RED, false, LANE_PLAN[i + 1]);
   for(const h of units){
     if(h.kind === 'hero' && h.bot) botSpendPoints(h);
   }
@@ -617,7 +616,7 @@ function startMatchHost(hostIdx, guestIdx, botIdcs){
   cam.x = player.x; cam.y = player.y; cam.zoom = 0.9; cam.follow = true;
   running = true;
   document.getElementById('select').classList.add('hidden');
-  localBanner('⚔️ 1 NA 1!', 'Sruši crveni prijestol! 👑');   // gost ima svoju ("Sruši plavi prijestol!")
+  localBanner(`⚔️ ${CFG.teamSize} NA ${CFG.teamSize}!`, 'Sruši crveni prijestol! 👑');   // gost ima svoju ("Sruši plavi prijestol!")
   refreshShop();
   beginPrep();
   sfx('levelup');
@@ -635,7 +634,7 @@ function startMatchGuest(d){
   running = true;
   cam.x = FOUNTAIN[1].x; cam.y = FOUNTAIN[1].y; cam.zoom = 0.9; cam.follow = true;
   document.getElementById('select').classList.add('hidden');
-  banner = { txt: '⚔️ 1 NA 1!', sub: 'Sruši plavi prijestol! 👑', t: 0, dur: 3 };
+  banner = { txt: `⚔️ ${CFG.teamSize} NA ${CFG.teamSize}!`, sub: 'Sruši plavi prijestol! 👑', t: 0, dur: 3 };
   annLog = []; VOX.annSeen = 0;   // 📣 najave stižu u snimkama (av)
   gameTime = -CFG.prepTime; prepShop = false;   // ⏳ priprema: domaćin šalje sat, dućan se sam otvori
   if(CFG.prepTime > 0 && !shopOpen){ toggleShop(); prepShop = true; }

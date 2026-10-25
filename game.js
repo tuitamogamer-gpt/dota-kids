@@ -1172,7 +1172,7 @@ function kill(t, src){
       if(isHuman(credit)) addFloat(credit.x, credit.y, '+' + (CFG.heroKillGold + t.level * CFG.heroKillGoldPerLvl) + ' 💰', '#fde047', 17, credit.team);
       // 🔄 povratak u igru (kao u DotA): tim koji gubi dobiva više zlata kad ubije junaka tima koji vodi
       const behind = teamNetWorth(t.team) - teamNetWorth(credit.team);
-      if(behind > 1500){
+      if(behind > 500 * CFG.teamSize){   // 1500 u 3 na 3, 2500 u 5 na 5 (veći timovi = veće razlike)
         const cb = Math.min(CFG.comebackMax, Math.round(behind * CFG.comebackPct / 10) * 10);
         credit.gold += cb;
         if(isHuman(credit)) addFloat(credit.x, credit.y - 26, '🔄 Povratak! +' + cb + ' 💰', '#a7f3d0', 15, credit.team);
@@ -3442,11 +3442,9 @@ function startGame(heroIdx){
   const rest = shuffle(HEROES.map((h, i) => i).filter(i => i !== heroIdx));
   makeHero(HEROES[heroIdx], TEAM_BLUE, true, 'mid');
   player.summoners = pickedSummoners.slice();   // ✨ odabrane na ekranu junaka
-  makeHero(HEROES[rest[0]], TEAM_BLUE, false, 'top');
-  makeHero(HEROES[rest[1]], TEAM_BLUE, false, 'bot');
-  makeHero(HEROES[rest[2]], TEAM_RED, false, 'mid');
-  makeHero(HEROES[rest[3]], TEAM_RED, false, 'top');
-  makeHero(HEROES[rest[4]], TEAM_RED, false, 'bot');
+  let ri = 0;   // 👥 ostatak oba tima (CFG.teamSize po timu, staze po LANE_PLAN)
+  for(let i = 1; i < CFG.teamSize; i++) makeHero(HEROES[rest[ri++]], TEAM_BLUE, false, LANE_PLAN[i]);
+  for(let i = 0; i < CFG.teamSize; i++) makeHero(HEROES[rest[ri++]], TEAM_RED, false, LANE_PLAN[i]);
 
   for(const h of units){
     if(h.kind === 'hero' && h.bot) botSpendPoints(h);

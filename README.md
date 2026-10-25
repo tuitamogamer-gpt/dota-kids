@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.36: peglanje — igra se lijepo slaže i na mobitelu (postavke, tablica, završni ekran, dućan i pregled pogibije stanu na ekran), gumbi gore desno imaju opise, a gostove poruke u mrežnoj igri više ne nestaju.** (v0.35: u mrežnoj igri svatko vidi svoje, v0.34: 📣 najavljivač, 🤖 težina botova, 💀 pregled pogibije, 💃 ples)
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.37: 👥 pravih 5 na 5 kao u DotA-i i LoL-u — ti + 4 bota protiv 5 botova (a s prijateljem: svaki sa po 4 bota).** (v0.36: peglanje za mobitel i opisi gumba, v0.35: u mrežnoj igri svatko vidi svoje, v0.34: 📣 najavljivač, 🤖 težina botova, 💀 pregled pogibije, 💃 ples)
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -8,16 +8,24 @@ Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku
 
 Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Three.js je uključen; za multiplayer treba internet).
 
-## 🌐 Multiplayer (1 na 1)
+## 🌐 Multiplayer (ti protiv prijatelja, 5 na 5)
 
 1. Igrač 1 klikne **📡 Napravi sobu** i dobije kod od 4 znaka
 2. Igrač 2 upiše kod i klikne **🔌 Uđi**
 3. Oba odaberu junake i stisnu **✅ SPREMAN!**
-4. Domaćin je 🔵 plavi mid, gost 🔴 crveni mid — svaki sa 2 bota saveznika, pravi 3v3!
+4. Domaćin je 🔵 plavi mid, gost 🔴 crveni mid — svaki sa 4 bota saveznika, pravi 5v5!
 
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- 👥 **5 na 5** (v0.37) — timovi su sada veliki kao u DotA-i i LoL-u:
+  - 🤖 sam igraš: **ti + 4 bota 🔵 protiv 5 botova 🔴**; s prijateljem: domaćin i gost vode sredinu, a svaki ima **po 4 bota**
+  - 🛣️ raspored po stazama kao u DotA-i: **sredina sama** (tu si ti), na gornjoj i donjoj stazi **po dvoje**
+  - ⚖️ igra je provjerena simulacijom (botovi vode oba tima): partija traje prosječno **18,5 minuta** (3 na 3: 14,7), a pomoć timu koji zaostaje kreće tek kad zaostaje 2500 zlata (prije 1500) jer veći timovi skupe više zlata
+  - 🏆 završni ekran i 📋 tablica pokazuju svih **10 junaka** — i na mobitelu (zaglavlje stupaca samo jednom, manji redovi; na najmanjim ekranima se pomiče, a gumb „Igraj ponovo!” je uvijek vidljiv)
+  - ⚡ i dalje brzo: logika igre +12 %, crtanje +5 % poziva, mrežna snimka za gosta najviše ~10 KB
+  - ⚔️ početna najava u mrežnoj igri: „5 NA 5!”
 
 - 🧽 **Peglanje 2** (v0.36):
   - 📱 **mobitel položen** (nizak ekran): ⚙️ postavke se mogu pomicati pa je gumb „Nastavi” uvijek dostupan; 📋 tablica stisne redove da stanu svih 6 junaka i crta se preko minimape; 🏆 završni ekran je zbijeniji i pokazuje oba tima; 🛒 dućan koristi cijelu visinu umjesto da se prelije preko ploče junaka; 💀 pregled pogibije stane između minimape i moći; ubojstva/smrti na ploči junaka više se ne preklapaju sa zlatom
@@ -242,7 +250,7 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
   - 🏚️ **Vojarne** iza 2. kule na svakoj stazi — neranjive dok kula stoji; kad padnu, protivnički vojnici na toj stazi postaju **💪 SUPER vojnici** (veći, jači, s aurom); baze su ograđene **zidinama**
   - 💸 **Otkup** (tipka O ili gumb na ekranu smrti): plati zlatom i vrati se odmah — botovi ga koriste kad je prijestol u opasnosti; 🛡️ **Aegis** — tko ubije Zmaja dobiva jedno besplatno oživljavanje na licu mjesta (5 min)
   - 🪽 **Aktivni predmeti**: Skokne čizme (skok 600) i Kraljevski oklop (imunost 5 s) — tipke **1–6** ili lijevi klik na torbu; prodaja sada desnim klikom
-  - 📋 **Tablica rezultata** (drži Tab): ubojstva / smrti / asistencije / level / zlato i predmeti svih 6 junaka; 👁️ Sovino oko se vidi na minimapi
+  - 📋 **Tablica rezultata** (drži Tab): ubojstva / smrti / asistencije / level / zlato i predmeti svih 10 junaka; 👁️ Sovino oko se vidi na minimapi
   - 🎲 **Nasumičan junak** i traka učitavanja modela na ekranu odabira
   - 🎬 **Nove animacije**: **skok** (Skakač, Skokne čizme, Tragač, Skokica — stvarni luk kroz zrak), **kanaliziranje** (teleport kući), **pobjednički ples** svih junaka pobjedničkog tima na kraju i **drugi idle** (protezanje) kad junak dugo stoji
   - 🧸 novi Blender modeli: 5 junaka (bodlje, surla i kljove, krila i žalac, pernati disk i čuperci, traka na glavi i štap), vojarna s krovom u boji tima, zidine s barjakom, pčela, sluz i bodlja kao projektili; roj pčela kruži instancirano
@@ -269,7 +277,7 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
   - 🌊 Animirana rijeka, okretni 3D pregled junaka na ekranu odabira
 - 🎨 **AI ilustracije** (v0.5): naslikani portreti svih 10 junaka (select ekran, HUD i 3D glave u igri), portreti čudovišta iz džungle, slikovite teksture trave/staze/rijeke i epska splash pozadina — uz automatski fallback na emoji ako se slike ne učitaju
 - 🗺️ **Kompletna mapa**: 3 staze, rijeka u udolini, baze na platoima (high/low ground — pucanje uzbrdo promaši 25%!), šuma, kule, fontane
-- 🤖 **3 protiv 3**: ti + 2 bota protiv 3 bota — botovi farmaju, koriste moći i ultije, uče vještine, slažu recepte, idu u džunglu, bježe teleportom
+- 🤖 **5 protiv 5** (od v0.37; prije 3 protiv 3): ti + 4 bota protiv 5 botova — sredina sama, na bočnim stazama po dvoje; botovi farmaju, koriste moći i ultije, uče vještine, slažu recepte, idu u džunglu, bježe teleportom
 - 🦁 **22 junaka-životinje**: svaki ima ✨ **urođenu pasivu** i 4 aktivne moći (Q/W/E/R); ULTI se otključava na levelu 6
   - Lavko 🦁, Žarko 🐉, Ledena 🐧, Strijela 🦊, Listko 🐢, Munja 🐯, Skokica 🐸 (kuka jezikom!), Orlina 🦅, Luna 🐱 (Mirana-stil: Sveta strijela + timska nevidljivost), Tragač 🦝 (Gondar-stil: sjena, podmukli udarci i Ucjena s bonus zlatom), Bodljo 🦔, Tutnjo 🐘, Zuja 🐝, Mudra 🦉, Skakač 🐵, Sivko 🐺, Mrak 🐦‍⬛, Pipko 🐙, Rogo 🦏, Bambus 🐼
 - 🐺 **DotA creep aggro**: creepovi se biju s creepovima, siege vojnici ruše građevine, a napadneš li junaka — njegovi creepovi (i kula!) okreću se na tebe na 2.3 s
