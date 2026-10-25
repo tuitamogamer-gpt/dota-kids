@@ -475,7 +475,8 @@ function applySnapshot(d){
       return { x1: l.x1, y1: l.y1, x2: l.x2, y2: l.y2, t: l.t, life: l.lf, color: l.cl, w: l.w || 4 };
     });
   }
-  floats = d.fl.map(f => ({ x: f.x, y: f.y, h: f.hh, txt: f.tx, color: f.cl, size: f.sz, t: f.t, team: f.tm == null ? -1 : f.tm }));
+  floats = d.fl.map(f => ({ x: f.x, y: f.y, h: f.hh, txt: f.tx, color: f.cl, size: f.sz, t: f.t, team: f.tm == null ? -1 : f.tm }))
+    .concat(floats.filter(f => f.local));   // gostove vlastite poruke ("🔒 Treba ti poen vještine!"…) ostaju
   feed = d.fd.map(f => ({ txt: f.tx, color: f.cl, t: f.t, team: f.tm == null ? -1 : f.tm }));
   {   // nova najava (zajednička ili moja osobna); lokalne (pobjeda/poraz) domaćin ne prepisuje
     const nb = [d.bn, d.gb].filter(b => Array.isArray(b) && b[0] > (net.bannerSeen || 0)).sort((a, b) => a[0] - b[0]).pop();
@@ -549,6 +550,12 @@ function guestFrame(dt){
     if(!ab || ab.rank <= 0) pendingCast = null;
   }
   if(banner){ banner.t += dt; if(banner.t > banner.dur + 0.4) banner = null; }   // najava izblijedi i kod gosta
+  for(let i = floats.length - 1; i >= 0; i--){   // gostove vlastite poruke se same dižu i nestaju
+    const f = floats[i];
+    if(!f.local) continue;
+    f.t += dt; f.h += 52 * dt;
+    if(f.t > 1.1) floats.splice(i, 1);
+  }
   // zvukovi: smrt, pobjeda nad junakom, level
   if(player){
     if(player.dead && !net.wasDead) sfx('death');

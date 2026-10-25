@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.35: u mrežnoj igri svatko vidi samo svoje — „Bravo!”, „Ne brini!”, „ULTI dostupan!”, zlato za ubojstvo i buffove svog tima; gost dobiva i svoje zvukove.** (v0.34: 📣 najavljivač, 🤖 težina botova, 💀 pregled pogibije, 💃 ples na J)
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.36: peglanje — igra se lijepo slaže i na mobitelu (postavke, tablica, završni ekran, dućan i pregled pogibije stanu na ekran), gumbi gore desno imaju opise, a gostove poruke u mrežnoj igri više ne nestaju.** (v0.35: u mrežnoj igri svatko vidi svoje, v0.34: 📣 najavljivač, 🤖 težina botova, 💀 pregled pogibije, 💃 ples)
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -18,6 +18,14 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- 🧽 **Peglanje 2** (v0.36):
+  - 📱 **mobitel položen** (nizak ekran): ⚙️ postavke se mogu pomicati pa je gumb „Nastavi” uvijek dostupan; 📋 tablica stisne redove da stanu svih 6 junaka i crta se preko minimape; 🏆 završni ekran je zbijeniji i pokazuje oba tima; 🛒 dućan koristi cijelu visinu umjesto da se prelije preko ploče junaka; 💀 pregled pogibije stane između minimape i moći; ubojstva/smrti na ploči junaka više se ne preklapaju sa zlatom
+  - 💬 **opisi gumba gore desno** (💃 ples, 🎯 kamera, 📋 tablica, ⚙️ postavke, 🔊 zvuk, ❓ pomoć) — prijeđi mišem i vidiš što rade i koja je tipka
+  - 🌐 gost u mrežnoj igri: njegove vlastite poruke („🔒 Treba ti poen vještine!”, „Nema mane!”…) više ne nestanu za tren (snimka domaćina ih je brisala)
+  - 📰 poruke koje vidi samo drugi tim više ne guraju tvoje poruke s popisa
+  - 🤖 u izborniku „S prijateljem” težina botova je zasivljena (u mrežnoj igri botovi su uvijek normalni)
+  - ✅ cijela igra od 12 minuta s glasovima i crtanjem (bot vodi tvog junaka, „Teško”) prošla je bez ijedne greške
 
 - 🌐 **Mrežna igra: svatko vidi svoje** (v0.35) — popravci za igru 1 na 1 preko interneta:
   - 🎉 **osobne najave** idu samo onome kome pripadaju: tko ubije junaka vidi „Bravo!”, a tko padne „Ne brini!” (prije je gost vidio domaćinove najave, npr. „Bravo! Pobijedio si Rogo!” kad je upravo on poginuo); i gost sada dobiva „🌟 ULTI dostupan!” i „🎓 Talent!”, a otkup mu makne „Ne brini!”

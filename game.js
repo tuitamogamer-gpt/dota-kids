@@ -793,11 +793,12 @@ function addLine(x1, y1, x2, y2, color, w, life){
 }
 function addFloat(x, y, txt, color, size, team){   // team: osobna poruka (zlato, "Nema mane!"…) — vidi je samo taj tim
   if(floats.length > 70) floats.shift();
-  floats.push({ x: x + rand(-10, 10), y: y + rand(-6, 6), h: 70, txt, color: color || '#fff', size: size || 15, t: 0, team: team == null ? -1 : team });
+  floats.push({ x: x + rand(-10, 10), y: y + rand(-6, 6), h: 70, txt, color: color || '#fff', size: size || 15, t: 0, team: team == null ? -1 : team,
+    local: net.mode === 'guest' });   // gostova vlastita poruka (snimka domaćina je ne briše)
 }
 function feedMsg(txt, color, team){   // team: poruku vidi samo taj tim (npr. buff saveznika)
   feed.unshift({ txt, color: color || '#fff', t: 0, team: team == null ? -1 : team });
-  if(feed.length > 6) feed.pop();
+  if(feed.length > 10) feed.pop();   // prikazuje se najviše 6 (poruke drugog tima se ne broje)
 }
 function localBanner(txt, sub){ banner = txt ? { txt, sub: sub || '', t: 0, dur: 3 } : null; }
 function announce(txt, sub){   // najava za sve (domaćin je šalje i gostu)
@@ -4104,7 +4105,7 @@ function setupInput(){
     if(inRect(mouse.sx, mouse.sy, uiRects.shop)) hoverUi = { type: 'shop' };
     if(inRect(mouse.sx, mouse.sy, uiRects.mute)) hoverUi = { type: 'mute' };
     if(inRect(mouse.sx, mouse.sy, uiRects.help)) hoverUi = { type: 'help' };
-    for(const k of ['opts', 'score', 'center']) if(uiRects[k] && inRect(mouse.sx, mouse.sy, uiRects[k])) hoverUi = { type: k };
+    for(const k of ['opts', 'score', 'center', 'dance']) if(uiRects[k] && inRect(mouse.sx, mouse.sy, uiRects[k])) hoverUi = { type: k };
     if(uiRects.prepSkip && inRect(mouse.sx, mouse.sy, uiRects.prepSkip)) hoverUi = { type: 'prep' };
     if(!running) hudCv.style.cursor = hoverUi ? 'pointer' : 'default';   // u igri pokazivač postavlja refreshPointer()
     if(!invDrag || !invDrag.moved) updateHudTip();
@@ -4371,6 +4372,7 @@ function buildSelectScreen(){
     const box = document.getElementById('mpBox');
     box.classList.toggle('hidden');
     e.currentTarget.classList.toggle('on', !box.classList.contains('hidden'));
+    document.getElementById('diffTabs').classList.toggle('mpOff', !box.classList.contains('hidden'));   // 🤖 u igri s prijateljem ne vrijedi
   });
   document.getElementById('helpClose').addEventListener('click', toggleHelp);
   document.getElementById('againBtn').addEventListener('click', () => location.reload());
@@ -4885,7 +4887,7 @@ function drawHud(){
 
   // ----- kill feed -----
   ctx.textAlign = 'left';
-  const feedMine = feed.filter(f => f.team == null || f.team < 0 || f.team === myTeam);   // poruke za tim vidi samo taj tim
+  const feedMine = feed.filter(f => f.team == null || f.team < 0 || f.team === myTeam).slice(0, 6);   // poruke za tim vidi samo taj tim
   for(let i = 0; i < feedMine.length; i++){
     const f = feedMine[i];
     ctx.globalAlpha = f.t > 6 ? 1 - (f.t - 6) : 1;
@@ -5012,13 +5014,16 @@ function drawHud(){
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     ctx.fillStyle = '#fff';
     ctx.fillText(player.name + ' ⭐ ', bx, py + 16);
+    const nameW = ctx.measureText(player.name + ' ⭐ ').width;
+    const goldTxt = '💰 ' + Math.floor(player.gold), goldW = ctx.measureText(goldTxt).width;
     ctx.font = fontTxt(11, true);
     ctx.fillStyle = '#cbd5e1';
-    ctx.fillText('⚔️' + player.kills + ' 💀' + player.deaths + ' 🤝' + player.assists, bx + 86, py + 16);
+    const kdaTxt = '⚔️' + player.kills + ' 💀' + player.deaths + ' 🤝' + player.assists, kdaX = Math.max(bx + 86, bx + nameW + 4);
+    if(kdaX + ctx.measureText(kdaTxt).width + 6 <= bx + bw - goldW) ctx.fillText(kdaTxt, kdaX, py + 16);   // na uskoj ploči ne preko zlata
     ctx.font = fontTxt(14, true);
     ctx.textAlign = 'right';
     ctx.fillStyle = '#fde047';
-    ctx.fillText('💰 ' + Math.floor(player.gold), bx + bw, py + 16);
+    ctx.fillText(goldTxt, bx + bw, py + 16);
     drawBar(bx, py + 26, bw, 16, player.hp / player.maxhp, '#22c55e');
     drawBar(bx, py + 44, bw, 10, player.maxmp ? player.mp / player.maxmp : 0, '#38bdf8');
     drawBar(bx, py + 56, bw, 5, player.xp / xpNeed(player.level), '#fde047');
@@ -5363,19 +5368,24 @@ function drawHud(){
       if(rc) drawRecap(rc, ty + (player.reviveAt ? 34 : 92));
     }
   }
-  if(keys['tab'] || scoreOpen) drawScoreboard();
-
   // ----- minimapa -----
   const ML = hudLayout();
   drawMinimap(ML.ms, ML.mx, ML.my);
+  if(keys['tab'] || scoreOpen) drawScoreboard();   // tablica preko minimape (na mobitelu se preklapaju)
 }
 
 /* 💀 pregled pogibije (kao u LoL-u): tko ti je nanio štetu u zadnjih 15 s, čime i koliko */
 function drawRecap(rc, y0){
   const L = hudLayout();
   const rowH = 42, head = 48;
-  const n = Math.max(1, Math.min(rc.rows.length, Math.floor((L.py - 46 - y0 - head - 8) / rowH)));
-  const w = Math.min(470, VW - 40), h = head + n * rowH + 8, x = (VW - w) / 2;
+  const room = Math.floor((L.py - 46 - y0 - head - 8) / rowH);
+  const n = Math.max(1, Math.min(rc.rows.length, room));
+  let w = Math.min(470, VW - 40), x = (VW - w) / 2;
+  if(room < 1){   // nizak ekran (mobitel): preko ploče junaka, ali između minimape i kartice moći (dućan i moći ostaju vidljivi)
+    const left = 14 + L.ms + 22, right = L.cardX - 10;
+    w = Math.min(w, right - left); x = left + (right - left - w) / 2;
+  }
+  const h = head + n * rowH + 8;
   drawFrame(x, y0, w, h, 12);
   ctx.save();
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
@@ -5406,8 +5416,10 @@ function drawRecap(rc, y0){
 /* ================= Tablica rezultata (Tab) ================= */
 function drawScoreboard(){
   const heroes = units.filter(u => u.kind === 'hero');
-  const w = Math.min(760, VW - 20), rowH = 34, h = 64 + 2 * 24 + heroes.length * rowH + 14;
-  const x = (VW - w) / 2, y = Math.max(70, VH * 0.46 - h / 2);
+  // na niskom ekranu (mobitel) redovi se stisnu da stane cijela tablica
+  const rowH = clamp(Math.floor((VH - 76 - 64 - 48 - 14) / Math.max(1, heroes.length)), 22, 34);
+  const w = Math.min(760, VW - 20), h = 64 + 2 * 24 + heroes.length * rowH + 14;
+  const x = (VW - w) / 2, y = Math.max(Math.min(70, VH - h - 4), VH * 0.46 - h / 2);
   drawFrame(x, y, w, h, 12);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.font = fontTxt(18, true); ctx.fillStyle = '#f3d48a';
@@ -5439,7 +5451,7 @@ function drawScoreboard(){
       ctx.fillText(hh.kills + ' / ' + hh.deaths + ' / ' + hh.assists, x + C.kda, cy);
       ctx.fillStyle = '#cbd5e1'; ctx.fillText((hh.lastHits || 0) + ' / ' + (hh.denies || 0), x + C.lh, cy);
       ctx.fillStyle = '#fde047'; ctx.fillText(netWorth(hh), x + C.nw, cy);
-      const iw = Math.round(34 * Math.min(1, k + 0.15)), ih = Math.round(iw * 0.73);
+      const iw = Math.min(Math.round(34 * Math.min(1, k + 0.15)), Math.round((rowH - 4) / 0.73)), ih = Math.round(iw * 0.73);   // i niži redovi na mobitelu
       for(let i = 0; i < CFG.inventorySlots; i++){
         const ix = x + C.items + i * (iw + 3), iy = cy - ih / 2, it = hh.items[i];
         ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fillRect(ix, iy, iw, ih);

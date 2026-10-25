@@ -15,7 +15,7 @@
   .hidden{ display:none !important; }
 
   .overlay{ position:fixed; inset:0; z-index:20; display:flex; flex-direction:column;
-    align-items:center; justify-content:center; text-align:center;
+    align-items:center; justify-content:center; justify-content:safe center; overflow-y:auto; text-align:center;
     background:radial-gradient(circle at 50% 30%, #2d6a4f 0%, #1b4332 55%, #081c15 100%); }
   #select{ background:linear-gradient(rgba(8,20,16,.42), rgba(8,20,16,.78)),
     url('assets/splash.jpg') center/cover no-repeat; }
@@ -33,12 +33,14 @@
   #roleTabs button{ font-family:inherit; font-size:14px; font-weight:bold; border:none; border-radius:11px; padding:6px 14px;
     background:rgba(255,255,255,.12); color:#e2e8f0; cursor:pointer; }
   #roleTabs button.on{ background:#fde047; color:#431407; }
-  #diffTabs{ display:flex; gap:5px; justify-content:center; align-items:center; color:#a7f3d0; font-size:13px; font-weight:bold; }
+  #diffTabs{ display:flex; flex-wrap:wrap; gap:5px; justify-content:center; align-items:center; color:#a7f3d0; font-size:13px; font-weight:bold; }
   #diffTabs button{ font-family:inherit; font-size:13px; font-weight:bold; border:none; border-radius:10px; padding:5px 11px;
     background:rgba(255,255,255,.12); color:#e2e8f0; cursor:pointer; }
   #diffTabs button.on[data-d="easy"]{ background:#86efac; color:#14532d; }
   #diffTabs button.on[data-d="normal"]{ background:#fde047; color:#431407; }
   #diffTabs button.on[data-d="hard"]{ background:#f87171; color:#450a0a; }
+  #diffTabs.mpOff{ opacity:.45; pointer-events:none; }
+  #diffTabs.mpOff::after{ content:"(s prijateljem su botovi normalni)"; font-size:11px; font-weight:normal; margin-left:4px; }
   #cards{ display:grid; grid-template-columns:repeat(5, 92px); gap:8px; align-content:start;
     max-height:min(54vh, 520px); overflow-y:auto; padding:4px 6px 4px 4px; }
   #cards::-webkit-scrollbar{ width:7px; }
@@ -263,7 +265,8 @@
   /* ---------- postavke ---------- */
   #options{ background:rgba(8,12,18,.72); z-index:30; }
   .optBox{ background:linear-gradient(180deg, rgba(30,36,46,.98), rgba(12,15,21,.98)); border:2px solid #6b5a35; border-radius:14px;
-    padding:20px 26px; width:min(460px, calc(100vw - 32px)); color:#e5e7eb; box-shadow:0 14px 40px rgba(0,0,0,.6); text-align:left; }
+    padding:20px 26px; width:min(460px, calc(100vw - 32px)); color:#e5e7eb; box-shadow:0 14px 40px rgba(0,0,0,.6); text-align:left;
+    max-height:calc(100vh - 20px); overflow-y:auto; }
   .optBox h2{ text-align:center; color:#f3d48a; margin-bottom:12px; text-shadow:0 2px 4px #000; }
   .optRow{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,.07); font-size:15px; }
   .optRow small{ font-size:12px; opacity:.7; font-weight:normal; }
@@ -312,6 +315,19 @@
 
   #err{ position:fixed; left:10px; top:10px; z-index:99; display:none; background:#b91c1c; color:#fff;
     padding:8px 14px; border-radius:10px; font-size:13px; max-width:70vw; }
+  /* 📱 nizak ekran (mobitel položen): zbijeniji završni ekran, dućan preko cijele visine, zbijenije postavke */
+  @media (max-height: 560px){
+    #endEmoji{ font-size:30px; }
+    #end h1{ font-size:32px; margin:0 0 6px; }
+    .endT th, .endT td{ padding:2px 8px; font-size:12.5px; }
+    .endT .etTeam th{ font-size:14px; padding:4px 10px; }
+    .etHero img{ width:24px; height:24px; }
+    .etMvp{ margin:4px 0 6px; font-size:13px; }
+    #shop{ top:6px; bottom:6px; right:6px; max-height:none; z-index:25; }
+    #shopBody{ min-height:60px; }
+    .optBox{ padding:12px 18px; }
+    .optRow{ padding:5px 0; }
+  }
 </style>
 </head>
 <body>
@@ -323,7 +339,7 @@
 <div id="select" class="overlay">
   <header>
     <h1>🏰 DOTA Kids 3D ⚔️</h1>
-    <p class="sub">Odaberi junaka i sruši protivnički prijestol! Ti + 2 bota 🔵 protiv 3 bota 🔴 <span class="ver">v0.35</span></p>
+    <p class="sub">Odaberi junaka i sruši protivnički prijestol! Ti + 2 bota 🔵 protiv 3 bota 🔴 <span class="ver">v0.36</span></p>
   </header>
   <div id="loadBar">⏳ Učitavam 3D modele…</div>
   <div class="selWrap">
