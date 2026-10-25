@@ -1,124 +1,125 @@
-/* 🗣️ Glasovi junaka (Fish Audio) — replike i glas svakog junaka
+/* 🗣️ Glasovi junaka (Fish Audio, engleski) — replike i glas svakog junaka
    Datoteke: assets/voice/<id junaka>/<ključ>.mp3
    Ključevi: pick (odabir), move1/move2 (hodanje), attack (napad na junaka), ult (ulti),
              kill (pobjeda nad junakom), death (pogibija), respawn (povratak u igru)
-   Oznake u [zagradama] su upute za glumu (Fish Audio) — u oblačiću se ne prikazuju. */
+   [Upute u zagradama] govore glumcu (model drama-3) kako da izgovori repliku; imena su
+   napisana kako se izgovaraju na engleskom (Zharko, Munya, Zooya…). */
 const VOICE_KEYS = ['pick', 'move1', 'move2', 'attack', 'ult', 'kill', 'death', 'respawn'];
 const VOICES = {
-  vitez: { voice: 'aabfa168f35645af9aaa3cdaa442a66c',   // Hrvatski Muški Glas — dubok, samouvjeren
-    pick: 'Lavko, hrabri vitez, spreman za boj!', move1: 'Naprijed, hrabro!', move2: 'Idemo, junaci!',
-    attack: 'Za kraljevstvo!', ult: '[angry] Čujte kraljev urlik!', kill: 'Pravda pobjeđuje!',
-    death: '[sighing] I lavovi ponekad padnu...', respawn: 'Lav se vraća, jači nego prije!' },
-  zarko: { voice: 'f69639af4278450c88c7637ff9bd8a87',   // Živahan Bosanski Glas — brz, vatren
-    pick: 'Žarko je tu! Tko je naručio vatru?', move1: 'Pazite, vruće je!', move2: 'Letim, letim!',
-    attack: 'Ispeći ću te kao kokice!', ult: '[excited] Zmajev dah! Sve u plamen!', kill: '[laughing] Malo prepečeno!',
-    death: 'Ajoj... ugasio sam se...', respawn: 'Plamen opet gori!' },
-  ledena: { voice: 'e87d1b2fc7ed40d2940e69068b0ca726',  // Jasna Ženski Glas — mirna, hladna
-    pick: 'Ledena. Ohladi se, stigla sam.', move1: 'Klizim!', move2: 'Brrr, baš lijep dan!',
-    attack: 'Smrzni se!', ult: 'Ledeno doba počinje!', kill: 'Sad si ledena kocka.',
-    death: '[sad] Topim se...', respawn: 'Hladna i spremna!' },
-  strijela: { voice: '3aa01f629872471e8c8f2e41ffef16de', // Mlada Vlogerica — vesela, lukava
-    pick: 'Strijela, najlukavija lisica u šumi!', move1: 'Tiho, kao lisica.', move2: 'Na putu sam!',
-    attack: 'Na nišanu si!', ult: 'Sokolovo oko! Vidim te!', kill: 'Ravno u metu!',
-    death: 'Ups... promašila sam.', respawn: 'Lisica se vratila!' },
-  listko: { voice: 'af29d14bf4114c258e335370877ef67b',  // Mirni Muški Glas — spor i blag
-    pick: 'Polako, ali sigurno. Listko je tu.', move1: 'Korak po korak.', move2: 'Idem ja, polako.',
-    attack: 'Šuma se brani!', ult: 'Šumsko srce, izliječi nas!', kill: 'Priroda uvijek pobijedi.',
-    death: '[sighing] Vrijeme je za drijemež...', respawn: 'Proljeće je! Opet rastem.' },
-  munja: { voice: 'c1b35842f122421cae4e606236599f1c',   // Brzi muški glas — mlad, munjevit
-    pick: 'Munja! Brži od groma!', move1: 'Juhu, brzina!', move2: 'Već sam tamo!',
-    attack: 'Bljesak i bum!', ult: '[excited] Gnjev oluje! Grmi!', kill: 'Prebrzo za tebe!',
-    death: 'Ajme, nestalo mi je struje...', respawn: 'Napunjen sam! Idemo!' },
-  skokica: { voice: '9a67ac6a4d1a4be7925305b938b6c175', // Mladi Razigrani Glas — razigrana žabica
-    pick: 'Kva-kva! Skokica skače u akciju!', move1: 'Hop, hop!', move2: 'Skok, skok, skok!',
-    attack: 'Uhvatit ću te jezikom!', ult: 'Veliki val! Svi u vodu!', kill: '[laughing] Kva-ha-ha! Ulovljen!',
-    death: 'Kvaaa... ajoj...', respawn: 'Iz lokve ravno u boj!' },
-  orlina: { voice: 'b677d20c98ed4581bfd8fa46952cfa8c',  // Energična Radio Voditeljica — ponosna, glasna
-    pick: 'Orlina! S visine vidim sve.', move1: 'Krila u vjetar!', move2: 'Letim iznad svih.',
-    attack: 'Vidim plijen!', ult: 'Kralj neba! Sokoli, naprijed!', kill: 'Orlovom oku nitko ne pobjegne.',
-    death: 'Pala sam s neba...', respawn: 'Opet sam u zraku!' },
-  luna: { voice: '98ca6cee75754dc7939e0701d01f669f',    // Iwaly — tiha, tajanstvena
-    pick: 'Mijau... Luna sja u noći.', move1: 'Tiho, kao sjena.', move2: 'Mjesec me vodi.',
-    attack: 'Mjesečeva oštrica!', ult: 'Sakrijte se u mjesečevu sjenu!', kill: 'Mijau! Laku noć.',
-    death: 'Mijau... još mi je ostalo osam života.', respawn: 'Novi život, ista mačka!' },
-  tragac: { voice: '19468ccce84c4969b21ba097e849f228',  // Srpski muški glas — miran, lukav
-    pick: 'Tragač. Za šaku zlatnika nađem svakoga.', move1: '[whispering] Pssst... tiho.', move2: 'Pratim trag.',
-    attack: 'Ti si moja meta!', ult: 'Ucjena! Nagrada je moja!', kill: '[chuckling] Zlatnici su moji!',
-    death: 'Netko me... pronašao...', respawn: 'Natrag u sjenu.' },
-  jez: { voice: '1849186a8a824dc892c6b38348d8141b',     // Hakala — hrapav, gunđalo
-    pick: 'Bodljo! Ne diraj, bode!', move1: 'Dobro, dobro, idem.', move2: 'Kotrljam se!',
-    attack: 'Evo ti bodlji!', ult: '[angry] Juriš bodlji! S puta!', kill: 'Rekao sam ti da bode!',
-    death: 'Joj, moje bodlje...', respawn: 'Bodlje su opet oštre!' },
-  slon: { voice: 'd7dc6b903e89473b9000d06a872ca70c',    // Stariji Muški Glas — dubok, polagan
-    pick: 'Tutnjo... velik i jak... čuvam prijatelje.', move1: 'Bum... bum... bum...', move2: 'Tutnjim naprijed.',
-    attack: 'Surla-zamah!', ult: '[angry] Stampedo! Zemlja se trese!', kill: 'Slon nikad ne zaboravlja.',
-    death: 'Uuuh... pao sam kao planina.', respawn: 'Zemlja opet tutnji!' },
-  pcela: { voice: '372916154fc34a1ab32440a8a21efed4',   // Veseli Ton — visok, zujav
-    pick: 'Zuja je tu! Bzzz!', move1: 'Zuj-zuj, letim!', move2: 'Bzzz, bzzz!',
-    attack: 'Bzzz, ubod!', ult: 'Košnica! Sestrice, u napad!', kill: 'Med za mene, ubod za tebe!',
-    death: 'Bzzz... umorna sam...', respawn: 'Zuja opet leti!' },
-  sova: { voice: '1c4e7186b4434469a6d0662e5d087bd5',    // Iskusni Hrvatski Glas — mudra bakica
-    pick: 'Hu-hu... Mudra zna sve tajne noći.', move1: 'Tiho letim kroz noć.', move2: 'Hu-hu.',
-    attack: 'Noć te gleda!', ult: 'Vječna noć! Neka padne mrak!', kill: 'Mudrost uvijek pobijedi.',
-    death: 'Hu... vrijeme je za spavanje.', respawn: 'Noć se vraća, a s njom i ja.' },
-  majmun: { voice: 'eba55f2395364f1b99e3d0a6c51d2897',  // Razigrani Mladi Gnom — vragolan
-    pick: 'Hi-hi-hi! Skakač, kralj grana!', move1: 'Hop na granu!', move2: 'Hi-hi, idemo!',
-    attack: 'Štap-udarac!', ult: 'Majmunska vojska! Svi za mnom!', kill: '[laughing] Pazi na koru od banane!',
-    death: 'Ajoj, pao sam s grane...', respawn: 'Tko je za banane? Vratio sam se!' },
-  vuk: { voice: '1b0fc5ff0d784c8fa1c1c97f56f1e216',     // Duboki Hrvatski Glas — hrapav vođa čopora
-    pick: 'Sivko vodi čopor! Auuu!', move1: 'Čopore, za mnom!', move2: 'Njušim trag.',
-    attack: 'Grrr... napad!', ult: 'Vučji oblik! Auuuu!', kill: 'Čopor je jači!',
-    death: 'Joj... rep mi se spustio...', respawn: 'Vuk se vraća čoporu!' },
-  gavran: { voice: '7f141a660d4e4ee3aeaa2b562d9384bc',  // Bosanski Autoritet — dubok, dramatičan
-    pick: 'Kra! Pao je mrak... i ja s njim.', move1: 'Kra, kra.', move2: 'Sjene me nose.',
-    attack: 'Kletva na tebe!', ult: 'Jato gavranova! Zamračite nebo!', kill: 'Kra-ha-ha-ha!',
-    death: 'Kraaa... nije fer...', respawn: 'Iz tame... ponovno.' },
-  hobotnica: { voice: '91526c9cbb5841858a34cb87ae739e89', // Profesionalni Muški Glas — svečani najavljivač
-    pick: 'Pipko, vladar dubina! Osam ruku, nula problema!', move1: 'Plup, plup!', move2: 'Klizim po sluzi!',
-    attack: 'Mlaz tinte!', ult: 'Vrtlog dubina! Svi u vrtlog!', kill: 'Zagrljaj pipaka nitko ne izbjegne!',
-    death: 'Blub... blub...', respawn: 'Vratio sam se iz dubina!' },
-  nosorog: { voice: 'b07db1ba849245a4b22aa40919b1ed2c', // Dubok Autoritativan Glas — glasan, jurišnik
-    pick: 'Rogo! Nitko me ne može zaustaviti!', move1: 'Makni se s puta!', move2: 'Jurim!',
-    attack: 'Juriš!', ult: '[angry] Bijes! Sad sam stvarno ljut!', kill: 'Rog je pobijedio!',
-    death: 'Uff... netko me zaustavio...', respawn: 'Ništa me ne zaustavlja!' },
-  panda: { voice: 'a5dcf9251b26443c920c96064e9b0e2b',   // Smiren muški glas — mirni majstor
-    pick: 'Bambus. Mir, bambus i malo kung-fua.', move1: 'Polako, polako.', move2: 'Njam, njam, bambus.',
-    attack: 'Grom-pljesak!', ult: 'Tri pande! Prvo mir... pa bum!', kill: 'Mir je uvijek bolji.',
-    death: 'Mmm... samo malo drijemam...', respawn: 'Naspavan i spreman.' },
-  jednorog: { voice: '259d659111b14a00b56d88dba425abd7', // Fll — vesela, čarobna
-    pick: 'Duga! Šarena i čarobna!', move1: 'Galopiram!', move2: 'Tra-la-la!',
-    attack: 'Dugin snop!', ult: '[excited] Zvjezdani galop! Jurimo zajedno!', kill: 'Bljesak duge!',
-    death: 'Ajoj, izblijedjela sam...', respawn: 'Duga je opet na nebu!' },
-  morskipas: { voice: '304e7996831044b5af4f189370cc60b3', // Dubok Muški Glas — gladan i hrapav
-    pick: 'Zubo! Gladan sam!', move1: 'Njušim nešto fino!', move2: 'Plivam, plivam!',
-    attack: 'Velik zalogaj!', ult: 'Pomama! Sad grizem sve!', kill: 'Njam! Fino!',
-    death: 'Ajoj... zubići su me izdali...', respawn: 'Još sam gladan!' },
+  vitez: { voice: '92e3ee13d7524fee904324e350a532a0',   // Epic Game Announcer — dubok, junački
+    pick: '[proud and heroic] Lavko the brave, ready for battle!', move1: '[confident] Onward!', move2: '[rallying] Forward, heroes!',
+    attack: '[battle cry] For the kingdom!', ult: "[mighty roar] Hear the king's roar!", kill: '[triumphant] Justice wins!',
+    death: '[weak, fading] Even lions fall...', respawn: '[strong and proud] The lion returns, stronger than ever!' },
+  zarko: { voice: '802e3bc2b27e49c2995d23ef70e6ac89',   // Energetic Male (Fish Audio) — mlad, vatren
+    pick: "[cocky and fiery] Zharko's here! Who ordered fire?", move1: "[playful] Watch out, it's hot!", move2: '[excited] Flying in!',
+    attack: "[cocky] You're toast!", ult: "[shouting] Dragon's breath! Feel the heat!", kill: '[laughing] A little overcooked!',
+    death: '[sad, fizzling] Aww... my flame went out...', respawn: "[pumped] The fire's back!" },
+  ledena: { voice: 'b347db033a6549378b48d00acb0d06cd',  // Selene (Fish Official) — mirna, hladna
+    pick: "[cool and calm] Ledena. Chill out, I'm here.", move1: '[light] Sliding!', move2: '[amused] Brrr, lovely weather!',
+    attack: '[icy] Freeze!', ult: '[powerful] The Ice Age begins!', kill: "[smug] You're an ice cube now.",
+    death: "[sad] I'm melting...", respawn: '[cool] Cool and ready!' },
+  strijela: { voice: '9a9cf47702da476aa4629e2506d4a857', // Hannah (Fish Official) — lukava, samouvjerena
+    pick: '[sly and playful] The slyest fox in the forest!', move1: '[sneaky] Quiet as a fox.', move2: '[cheerful] On my way!',
+    attack: '[focused] Got you in my sights!', ult: "[intense] Falcon's eye! I see you!", kill: '[proud] Bullseye!',
+    death: '[embarrassed] Oops... I missed.', respawn: '[happy] The fox is back!' },
+  listko: { voice: '291a58aa51a94326aed08115c06f0e09',  // Old Wizard — spor, topao djed
+    pick: '[slow and kind] Slow and steady... Listko is here.', move1: '[slow] Step by step.', move2: '[gentle] Going, slowly.',
+    attack: '[firm] The forest fights back!', ult: '[warm and powerful] Heart of the forest, heal us!', kill: '[calm] Nature always wins.',
+    death: '[sleepy sigh] Time for a little nap...', respawn: '[cheerful] Spring is here! Growing again.' },
+  munja: { voice: 'b5f4515fd395410b9ed3aef6fa51d9a0',   // Alex — brz i poletan
+    pick: '[fast and excited] Munya! Faster than thunder!', move1: '[thrilled] Woohoo, speed!', move2: '[quick] Already there!',
+    attack: '[fierce] Flash and boom!', ult: "[shouting] Storm's fury! Thunder!", kill: '[teasing] Too fast for you!',
+    death: '[tired] Aww, out of power...', respawn: "[energized] Fully charged! Let's go!" },
+  skokica: { voice: '091cad5003ed4e90826a92e1fadde278', // Gigi — razigrana žabica
+    pick: '[bubbly] Ribbit! Skokitsa hops into action!', move1: '[bouncy] Hop, hop!', move2: '[giggly] Boing, boing!',
+    attack: '[playful] My tongue will catch you!', ult: '[excited shout] Giant wave! Everybody in the water!', kill: '[giggling] Ribbit! Gotcha!',
+    death: '[sad croak] Riiibbit... oh no...', respawn: '[cheerful] Back from the pond!' },
+  orlina: { voice: 'e9b134e4c0b547a3894793be502314f1',  // Jasphina — ponosna, glasna
+    pick: '[proud] Orlina! I see everything from up high.', move1: '[soaring] Wings to the wind!', move2: '[confident] Soaring above!',
+    attack: '[sharp] Prey spotted!', ult: '[commanding] King of the sky! Falcons, attack!', kill: '[proud] No one escapes the eagle eye.',
+    death: '[falling, sad] I fell from the sky...', respawn: '[joyful] Back in the air!' },
+  luna: { voice: '933563129e564b19a115bedd57b7406a',    // Sarah (Fish Official) — tiha, tajanstvena
+    pick: '[soft and mysterious] Meow... Luna shines in the night.', move1: '[whisper] Silent as a shadow.', move2: '[dreamy] The moon guides me.',
+    attack: '[sharp] Moon blade!', ult: "[mystical] Hide in the moon's shadow!", kill: '[purring] Meow! Good night.',
+    death: '[soft sigh] Meow... I still have eight lives left.', respawn: '[playful] New life, same cat!' },
+  tragac: { voice: 'c5f56a6cc2ec4fa8920cb4c5889a3fb7',  // Slax — miran i lukav
+    pick: '[sly and smooth] The Tracker. For a handful of gold, I find anyone.', move1: '<whisper>Shhh... quiet.</whisper>', move2: '[low] Following the trail.',
+    attack: "[cold] You're my target!", ult: '[satisfied] Bounty! The reward is mine!', kill: '[chuckling] The gold is mine!',
+    death: '[surprised, weak] Someone... found me...', respawn: '[quiet] Back to the shadows.' },
+  jez: { voice: 'f8dfe9c83081432386f143e2fe9767ef',     // BOOK RECORD REGULAR — hrapav gunđalo
+    pick: "[grumpy] Bodlyo! Don't touch, I'm prickly!", move1: "[grumbling] Fine, fine, I'm going.", move2: '[grumpy] Rolling!',
+    attack: '[annoyed] Have some spikes!', ult: '[angry shout] Spike charge! Out of my way!', kill: '[smug] I told you I was prickly!',
+    death: '[groaning] Ouch, my spikes...', respawn: '[gruff] Spikes are sharp again!' },
+  slon: { voice: 'bf322df2096a46f18c579d0baa36f41d',    // Adrian (Fish Official) — dubok, polagan
+    pick: '[slow, deep and rumbling] Tootnyo... big and strong... I protect my friends.', move1: '[slow and heavy] Boom... boom... boom...', move2: '[deep] Rumbling forward.',
+    attack: '[mighty] Trunk swing!', ult: '[thunderous shout] Stampede! The ground shakes!', kill: '[calm and deep] An elephant never forgets.',
+    death: '[slow groan] Oooh... down like a mountain.', respawn: '[deep and strong] The ground rumbles again!' },
+  pcela: { voice: '15742afadec44b82bf52f7bb62b83f83',   // Twinko — visok, zujav
+    pick: '[high-pitched, buzzy and hyper] Zooya is here! Bzzz!', move1: '[buzzy] Bzz-bzz, flying!', move2: '[humming] Bzzz, bzzz!',
+    attack: '[cheeky] Bzzz, sting!', ult: '[excited shout] The hive! Sisters, attack!', kill: '[giggly] Honey for me, a sting for you!',
+    death: '[sleepy] Bzzz... so sleepy...', respawn: '[cheerful] Zooya flies again!' },
+  sova: { voice: 'e3cd384158934cc9a01029cd7d278634',    // Laura (Fish Official) — mudra i topla
+    pick: '[wise and mysterious] Hoo-hoo... Mudra knows all the secrets of the night.', move1: '[soft] Flying silent through the night.', move2: '[gentle] Hoo-hoo.',
+    attack: '[ominous] The night is watching you!', ult: '[commanding] Eternal night! Let darkness fall!', kill: '[calm] Wisdom always wins.',
+    death: '[sleepy] Hoo... time to sleep.', respawn: '[warm] The night returns, and so do I.' },
+  majmun: { voice: '711cf3ed00ab441a8f54a45058047b7a',  // Verity — vragolan
+    pick: '[cheeky giggle] Hee-hee-hee! Skakach, king of the trees!', move1: '[playful] Up the branch!', move2: "[giggling] Hee-hee, let's go!",
+    attack: '[excited] Staff smash!', ult: '[shouting] Monkey army! Follow me!', kill: '[laughing] Watch out for banana peels!',
+    death: '[whiny] Oops, fell off the branch...', respawn: "[cheerful] Who wants bananas? I'm back!" },
+  vuk: { voice: '80d671cd611e4bf2813816b68810b052',     // Monster — dubok, režeći
+    pick: '[growling] Sivko leads the pack! Awooo!', move1: '[commanding] Pack, follow me!', move2: '[sniffing, low] I smell a trail.',
+    attack: '[snarling] Grrr... attack!', ult: '[howling] Wolf form! Awoooo!', kill: '[proud growl] The pack is stronger!',
+    death: '[whimpering] Ow... my tail droops...', respawn: '[fierce] The wolf returns to the pack!' },
+  gavran: { voice: '98544e744e754814a6aa22229f63f475',  // horror voice narrator 2 — mračan, dramatičan
+    pick: '[dark and dramatic] Caw! Darkness has come... and so have I.', move1: '[low] Caw, caw.', move2: '[mysterious] The shadows carry me.',
+    attack: '[sinister] A curse upon you!', ult: '[dramatic shout] Flock of ravens! Darken the sky!', kill: '[evil laugh] Caw-ha-ha-ha!',
+    death: '[whiny] Caaaw... not fair...', respawn: '[ominous whisper] From the darkness... again.' },
+  hobotnica: { voice: '4d78f878f023424cb77975a6dea180a6', // Pirate — gusarski kapetan dubina
+    pick: '[boisterous] Pipko, ruler of the deep! Eight arms, zero problems!', move1: '[goofy] Bloop, bloop!', move2: '[jolly] Sliding on slime!',
+    attack: '[gruff] Ink blast!', ult: '[booming] Whirlpool of the deep! Everyone in!', kill: '[hearty laugh] No one escapes my tentacle hug!',
+    death: '[gurgling] Blub... blub...', respawn: '[jolly] Back from the deep!' },
+  nosorog: { voice: '4c6a6762e4ac4bdebdb4fa8525d054a2', // ATOMIC — glasan jurišnik
+    pick: '[loud and tough] Rogo! Nobody can stop me!', move1: '[gruff] Out of my way!', move2: '[pumped] Charging!',
+    attack: '[battle shout] Charge!', ult: "[furious] Rage! Now I'm really mad!", kill: '[triumphant] The horn wins!',
+    death: '[dazed] Oof... someone stopped me...', respawn: '[loud] Nothing can stop me!' },
+  panda: { voice: '0b74ead073f2474a904f69033535b98e',   // CALM- NORMAL — mirni majstor
+    pick: '[calm and relaxed] Bambus. Peace, bamboo, and a little kung fu.', move1: '[relaxed] Easy, easy.', move2: '[content, munching] Nom, nom, bamboo.',
+    attack: '[focused] Thunder clap!', ult: '[calm, then powerful] Three pandas! First peace... then boom!', kill: '[serene] Peace is always better.',
+    death: '[sleepy] Mmm... just a little nap...', respawn: '[refreshed] Well rested and ready.' },
+  jednorog: { voice: 'b545c585f631496c914815291da4e893', // Friendly Women (Fish Audio) — vesela, čarobna
+    pick: '[sparkly and sweet] Duga! Colorful and magical!', move1: '[cheerful] Galloping!', move2: '[singsong] Tra-la-la!',
+    attack: '[bright] Rainbow beam!', ult: "[excited] Star gallop! Let's run together!", kill: '[happy] Rainbow flash!',
+    death: "[sad] Oh no, I'm fading...", respawn: '[joyful] The rainbow is back in the sky!' },
+  morskipas: { voice: 'b0f79e4bac084142a2ca8266bd959ae5', // Grandpa — gladan i hrapav
+    pick: "[hungry and menacing] Zoobo! I'm hungry!", move1: '[sniffing] I smell something tasty!', move2: '[playful] Swimming, swimming!',
+    attack: '[growling] Big bite!', ult: '[frenzied] Frenzy! Now I bite everything!', kill: '[satisfied] Yum! Delicious!',
+    death: '[groaning] Ow... my teeth gave up...', respawn: '[hungry] Still hungry!' },
 };
-/* @remote — Fish Audio linkovi (tools/voice/gen.py iz urls.json); redom kao VOICE_KEYS.
+/* @remote — Fish Audio linkovi (tools/voice/gen.py iz urls.json); redom kao VOICE_KEYS (datum/id).
    Kad su datoteke preuzete u assets/voice/ (tools/voice/dl.py), VOICE_LOCAL = true. */
 const VOICE_LOCAL = false;
-const VOICE_REMOTE_BASE = 'https://platform.r2.fish.audio/tasks/2026-10-25/';
+const VOICE_REMOTE_BASE = 'https://platform.r2.fish.audio/tasks/';
 const VOICE_REMOTE = {
-  vitez: 'aef79d2dada044a4a895fd248698760c 9342737bc3f74975be6fda7841af6164 ca6748fc69fa47f2ab5e82807a4ec1ab fd1cd3df1a7a4657896e0397150dcaa3 d9d1638b0c9d4aa3b3c77cdba35d3e7a 89a13e25645c4e38bfbb25c9734fde18 31eedcc2aca34d8296efc6883df51f51 2d0cd9ff5e4e47bb9957006c0ed217a1',
-  zarko: '9d6bcf6744764d0eb8b5278bb9efad94 56a0326c405b48dfbd9514a72303fcd2 017ec55ddc3c4d848ebe5a23fc182973 eabcbdc3544f40f59da7665e57d4cd2a ca663921cb304ea1bd48c5efb448cc0e b087cdd8d89640f58086c8c38155f654 81b03ef94f9445c7bfa47be1a87a4385 f872d311c2d54d36b96f989e2a4f6163',
-  ledena: '204789c3942c471ab7b45efb2ba5abe9 5bc4523f34504cbf949de167fd167b0f 89049e7cc0c44ef48ffb7a04508abeec b3d34c0628bc43f0bd1d83a460513590 6114508f1ecb44cd967f340e824df59c 977f4af4c6694bbc8609a7795c088a6e 50b6b86bce614196b433e32bb1358d55 0a43ca7926d74c35928da84a8a97313a',
-  strijela: '3f0ec6710c7d4495a1ebf366731e175c 5e06de314f624d3683b1b32bc80db0f6 0bd839a8791b433996a940ed126a758e 7a8b7e55f7bc4986aba35352b1d51b6d ae374d75d02b45a5919d36c004a8af5c f041cde942b44749b508f9d20b00a6f2 bbdb691030fe4a4984059d6f374dda56 d7478d7a63254f71a974c70c2d9f1fa3',
-  listko: 'f096c96a311c4da5ac5da82af583a91d 9b061242630e4485965263915c5146db 6430115b56a645889cc0c7cdf4da54f7 0ffb6364325a4fd1a03c763a1f5a1f83 cd68ce45c7c747c39359f08b8b215077 65fbad5945d143a2a089a6672cca6f7d 36cfc777e1e44e20aa090a6f03cc911b c013a92e1fec4f79b4bbf9abc8b299e1',
-  munja: '3702a07ba8954674ad5c2ab8e4f41b5a a84b0dff683f4b7da9e0006efe14e6cc 06944f48c27141e8a65bd6ef821a2b69 16346e2c5a79439bbe4f3a52c512de85 1c75b33e2923442a8dfb5a282cf18d01 bbabb346aaea4e28a55f6cf3e90aacc5 a6ad2b44f43e4f5cb7499a794adf8da4 b435a37f16404c9ba974b0e13c02eacc',
-  skokica: 'f248eaff5f7c4eab95b064a4343720ff c98813ddeadb4cbfb3f8efe92456c37b 6475315218c84f80a51e20f1c98cf574 1b08d093ab444f50b74569020c522ff9 565bd82cafa840d88c1c1231d77519e0 3a61651e30704cdd853f24abbacbb113 65b8d803a55740a5a7c77d30a9f588e9 1aa07ace10cd44febd64d9a5256140e5',
-  orlina: '73bd2af427e3491893dda225671316b8 acaf428feafe4125a5f9b614c4cac838 f98048ed18de45e7b41052bd9f5b9375 07341d5ada264fdb96f1f22495907b5e a453a2b479654da2affa9b0573918672 82901876ee45468ca31d53b4ea04459d 86ccc8bee04948ecaecb9777fe9d4c24 0284e6cc0f6d4be3ba657a2ef61bcdb7',
-  luna: '799d64921a334de5bd4fc9bd1bdb4fa8 f85654583f444a189075c2b20101bc8b 9e7e1a8ddce94c95916e67ab9047822a 7c11da61d4624a8aab2267fdbec6bc09 96e2a387af2d4b4e9cac34d52ac17ac3 7acf19e3e94f44deb4119c049d29b594 82dc32198c67454682b61f9bef88d1c9 7104b8cad2374e9aa10f281d8c4dad17',
-  tragac: 'cd2e566649994422b7be6fab91853e48 f31dfbbaa93342fbba8bddb9c60f3655 2f1fe2bfca044916a7e9c2401270fd56 73eb7464d1f44135b3d9f4556fc14f18 d17d5e9d3e9341a1a09eeaa6db365c45 42e1823c30394e29bd3195cc5b0d3ef7 7119fa8ac3804eee88c4117d180da3bb 7d1b316f096a4bc98899a3593fd594a7',
-  jez: '9f8f4d8fbb6847418494742b12a50581 bb55103489f84ee695cc49472abcaddd f9e17b1cfb6c4d39afd13cfeb719f14b b7fe399e32e546d2a721133ac3a253b0 7d6a59b08ef248a4a31233b64520fd6d a4a1e6535f58448a96c9898374c433c3 39a28073f5654afdb88ac9902b3302a6 95cab2f0df1f4e7facf0f638471a293a',
-  slon: '0cc749e2c0a446bb8907dbefc867840f 408aab3223934fce95e554171d72af27 39c890345f45409d975df72c1d5a2077 bb8d2b29145f42d0bf1f1cf040b11f12 9df6f79f543f482cbbbc452e73115bd9 a75435d46ca14e8ba5cc6de79a382047 0c825836c4674c09a045a59c166a4a3c bf71ad7c533c451c9279dea8a57390c7',
-  pcela: 'd86d290014fd43e6bdf58c3809a58c3a 0725e2d22bec453aa55e846fa186b1c6 538e033f86e24c1791ee6db95bd73e8a 63a377dfcd7c44daa56b364c22677be0 15e0da66132c4e549d9250af785078a6 398c90f8923f4e51b5c8207322484496 577a336ce560436db11f3d327a8ccb14 16077768bddc412bab40412254991c4e',
-  sova: 'fe75579c23954be2a43a5db57d9202f8 e4e48ba8e77d4b6ebd68ce1deca368d6 ab8d0fc17d14404180bdd6591a6d6639 02a1f82eb3644a4da51b71741f61aecb fa0a93c7c796446daa09a2d6065dade5 e4c43655b79749dbb7a1166b4f09e208 0b1d25eca23e41b3b92fde810d8f0b82 af85a10d5b9c4f82b9b352ae8e0b0679',
-  majmun: 'a8b74c9e57b54ced85d68e8d72927d62 421e3d706e1f4ca2891b5d904da6b22e 76bd374f08254fa48d93ecc8bb5f65a4 22b1597ca0b84bbba8ae7c5861d8f460 e34f83de83e34074ba12d6e6c1fe5c6d 53c7146821d34d5aa2d66a1628785e5f 7bb71214f628469abe8113760e3587ba 257a2ae92db54ea891a1c3d8acee274c',
-  vuk: 'f3047bb0e86f422794c111f3f95ccde3 1ebce2fa152d4147a1fc9af4780f86ef ed8b2b495ea843d1808ca4438ca9b99b f6d4ee53132f47d49b20776f87dd6d21 14f828f28f0348969594ff76d25c712c 5b232893d3574ce7bec1cd4fdd49da42 7da37a65d6764d499d2aea700cac0782 6b1128bf09194daba503da9647696e87',
-  gavran: 'c18f20468fe14cba83c83b2b3058b68b 0b6627715fc04f3ca9ef1c601ce723de c8996184e7564bf5b3aa1f805c78ca42 70ca46f1c77c48bd9d2cf07c6625005e cf416feba0d54121a464685f901bfc66 7ea678ab2f3e436792d3a1801afdd59c d7645d555724416f859be6d7f4fc022d 48921461d40847fb89965759d612b6cd',
-  hobotnica: '3295e038a3e34c0394d7bb6a9c0f8369 38378ef68d2f4489b95256a3680fa34f b6aea535aff442e28b557775fe4612c6 767a6a39be874818be40ff2c5883a448 f825040427424df6882ae5131b636e7f 64d846e5f5e8432cb213a1cf5867c1b9 457bf93e38574b9990a8918fe36366fd b11425bca6c24d4d8bd71ef8583a62a0',
-  nosorog: 'c8cc45913fae497c9a1cab37c0c5fc84 906dec58c53a493689cb321b20c09ff2 79c261c3fb9c4d949532fe45f93b4d15 70f50e96fc164fe8a89de5580c53afd5 41e6e3774ae2499daf89b8b9e66d0f43 ac6e84139d594e1a9b67963cb2c25ce2 7bad7aa9fbe243a18a7e4b2c4fbbe20c d1c9f2ba57824a1eb84c8c5089f73911',
-  panda: '894b7f3c4a73444dbef13fa4584f1b9d eb7fe996222547b2b94f5dc5850876cb 2c0041cb396c40009b649105953fd0d4 88b7e00c3538456fabe44cbc8ba600e4 9619fd7fa29c4cfbbdbf9c350c7026d7 8d733c7478cc4822b33e714ebc3e6420 41a6fdd2380645d5ae043a9a6f8bfe8f cdddf8fed241426c9e7f7212b21c1e91',
-  jednorog: '78ef5801a9c14a46b59fb70f91f662bd b0b9c4cbd2ec49c9b46e04038c4f0d11 1009fd68d242486e9c5f7d95022a1282 9dfeb9c3a3f844fabd1a81b70078b6e3 4b3d32dde5f341f8a39dc6fefc70180e 0c494eb3f1e3468cabec9ce9e788003f 1ec38a39afb04471b61f7413cbf0899f be8a3bc5a15b45d4951631b627d66a49',
-  morskipas: 'b91e197df31847bb93611cbda8895482 f904a38cee404dd3b4703892d050e2c4 2cc38608b61a43488dc10146f50988f6 98d4149c66e642d39b80b58a39b36e83 50405450e7474170b2c7c20c52ad5eb8 0ca38cfe5da84a2992e532baaafdc5b3 6165ce23856a4bb1a81275ed96fffe1d 17dffc03f68242ba83f4132a0de22d21',
+  vitez: '2026-10-25/0c01f79c0a704bbcb6e6db2317e4c6f8 2026-10-25/b4cca4ff3d0f4feeba1a0a4d09884443 2026-10-25/403373ebb6304af9a098fdd6de626d2a 2026-10-25/bbb658b39bde4942a2cd0a1c34ef6b52 2026-10-25/ac4cd18213aa41939c1e83e290ba0909 2026-10-25/9b9bf2b2b67c47c3adf6e2b3113e10ad 2026-10-25/e31bfd82140d4a7f92f0009123c2d980 2026-10-25/26afe583c5084104b63de0d12b5837d7',
+  zarko: '2026-10-25/5489f081067648bab9d54e33a9b4af9f 2026-10-25/69464b410c0d43d69587d5fd1510d729 2026-10-25/d816abd5da1d4825b264eff0b1715c6a 2026-10-25/ec09226042e44035b95261d063ed47fd 2026-10-25/7c43870549914a52916288f544d29c08 2026-10-25/bbf0c966cfda4f67b0ead1a96119bab8 2026-10-25/f2de0de2dab54675978d5237c1e82879 2026-10-25/2acbc0227127479b9c3f07e50eb64adf',
+  ledena: '2026-10-25/4bc3d7d43910425c88b7c0fb0375270c 2026-10-25/b796717d2a0245cf811b6ac8a9a83123 2026-10-25/41bbdfec4634462384e671963196034e 2026-10-25/e2f60c3dd8da4699bf8f123e42fe4f65 2026-10-25/b9f8183ff1e54dcaa7a4fb066e579117 2026-10-25/4a39937672384873b4fe31c61e38375e 2026-10-25/01671b35271c4a609b67a7c417b423ed 2026-10-25/8260a666ad604f968e72c48b08f79eb0',
+  strijela: '2026-10-25/f5a631defffd480ead01c617c321a6c7 2026-10-25/1124693bd4804395b7716149c146f966 2026-10-25/26e527bb130d4b05870f85e41825d695 2026-10-25/d24565a3be3c49059546368b7039878e 2026-10-25/9a14e597cc164332abb184e443bffb34 2026-10-25/d2f2844c6c9744689bbded6448f6e62f 2026-10-25/c0324319a5ac41e6b208597eb01ee276 2026-10-25/1e9c615b64424ae59d4ad62d2e7f94e5',
+  listko: '2026-10-25/8f8b2ac2a9e143d497ea23478896d0df 2026-10-25/a7cd4791e1b548388a04e683cbfcc66c 2026-10-25/d3b84af9ff1f4d949f50415ec96f81a5 2026-10-25/8744ccf645824c74a68f87ced8ee816b 2026-10-25/7471ea1902a04aa093cf5eb283031034 2026-10-25/15e258e5022c4c0594ac072504a3d93c 2026-10-25/8c56de2871144b848be524d9a2e43d02 2026-10-25/d0461af6984945e2b0a3e395343663af',
+  munja: '2026-10-25/26239758058e4d52804ea928b22ba877 2026-10-25/43eaf679767546b49a4742ee95cd267d 2026-10-25/6966944a0119461594ebb87099bb3999 2026-10-25/a85be4cad48e4f56a9aa4b7fe75c5031 2026-10-25/90521999ef1c489cad99fdc63015e2df 2026-10-25/afa81d8d613840ae84e67d90ede8f574 2026-10-25/9b3bc1a6d2ec47af8daf44b371df8936 2026-10-25/60a89a735f70494a8ba81922ebd256e9',
+  skokica: '2026-10-25/3a968b7fb6564e7b844828f01d0be044 2026-10-25/87637790bfd140c78f00a741142c1648 2026-10-25/4471e37862854a80af7aa3f1964e943a 2026-10-25/8f16c5b3cc0f4cf788731a6b85dc3d19 2026-10-25/634168490d27460ba2afe90eb0753574 2026-10-25/c28f7aecce3041f0988e112ed5c7dc2a 2026-10-25/eb64917f009a43da97173daf4cd7b763 2026-10-25/c00de39075e242b2ae499bcd08f14cae',
+  orlina: '2026-10-25/6d68124570c149bd9e8948135543613a 2026-10-25/af36fcd6801f4fd0b8a45ff2a33318f6 2026-10-25/38c0e3ddbbd04dd59eaca0a5032ac7bb 2026-10-25/ce9070460778408ca06ada06531cc8f6 2026-10-25/228f6ee64d8a40b897ec40a2f5f7a130 2026-10-25/58edda1ec16b40308c164e0991fd193f 2026-10-25/6f8b8b342f9749409a0e516f2ca3eb4b 2026-10-25/7708abc065e0469ba76a4929aa46c2e4',
+  luna: '2026-10-25/bf7dc8ff6c254f89bddc928d80acb58a 2026-10-25/9d51fbc5bfc3448a931464e39d7449e2 2026-10-25/86ecbe284d9c455b87a92a056d67b9cb 2026-10-25/ffaa0c0220f248f7af6c697b7d22bc4e 2026-10-25/66b7777c6e784a83a6a5a07ee8d7d27e 2026-10-25/257efaa0e5994fbf9986a3e1be803e39 2026-10-25/884ad53b555a4b5b866daf2dc33b7cec 2026-10-25/209b03409a1940b0a6c096b133c53376',
+  tragac: '2026-10-25/25d8d016c7fa43a7b1ca1ade6ce9820f 2026-10-25/f953d79d77d5468ba552412233ad3cf9 2026-10-25/dd524ae6aed944568142938c0fd0fac8 2026-10-25/acd7d18317a34052a8cd2bc5f899b577 2026-10-25/73f0b75491e04926adf6f3b59e1df0fa 2026-10-25/3d92fe6490a042ac87c0328121ab9b56 2026-10-25/d463cf0d8e38498ab9b452216a73c08f 2026-10-25/6c9f88a8719d4fdba94e19a0707f0623',
+  jez: '2026-10-25/1cccbf80a4ff45068474c92506cd6d2e 2026-10-25/d3e73c52f448458aa0abc1672feb9e43 2026-10-25/386e8045aa0a436b8cc12096c15f27a5 2026-10-25/02937517366e4e9a8676170023a70f42 2026-10-25/9b3885d011304c00ba83442b96d1f273 2026-10-25/efdc987aa42546feaeeebf581d333b73 2026-10-25/943df7c50bcd4caa9d4e95d0d3bf3412 2026-10-25/7d95827838384ba0a58de1ff22e10830',
+  slon: '2026-10-25/bbbbf97ebe0a4a3e9bf4cb8855e23d4d 2026-10-25/9760de2fa4e64e2bb01c34897b3d8b22 2026-10-25/3c63f065b5064241ab3ad40024b550c5 2026-10-25/8e8f58eb254c4ca18b3780a992b4e3db 2026-10-25/75a7bc5d032540e397658305fd6ece32 2026-10-25/8f149e5bef1549eabbdf3ca9c66f88d1 2026-10-25/0e27e6a7f1f142f1990f25610f874e30 2026-10-25/0a90924780ec4a0b8353b1d028595dfb',
+  pcela: '2026-10-25/2c38030849a34385b54474a6f47f01cb 2026-10-25/e9e248d8380349b2b55d819268a1fe6e 2026-10-25/90e3f40f2d8244a18e5bbf60acc3ef48 2026-10-25/ae7a18d9db4c474db293cea026d2b17b 2026-10-25/0c900a525ba144cfa2ec00a7f1f21f14 2026-10-25/5da9f991c4d043e0a96ceade5ae1a68b 2026-10-25/af9e67ce8a994fafb0cb6cb2d8f94906 2026-10-25/66c303a3596e4293b90870b8e6485e3e',
+  sova: '2026-10-25/232491eee1e74ccf9187354e41053af2 2026-10-25/44421f4308024a7ea6153cd4ffa38982 2026-10-25/aa24def846d54a1dad24a3e8e9073afe 2026-10-25/54d7ac0261f6456cab27070eb633dbb4 2026-10-25/655b22632f4e460982bad4c9517ec49d 2026-10-25/d5a2f022cafa4066a52e13c7981da211 2026-10-25/94ec09b9345d4773b6404a063b4abd03 2026-10-25/6dc4ad6c400f421eba52881363a6cb44',
+  majmun: '2026-10-25/a095d333a11e4c03a7bab15e755ac1f7 2026-10-25/38b352fc20b1453f956295132e74c29b 2026-10-25/f86c596c544a40a2a245227165392e52 2026-10-25/354d787d4fe1451993ea1b873a62d681 2026-10-25/91d2633c4445439ea95970bbb988008c 2026-10-25/202b1732676843dcbdcb01dc8edc99a4 2026-10-25/1552f49593f8484193a07268a9a7e2c1 2026-10-25/fc6913f7dd194cda99ba3ccc97099adf',
+  vuk: '2026-10-25/4846b5057c8848b890cc2de24f0e3a5a 2026-10-25/58fd3a7a9e0143d4986bd24904d79a3e 2026-10-25/73475fe09ea14de7b82c81245a8e82d2 2026-10-25/736f3f8bd64e43288a8d245848f371f6 2026-10-25/23688624a3dc41deb5e6aeac6269bd01 2026-10-25/678a673b2d514553bad60497265be860 2026-10-25/1c4f301a95544b42ae5e66e584ce6928 2026-10-25/073e7f16114047fd959b69f5c5feb56a',
+  gavran: '2026-10-25/d15cc45caf1e44eebf5aa8f937e974eb 2026-10-25/cb79ddb8bd3c47ab9adc0e9e3b4e0016 2026-10-25/931d4ee700a34528a4c66fd126d0ae28 2026-10-25/f2e13b09ce354404ae981b7422d0421b 2026-10-25/f8bae7e8ba964cdba234fd6bd0f2c590 2026-10-25/c6150382b5d5464091b05d641d3244ed 2026-10-25/ea9aca53893144029e0f61a5dfa18717 2026-10-25/350849b7cbba4a78bfb34a2c08e440d1',
+  hobotnica: '2026-10-25/18a7c664482c4a47a17da5d79bb87e1c 2026-10-25/6a800e67f6544ae9ad71e570b3396fdd 2026-10-25/54b41d700f3f43fa843f3236c964f203 2026-10-25/1ddd3bbe029a4f4ba3f265eaf1de2bc4 2026-10-25/85799223e8ce403c94bf61215e063c17 2026-10-25/a822fbd9fc6047f3b001873c6bd99b20 2026-10-25/4fe1bf22f8cd45158773b528d2defa95 2026-10-25/2828233558024c28ac088f31977bef52',
+  nosorog: '2026-10-25/882e647656054fe79332d39f1fc11a6d 2026-10-25/e5f12f31dde14bc79c93f827ee4e21d1 2026-10-25/bdcf853293664a6297eba74303470ef7 2026-10-25/4b7f9b8514e44b95872fb25a366cea7c 2026-10-25/cba1a0524a89404dbeec4b135442db93 2026-10-25/35d0d434604e4ade87e11e1d991fec44 2026-10-25/7166b760477f44dcbfe3d30eafd25cf2 2026-10-25/622e50eeec4e4dfaa5152de526f12961',
+  panda: '2026-10-25/0e3e705bc2c44a97855f5708db47e502 2026-10-25/651ac0db169d4799900e9753029adf26 2026-10-25/d7b53ecabdf6466aa92cfef99f220d7e 2026-10-25/9c03f68a74144925870c554d71f11d39 2026-10-25/e261bc8917e94d40b44aa6d32b7dd07c 2026-10-25/f46b4632c8f14b809801f4f1a23f30a6 2026-10-25/7353d21dea694c7c83597e9dde206355 2026-10-25/7bdd01ca91274ec7bddcb437db40065b',
+  jednorog: '2026-10-25/adea971db423444fad9e85d524b356b3 2026-10-25/c7ba1f6adc9040c5877047f89e8c7efb 2026-10-25/a30e3e56300f49baa8a122d2f1a2311a 2026-10-25/78a82fbcd0004426ad84ff4834df7213 2026-10-25/d586224fa0574061b669ca11e23f3fbd 2026-10-25/e03070f672d24450a7f5e469d4047e03 2026-10-25/841694e5b03443858620c5c07859e919 2026-10-25/2f05ab6e9e9441e6a9cf97755a6b0914',
+  morskipas: '2026-10-25/3f6811067db64bddb7d61e14cae18e49 2026-10-25/0fd120c5fd3b44b48d30325035411238 2026-10-25/fb9f80ba450146eda6e6dab8c9bb560b 2026-10-25/cd09b796d32b433b856339ad8ccf0550 2026-10-25/2ed5dc661a284f6faaab17371c22b707 2026-10-25/fc8dbcdb9e444f07b47813d3ab97d8db 2026-10-25/b93a99ce06514e539af0db6a59015f3d 2026-10-25/b689a9eb8aa74063a94feb112f283390',
 };

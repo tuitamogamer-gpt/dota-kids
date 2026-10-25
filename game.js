@@ -3549,17 +3549,18 @@ function voxSrc(id, key){
 }
 function voxWarm(src){ const el = new Audio(); el.preload = 'auto'; el.src = src; return src; }   // napuni predmemoriju preglednika
 // učitaj repliku: Web Audio (točno i radi na iPadu); ako ne ide (file://, poslužitelj ne dopušta), običan <audio>
+// VOX.buf čuva gotove replike (AudioBuffer ili adresu za <audio>) da voxSay može krenuti odmah
 function voxLoad(id, key){
   const k = id + '/' + key;
   if(VOX.ld[k]) return VOX.ld[k];
   const src = voxSrc(id, key);
   if(!src) return (VOX.ld[k] = Promise.resolve(null));
   const a = !VOX.useEl && location.protocol !== 'file:' && typeof fetch === 'function' ? ac() : null;
-  if(!a) return (VOX.ld[k] = Promise.resolve(voxWarm(src)));
+  if(!a) return (VOX.ld[k] = Promise.resolve(VOX.buf[k] = voxWarm(src)));
   return (VOX.ld[k] = fetch(src).then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); })
     .then(ab => new Promise((res, rej) => a.decodeAudioData(ab, res, rej)))
     .then(b => (VOX.buf[k] = b))
-    .catch(() => { VOX.useEl = true; return voxWarm(src); }));
+    .catch(() => { VOX.useEl = true; return (VOX.buf[k] = voxWarm(src)); }));
 }
 function voxStop(){
   if(VOX.cur){ VOX.cur.stop(); VOX.cur = null; }
@@ -3602,6 +3603,8 @@ function voxSay(id, key, opt){
   }
   VOX.pendPri = pri; VOX.pendT = now;
   const token = ++VOX.req;
+  const ready = VOX.buf[id + '/' + key];
+  if(ready){ VOX.pendPri = -1; voxStart(ready, pri, opt.gain || 1); return; }   // već učitano — odmah, i kad kadar kasni (prvi ulti, slab tablet)
   voxLoad(id, key).then(x => {
     if(token !== VOX.req) return;
     VOX.pendPri = -1;

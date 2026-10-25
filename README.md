@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.32: junaci govore! Svaki od 22 junaka ima svoj glas na hrvatskom (Fish Audio) — javljaju se kad ih odabereš, kad bace ulti, pobijede, padnu i vrate se u igru!** 🗣️🦁🐝🦈 (v0.31: ciljanje mišem kao u LoL-u, 30 s pripreme)
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.33: junaci govore engleski! Svih 22 junaka dobilo je nove glasove i replike na engleskom, kao u pravom LoL-u i DotA-i (Fish Audio, glumački model drama-3) — javljaju se kad ih odabereš, kad bace ulti, pobijede, padnu i vrate se u igru!** 🗣️🇬🇧🦁🐝🦈 (v0.32: glasovi junaka, v0.31: ciljanje mišem kao u LoL-u, 30 s pripreme)
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -19,14 +19,16 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
 
 ## Što je u igri
 
-- 🗣️ **Glasovi junaka** (v0.32) — kao u LoL-u i DotA, svaki junak ima **svoj glas i 8 replika na hrvatskom** (176 replika, napravljeno s [Fish Audio](https://fish.audio)):
-  - 🎙️ **22 različita glasa** po karakteru: hrabri Lavko, vatreni Žarko, hladna Ledena, lukava Strijela, spori Listko, munjeviti Munja, razigrana Skokica, ponosna Orlina, tajanstvena Luna, šaptač Tragač, gunđalo Bodljo, duboki Tutnjo, zujava Zuja, mudra bakica Mudra, vragolan Skakač, hrapavi Sivko, dramatični Mrak, svečani Pipko, glasni Rogo, mirni Bambus, čarobna Duga i gladni Zubo
-  - 👆 **odabir** — klikneš junaka na početnom ekranu i on se predstavi („Lavko, hrabri vitez, spreman za boj!”)
-  - 🌟 **ulti** — svaki junak vikne svoj ulti („Zmajev dah! Sve u plamen!”, „Stampedo! Zemlja se trese!”), a **ulti protivnika i suigrača u blizini** isto čuješ
-  - 🏆 **pobjeda nad junakom**, 💀 **pogibija** („Mijau… još mi je ostalo osam života.”) i ⏳ **povratak u igru**
+- 🗣️ **Glasovi junaka** (v0.32, na engleskom od v0.33) — kao u LoL-u i DotA, svaki junak ima **svoj glas i 8 replika na engleskom** (176 replika, napravljeno s [Fish Audio](https://fish.audio)):
+  - 🇬🇧 **engleski kao u pravim igrama** — djeca usput uče engleski, a imena junaka ostaju naša (Lavko, Žarko, Zuja, Zubo…) i izgovaraju se kako treba
+  - 🎙️ **22 različita glasa** po karakteru: hrabri Lavko, vatreni Žarko, hladna Ledena, lukava Strijela, spori djed Listko, munjeviti Munja, razigrana Skokica, ponosna Orlina, tajanstvena Luna, šaptač Tragač, gunđalo Bodljo, duboki Tutnjo, zujava Zuja, mudra Mudra, vragolan Skakač, režeći Sivko, dramatični Mrak, gusar Pipko, glasni Rogo, mirni Bambus, čarobna Duga i gladni Zubo
+  - 👆 **odabir** — klikneš junaka na početnom ekranu i on se predstavi („Lavko the brave, ready for battle!”)
+  - 🌟 **ulti** — svaki junak vikne svoj ulti („Dragon's breath! Feel the heat!”, „Stampede! The ground shakes!”), a **ulti protivnika i suigrača u blizini** isto čuješ
+  - 🏆 **pobjeda nad junakom**, 💀 **pogibija** („Meow... I still have eight lives left.”) i ⏳ **povratak u igru**
   - 🚶 **ponekad dok hodaš ili napadaš** — kratka replika, ali ne na svaki klik (hodanje najviše svakih 12 s, napad svakih 7 s); držanje miša ne priča
   - 🔇 govori **samo jedan glas u isto vrijeme** — važnija replika (ulti, pobjeda, pogibija) prekida manje važnu, a manje važna ne prekida važniju; prati 🔊 glasnoću i 🎵 zvuk, a u ⚙️ postavkama ih možeš **isključiti** (🗣️ Glasovi junaka)
   - 📱 radi i na iPadu/iPhoneu (zvuk se „otključa” prvim dodirom) i u mrežnoj igri (gost čuje svog junaka)
+  - ⚡ učitana replika krene istog trena, pa se ne preskoči ni kad igra na tren zastane (npr. prvi ulti na slabijem tabletu) (v0.33)
   - 📝 replike i odabrani glasovi su u [`voices.js`](voices.js); igra učitava samo replike tvog junaka i ulti ostalih junaka u meču
 
 - 🎯 **Ciljanje mišem, indikatori i priprema** (v0.31) — popravci po prijavama testera:
@@ -288,7 +290,7 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
 
 ### 🗣️ Glasovi junaka (Fish Audio)
 
-Replike su u [`voices.js`](voices.js) (svaki junak: Fish Audio glas + 8 replika; oznake poput `[excited]` ili `[sighing]` govore glumcu kako da izgovori). Zvuk je napravljen modelom **s2.1-pro** (na hrvatskom je zvučao prirodnije od modela drama-3). Linkovi generiranih datoteka su u [`tools/voice/urls.json`](tools/voice/urls.json), a `python3 tools/voice/gen.py` ih upisuje u `voices.js`. Igra ih zasad pušta izravno s Fish Audio poslužitelja (trajni linkovi); kad je pristup `*.fish.audio` dopušten, `python3 tools/voice/dl.py` preuzme sve u `assets/voice/<junak>/<replika>.mp3`, skrati tišinu, izjednači glasnoću i prebaci igru na lokalne datoteke (`VOICE_LOCAL = true`).
+Replike su u [`voices.js`](voices.js) (svaki junak: Fish Audio glas + 8 replika na engleskom; upute poput `[proud and heroic]` ili `<whisper>…</whisper>` govore glumcu kako da izgovori, a imena su napisana kako se izgovaraju na engleskom, npr. Zharko, Zooya). Zvuk je napravljen glumačkim modelom **drama-3** (čist i izražajan; s2.1-pro je na engleskom dodavao jeku). Linkovi generiranih datoteka su u [`tools/voice/urls.json`](tools/voice/urls.json) (stari hrvatski glasovi iz v0.32 ostaju u [`tools/voice/urls_hr.json`](tools/voice/urls_hr.json)), `python3 tools/voice/rec.py junak ključ=task_id …` dodaje nove, a `python3 tools/voice/gen.py` ih upisuje u `voices.js`. Igra ih zasad pušta izravno s Fish Audio poslužitelja (trajni linkovi); kad je pristup `*.fish.audio` dopušten, `python3 tools/voice/dl.py` preuzme sve u `assets/voice/<junak>/<replika>.mp3`, skrati tišinu, izjednači glasnoću i prebaci igru na lokalne datoteke (`VOICE_LOCAL = true`).
 
 ### 🧸 3D modeli (Blender)
 
