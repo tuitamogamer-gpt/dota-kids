@@ -1517,9 +1517,11 @@ function buildStatic3D(){
 }
 
 /* ---------- prsten dometa igrača ---------- */
+let playerRingR = 0;
 function buildPlayerRing(){
   if(playerRing3){ scene3.remove(playerRing3); disposeGroup(playerRing3); playerRing3 = null; }
   if(!player || player.atkRange <= 100) return;
+  playerRingR = player.atkRange;
   const g = new THREE.RingGeometry(player.atkRange - 4, player.atkRange, 64);
   const m = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.12,
     side: THREE.DoubleSide, depthWrite: false });
@@ -2282,7 +2284,7 @@ function ensureUnitMesh(u){
 
 /* ---------- zone, projektili, oznake, munje, rune ---------- */
 /* zone moći: po emojiju moći biramo 3D efekt */
-const ZONE_FX = { '☄️': 'meteor', '❄️': 'snow', '🏹': 'arrows', '🌱': 'roots', '🥶': 'ice', '🌊': 'wave', '🍯': 'swarm', '🏺': 'swarm', '🐦‍⬛': 'crows', '🪶': 'feathers' };
+const ZONE_FX = { '🌰': 'acorns', '☄️': 'meteor', '❄️': 'snow', '🏹': 'arrows', '🌱': 'roots', '🥶': 'ice', '🌊': 'wave', '🍯': 'swarm', '🏺': 'swarm', '🐦‍⬛': 'crows', '🪶': 'feathers' };
 /* v0.31: krug zone (meteor, kiša strijela, korijenje…) leži NA terenu kao i indikatori ciljanja — prije je bio
    ravan disk koji se na nasipu i u rijeci skrivao pod tlom, pa se nije vidjelo kamo moć pada */
 function zoneDrapeH(x, z, gh){ return Math.max(groundHeight(x, z), 6.4) + 3 - gh; }
@@ -2378,6 +2380,13 @@ function zoneTickFx(z, g){
   const gh = groundHeight(z.x, z.y);
   if(g.visible) spellLight(z.x, z.y, gh + 60, z.color || '#ffffff', 1.7, 0.45, z.r * 1.8 + 120);
   if(k === 'arrows') fxRain('proj_arrow', z.x, z.y, z.r, 12, { scale: 40, pointDown: true, fall: 0.3, hold: 0.9, rest: 12, height: 380 });
+  else if(k === 'acorns'){   // 🌰 Kiša žirova: žirovi padaju, odskoče i prasnu u prašinu
+    fxRain('proj_acorn', z.x, z.y, z.r, 10, { scale: 30, spin: true, fall: 0.32, hold: 0.45, rest: 6, height: 460, trail: '#fbbf24' });
+    for(let i = 0; i < 8; i++){
+      const a = Math.random() * TAU, d = Math.sqrt(Math.random()) * z.r;
+      fxSpawn(z.x + Math.cos(a) * d, z.y + Math.sin(a) * d, gh + 6, i % 2 ? '#c9a46a' : '#92400e', { spd: 60, up: 60, grav: -80, life: 0.5, size: 18 });
+    }
+  }
   else if(k === 'snow'){
     for(let i = 0; i < 14; i++){
       const a = Math.random() * TAU, d = Math.random() * z.r;
@@ -2504,11 +2513,11 @@ const PROJ_BY_EMOJI = { '🔥': 'proj_fireball', '🧊': 'proj_ice', '🎯': 'pr
   '🌰': 'proj_acorn', '🌠': 'proj_moon', '👅': 'proj_tongue', '🦅': 'proj_hawk', '🐝': 'proj_bee', '🟢': 'proj_slime', '🌵': 'proj_quill', '🖤': 'proj_ink',
   '🌈': 'proj_rainbow', '🍌': 'proj_banana', '🕸️': 'proj_net' };
 const PROJ_BY_SHOT = { arrow: 'proj_arrow', feather: 'proj_feather', fire: 'proj_fireball', ice: 'proj_ice', leaf: 'proj_acorn',
-  bolt: 'proj_bolt', tower: 'proj_bolt', rainbow: 'proj_rainbow' };
+  bolt: 'proj_bolt', tower: 'proj_bolt', rainbow: 'proj_rainbow', pellet: 'proj_pellet' };
 const PROJ_TRAIL = { proj_fireball: ['#ff7a1a', '#ffe26b'], proj_ice: ['#bfe6ff', '#ffffff'], proj_moon: ['#c4b5fd', '#fff7d6'],
   proj_star: ['#fde68a'], proj_bolt: ['#ffffff'], proj_hawk: ['#fde68a'], proj_acorn: ['#bef264'], proj_feather: ['#f8fafc'], proj_arrow: [],
   proj_bee: ['#fde68a'], proj_slime: ['#bef264'], proj_quill: [], proj_ink: ['#312e81', '#1e1b4b'],
-  proj_rainbow: ['#f87171', '#fbbf24', '#4ade80', '#60a5fa', '#c084fc'] };
+  proj_rainbow: ['#f87171', '#fbbf24', '#4ade80', '#60a5fa', '#c084fc'], proj_pellet: ['#e5e7eb', '#fde68a'] };
 function projModelName(p){
   return (p.emoji && PROJ_BY_EMOJI[p.emoji]) || (p.shot && PROJ_BY_SHOT[p.shot]) || null;
 }
@@ -2531,6 +2540,7 @@ function projScale(name, p){
     case 'proj_rainbow': return p.emoji ? 54 : 30;
     case 'proj_banana': return 46;
     case 'proj_net': return 70;
+    case 'proj_pellet': return 26;
   }
   return 30;
 }
@@ -2539,7 +2549,7 @@ function buildProjMesh(p){
   const ud = g.userData;
   const name = MODELS.ready ? projModelName(p) : null;
   const team = p.team != null ? p.team : (p.src ? p.src.team : 0);
-  const m = name ? modelInstance(name, team, projScale(name, p)) : null;
+  const m = name ? modelInstance(name, team, projScale(name, p) * (p.crit ? 1.45 : (p.big ? 1.6 : 1))) : null;
   if(m){
     g.add(m);
     ud.model = m; ud.name = name;
@@ -2557,7 +2567,13 @@ function buildProjMesh(p){
       basicMat(p.color));
     g.add(ball);
   }
-  const noGlow = name === 'proj_arrow' || name === 'proj_feather' || name === 'proj_acorn' || name === 'proj_hawk' || name === 'proj_tongue' || name === 'proj_bee' || name === 'proj_quill' || name === 'proj_banana' || name === 'proj_net';
+  const noGlow = name === 'proj_pellet' || name === 'proj_arrow' || name === 'proj_feather' || name === 'proj_acorn' || name === 'proj_hawk' || name === 'proj_tongue' || name === 'proj_bee' || name === 'proj_quill' || name === 'proj_banana' || name === 'proj_net';
+  if(p.crit || p.big){   // 💥 kritični / veliki hitac: crveno-zlatni sjaj oko projektila
+    const cg = new THREE.Sprite(glowMat(p.crit ? '#ff5a1f' : '#ffd166'));
+    cg.scale.set(110, 110, 1);
+    g.add(cg);
+    ud.critGlow = cg;
+  }
   if(!noGlow){
     const glow = new THREE.Sprite(glowMat(p.color));
     const gs = m ? p.r * 5 + 30 : p.r * 7 + 24;
@@ -2566,6 +2582,11 @@ function buildProjMesh(p){
   }
   ud.px = p.x; ud.py = p.y;
   ud.yaw = p.vx != null ? -Math.atan2(p.vy, p.vx) : 0;
+  if(p.vx != null || p.emoji || p.big || p.crit){   // vještine i veliki hici vuku svjetleću vrpcu
+    const tc = p.crit ? '#ff5a1f' : (p.big ? '#fde047' : ((name && PROJ_TRAIL[name] && PROJ_TRAIL[name][0]) || p.color || '#ffffff'));
+    ud.trailCol = new THREE.Color(tc).multiplyScalar(0.9);
+    ud.trailW = Math.max(9, Math.min(26, (p.r || 8) * 1.1));
+  }
   ud.sx = p.sx != null ? p.sx : (p.src ? p.src.x : p.x);
   ud.sy = p.sy != null ? p.sy : (p.src ? p.src.y : p.y);
   const sk = p.src ? p.src.kind : (p.shot === 'tower' ? 'tower' : 'hero');
@@ -2594,7 +2615,7 @@ function syncProj(p, g, tAnim, dt){
   const m = ud.model;
   if(m){
     // nagib po putanji (luk strijele)
-    if(ud.lastH != null && (ud.name === 'proj_arrow' || ud.name === 'proj_feather' || ud.name === 'proj_bolt')){
+    if(ud.lastH != null && (ud.name === 'proj_arrow' || ud.name === 'proj_feather' || ud.name === 'proj_bolt' || ud.name === 'proj_pellet')){
       const step = Math.hypot(dx, dy) || 1;
       m.rotation.z = Math.atan2(h - ud.lastH, step) * 0.8;
     }
@@ -2611,6 +2632,15 @@ function syncProj(p, g, tAnim, dt){
       case 'proj_bolt': m.rotation.x += dt * 12; break;
       case 'proj_banana': m.rotation.y += dt * 16; break;                  // banana se vrti
       case 'proj_net': m.rotation.y += dt * 6; m.position.y = -10; break;    // mreža se okreće plosnato
+    }
+    if(ud.trailCol && seenProj(p)){
+      if(!ud.trail){ ud.trail = { pts: [], mesh: trailMesh() }; scene3.add(ud.trail.mesh); }
+      updateTrail(ud.trail, p.x, h, p.y, ud.trailCol, ud.trailW);
+    }
+    if(ud.critGlow){
+      const s = 100 + Math.sin(tAnim * 40) * 18;
+      ud.critGlow.scale.set(s, s, 1);
+      if(seenProj(p)) fxSpawn(p.x, p.y, h, Math.random() < 0.5 ? '#ff5a1f' : '#ffd166', { spd: 20, up: 10, grav: 0, life: 0.4, size: 24 });
     }
     const tr = PROJ_TRAIL[ud.name];
     if(tr && tr.length && seenProj(p) && Math.random() < 0.9){
@@ -2631,8 +2661,48 @@ function syncProj(p, g, tAnim, dt){
   else if(seenProj(p) && Math.random() < 0.85)
     fxSpawn(p.x, p.y, h, p.color, { spd: 18, up: 8, grav: 0, life: 0.35, size: Math.max(14, (p.r || 8) * 1.4) });
 }
+/* 🌠 trak iza vještine: svijetla vrpca koja se suzi i izblijedi prema repu (aditivno, boje vrhova) */
+const TRAIL_N = 16;
+function trailMesh(){
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(TRAIL_N * 2 * 3), 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(TRAIL_N * 2 * 3), 3));
+  const idx = [];
+  for(let i = 0; i < TRAIL_N - 1; i++){ const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+  geo.setIndex(idx);
+  const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false,
+    blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+  m.frustumCulled = false;
+  m.renderOrder = 4;
+  return m;
+}
+function updateTrail(tr, x, h, y, col, w){
+  const pts = tr.pts;
+  const last = pts[pts.length - 1];
+  if(!last || Math.abs(last.x - x) + Math.abs(last.y - y) > 6) pts.push({ x, h, y });
+  else { last.x = x; last.h = h; last.y = y; }
+  while(pts.length > TRAIL_N) pts.shift();
+  const P = tr.mesh.geometry.attributes.position.array, C = tr.mesh.geometry.attributes.color.array;
+  const n = pts.length;
+  for(let i = 0; i < TRAIL_N; i++){
+    const p = pts[Math.min(n - 1, i)], q = pts[Math.min(n - 1, i + 1)], o = pts[Math.min(n - 1, Math.max(0, i - 1))];
+    let dx = q.x - o.x, dy = q.y - o.y; const L = Math.hypot(dx, dy) || 1; dx /= L; dy /= L;
+    const k = n > 1 ? Math.min(1, i / (n - 1)) : 0, ww = w * (0.15 + 0.85 * k);
+    P[i * 6] = p.x - dy * ww; P[i * 6 + 1] = p.h; P[i * 6 + 2] = p.y + dx * ww;
+    P[i * 6 + 3] = p.x + dy * ww; P[i * 6 + 4] = p.h; P[i * 6 + 5] = p.y - dx * ww;
+    const f = i < n ? k * k : 0;
+    for(const j of [0, 3]){ C[i * 6 + j] = col.r * f; C[i * 6 + j + 1] = col.g * f; C[i * 6 + j + 2] = col.b * f; }
+  }
+  tr.mesh.geometry.attributes.position.needsUpdate = true;
+  tr.mesh.geometry.attributes.color.needsUpdate = true;
+}
 function projEndFx(p, g){
   const ud = g.userData;
+  if(ud.trail){   // trak se ne prekine naglo nego izblijedi
+    const m = ud.trail.mesh; ud.trail = null;
+    scene3.remove(m);
+    addFx(m, 0.25, (o, f) => o.material.color.setScalar(1 - f));
+  }
   if(ud.tongue){ scene3.remove(ud.tongue); ud.tongue = null; }
   const h = g.position.y;
   const n = ud.name;
@@ -2644,7 +2714,12 @@ function projEndFx(p, g){
   if(n === 'proj_fireball') for(let i = 0; i < 12; i++) fxSpawn(p.x, p.y, h, i % 2 ? '#ff7a1a' : '#ffe26b', { spd: 90, up: 40, grav: -40, life: 0.5, size: 26 });
   else if(n === 'proj_ice') for(let i = 0; i < 10; i++) fxSpawn(p.x, p.y, h, '#dff6ff', { spd: 80, up: 50, grav: -60, life: 0.5, size: 18 });
   else if(n === 'proj_moon') for(let i = 0; i < 12; i++) fxSpawn(p.x, p.y, h, '#e9d5ff', { spd: 70, up: 60, grav: -20, life: 0.6, size: 20 });
-  else if(n === 'proj_star' || n === 'proj_bolt') for(let i = 0; i < 6; i++) fxSpawn(p.x, p.y, h, '#fff7c2', { spd: 70, up: 30, grav: -40, life: 0.4, size: 16 });
+  else if(n === 'proj_star' || n === 'proj_bolt' || n === 'proj_pellet') for(let i = 0; i < 6; i++) fxSpawn(p.x, p.y, h, '#fff7c2', { spd: 70, up: 30, grav: -40, life: 0.4, size: 16 });
+  if((p.big || p.crit) && g.visible){   // 💥 veliki / kritični hitac: prasak na meti
+    hitSpark(p.x, p.y, h, p.big ? '#fde047' : '#ff7a3d', p.big ? 260 : 180);
+    spellLight(p.x, p.y, h, p.big ? '#fde047' : '#ff5a1f', p.big ? 3 : 2, 0.35, p.big ? 480 : 320);
+    if(p.big){ shockwave(p.x, p.y, 140, '#fde047'); shakeAt(p.x, p.y, 0.6, 0.3); }
+  }
 }
 
 function buildMarkerMesh(m){
@@ -3045,8 +3120,69 @@ function fxDebris(name, x, y, h, n, o){
     obj.instanceMatrix.needsUpdate = true;
   });
 }
+/* 💥 kritični udarac: dva crvena reza u obliku X preko mete, zvjezdani bljesak, crveno svjetlo i iskre */
+let slashTex = null;
+function slashTexture(){
+  if(slashTex) return slashTex;
+  const c = document.createElement('canvas'); c.width = 256; c.height = 64;
+  const g = c.getContext('2d');
+  const grad = g.createLinearGradient(0, 0, 256, 0);
+  grad.addColorStop(0, 'rgba(255,255,255,0)'); grad.addColorStop(0.25, 'rgba(255,255,255,0.9)');
+  grad.addColorStop(0.6, 'rgba(255,255,255,1)'); grad.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grad;
+  g.beginPath(); g.moveTo(0, 32); g.quadraticCurveTo(128, 2, 256, 32); g.quadraticCurveTo(128, 48, 0, 32); g.fill();   // tanki polumjesec
+  g.globalAlpha = 0.9; g.fillStyle = '#ffffff';
+  g.beginPath(); g.moveTo(40, 32); g.quadraticCurveTo(140, 14, 236, 32); g.quadraticCurveTo(140, 30, 40, 32); g.fill();   // bijela jezgra
+  slashTex = new THREE.CanvasTexture(c);
+  return slashTex;
+}
+function critSlashFx(u, g, bodyH){
+  const x = u.x, y = u.y, h = g.position.y + bodyH;
+  const big = u.kind === 'hero' ? 1 : 0.8;
+  for(let k = 0; k < 2; k++){
+    const mat = new THREE.SpriteMaterial({ map: slashTexture(), color: k ? '#ffd166' : '#ff3b1f', transparent: true, depthWrite: false, depthTest: false,
+      blending: THREE.AdditiveBlending, rotation: (k ? -0.75 : 0.75) + (Math.random() - 0.5) * 0.3 });
+    const s = new THREE.Sprite(mat);
+    s.renderOrder = 8;
+    const delay = k * 0.06;
+    addFx(s, 0.34 + delay, (o, f, t) => {
+      const q = Math.max(0, t - delay) / 0.34;
+      o.visible = t >= delay;
+      o.position.set(x, h + 6, y);
+      const L = 190 * big * Math.min(1, q * 4), W = 52 * big * (1 - q * 0.6);
+      o.scale.set(Math.max(1, L), Math.max(1, W), 1);
+      o.material.opacity = q < 0.25 ? 1 : Math.max(0, 1 - (q - 0.25) / 0.75);
+    });
+  }
+  hitSpark(x, y, h, '#ffb070', 210 * big);
+  spellLight(x, y, h + 10, '#ff4d2e', 2.6, 0.3, 360);
+  for(let i = 0; i < 16; i++){
+    const n = fx.list.length, a = i / 16 * TAU;
+    fxSpawn(x, y, h, i % 3 ? '#ff6a3d' : '#fff1a8', { spd: 0, up: 40, grav: -120, life: 0.45, size: 18 });
+    if(fx.list.length > n){ const p = fx.list[n], sp = 240 + Math.random() * 160; p.vx = Math.cos(a) * sp; p.vy = Math.sin(a) * sp; }
+  }
+  if(player && (u === player || distXY(x, y, player.x, player.y) < 500)) shakeAt(x, y, 0.35, 0.18);
+}
+/* ✦ bljesak na oružju prije kritičnog udarca: napadač "zablista" */
+function critGlintFx(u, impact){
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: sparkTexture(), color: '#ffe08a', transparent: true, depthWrite: false,
+    blending: THREE.AdditiveBlending }));
+  addFx(spr, impact + 0.1, (o, f, t) => {
+    const dir = u.dir || 0, gh = groundHeight(u.x, u.y), off = (u.r || 16) * 0.9 + 14;
+    o.position.set(u.x + Math.cos(dir) * off, gh + 66, u.y + Math.sin(dir) * off);
+    const k = Math.min(1, t / Math.max(0.05, impact));
+    const s = 30 + 70 * Math.sin(k * Math.PI * 0.5);
+    o.scale.set(s, s, 1);
+    o.material.rotation = t * 6;
+    o.material.opacity = t < impact ? 0.5 + 0.5 * k : Math.max(0, 1 - (t - impact) / 0.1);
+  });
+}
 function syncHitFx(u, g, bodyH, tAnim){
   const ud = g.userData;
+  if((u.critN || 0) !== (ud.critN || 0)){
+    if(ud.critN != null && g.visible) critSlashFx(u, g, bodyH);
+    ud.critN = u.critN || 0;
+  }
   if(ud.hp != null && u.hp < ud.hp - 0.5 && g.visible){
     const big = u.hp < ud.hp - 60;
     const ha = u.hitAng != null ? u.hitAng : Math.random() * TAU, side = isStructureKind(u.kind) ? 0 : (u.r || 18) * 0.6;
@@ -3143,9 +3279,18 @@ function releaseFx(u, gh, col, ult){
     if(fx.list.length > n){ const p = fx.list[n], sp = 150 + Math.random() * 150; p.vx = Math.cos(a) * sp; p.vy = Math.sin(a) * sp; }   // iskre lete naprijed
   }
 }
+/* ⚡ ulti: energija se iz kruga sjuri u junaka (implozija), pa prasne */
+function gatherFx(u, gh, col){
+  for(let i = 0; i < 28; i++){
+    const a = i / 28 * TAU, r = 200 + Math.random() * 60, n = fx.list.length;
+    fxSpawn(u.x + Math.cos(a) * r, u.y + Math.sin(a) * r, gh + 20 + Math.random() * 70, i % 2 ? col : '#ffffff', { spd: 0, up: 0, grav: 0, life: 0.3, size: 20 });
+    if(fx.list.length > n){ const p = fx.list[n]; p.vx = -Math.cos(a) * r / 0.3; p.vy = -Math.sin(a) * r / 0.3; }
+  }
+  hitSpark(u.x, u.y, gh + 60, '#ffffff', 220);
+}
 /* 🎯 efekti na mjestu cilja za magije koje nemaju projektil ni zonu */
 function castTargetFx(u, key, aim){
-  const range = { 'tragac:W': 550, 'hobotnica:E': 320, 'sova:W': 1400, 'tragac:R': 700 }[key];
+  const range = { 'tragac:W': 550, 'hobotnica:E': 320, 'sova:W': 1400, 'tragac:R': 700, 'nisan:W': 520, 'bikos:W': 650, 'bikos:R': 260 }[key];
   if(!range) return;
   const d = distXY(u.x, u.y, aim.x, aim.y), k = d > range ? range / d : 1;   // isto ograničenje dometa kao u igri
   const x = u.x + (aim.x - u.x) * k, y = u.y + (aim.y - u.y) * k, gh = groundHeight(x, y);
@@ -3170,6 +3315,42 @@ function castTargetFx(u, key, aim){
       magicCircle(x, y, 210, '#c4b5fd', 1.6, true);
       spellLight(x, y, gh + 80, '#c4b5fd', 2.4, 0.9, 600);
       break;
+    case 'nisan:W': {   // 💣 Šišarka-bomba: šišarka odleti u luku i prasne
+      const sx = u.x, sy = u.y, sh = groundHeight(sx, sy) + 50;
+      const cone = modelInstance('proj_acorn', u.team, 40);
+      const boom = () => {
+        spellLight(x, y, gh + 40, '#fb923c', 3.2, 0.45, 520);
+        shockwave(x, y, 210, '#fb923c');
+        hitSpark(x, y, gh + 40, '#ffd27a', 260);
+        for(let i = 0; i < 26; i++) fxSpawn(x, y, gh + 20, i % 3 ? '#ff7a1a' : '#ffe26b', { spd: 260, up: 120, grav: -160, life: 0.7, size: 26 });
+        for(let i = 0; i < 10; i++) smokePuff(x + (Math.random() - 0.5) * 120, y + (Math.random() - 0.5) * 120, gh + 20, '#78716c', { life: 1.4, size: 80, alpha: 0.7, up: 30, wind: 3 });
+        fxDebris('proj_acorn', x, y, gh + 30, 7, { scale: 18, speed: 300, life: 1.2 });
+        scorchFx(x, y, 120, '#1f1a17', 3);
+        shakeAt(x, y, 0.7, 0.35);
+      };
+      if(!cone){ boom(); break; }
+      addFx(cone, 0.3, (o, f) => {
+        o.position.set(lerp(sx, x, f), lerp(sh, gh + 30, f) + Math.sin(f * Math.PI) * 140, lerp(sy, y, f));
+        o.rotation.set(f * 9, 0, f * 6);
+      }, boom);
+      break;
+    }
+    case 'bikos:W': {   // 🍖 Ratna glad: narančasti trag do mete i "gladni" krug
+      let best = null, bd = 260;
+      for(const e of units){
+        if(e.team === u.team || e.dead || e.removeMe) continue;
+        const dd = distXY(x, y, e.x, e.y); if(dd < bd){ bd = dd; best = e; }
+      }
+      const tx = best ? best.x : x, ty = best ? best.y : y, th = groundHeight(tx, ty);
+      magicCircle(tx, ty, 90, '#f97316', 0.9, false);
+      for(let i = 0; i < 18; i++) fxSpawn(tx, ty, th + 50, i % 2 ? '#fb923c' : '#fde68a', { spd: 140, up: 60, grav: -80, life: 0.6, size: 20 });
+      spellLight(tx, ty, th + 60, '#f97316', 2.2, 0.5, 360);
+      break;
+    }
+    case 'bikos:R': {   // 🪓 Smrtni udarac: golemi crveni zamah sjekirom preko mete
+      cleaveFx(u, x, y);
+      break;
+    }
     case 'tragac:R': {   // 💰 Ucjena: zlatni stup i zlatnici nad metom
       let best = null, bd = 260;
       for(const e of units){
@@ -3199,7 +3380,7 @@ function castFx(u, g, key){
       magicCircle(u.x, u.y, ult ? 125 : (hid === 'item' ? 55 : 80), col, ult ? 1.35 : 0.85, ult);
       spellLight(u.x, u.y, gh + 70, col, ult ? 3.4 : 2.1, ult ? 1.0 : 0.6, ult ? 700 : 430);
       if(self) shockwave(u.x, u.y, self, col);
-      if(ult){ beamFx(u.x, u.y, col, 1.25); shakeAt(u.x, u.y, 0.35, 0.3); }
+      if(ult){ beamFx(u.x, u.y, col, 1.25); shakeAt(u.x, u.y, 0.35, 0.3); gatherFx(u, gh, col); if(u === player) screenFlash(col, 0.32); }
       releaseFx(u, gh, col, ult);
     }
   }
@@ -3432,6 +3613,166 @@ function castFx(u, g, key){
       for(let i = 0; i < 16; i++) fxSpawn(u.x, u.y, gh + 20 + Math.random() * 40, '#6b7280', { spd: 50, up: 30, grav: 0, life: 0.9, size: 34 }); break;
     case 'munja:Q':
       for(let i = 0; i < 12; i++) fxSpawn(u.x, u.y, gh + 50, '#fde047', { spd: 120, up: 40, grav: -40, life: 0.4, size: 18 }); break;
+    // ---- v0.38: Nišan i Bikoš ----
+    case 'nisan:Q': {   // 🌰 Kiša žirova: žirovi odlete visoko uvis prema cilju
+      muzzleFx(u, gh, '#fbbf24');
+      const a = u.castAim || u;
+      for(let i = 0; i < 6; i++){
+        const m = modelInstance('proj_acorn', u.team, 28);
+        if(!m) break;
+        const ox = (Math.random() - 0.5) * 60, oy = (Math.random() - 0.5) * 60, d = i * 0.05;
+        addFx(m, 0.55 + d, (o, f, t) => {
+          const k = Math.max(0, t - d) / 0.55;
+          o.visible = t >= d;
+          o.position.set(lerp(u.x, (u.x + a.x) / 2 + ox, k), gh + 60 + k * 520, lerp(u.y, (u.y + a.y) / 2 + oy, k));
+          o.rotation.set(t * 12, 0, t * 9);
+        });
+      }
+      break;
+    }
+    case 'nisan:W': muzzleFx(u, gh, '#fb923c'); break;
+    case 'nisan:E': {   // 🔭 Durbin: plavi bljesak leće i krugovi
+      const dir = u.dir || 0;
+      hitSpark(u.x + Math.cos(dir) * 26, u.y + Math.sin(dir) * 26, gh + 70, '#bae6fd', 150);
+      for(let k = 0; k < 3; k++) for(let i = 0; i < 16; i++){ const a = i / 16 * TAU; fxSpawn(u.x + Math.cos(a) * (40 + k * 60), u.y + Math.sin(a) * (40 + k * 60), gh + 10, '#7dd3fc', { spd: 40, up: 30, grav: 0, life: 0.4 + k * 0.12, size: 14 }); }
+      break;
+    }
+    case 'nisan:R': hitSpark(u.x, u.y, gh + 70, '#fca5a5', 120); break;   // 🎯 nišanjenje: laser i nišan crta syncHeroExtras
+    case 'bikos:Q': {   // 🗯️ Bojni zov: crveni valovi urlika i pukotine u tlu
+      shakeAt(u.x, u.y, 0.8, 0.45);
+      shockwave(u.x, u.y, 300, '#ef4444');
+      for(let k = 0; k < 3; k++) for(let i = 0; i < 20; i++){ const a = i / 20 * TAU; fxSpawn(u.x + Math.cos(a) * (50 + k * 90), u.y + Math.sin(a) * (50 + k * 90), gh + 40, k % 2 ? '#fca5a5' : '#ef4444', { spd: 90, up: 10, grav: 0, life: 0.45 + k * 0.15, size: 20 }); }
+      scorchFx(u.x, u.y, 140, '#3b0d0d', 1.6);
+      beamFx(u.x, u.y, '#ef4444', 0.7);
+      break;
+    }
+    case 'bikos:W': break;
+    case 'bikos:E': dust(16); break;   // 🐂 Bikovski skok (luk + doskok: LEAP_KEYS)
+    case 'bikos:R': shakeAt(u.x, u.y, 1.0, 0.45); break;
+  }
+}
+/* 🔫 bljesak iz cijevi puške (Nišan) */
+function muzzleFx(u, gh, col){
+  const dir = u.dir || 0, off = (u.r || 16) + 34;
+  const x = u.x + Math.cos(dir) * off, y = u.y + Math.sin(dir) * off;
+  hitSpark(x, y, gh + 52, col || '#ffe08a', 120);
+  spellLight(x, y, gh + 52, col || '#ffe08a', 2, 0.18, 300);
+  for(let i = 0; i < 6; i++) smokePuff(x, y, gh + 52, '#d6d3d1', { life: 0.7, size: 26, alpha: 0.6, up: 20, wind: 2 });
+}
+/* 🪓 golemi zamah sjekirom (Bikoš R): crveni luk od junaka preko mete + rez + tresak */
+function cleaveFx(u, x, y){
+  const geo = cachedGeo('cleaveArc', () => new THREE.RingGeometry(40, 230, 32, 1, -1.2, 2.4));
+  const mat = new THREE.MeshBasicMaterial({ color: '#ff2a12', transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending });
+  const inner = new THREE.Mesh(geo, mat);
+  inner.rotation.x = -Math.PI / 2;
+  const holder = new THREE.Group();
+  holder.add(inner);
+  const dir = Math.atan2(y - u.y, x - u.x), gh = groundHeight(u.x, u.y);
+  addFx(holder, 0.42, (o, f) => {
+    o.position.set(u.x, gh + 46, u.y);
+    o.rotation.set(-0.15, -dir, 0);
+    inner.rotation.z = 1.3 - 2.6 * Math.min(1, f * 2.2);
+    mat.opacity = Math.sin(Math.min(1, f * 1.6) * Math.PI);
+  });
+  const tg = groundHeight(x, y);
+  setTimeout(() => {
+    hitSpark(x, y, tg + 50, '#ff6a3d', 300);
+    spellLight(x, y, tg + 50, '#dc2626', 3.6, 0.5, 520);
+    shockwave(x, y, 180, '#dc2626');
+    for(let i = 0; i < 30; i++) fxSpawn(x, y, tg + 40, i % 3 ? '#dc2626' : '#fde68a', { spd: 280, up: 120, grav: -200, life: 0.7, size: 24 });
+    scorchFx(x, y, 110, '#3b0d0d', 2);
+  }, 120);
+}
+/* 🌀 Bikovski vrtlog: Bikoš se zavrti, crveni krug sjekire prebriše sve oko njega */
+function helixFx(u, g){
+  g.userData.spin = TAU * 1.5;
+  const gh = groundHeight(u.x, u.y);
+  const geo = cachedGeo('helixRing', () => new THREE.RingGeometry(150, 235, 48, 1, 0, TAU * 0.8));
+  const mat = new THREE.MeshBasicMaterial({ color: '#ff4a2a', transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending });
+  const m = new THREE.Mesh(geo, mat);
+  addFx(m, 0.35, (o, f) => {
+    o.position.set(u.x, gh + 30, u.y);
+    o.rotation.set(-Math.PI / 2, 0, -f * 9);
+    mat.opacity = 0.9 * (1 - f);
+    const s = 0.8 + f * 0.25; o.scale.set(s, s, s);
+  });
+  for(let i = 0; i < 20; i++){ const a = i / 20 * TAU; fxSpawn(u.x + Math.cos(a) * 200, u.y + Math.sin(a) * 200, gh + 30, i % 2 ? '#ef4444' : '#fde68a', { spd: 80, up: 40, grav: -60, life: 0.4, size: 18 }); }
+}
+/* 🎯 nišan nad metom (Savršen hitac) */
+let crossTex = null;
+function crosshairTexture(){
+  if(crossTex) return crossTex;
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  g.strokeStyle = '#ffffff'; g.lineWidth = 7;
+  g.beginPath(); g.arc(64, 64, 44, 0, TAU); g.stroke();
+  g.lineWidth = 5;
+  g.beginPath(); g.arc(64, 64, 20, 0, TAU); g.stroke();
+  for(const [x1, y1, x2, y2] of [[64, 2, 64, 34], [64, 94, 64, 126], [2, 64, 34, 64], [94, 64, 126, 64]]){ g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke(); }
+  g.fillStyle = '#ffffff'; g.beginPath(); g.arc(64, 64, 5, 0, TAU); g.fill();
+  crossTex = new THREE.CanvasTexture(c);
+  return crossTex;
+}
+/* 🌀 TP stup na odredištu, 🎯 laser nišanjenja, 🍖 glad, 🌀 vrtlog, 🎓 talent */
+function syncHeroExtras(u, g, gh, tAnim, dt, seen){
+  const ud = g.userData;
+  // 🌀 teleport: stup svjetla raste na odredištu (vidi ga i protivnik ako vidi to mjesto — kao u Doti)
+  let tpF = -1, dest = null;
+  if(u.tpChannel > 0 && u.tpDur){ tpF = 1 - u.tpChannel / u.tpDur; dest = u.tpDest; }
+  else if(u.tpDest && u.tpFrac){ tpF = 1 - u.tpFrac; dest = u.tpDest; }
+  if(tpF >= 0 && dest && (u.team === myTeam || seen || dest.team === myTeam || isVisibleTo(myTeam, dest))){
+    if(!ud.tpBeam){
+      const geo = cachedGeo('beam', () => new THREE.CylinderGeometry(1, 1, 1, 18, 1, true));
+      ud.tpBeam = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: beamTexture(), color: TEAM_LIGHT[u.team] || '#93c5fd', transparent: true, opacity: 0.8,
+        depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+      scene3.add(ud.tpBeam);
+    }
+    const b = ud.tpBeam, dh = groundHeight(dest.x, dest.y);
+    const r = 30 + 30 * tpF, h = 120 + 420 * tpF;
+    b.visible = true;
+    b.scale.set(r, h, r);
+    b.position.set(dest.x + 70, dh + h / 2, dest.y + 70);
+    b.material.opacity = 0.45 + 0.4 * Math.abs(Math.sin(tAnim * 6));
+    if(Math.random() < dt * 30) fxSpawn(dest.x + 70 + (Math.random() - 0.5) * r * 2, dest.y + 70 + (Math.random() - 0.5) * r * 2, dh + 5, TEAM_LIGHT[u.team] || '#93c5fd', { spd: 10, up: 160, grav: 0, life: 0.8, size: 18 });
+  } else if(ud.tpBeam) ud.tpBeam.visible = false;
+  // 🎯 Savršen hitac: crveni laser od Nišana do mete + nišan nad metom
+  let ct = null, cf = 0;
+  if(u.chan && u.chan.target){ ct = u.chan.target; cf = 1 - u.chan.t / u.chan.dur; }
+  else if(u.chanFx){ ct = units.find(e => e.id === u.chanFx.id); cf = u.chanFx.f; }
+  if(ct && !ct.dead && (seen || ct === player)){
+    if(!ud.laser){
+      const geo = cachedGeo('staffGeo', () => { const c = new THREE.CylinderGeometry(1, 1, 1, 8); c.rotateZ(-Math.PI / 2); return c; });
+      ud.laser = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: '#ff2d2d', transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending }));
+      ud.cross = new THREE.Sprite(new THREE.SpriteMaterial({ map: crosshairTexture(), color: '#ff3b3b', transparent: true, depthWrite: false, depthTest: false }));
+      ud.cross.renderOrder = 9;
+      scene3.add(ud.laser); scene3.add(ud.cross);
+    }
+    const sx = u.x + Math.cos(u.dir || 0) * 40, sy = u.y + Math.sin(u.dir || 0) * 40, sh = gh + 56;
+    const th = groundHeight(ct.x, ct.y) + 45, L = distXY(sx, sy, ct.x, ct.y);
+    ud.laser.visible = true; ud.cross.visible = true;
+    ud.laser.position.set((sx + ct.x) / 2, (sh + th) / 2, (sy + ct.y) / 2);
+    ud.laser.rotation.set(0, -Math.atan2(ct.y - sy, ct.x - sx), Math.atan2(th - sh, L || 1));
+    ud.laser.scale.set(Math.max(1, L), 1.2 + cf * 1.8, 1.2 + cf * 1.8);
+    ud.laser.material.opacity = 0.35 + 0.5 * cf + Math.sin(tAnim * 30) * 0.1;
+    const cs = 150 - 80 * cf;   // nišan se steže dok se nišani
+    ud.cross.position.set(ct.x, th + 10, ct.y);
+    ud.cross.scale.set(cs, cs, 1);
+    ud.cross.material.rotation = tAnim * 1.5;
+    ud.cross.material.opacity = 0.6 + 0.4 * Math.abs(Math.sin(tAnim * (6 + cf * 14)));
+  } else if(ud.laser){ ud.laser.visible = false; ud.cross.visible = false; }
+  if(!seen) return;
+  // 🍖 ratna glad: narančaste kapi i para nad metom
+  if(u.hungerT > 0 && Math.random() < dt * 9)
+    fxSpawn(u.x + (Math.random() - 0.5) * 36, u.y + (Math.random() - 0.5) * 36, gh + 60 + Math.random() * 30, Math.random() < 0.5 ? '#fb923c' : '#fdba74', { spd: 10, up: -40, grav: -60, life: 0.6, size: 14 });
+  // 🌀 Bikovski vrtlog
+  if((u.helixN || 0) !== (ud.helixN || 0)){
+    if(ud.helixN != null) helixFx(u, g);
+    ud.helixN = u.helixN || 0;
+  }
+  // 🎓 talent: zlatni stup i runski krug
+  if((u.talN || 0) !== (ud.talN || 0)){
+    if(ud.talN != null){ beamFx(u.x, u.y, '#fde047', 1.2); magicCircle(u.x, u.y, 110, '#fde047', 1.2, true); }
+    ud.talN = u.talN || 0;
   }
 }
 
@@ -3439,6 +3780,7 @@ function castFx(u, g, key){
 function pickStatusEmoji(u){
   if(u.danceT > 0) return '🎶';
   if(u.status.stun > 0) return '⭐';
+  if(u.hungerT > 0) return '🍖';
   if(u.status.immuneT > 0) return '👑';
   if(u.status.rageT > 0) return '😡';
   if(u.status.blindT > 0) return '😵';
@@ -3450,6 +3792,8 @@ function pickStatusEmoji(u){
   if(u.status.rootT > 0) return '🌱';
   if(u.status.slowT > 0) return '❄️';
   if(u.status.dmgMulT > 0) return '⚔️';
+  if(u.scopeT > 0) return '🔭';
+  if(u.armorBuffT > 0) return '🛡️';
   return '';
 }
 function angleLerp(a, b, k){
@@ -3474,8 +3818,9 @@ function animateUnit(u, g, now, dt){
     animOnce(a, nm, ts, now, 0);
     const impact = 7 / 24 / ts;
     if(u.kind === 'hero' && g.visible){
-      if(!u.projSpeed) swingFx(u, nm === 'attack2', impact, heavy);   // trag zamaha oružja preko kadra udarca
-      else chargeFx(u, g, impact);                                    // daljinski: sjaj u ruci dok napinje / zamahuje
+      if(!u.projSpeed) swingFx(u, nm === 'attack2', impact, heavy, u.atkCrit);   // trag zamaha oružja preko kadra udarca
+      else chargeFx(u, g, impact, u.atkCrit);                                    // daljinski: sjaj u ruci dok napinje / zamahuje
+      if(u.atkCrit) critGlintFx(u, impact);
     }
   }
   if((u.castN || 0) !== ud.castN){
@@ -3508,9 +3853,9 @@ function animateUnit(u, g, now, dt){
   a.mixer.update(dt);
 }
 /* ⚔️ trag zamaha: svijetli luk ispred junaka koji se proteže preko zamaha (blizinski napad) */
-function swingFx(u, flip, impact, heavy){
+function swingFx(u, flip, impact, heavy, crit){
   const geo = cachedGeo('swingArc', () => new THREE.RingGeometry(24, 62, 22, 1, -0.95, 1.9));
-  const col = new THREE.Color((u.hero && u.hero.abilities[0].color) || '#ffffff').lerp(new THREE.Color('#ffffff'), heavy ? 0.25 : 0.55);
+  const col = crit ? new THREE.Color('#ff4a1c') : new THREE.Color((u.hero && u.hero.abilities[0].color) || '#ffffff').lerp(new THREE.Color('#ffffff'), heavy ? 0.25 : 0.55);
   const mat = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0, side: THREE.DoubleSide,
     depthWrite: false, blending: THREE.AdditiveBlending });
   const inner = new THREE.Mesh(geo, mat);
@@ -3518,7 +3863,7 @@ function swingFx(u, flip, impact, heavy){
   const holder = new THREE.Group();
   holder.add(inner);
   const dir = u.dir || 0;
-  const t0 = Math.max(0, (impact || 0.25) - 0.1), dur = 0.22, big = heavy ? 1.35 : 1;
+  const t0 = Math.max(0, (impact || 0.25) - 0.1), dur = crit ? 0.26 : 0.22, big = crit ? 1.6 : (heavy ? 1.35 : 1);
   addFx(holder, t0 + dur, (o, f, t) => {
     const k = (t - t0) / dur;   // 0 → 1 preko zamaha; udarac je na ~45 %
     o.visible = k >= 0;
@@ -3527,21 +3872,21 @@ function swingFx(u, flip, impact, heavy){
     o.position.set(u.x, gh + 34 + (flip ? 10 : 0), u.y);
     o.rotation.set(flip ? 0.35 : -0.25, -dir, 0);
     inner.rotation.z = (flip ? 1 : -1) * (0.9 - 1.8 * k);   // luk "prebriše" od jedne strane do druge
-    mat.opacity = Math.sin(Math.min(1, k * 1.4) * Math.PI) * (heavy ? 0.95 : 0.7);
+    mat.opacity = Math.sin(Math.min(1, k * 1.4) * Math.PI) * (crit ? 1 : (heavy ? 0.95 : 0.7));
     const s = (0.85 + k * 0.3) * big;
     o.scale.set(s, s, s);
   });
 }
 /* 🏹 daljinski napad: svjetlo se skupi u ruci dok junak napinje luk / zamahuje, pa bljesne pri ispaljivanju */
-function chargeFx(u, g, impact){
-  const col = (u.hero && u.hero.abilities[0].color) || TEAM_LIGHT[u.team];
+function chargeFx(u, g, impact, crit){
+  const col = crit ? '#ff5a1f' : ((u.hero && u.hero.abilities[0].color) || TEAM_LIGHT[u.team]);
   const spr = new THREE.Sprite(glowMatOwn(col));
   addFx(spr, impact + 0.12, (o, f, t) => {
     const dir = u.dir || 0, gh = groundHeight(u.x, u.y);
     const off = (u.r || 16) * 0.8 + 8;
     o.position.set(u.x + Math.cos(dir) * off, gh + 50, u.y + Math.sin(dir) * off);
     const k = t < impact ? t / impact : 1 + (t - impact) / 0.12 * 0.8;   // raste do ispaljivanja, pa kratko prasne
-    const s = t < impact ? 10 + 26 * k : 36 + 40 * (k - 1);
+    const s = (t < impact ? 10 + 26 * k : 36 + 40 * (k - 1)) * (crit ? 1.6 : 1);
     o.scale.set(s, s, 1);
     o.material.opacity = t < impact ? 0.35 + 0.5 * k : Math.max(0, 1 - (k - 1) * 1.25);
   });
@@ -3567,7 +3912,7 @@ function coinFx(x, y, n){
 }
 /* skokovi (Junački skok, Žablji skok, Obrušavanje, Mjesečev skok, Majmunski skok, Skokne čizme):
    logika premjesti junaka odmah, a model preleti lukom */
-const LEAP_KEYS = { 'vitez:E': 1, 'skokica:W': 1, 'orlina:E': 1, 'luna:E': 1, 'majmun:W': 1, 'munja:W': 1, 'item:blink': 1, 'item:force': 1, 'vuk:W': 1, 'morskipas:W': 1, 'pcela:E': 1, 'jednorog:E': 1 };
+const LEAP_KEYS = { 'bikos:E': 1, 'vitez:E': 1, 'skokica:W': 1, 'orlina:E': 1, 'luna:E': 1, 'majmun:W': 1, 'munja:W': 1, 'item:blink': 1, 'item:force': 1, 'vuk:W': 1, 'morskipas:W': 1, 'pcela:E': 1, 'jednorog:E': 1 };
 function startLeap(u, g, now, maxH){
   const ud = g.userData;
   if(ud.lastX == null) return;
@@ -3591,6 +3936,7 @@ function syncScene(tAnim){
     if(!present.has(key)){
       const g = meshByUnit.get(key);
       meshByUnit.delete(key);
+      heroSceneExtras(g);
       if(MODELS.ready) startDying(key, g, tAnim);
       else { scene3.remove(g); disposeGroup(g); }
     }
@@ -3654,6 +4000,10 @@ function syncScene(tAnim){
         const f = Math.min(1, (tAnim - ud.leap.t0) / ud.leap.dur);
         const lx = lerp(ud.leap.x0, u.x, f), ly = lerp(ud.leap.y0, u.y, f);
         g.position.set(lx, groundHeight(lx, ly) + Math.sin(f * Math.PI) * ud.leap.h, ly);
+        if(!ud.leap.knock && g.visible && f < 1){   // trag skoka: iskrice u boji junaka
+          const c = (u.hero && u.hero.abilities[0].color) || '#ffffff';
+          for(let i = 0; i < 2; i++) fxSpawn(lx + (Math.random() - 0.5) * 24, ly + (Math.random() - 0.5) * 24, g.position.y + 20 + Math.random() * 40, i ? c : '#ffffff', { spd: 6, up: 0, grav: 0, life: 0.35, size: 22 });
+        }
         if(f >= 1){
           if(!ud.leap.knock && g.visible){ shockwave(u.x, u.y, 110, '#e7d7b0'); shakeAt(u.x, u.y, 0.25, 0.18); }   // doskok
           ud.leap = null;
@@ -3662,6 +4012,7 @@ function syncScene(tAnim){
       }
       ud.lastX = u.x; ud.lastY = u.y;
       if(u.cycloneT > 0) cycloneFx(u, g, tAnim, dt);   // 🌪️ Vjetrovita palica
+      syncHeroExtras(u, g, gh, tAnim, dt, seen);
       if(!seen) continue;
       ud.yaw = angleLerp(ud.yaw, -(u.dir || 0), Math.min(1, dt * 14));
       if(u.cycloneT > 0 && !(ud.spin > 0)) ud.spin = TAU;   // vrti se u vihoru
@@ -3924,6 +4275,7 @@ function syncScene(tAnim){
     }
   });
 
+  if(player && player.atkRange > 100 && Math.abs(player.atkRange - playerRingR) > 2) buildPlayerRing();   // domet se promijenio (talent, 🔭 Durbin, predmet)
   if(playerRing3 && player){
     playerRing3.visible = !player.dead;
     playerRing3.position.set(player.x, groundHeight(player.x, player.y) + 1.4, player.y);
@@ -4051,13 +4403,17 @@ function worldToScreen(x, h, y){
 }
 
 /* ---------- čišćenje ---------- */
+function heroSceneExtras(g){   // objekti junaka koji žive izravno u sceni (TP stup, laser, nišan)
+  const ud = g.userData;
+  for(const k of ['tpBeam', 'laser', 'cross']) if(ud[k]){ scene3.remove(ud[k]); ud[k] = null; }
+}
 function clearScene3D(){
-  for(const [k, g] of meshByUnit){ scene3.remove(g); disposeGroup(g); }
+  for(const [k, g] of meshByUnit){ heroSceneExtras(g); scene3.remove(g); disposeGroup(g); }
   meshByUnit.clear();
   for(const d of dying){ scene3.remove(d.g); disposeGroup(d.g); }
   dying.length = 0;
   for(const map of [zoneMeshes, projMeshes, markerMeshes, lineMeshes, runeMeshes, wardMeshes, courierMeshes, extraRuneMeshes, pingMeshes]){
-    for(const [k, m] of map){ scene3.remove(m); if(m.traverse) disposeGroup(m); }
+    for(const [k, m] of map){ if(m.userData && m.userData.trail) scene3.remove(m.userData.trail.mesh); scene3.remove(m); if(m.traverse) disposeGroup(m); }
     map.clear();
   }
   fx.list.length = 0;

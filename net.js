@@ -224,7 +224,7 @@ function heroExtras(h){
     s: Math.round(h.str), a: Math.round(h.agi), n: Math.round(h.int),
     hr: +h.hpRegen.toFixed(2), mr: +h.mpRegen.toFixed(2),
     spd: Math.round(h.speed), dm: Math.round(h.dmg), ib: h.itemBonus.dmg,
-    tc: +h.tpCd.toFixed(1), tch: +h.tpChannel.toFixed(2), dt2: +h.deadT.toFixed(1),
+    tc: +h.tpCd.toFixed(1), tch: +h.tpChannel.toFixed(2), tdu: h.tpDur || 3, dt2: +h.deadT.toFixed(1),
     as: h.assists, bb: +h.buybackCd.toFixed(1), ag: h.aegis ? 1 : 0, at: Math.round(h.aegisT), ic: h.itemCd, ich: h.itemCharges,
     tal: h.talents, cdr: h.cdr || 0, rg: Math.round(h.atkRange),
     sm: h.summoners, smc: (h.sumCd || [0, 0]).map(v => +v.toFixed(1)),
@@ -249,9 +249,10 @@ function buildSnapshot(){
       h: Math.round(u.hp), m: u.maxhp,
       d: +(u.dir || 0).toFixed(2),
     };
-    if(u.atkN){ b.an = u.atkN % 1000; if(u.atkInt) b.ai = +u.atkInt.toFixed(2); if(u.atkHeavy) b.ah = 1; }   // 3D animacije napada i čaranja
+    if(u.atkN){ b.an = u.atkN % 1000; if(u.atkInt) b.ai = +u.atkInt.toFixed(2); if(u.atkHeavy) b.ah = 1; if(u.atkCrit) b.ac = 1; }   // 3D animacije napada i čaranja
     if(u.castN){ b.cn = u.castN % 1000; b.cf = u.castFx; if(u.castAim) b.ca = [Math.round(u.castAim.x), Math.round(u.castAim.y)]; }
     if(u.knockN) b.kn = u.knockN % 1000;   // odbačaj
+    if(u.critN) b.kc = u.critN % 1000;     // 💥 primio kritični udarac
     if(u.danceN){ b.dz = u.danceN % 1000; if(u.danceT > 0) b.dc = 1; }   // 💃 ples
     if(u.charge) b.ch = 1;                 // juriš
     if(u.tpChannel > 0 && u.tpDest) b.td = [Math.round(u.tpDest.x), Math.round(u.tpDest.y), +(u.tpChannel / (u.tpDur || 3)).toFixed(2)];   // 🌀 TP do kule
@@ -288,12 +289,12 @@ function buildSnapshot(){
     u: us,
     p: projectiles.map(p => ({ i: p.id, x: Math.round(p.x), y: Math.round(p.y), r: p.r, cl: p.color, e: p.emoji || 0,
       sh: p.shot || 0, sx: Math.round(p.src ? p.src.x : p.x), sy: Math.round(p.src ? p.src.y : p.y),
-      tx: p.target ? Math.round(p.target.x) : 0, ty: p.target ? Math.round(p.target.y) : 0 })),
+      tx: p.target ? Math.round(p.target.x) : 0, ty: p.target ? Math.round(p.target.y) : 0, cr: p.crit ? 1 : 0, bg: p.big ? 1 : 0 })),
     z: zones.map(z => ({ i: z.id, x: Math.round(z.x), y: Math.round(z.y), r: z.r, t: +z.t.toFixed(2), dl: z.delay, s: z.started ? 1 : 0, cl: z.color, e: z.emoji, tk: z.ticksLeft })),
     rn: runes.length ? [{ x: runes[0].x, y: runes[0].y, di: RUNE_TYPES.indexOf(runes[0].def) }] : [],
     mk: markers.map(m => ({ x: Math.round(m.x), y: Math.round(m.y), t: +m.t.toFixed(2), r: Math.round(m.r), ir: m.isRing ? 1 : 0, cl: m.color })),
     ln: lines.map(l => ({ x1: Math.round(l.x1), y1: Math.round(l.y1), x2: Math.round(l.x2), y2: Math.round(l.y2), t: +l.t.toFixed(2), lf: l.life, cl: l.color, w: l.w })),
-    fl: floats.map(f => { const o = { x: Math.round(f.x), y: Math.round(f.y), hh: Math.round(f.h), tx: f.txt, cl: f.color, sz: f.size, t: +f.t.toFixed(2) }; if(f.team >= 0) o.tm = f.team; return o; }),
+    fl: floats.map(f => { const o = { x: Math.round(f.x), y: Math.round(f.y), hh: Math.round(f.h), tx: f.txt, cl: f.color, sz: f.size, t: +f.t.toFixed(2) }; if(f.team >= 0) o.tm = f.team; if(f.st){ o.st = f.st; o.ro = +f.rot.toFixed(2); } return o; }),
     fd: feed.map(f => f.team >= 0 ? { tx: f.txt, cl: f.color, t: +f.t.toFixed(2), tm: f.team } : { tx: f.txt, cl: f.color, t: +f.t.toFixed(2) }),
     // najave: zajednička (za sve) i gostova osobna (Bravo!, Ne brini!, ulti…) — gost prikaže svaku novu (po id-u)
     bn: netBanner && gameTime - netBanner.t0 < 3 ? [netBanner.id, netBanner.txt, netBanner.sub] : 0,
@@ -410,8 +411,8 @@ function applySnapshot(d){
     u.atkN = b.an || 0; u.castN = b.cn || 0; if(b.cf) u.castFx = b.cf; u.castAim = b.ca ? { x: b.ca[0], y: b.ca[1] } : null; u.cycloneT = b.cy ? 1 : 0;
       u.sumN = b.sn || 0; if(b.sf) u.sumFx = b.sf; u.sumAim = b.sa ? { x: b.sa[0], y: b.sa[1] } : null; u.smiteAt = b.sm2 ? { x: b.sm2[0], y: b.sm2[1] } : null;
       u.barrierHp = b.br || 0; u.barrierT = b.br ? 1 : 0;
-      u.jbuff = { blue: b.jb ? b.jb[0] : 0, red: b.jb ? b.jb[1] : 0 }; u.atkInt = b.ai || null; u.atkHeavy = !!b.ah;
-    u.knockN = b.kn || 0; u.charge = b.ch ? { net: true } : null;
+      u.jbuff = { blue: b.jb ? b.jb[0] : 0, red: b.jb ? b.jb[1] : 0 }; u.atkInt = b.ai || null; u.atkHeavy = !!b.ah; u.atkCrit = !!b.ac;
+    u.knockN = b.kn || 0; u.critN = b.kc || 0; u.charge = b.ch ? { net: true } : null;
     u.danceN = b.dz || 0; u.danceT = b.dc ? 1 : 0;   // 💃
     u.tpDest = b.td ? { x: b.td[0], y: b.td[1] } : null; u.tpFrac = b.td ? b.td[2] : 0;
     u.chanFx = b.cz ? { id: b.cz[0], f: b.cz[1] } : null;
@@ -445,7 +446,7 @@ function applySnapshot(d){
     player.str = e.s; player.agi = e.a; player.int = e.n;
     player.hpRegen = e.hr; player.mpRegen = e.mr;
     player.speed = e.spd; player.dmg = e.dm; player.itemBonus.dmg = e.ib;
-    player.tpCd = e.tc; player.tpChannel = e.tch; player.deadT = e.dt2;
+    player.tpCd = e.tc; player.tpChannel = e.tch; player.tpDur = e.tdu || 3; player.deadT = e.dt2;
     player.assists = e.as || 0; player.buybackCd = e.bb || 0; player.aegis = !!e.ag; player.aegisT = e.at || 0;
     player.itemCd = e.ic || {};
     player.itemCharges = e.ich || {};
@@ -469,7 +470,7 @@ function applySnapshot(d){
   // projektili / zone / rune
   projectiles = mergeById(projectiles, d.p,
     o => ({ id: o.i, kind: 'homing', x: o.x, y: o.y, r: o.r, color: o.cl, emoji: o.e || null,
-      shot: o.sh || null, sx: o.sx, sy: o.sy }),
+      shot: o.sh || null, sx: o.sx, sy: o.sy, crit: !!o.cr, big: !!o.bg }),
     (p, o) => { p.x = o.x; p.y = o.y; p.tx = o.tx || null; p.ty = o.ty || null; });
   zones = mergeById(zones, d.z,
     o => ({ id: o.i, x: o.x, y: o.y, r: o.r, t: o.t, delay: o.dl, started: !!o.s,
@@ -488,7 +489,7 @@ function applySnapshot(d){
       return { x1: l.x1, y1: l.y1, x2: l.x2, y2: l.y2, t: l.t, life: l.lf, color: l.cl, w: l.w || 4 };
     });
   }
-  floats = d.fl.map(f => ({ x: f.x, y: f.y, h: f.hh, txt: f.tx, color: f.cl, size: f.sz, t: f.t, team: f.tm == null ? -1 : f.tm }))
+  floats = d.fl.map(f => ({ x: f.x, y: f.y, h: f.hh, txt: f.tx, color: f.cl, size: f.sz, t: f.t, team: f.tm == null ? -1 : f.tm, st: f.st || null, rot: f.ro || 0 }))
     .concat(floats.filter(f => f.local));   // gostove vlastite poruke ("🔒 Treba ti poen vještine!"…) ostaju
   feed = d.fd.map(f => ({ txt: f.tx, color: f.cl, t: f.t, team: f.tm == null ? -1 : f.tm }));
   {   // nova najava (zajednička ili moja osobna); lokalne (pobjeda/poraz) domaćin ne prepisuje

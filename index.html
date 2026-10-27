@@ -104,6 +104,14 @@
     padding:12px 18px; cursor:pointer; transition:transform .1s; }
   .rndBtn{ background:linear-gradient(#a855f7,#7c3aed); box-shadow:0 5px 0 #5b21b6; }
   .ghostBtn{ background:linear-gradient(#0ea5e9,#0369a1); box-shadow:0 5px 0 #075985; }
+  .talTree{ margin-top:4px; display:flex; flex-direction:column; gap:3px; font-size:12.5px; }
+  .talRow{ display:flex; align-items:center; gap:5px; }
+  .talL{ flex:none; width:26px; height:20px; line-height:20px; text-align:center; border-radius:6px; background:#b45309; color:#fff; font-weight:bold; font-size:12px; }
+  .talO{ flex:1; padding:2px 6px; border-radius:6px; background:rgba(255,255,255,.55); border:1px solid #d6c08a; line-height:1.25; }
+  .talRow i{ font-style:normal; font-size:10.5px; color:#92400e; }
+  .fsBtn{ position:absolute; top:10px; right:12px; z-index:5; width:44px; height:40px; font-size:22px; line-height:1; cursor:pointer;
+    color:#fde68a; background:linear-gradient(#3b2f1c,#1f1810); border:2px solid #b8860b; border-radius:10px; box-shadow:0 3px 0 #000a; }
+  .fsBtn:hover{ transform:scale(1.08); border-color:#fde047; }
   .ghostBtn.on{ background:linear-gradient(#38bdf8,#0ea5e9); }
   .rndBtn:hover, .ghostBtn:hover{ transform:scale(1.06); }
   #select .hint{ color:#a7f3d0; font-size:13px; }
@@ -150,80 +158,115 @@
   #helpClose{ margin-top:14px; font-family:inherit; font-size:18px; font-weight:bold; border:none;
     background:#f59e0b; color:#fff; padding:8px 26px; border-radius:12px; cursor:pointer; box-shadow:0 4px 0 #b45309; }
 
-  /* ---------- dućan (kao u DotA) ---------- */
-  #shop{ position:fixed; right:12px; top:84px; bottom:150px; width:min(640px, calc(100vw - 24px)); z-index:15; display:flex; flex-direction:column;
-    background:linear-gradient(180deg, rgba(22,26,34,.97), rgba(10,12,17,.97)); border:2px solid #6b5a35; border-radius:10px; padding:10px 12px; color:#e5e7eb;
-    box-shadow:0 12px 40px rgba(0,0,0,.6), inset 0 0 0 1px rgba(255,220,150,.08); }
+  /* ---------- dućan (v0.38: kategorije lijevo, kartice s imenom i cijenom, recept, torba) ---------- */
+  #shop{ position:fixed; right:12px; top:84px; bottom:150px; width:min(800px, calc(100vw - 24px)); z-index:15; display:flex; flex-direction:column;
+    background:linear-gradient(180deg, rgba(24,28,38,.97), rgba(10,12,17,.97)); border:2px solid #8a7342; border-radius:14px; padding:10px 12px; color:#e5e7eb;
+    box-shadow:0 14px 44px rgba(0,0,0,.65), inset 0 0 0 1px rgba(255,220,150,.10), inset 0 1px 0 rgba(255,240,200,.15); }
   .shopHead{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
   #shopPrep{ display:flex; align-items:center; gap:10px; margin:0 0 8px; padding:6px 10px; border-radius:8px; background:rgba(253,224,71,.12); border:1px solid rgba(253,224,71,.45); color:#fde047; font-weight:700; font-size:14px; }
   #shopPrep.soon{ color:#fca5a5; border-color:rgba(252,165,165,.6); background:rgba(252,165,165,.12); }
   #shopPrepGo{ margin-left:auto; background:#15803d; color:#fff; border:2px solid #86efac; border-radius:8px; padding:5px 12px; font:inherit; cursor:pointer; white-space:nowrap; }
   #shopPrepGo:hover{ background:#16a34a; }
-  .shopTitle{ font-size:18px; font-weight:bold; color:#f3d48a; letter-spacing:.5px; text-shadow:0 2px 4px #000; }
-  #shopSearch{ flex:1; min-width:80px; font-family:inherit; font-size:13px; padding:6px 10px; border-radius:6px; border:1px solid #4b5563;
+  .shopTitle{ font-size:20px; font-weight:bold; color:#f3d48a; letter-spacing:.5px; text-shadow:0 2px 4px #000; }
+  #shopSearch{ flex:1; min-width:80px; font-family:inherit; font-size:14px; padding:7px 12px; border-radius:20px; border:1px solid #4b5563;
     background:#0b0e13; color:#fff; outline:none; }
-  #shopSearch:focus{ border-color:#f3d48a; }
-  #shopGold{ font-size:16px; font-weight:bold; color:#fde047; text-shadow:0 2px 3px #000; white-space:nowrap; }
-  #shopClose{ background:none; border:none; color:#cbd5e1; font-size:17px; cursor:pointer; font-family:inherit; }
-  #shopTabs{ display:flex; gap:2px; border-bottom:2px solid #3b3426; margin-bottom:8px; }
-  #shopTabs button{ font-family:inherit; font-size:13px; font-weight:bold; border:none; border-radius:6px 6px 0 0; padding:7px 16px;
-    background:#1c2029; color:#9ca3af; cursor:pointer; letter-spacing:.3px; }
-  #shopTabs button:hover{ color:#fff; }
-  #shopTabs button.on{ background:linear-gradient(180deg, #4a3d22, #2a2316); color:#f3d48a; }
-  #shopBody{ flex:1; min-height:120px; overflow-y:auto; padding-right:4px; }
-  #shopBody::-webkit-scrollbar{ width:7px; }
-  #shopBody::-webkit-scrollbar-thumb{ background:#6b5a35; border-radius:4px; }
-  .scols{ display:flex; gap:8px; align-items:flex-start; }
-  .scol{ flex:1; min-width:0; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.05); border-radius:6px; padding:4px; }
-  .scolH{ font-size:11px; font-weight:bold; color:#c9b27a; text-transform:uppercase; letter-spacing:.6px; text-align:center; margin:2px 0 5px; }
-  .sgrid{ display:flex; flex-wrap:wrap; gap:4px; justify-content:center; }
-  .sgrid.wide{ justify-content:flex-start; }
-  .sit{ position:relative; width:var(--sw, 58px); height:var(--sh, 42px); cursor:pointer; border-radius:3px; transition:transform .08s, filter .12s; flex:none; }
-  .sitImg{ width:100%; height:100%; display:block; border-radius:3px; }
-  .scols .sgrid{ display:grid; grid-template-columns:repeat(2, var(--sw)); justify-content:center; }
-  .scols.t-basic{ --sw:46px; --sh:33px; }
-  .scols.t-up{ --sw:42px; --sh:31px; }
-  .sit:hover{ transform:scale(1.08); z-index:2; filter:brightness(1.15); }
-  .sitCost{ position:absolute; right:1px; bottom:0; font-size:10px; font-weight:bold; color:#fde047; text-shadow:0 0 2px #000, 0 1px 2px #000;
-    background:rgba(0,0,0,.55); border-radius:3px 0 3px 0; padding:0 3px; line-height:13px; }
-  .sit.poor .sitImg{ filter:saturate(.45) brightness(.7); }
-  .sit.poor .sitCost{ color:#f87171; }
-  .sitOwn{ display:none; position:absolute; left:2px; top:1px; font-size:11px; font-weight:bold; color:#4ade80; text-shadow:0 0 3px #000, 0 0 3px #000; }
+  #shopSearch:focus{ border-color:#f3d48a; box-shadow:0 0 0 3px rgba(243,212,138,.15); }
+  #shopGold{ font-size:18px; font-weight:bold; color:#fde047; text-shadow:0 2px 3px #000; white-space:nowrap; padding:3px 10px; border-radius:20px; background:rgba(253,224,71,.1); border:1px solid rgba(253,224,71,.35); }
+  #shopClose{ background:none; border:none; color:#cbd5e1; font-size:19px; cursor:pointer; font-family:inherit; }
+  #shopClose:hover{ color:#fff; transform:scale(1.15); }
+  .shopMain{ flex:1; min-height:0; display:flex; gap:10px; }
+  #shopTabs{ width:150px; flex:none; display:flex; flex-direction:column; gap:3px; overflow-y:auto; padding-right:2px; }
+  .stHdr{ font-size:10.5px; font-weight:bold; color:#8b7a52; letter-spacing:.8px; margin:8px 4px 2px; }
+  #shopTabs button{ display:flex; align-items:center; justify-content:space-between; gap:4px; font-family:inherit; font-size:13.5px; font-weight:bold; text-align:left;
+    border:1px solid transparent; border-radius:9px; padding:7px 9px; background:#1a1f29; color:#cbd5e1; cursor:pointer; transition:background .1s, transform .08s; }
+  #shopTabs button:hover{ background:#252c39; color:#fff; transform:translateX(2px); }
+  #shopTabs button.on{ background:linear-gradient(90deg, #5a4a24, #2e2616); color:#fde68a; border-color:#a8873e; }
+  .stN{ font-style:normal; font-size:10.5px; min-width:18px; padding:1px 5px; border-radius:9px; background:#166534; color:#bbf7d0; text-align:center; }
+  .stN:empty{ display:none; }
+  #shopBody{ flex:1; min-width:0; overflow-y:auto; padding-right:4px; }
+  #shopBody::-webkit-scrollbar, #shopTabs::-webkit-scrollbar{ width:7px; }
+  #shopBody::-webkit-scrollbar-thumb, #shopTabs::-webkit-scrollbar-thumb{ background:#6b5a35; border-radius:4px; }
+  .sbHead{ font-size:13px; font-weight:bold; color:#f3d48a; margin:4px 2px 6px; }
+  .sbHead small{ font-weight:normal; color:#9ca3af; margin-left:6px; }
+  .scards{ display:grid; grid-template-columns:repeat(auto-fill, minmax(176px, 1fr)); gap:6px; margin-bottom:8px; }
+  .sit{ position:relative; display:flex; align-items:center; gap:8px; padding:5px 6px; cursor:pointer; border-radius:9px; min-width:0;
+    background:linear-gradient(180deg, #1d2330, #141922); border:1px solid #2c3442; transition:transform .08s, border-color .12s, background .12s; }
+  .sit:hover{ transform:translateY(-1px); border-color:#9a845a; background:linear-gradient(180deg, #262e3d, #181e29); }
+  .sitImg{ width:58px; height:42px; flex:none; border-radius:5px; display:block; }
+  .sitInfo{ display:flex; flex-direction:column; min-width:0; flex:1; padding-bottom:12px; }
+  .sitName{ font-size:12.5px; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .q-common .sitName{ color:#86efac; } .q-rare .sitName{ color:#93b8ff; } .q-epic .sitName{ color:#d3a8ff; } .q-art .sitName{ color:#ffc07a; } .q-secret .sitName{ color:#67e8f9; } .q-cons .sitName{ color:#eedcb0; }
+  .sitStat{ font-size:11px; color:#9ca3af; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sitCost{ position:absolute; right:7px; bottom:4px; font-size:11.5px; font-weight:bold; color:#fde047; text-shadow:0 1px 2px #000; }
+  .sitCost em{ font-style:normal; margin-left:5px; font-size:10.5px; color:#fca5a5; }
+  .sit.afford{ border-color:#2f7d3a; }
+  .sit.afford .sitCost{ color:#86efac; }
+  .sit.poor .sitImg{ filter:saturate(.5) brightness(.75); }
+  .sit.poor .sitCost{ color:#fbbf24; }
+  .sitOwn{ display:none; position:absolute; left:3px; top:2px; font-size:12px; font-weight:bold; color:#4ade80; text-shadow:0 0 3px #000, 0 0 3px #000; }
   .sit.owned .sitOwn{ display:block; }
-  .sit.next{ box-shadow:0 0 0 2px #4ade80, 0 0 12px rgba(74,222,128,.7); }
-  .sit.next::after{ content:'🎯'; position:absolute; right:-6px; top:-8px; font-size:13px; }
-  .sit.pinned{ box-shadow:0 0 0 2px #fbbf24; }
-  .sguide .sgInfo{ font-size:12px; color:#a7f3d0; margin:2px 2px 8px; }
-  .sgRow{ display:flex; align-items:center; gap:8px; margin-bottom:8px; background:rgba(255,255,255,.03); border-radius:6px; padding:5px 8px; }
-  .sgLbl{ width:110px; flex:none; font-size:12px; font-weight:bold; color:#c9b27a; }
-  .sgRow .sgrid{ justify-content:flex-start; }
-  .sempty{ font-size:12px; color:#9ca3af; padding:8px; }
-  #shopDetail{ margin-top:8px; border-top:2px solid #3b3426; padding-top:8px; display:flex; gap:10px; min-height:44px; max-height:130px; overflow-y:auto; flex:none; }
-  .sdEmpty{ font-size:12px; color:#9ca3af; align-self:center; }
-  .sdMain{ flex:1.2; min-width:0; }
+  .sit.owned{ opacity:.72; }
+  .sit.next{ border-color:#4ade80; box-shadow:0 0 0 1px #4ade80, 0 0 14px rgba(74,222,128,.45); }
+  .sit.next::after{ content:'🎯'; position:absolute; right:-5px; top:-8px; font-size:14px; }
+  .sit.pinned{ border-color:#fbbf24; box-shadow:0 0 0 1px #fbbf24; }
+  .sempty{ font-size:13px; color:#9ca3af; padding:10px; grid-column:1/-1; }
+  .sgN{ display:flex; align-items:center; gap:12px; padding:9px 12px; margin:2px 0 8px; border-radius:12px;
+    background:linear-gradient(90deg, rgba(74,222,128,.16), rgba(253,224,71,.08)); border:1px solid rgba(74,222,128,.55); }
+  .sgN.done{ color:#bbf7d0; font-weight:bold; font-size:13px; }
+  .sgnImg{ width:72px; height:52px; border-radius:6px; flex:none; cursor:pointer; }
+  .sgnT{ display:flex; flex-direction:column; min-width:0; flex:1; }
+  .sgnT small{ color:#a7f3d0; font-size:11.5px; font-weight:bold; }
+  .sgnT b{ font-size:16px; color:#fff; }
+  .sgnT span{ font-size:12px; color:#cbd5e1; }
+  #sgnBuy, .sdBtns button{ font-family:inherit; font-size:14px; font-weight:bold; border:1px solid #4b5563; border-radius:10px; padding:9px 14px;
+    background:#1f2937; color:#9ca3af; cursor:pointer; white-space:nowrap; }
+  #sgnBuy.afford, .sdBtns button.afford{ background:linear-gradient(180deg, #45a032, #24601a); color:#fff; border-color:#86efac; box-shadow:0 3px 0 #14400f; }
+  #sgnBuy.afford:hover, .sdBtns button.afford:hover{ filter:brightness(1.15); transform:translateY(-1px); }
+  #sgnBuy.poor, .sdBtns button.poor{ color:#fcd34d; border-color:#92400e; background:#2a1d0e; }
+  #sgnBuy:disabled, .sdBtns button:disabled{ cursor:not-allowed; }
+  #shopDetail{ margin-top:8px; border-top:2px solid #3b3426; padding-top:8px; display:flex; gap:10px; min-height:52px; max-height:170px; overflow-y:auto; flex:none; }
+  .sdEmpty{ font-size:13px; color:#9ca3af; align-self:center; line-height:1.6; }
+  .sdMain{ flex:1.1; min-width:0; }
   .sdSide{ flex:1; min-width:0; display:flex; flex-direction:column; gap:6px; }
-  .sdRow{ display:flex; align-items:center; flex-wrap:wrap; gap:3px; }
-  .sdLbl{ width:100%; font-size:11px; font-weight:bold; color:#c9b27a; text-transform:uppercase; letter-spacing:.5px; }
-  .sdc{ position:relative; cursor:pointer; display:inline-flex; flex-direction:column; align-items:center; opacity:.75; }
+  .sdRow{ display:flex; align-items:center; flex-wrap:wrap; gap:4px; }
+  .sdLbl{ width:100%; font-size:11.5px; font-weight:bold; color:#c9b27a; letter-spacing:.3px; }
+  .sdc{ position:relative; cursor:pointer; display:inline-flex; flex-direction:column; align-items:center; opacity:.8; }
+  .sdc:hover{ opacity:1; transform:translateY(-1px); }
   .sdc.have{ opacity:1; }
   .sdc.have .sdIcon{ box-shadow:0 0 0 2px #4ade80; }
-  .sdc i{ font-style:normal; font-size:10px; font-weight:bold; color:#fde047; }
+  .sdc.res{ cursor:default; opacity:1; }
+  .sdc.res i{ color:#fde68a; max-width:70px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .sdc i{ font-style:normal; font-size:10.5px; font-weight:bold; color:#fde047; }
   .sdc.have i{ color:#4ade80; }
-  .sdIcon{ width:46px; height:33px; border-radius:3px; display:block; }
-  .sdPlus{ color:#6b7280; font-size:12px; }
+  .sdIcon{ width:50px; height:36px; border-radius:4px; display:block; }
+  .sdPlus{ color:#9ca3af; font-size:14px; }
   .sdBtns{ display:flex; gap:6px; margin-top:auto; }
-  .sdBtns button{ flex:1; font-family:inherit; font-size:13px; font-weight:bold; border:1px solid #4b5563; border-radius:6px; padding:8px 6px;
-    background:#1f2937; color:#9ca3af; cursor:pointer; }
-  .sdBtns button.afford{ background:linear-gradient(180deg, #3f7d2a, #24501a); color:#fff; border-color:#6cc04a; }
-  .sdBtns button.afford:hover{ filter:brightness(1.15); }
-  .sdBtns button:disabled{ cursor:not-allowed; opacity:.7; }
+  .sdBtns button{ flex:1; }
+  #sdPin{ flex:0 0 auto; }
   #sdPin.on{ background:#5c4813; color:#fde68a; border-color:#fbbf24; }
+  #shopInv{ display:flex; align-items:center; gap:4px; margin-top:8px; padding:6px 8px; border-radius:10px; background:rgba(0,0,0,.3); border:1px solid #2c3442; flex-wrap:wrap; }
+  .siLbl{ font-size:12px; font-weight:bold; color:#c9b27a; margin-right:2px; }
+  .siLbl.small{ font-size:10.5px; color:#8b93a1; margin-left:8px; }
+  .siSlot{ width:40px; height:29px; border-radius:4px; background:#0b0e13; border:1px solid #2c3442; display:inline-block; overflow:hidden; }
+  .siSlot.bp{ width:32px; height:23px; opacity:.75; }
+  .siSlot.pend{ outline:2px dashed #fbbf24; }
+  .siImg{ width:100%; height:100%; display:block; }
+  .siNote{ margin-left:auto; font-size:11.5px; color:#a7f3d0; }
   .shopTip{ font-size:11px; color:#8b93a1; text-align:center; margin-top:6px; }
-  @media (max-width: 700px){
+  @media (max-height: 820px){
+    .shopTip{ display:none; }
+    #shopDetail{ max-height:118px; }
+    .sdMain .tipLore{ display:none; }
+  }
+  @media (max-width: 760px){
     #shop{ bottom:auto; max-height:calc(100vh - 170px); }
-    .scols{ flex-wrap:wrap; }
-    .scol{ flex:1 1 45%; }
+    .shopMain{ flex-direction:column; }
+    #shopTabs{ width:auto; flex-direction:row; overflow-x:auto; overflow-y:hidden; flex:none; padding-bottom:3px; }
+    #shopTabs button{ white-space:nowrap; }
+    .stHdr{ display:none; }
+    .scards{ grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); }
     #shopDetail{ flex-direction:column; max-height:none; }
+    .siNote{ margin-left:0; width:100%; }
   }
   /* ---------- opis predmeta (tooltip, kao u DotA) ---------- */
   #itemTip{ position:fixed; z-index:40; width:290px; pointer-events:none; color:#d1d5db; font-size:12.5px; line-height:1.35;
@@ -363,6 +406,7 @@
 
 <!-- ODABIR JUNAKA -->
 <div id="select" class="overlay">
+  <button id="fsBtn" class="fsBtn" title="Cijeli zaslon (miš ne može pobjeći iz igre)">⛶</button>
   <header>
     <h1>🏰 DOTA Kids 3D ⚔️</h1>
     <p class="sub">Odaberi junaka i sruši protivnički prijestol! Ti + 4 bota 🔵 protiv 5 botova 🔴 (5 na 5) <span class="ver">v0.37</span></p>
@@ -452,10 +496,13 @@
 <div id="shop" class="hidden">
   <div class="shopHead"><span class="shopTitle">🛒 DUĆAN</span><input id="shopSearch" type="text" placeholder="🔍 Traži predmet…" autocomplete="off"><span id="shopGold">🪙 0</span><button id="shopClose">✖</button></div>
   <div id="shopPrep" class="hidden">⏳ Priprema: još <b id="shopPrepT">30</b> s do bitke — kupi predmete!<button id="shopPrepGo">▶️ Kreni odmah</button></div>
-  <div id="shopTabs"></div>
-  <div id="shopBody"></div>
+  <div class="shopMain">
+    <div id="shopTabs"></div>
+    <div id="shopBody"></div>
+  </div>
   <div id="shopDetail"></div>
-  <p class="shopTip">Desni klik ili dvoklik = kupi • klik = recept • 📌 brza kupnja • tipka B • daleko od baze 🫏 kurir donosi predmet</p>
+  <div id="shopInv"></div>
+  <p class="shopTip">🖱️ Klik = opis i recept • desni klik ili dvoklik = kupi • 📌 prikvači = HUD pokazuje što fali • tipka B</p>
 </div>
 
 <div id="itemTip" class="hidden"></div>
@@ -475,6 +522,8 @@
     <div class="optRow"><span>📣 Najavljivač</span><button class="optTog" id="optAnn"></button></div>
     <div class="optRow"><span>🖼️ Kvaliteta slike</span><span class="optSeg" id="optQ"><button data-q="low">Niska</button><button data-q="med">Srednja</button><button data-q="high">Visoka</button></span></div>
     <div class="optRow"><span>✨ Efekti (sjaj, boje)</span><button class="optTog" id="optPost"></button></div>
+    <div class="optRow" id="optFsRow"><span>🖥️ Cijeli zaslon<br><small>igra se otvori preko cijelog ekrana</small></span><button class="optTog" id="optFs"></button></div>
+    <div class="optRow" id="optLockRow"><span>🔒 Miš ostaje u igri<br><small>u cijelom zaslonu pokazivač ne može pobjeći (Esc ga otpusti)</small></span><button class="optTog" id="optLock"></button></div>
     <div class="optRow" id="optEdgeRow"><span>🖱️ Kamera uz rub ekrana</span><button class="optTog" id="optEdge"></button></div>
     <div class="optRow" id="optQuickRow"><span>⚡ Brzo bacanje moći<br><small>drži tipku = vidiš domet, pusti = baci prema mišu</small></span><button class="optTog" id="optQuick"></button></div>
     <div class="optRow"><span>💥 Brojevi štete</span><button class="optTog" id="optDmg"></button></div>

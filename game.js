@@ -628,7 +628,8 @@ let touchMode = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches)
 let scoreOpen = false;      // 📋 tablica otvorena gumbom (na tabletu nema tipke Tab)
 let mouseIn = false;        // miš je iznad igre (za rubno pomicanje kamere)
 /* ⚙️ postavke (pamte se u pregledniku) */
-const SETTINGS = { vol: 0.8, quality: touchMode ? 'med' : 'high', edgePan: true, dmgNums: true, quickCast: false, voices: true, announcer: true, diff: 'normal' };
+const SETTINGS = { vol: 0.8, quality: touchMode ? 'med' : 'high', edgePan: true, dmgNums: true, quickCast: false, voices: true, announcer: true, diff: 'normal',
+  fullscreen: true, lockMouse: true };   // 🖥️ cijeli zaslon pri početku igre, 🔒 miš ne može izaći iz igre
 try {
   const s = JSON.parse(localStorage.getItem('dk_settings') || '{}');
   if(typeof s.vol === 'number') SETTINGS.vol = clamp(s.vol, 0, 1);
@@ -639,6 +640,8 @@ try {
   if(typeof s.voices === 'boolean') SETTINGS.voices = s.voices;
   if(typeof s.announcer === 'boolean') SETTINGS.announcer = s.announcer;
   if(['easy', 'normal', 'hard'].includes(s.diff)) SETTINGS.diff = s.diff;
+  if(typeof s.fullscreen === 'boolean') SETTINGS.fullscreen = s.fullscreen;
+  if(typeof s.lockMouse === 'boolean') SETTINGS.lockMouse = s.lockMouse;
 } catch(e){}
 function saveSettings(){ try { localStorage.setItem('dk_settings', JSON.stringify(SETTINGS)); } catch(e){} }
 let ancients = [null, null];
@@ -891,9 +894,10 @@ function ring(x, y, r, color){ markers.push({ x, y, t: 0, color, r, isRing: true
 function addLine(x1, y1, x2, y2, color, w, life){
   lines.push({ x1, y1, x2, y2, color, w, life, t: 0 });
 }
-function addFloat(x, y, txt, color, size, team){   // team: osobna poruka (zlato, "Nema mane!"…) — vidi je samo taj tim
+function addFloat(x, y, txt, color, size, team, st){   // team: osobna poruka (zlato, "Nema mane!"…) — vidi je samo taj tim; st: 'crit' = 💥 veliki iskačući broj
   if(floats.length > 70) floats.shift();
   floats.push({ x: x + rand(-10, 10), y: y + rand(-6, 6), h: 70, txt, color: color || '#fff', size: size || 15, t: 0, team: team == null ? -1 : team,
+    st: st || null, rot: st === 'crit' ? rand(-0.12, 0.12) : 0,
     local: net.mode === 'guest' });   // gostova vlastita poruka (snimka domaćina je ne briše)
 }
 function feedMsg(txt, color, team){   // team: poruku vidi samo taj tim (npr. buff saveznika)
@@ -1095,6 +1099,7 @@ function buildRecap(t, killerName){
     parts: Object.entries(r.parts).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => [k, Math.round(v)]) }));
   return { killer: killerName, total: Math.round(total), rows };
 }
+let hitCrit = false;   // 💥 upravo se dijeli kritični udarac (releaseAttack / projektil napada)
 function applyDamage(t, amount, src, kind){
   if(!t || t.dead || t.removeMe || t.invuln || gameOver) return;
   if(t.cycloneT > 0) return;   // 🌪️ u vihoru: ništa ga ne može ozlijediti
@@ -1151,7 +1156,12 @@ function applyDamage(t, amount, src, kind){
   }
   t.flash = 0.12;
   if(src && src !== t) t.hitAng = Math.atan2(t.y - src.y, t.x - src.x);   // 3D: trzaj od napadača
-  if(SETTINGS.dmgNums && (t.kind === 'hero' || t.kind === 'tower' || t.kind === 'ancient' || t.kind === 'barracks' || (src && src.isPlayer))){
+  if(hitCrit && kind === 'atk'){   // 💥 kritični udarac: veliki broj koji iskoči + 3D rez preko mete
+    t.critN = (t.critN || 0) + 1;
+    addFloat(t.x, t.y, SETTINGS.dmgNums ? amount + '!' : 'KRIT!', src && src.team === TEAM_BLUE ? '#ff5a1f' : '#ff3b6b', t.kind === 'hero' ? 27 : 23, undefined, 'crit');
+    if(src && (src.isPlayer || t.isPlayer)) sfx('crit'); else sfxAt('crit', t.x, t.y);
+  }
+  else if(SETTINGS.dmgNums && (t.kind === 'hero' || t.kind === 'tower' || t.kind === 'ancient' || t.kind === 'barracks' || (src && src.isPlayer))){
     addFloat(t.x, t.y, '-' + amount, src && src.team === TEAM_BLUE ? '#ffd166' : '#ff8fa3', t.kind === 'hero' ? 16 : 13);
   }
   if(isStructure(t) && src && src.team !== t.team) t.lastDmgT = gameTime;   // 🤖 obrana: koga upravo ruše
@@ -2176,7 +2186,6 @@ function performAttack(u, t){
   const dodir = passiveRank(u, 'dodir');             // Ledeni dodir: usporenje na napad
   const naboj = passiveRank(u, 'naboj');             // Statički naboj: munja na napad
   const onHitFx = (tt) => {
-    if(crit) addFloat(tt.x, tt.y, 'KRIT! 💥', '#fb923c', 15);
     if(raging && tt.kind !== 'tower') applyStun(tt, u.status.rageStun || 0.3);
     if(u.stunHit && u.atkN % 3 === 0 && tt.kind !== 'tower'){ applyStun(tt, 0.6); addFloat(tt.x, tt.y, '🗿 Tresak!', '#cbd5e1', 14); }   // Golem
     if(peroProc && tt.maxmp){
@@ -2229,22 +2238,23 @@ function performAttack(u, t){
     (!ts && t.dodgeT > 0 && Math.random() < t.dodgeF) ||          // 🥴 Pijani korak
     (!ts && (t.evasion > 0 || t.talEva > 0) && Math.random() < 1 - (1 - (t.evasion || 0)) * (1 - (t.talEva || 0)));   // 🦋 Leptir / 🎓 talent: izbjegavanje
   u.atkHeavy = crit || komboHit || jinProc || clawProc || shadowBonus > 0 || bashProc || hsProc;   // 3D: jači zamah (attack2)
+  u.atkCrit = crit && !miss;   // 3D: bljesak oružja prije kritičnog udarca
   // kao u DotA: zamah traje do "kadra udarca" animacije, tek tada šteta / projektil (kula puca odmah)
   const wind = u.kind === 'tower' ? 0 : ATK_POINT / Math.max(1, ATK_ANIM_LEN / u.atkTimer);
-  const deliver = () => releaseAttack(u, t, dmg, miss, onHitFx);
+  const deliver = () => releaseAttack(u, t, dmg, miss, onHitFx, crit);
   if(wind > 0) u.windup = { t: gameTime + wind, target: t, deliver };
   else deliver();
 }
 const ATK_POINT = 7 / 24;      // udarac je u 7. kadru animacije napada (24 kadra/s)
 const ATK_ANIM_LEN = 0.62;     // ispod ovog razmaka napada animacija se ubrzava
-function releaseAttack(u, t, dmg, miss, onHitFx){
+function releaseAttack(u, t, dmg, miss, onHitFx, crit){
   if(u.dead || u.removeMe || !isTargetable(t)) return;
   if(dist(u, t) > u.atkRange + t.r + 160) return;   // meta pobjegla tijekom zamaha: promašaj u zrak
   if(u.projSpeed > 0){
     const off = (u.r || 16) * 0.8 + 8;   // strijela / kugla polijeće iz ruke ispred junaka, ne iz sredine tijela
     spawnHoming(u, t, {
       x: u.x + Math.cos(u.dir || 0) * off, y: u.y + Math.sin(u.dir || 0) * off,
-      speed: u.projSpeed, dmg, miss, atk: true,
+      speed: u.projSpeed, dmg, miss, atk: true, crit: crit && !miss,
       onHit: miss ? null : onHitFx,
       color: u.kind === 'tower' ? '#fbbf24' : TEAM_LIGHT[u.team],
       r: u.kind === 'tower' ? 9 : 6,
@@ -2256,7 +2266,9 @@ function releaseAttack(u, t, dmg, miss, onHitFx){
       if(u.kind === 'hero' || t.kind === 'hero')
         addFloat(t.x, t.y, 'Promašaj! 💨', '#e5e7eb', 13);
     } else {
+      hitCrit = !!crit;
       applyDamage(t, dmg, u, 'atk');
+      hitCrit = false;
       onHitFx(t);
       const deb = passiveRank(t, 'debela');   // Debela koža (Tutnjo E): vraća štetu izbliza
       if(deb && !u.dead && !u.removeMe && u.kind !== 'tower') applyDamage(u, 14 + 10 * deb, t);
@@ -3430,7 +3442,9 @@ function updateProjectiles(dt){
             addFloat(t.x, t.y, 'Promašaj! 💨', '#e5e7eb', 13);
         } else {
           const prev = abCtx; abCtx = p.abKey ? { src: p.src, key: p.abKey } : null;
+          hitCrit = p.crit && p.atk;
           applyDamage(t, p.dmg, p.src, p.atk ? 'atk' : null);
+          hitCrit = false;
           if(p.onHit) p.onHit(t);
           abCtx = prev;
         }
@@ -3658,7 +3672,7 @@ function update(dt){
   }
   for(let i = floats.length - 1; i >= 0; i--){
     const f = floats[i];
-    f.t += dt; f.h += 52 * dt;
+    f.t += dt; f.h += (f.st === 'crit' ? 30 : 52) * dt;
     if(f.t > 1.1) floats.splice(i, 1);
   }
   for(let i = lines.length - 1; i >= 0; i--){
@@ -4175,6 +4189,7 @@ function sfx(name){
   sfxLast[name] = now;
   switch(name){
     case 'hit':     tone(190, 0.07, 'square', 0.045, 120); break;
+    case 'crit':    tone(1500, 0.05, 'square', 0.05, 2400); tone(240, 0.16, 'sawtooth', 0.09, 70, 0.03); tone(90, 0.2, 'square', 0.06, 45, 0.04); break;
     case 'pew':     tone(720, 0.09, 'sine', 0.04, 280); break;
     case 'cast':    tone(420, 0.13, 'sine', 0.08, 900); break;
     case 'ult':     tone(300, 0.3, 'sawtooth', 0.1, 900); tone(600, 0.25, 'triangle', 0.1, 1200, 0.12); break;
@@ -4505,9 +4520,18 @@ function setupInput(){
     if(pendingCast && pendingCast.quick) pendingCast = null;
   });
 
-  hudCv.addEventListener('mousedown', e => pointerDown(e.clientX, e.clientY, e.button));
-  window.addEventListener('mouseup', e => pointerUp(e.clientX, e.clientY));
-  hudCv.addEventListener('mousemove', e => { mouseIn = true; pointerMove(e.clientX, e.clientY); });
+  // 🔒 zaključan miš: preglednik sakrije pravi pokazivač i šalje samo pomake — crtamo svoj (drawLockedCursor)
+  hudCv.addEventListener('mousedown', e => {
+    if(!mouseLocked() && wantMouseLock()){ lockMouse(); mouse.sx = e.clientX; mouse.sy = e.clientY; }
+    if(mouseLocked()) pointerDown(mouse.sx, mouse.sy, e.button);
+    else pointerDown(e.clientX, e.clientY, e.button);
+  });
+  window.addEventListener('mouseup', e => mouseLocked() ? pointerUp(mouse.sx, mouse.sy) : pointerUp(e.clientX, e.clientY));
+  hudCv.addEventListener('mousemove', e => {
+    mouseIn = true;
+    if(mouseLocked()) pointerMove(clamp(mouse.sx + e.movementX, 0, VW - 1), clamp(mouse.sy + e.movementY, 0, VH - 1));
+    else pointerMove(e.clientX, e.clientY);
+  });
   setupTouch();
 
   // pritisak (miš ili dodir): button 0 = lijevi klik / dodir, 2 = desni klik
@@ -4517,6 +4541,7 @@ function setupInput(){
     if(button === 0){
       if(uiRects.prepSkip && inRect(sx, sy, uiRects.prepSkip)){ skipPrep(); return; }
       if(inRect(sx, sy, uiRects.opts)){ toggleOptions(); return; }
+      if(uiRects.fs && inRect(sx, sy, uiRects.fs)){ toggleFullscreen(); sfx('click'); return; }
       if(uiRects.score && inRect(sx, sy, uiRects.score)){ scoreOpen = !scoreOpen; sfx('click'); return; }
       if(uiRects.dance && inRect(sx, sy, uiRects.dance)){ pressDance(); return; }
       if(uiRects.center && inRect(sx, sy, uiRects.center)){ cam.follow = true; if(player){ cam.x = player.x; cam.y = player.y; } sfx('click'); return; }
@@ -4675,7 +4700,7 @@ function setupInput(){
     if(inRect(mouse.sx, mouse.sy, uiRects.shop)) hoverUi = { type: 'shop' };
     if(inRect(mouse.sx, mouse.sy, uiRects.mute)) hoverUi = { type: 'mute' };
     if(inRect(mouse.sx, mouse.sy, uiRects.help)) hoverUi = { type: 'help' };
-    for(const k of ['opts', 'score', 'center', 'dance']) if(uiRects[k] && inRect(mouse.sx, mouse.sy, uiRects[k])) hoverUi = { type: k };
+    for(const k of ['opts', 'fs', 'score', 'center', 'dance']) if(uiRects[k] && inRect(mouse.sx, mouse.sy, uiRects[k])) hoverUi = { type: k };
     if(uiRects.prepSkip && inRect(mouse.sx, mouse.sy, uiRects.prepSkip)) hoverUi = { type: 'prep' };
     if(!running) hudCv.style.cursor = hoverUi ? 'pointer' : 'default';   // u igri pokazivač postavlja refreshPointer()
     if(!invDrag || !invDrag.moved) updateHudTip();
@@ -4865,6 +4890,7 @@ function syncOptionsDom(){
   tog('optMute', !muted);
   tog('optVoices', SETTINGS.voices);
   tog('optAnn', SETTINGS.announcer);
+  if($('optFs')){ tog('optFs', SETTINGS.fullscreen); tog('optLock', SETTINGS.lockMouse); $('optFsRow').classList.toggle('hidden', touchMode); $('optLockRow').classList.toggle('hidden', touchMode); }
   $('optEdgeRow').classList.toggle('hidden', touchMode);   // na tabletu nema miša
   $('optQuickRow').classList.toggle('hidden', touchMode);   // ni tipkovnice
   $('optQuit').classList.toggle('hidden', !running);
@@ -4885,6 +4911,14 @@ function buildOptionsDom(){
   });
   $('optPost').addEventListener('click', () => { togglePost(); syncOptionsDom(); sfx('click'); });
   $('optEdge').addEventListener('click', () => { SETTINGS.edgePan = !SETTINGS.edgePan; saveSettings(); syncOptionsDom(); sfx('click'); });
+  if($('optFs')){
+    $('optFs').addEventListener('click', () => {   // 🖥️ odmah uđi / izađi iz cijelog zaslona i zapamti
+      SETTINGS.fullscreen = !SETTINGS.fullscreen; saveSettings();
+      if(SETTINGS.fullscreen !== isFullscreen()) toggleFullscreen();
+      syncOptionsDom(); sfx('click');
+    });
+    $('optLock').addEventListener('click', () => { SETTINGS.lockMouse = !SETTINGS.lockMouse; saveSettings(); if(!SETTINGS.lockMouse) unlockMouse(); syncOptionsDom(); sfx('click'); });
+  }
   $('optQuick').addEventListener('click', () => { SETTINGS.quickCast = !SETTINGS.quickCast; saveSettings(); syncOptionsDom(); sfx('click'); });
   $('optDmg').addEventListener('click', () => { SETTINGS.dmgNums = !SETTINGS.dmgNums; saveSettings(); syncOptionsDom(); sfx('click'); });
   $('optMute').addEventListener('click', () => { muted = !muted; syncOptionsDom(); sfx('click'); });
@@ -4923,12 +4957,19 @@ function buildSelectScreen(){
     document.querySelectorAll('#roleTabs button').forEach(x => x.classList.toggle('on', x === b));
     document.querySelectorAll('.card').forEach(c => c.classList.toggle('off', b.dataset.f !== 'all' && c.dataset.r !== b.dataset.f));
   }));
+  { const fb = document.getElementById('fsBtn');   // ⛶ cijeli zaslon na ekranu odabira
+    if(fb){
+      if(touchMode || !(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen)) fb.classList.add('hidden');
+      fb.addEventListener('click', () => { toggleFullscreen(); sfx('click'); });
+      document.addEventListener('fullscreenchange', () => { fb.textContent = isFullscreen() ? '🗗' : '⛶'; });
+    } }
   const syncDiff = () => document.querySelectorAll('#diffTabs button').forEach(x => x.classList.toggle('on', x.dataset.d === SETTINGS.diff));
   document.querySelectorAll('#diffTabs button').forEach(b => b.addEventListener('click', () => {   // 🤖 težina botova
     SETTINGS.diff = b.dataset.d; saveSettings(); syncDiff(); sfx('click');
   }));
   syncDiff();
   document.getElementById('startBtn').addEventListener('click', () => {
+    if(SETTINGS.fullscreen) enterFullscreen();   // 🖥️ igra preko cijelog ekrana (klik je korisnikova radnja — preglednik to dopušta)
     if(net.conn){ netReady(); return; }   // multiplayer: čekaj oba igrača
     if(selectedHero >= 0) startGame(selectedHero);
   });
@@ -4963,6 +5004,12 @@ function selectHero(i){
     desc: h.passive.desc.replace(/^PASIVNO:\s*/, '') + ' (uvijek radi)' });
   for(const a of h.abilities) tiles.push({ k: a.key, cls: a.ult ? 'ult' : '', e: a.emoji, name: a.name,
     tag: a.ult ? '<span class="ultTag">🌟 ULTI</span>' : '', desc: a.desc.replace(/^ULTI:\s*/, '') });
+  {   // 🎓 stablo talenata: na levelima 10 / 15 / 20 / 25 biraš jedan od dva bonusa (svaki junak ima svoje)
+    const tt = HERO_TALENTS[h.id] || DEFAULT_TALENTS;
+    tiles.push({ k: '🎓', cls: 'tal', e: '🌳', name: 'Talenti', tag: '<span class="pasTag">🎓 LEVEL 10 / 15 / 20 / 25</span>',
+      desc: '<div class="talTree">' + tt.map((tier, j) => `<div class="talRow"><span class="talL">${TALENT_LVLS[j]}</span>` +
+        `<span class="talO">${tier[0].emoji} ${tier[0].txt}</span><i>ili</i><span class="talO">${tier[1].emoji} ${tier[1].txt}</span></div>`).reverse().join('') + '</div>' });
+  }
   const det = document.getElementById('heroDetail');
   det.innerHTML = `<div class="d-top">
       <div class="d-model"><img class="d-img" src="assets/hero_${h.id}.jpg" onerror="this.remove()"></div>
@@ -5088,9 +5135,9 @@ function drawWorldOverlay(){
       ctx.fillText(nm, s.x + 8, s.y - 13);
       drawHeroBar(u, s.x, s.y);
       if(u.tpChannel > 0){
-        drawBar(s.x - 24, s.y + 6, 48, 6, 1 - u.tpChannel / 3, '#60a5fa');
+        drawBar(s.x - 24, s.y + 6, 48, 6, 1 - u.tpChannel / (u.tpDur || 3), '#60a5fa');
         ctx.font = fontEmoji(12);
-        ctx.fillText('🏠', s.x + 32, s.y + 9);
+        ctx.fillText(u.tpDest ? '🌀' : '🏠', s.x + 32, s.y + 9);
       }
     }
     else if(u.kind === 'creep'){
@@ -5153,6 +5200,7 @@ function drawWorldOverlay(){
     const s = worldToScreen(f.x, groundHeight(f.x, f.y) + f.h, f.y);
     if(!s) continue;
     ctx.globalAlpha = f.t < 0.7 ? 1 : 1 - (f.t - 0.7) / 0.4;
+    if(f.st === 'crit'){ drawCritFloat(f, s); ctx.globalAlpha = 1; continue; }
     ctx.font = fontTxt(f.size, true);
     ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
     ctx.strokeStyle = 'rgba(0,0,0,0.7)';
@@ -5162,6 +5210,69 @@ function drawWorldOverlay(){
     ctx.fillText(f.txt, s.x, s.y);
     ctx.globalAlpha = 1;
   }
+}
+
+/* 🎬 efekti preko cijelog ekrana: bljesak ultija, crveni rub kad te jako udare, pulsiranje pri malo života */
+const scrFx = { flash: 0, col: '#ffffff', hurt: 0, hp: -1, pid: -1 };
+function screenFlash(col, a){ scrFx.col = col || '#ffffff'; scrFx.flash = Math.max(scrFx.flash, a || 0.3); }
+function drawScreenFx(dt){
+  if(!player) return;
+  if(scrFx.pid !== player.id){ scrFx.pid = player.id; scrFx.hp = player.hp; }
+  if(!player.dead && player.hp < scrFx.hp - player.maxhp * 0.04) scrFx.hurt = Math.min(1, scrFx.hurt + (scrFx.hp - player.hp) / player.maxhp * 3);
+  scrFx.hp = player.hp;
+  const low = !player.dead && player.hp < player.maxhp * 0.25 ? 0.35 + 0.25 * Math.sin(performance.now() / 180) : 0;
+  const red = Math.max(scrFx.hurt * 0.75, low);
+  if(red > 0.01){
+    const g = ctx.createRadialGradient(VW / 2, VH / 2, Math.min(VW, VH) * 0.35, VW / 2, VH / 2, Math.max(VW, VH) * 0.75);
+    g.addColorStop(0, 'rgba(220,20,20,0)'); g.addColorStop(1, 'rgba(200,10,10,' + red.toFixed(3) + ')');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, VW, VH);
+  }
+  if(scrFx.flash > 0.01){
+    const g = ctx.createRadialGradient(VW / 2, VH / 2, 0, VW / 2, VH / 2, Math.max(VW, VH) * 0.7);
+    g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(1, scrFx.col);
+    ctx.globalAlpha = scrFx.flash; ctx.fillStyle = g; ctx.fillRect(0, 0, VW, VH); ctx.globalAlpha = 1;
+  }
+  scrFx.hurt = Math.max(0, scrFx.hurt - dt * 2.2);
+  scrFx.flash = Math.max(0, scrFx.flash - dt * 2.5);
+}
+/* 💥 kritični broj: iskoči prevelik, odskoči na mjesto, iza njega bljesne zvijezda */
+function drawCritFloat(f, s){
+  const t = f.t;
+  const pop = t < 0.09 ? 0.4 + t / 0.09 * 1.25 : (t < 0.2 ? 1.65 - (t - 0.09) / 0.11 * 0.65 : 1 + Math.max(0, 0.3 - t) * 0.2);
+  const shk = t < 0.18 ? (1 - t / 0.18) * 4 : 0;
+  ctx.save();
+  ctx.translate(s.x + (Math.random() - 0.5) * shk, s.y - 6 + (Math.random() - 0.5) * shk);
+  ctx.rotate(f.rot || 0);
+  ctx.scale(pop, pop);
+  if(t < 0.35){   // zvjezdasti bljesak iza broja
+    const k = 1 - t / 0.35, R = f.size * (1.3 + (1 - k) * 0.8);
+    ctx.save();
+    ctx.globalAlpha *= k * 0.85;
+    ctx.rotate(t * 3);
+    const g = ctx.createRadialGradient(0, -f.size * 0.45, 0, 0, -f.size * 0.45, R);
+    g.addColorStop(0, 'rgba(255,248,200,1)'); g.addColorStop(0.45, 'rgba(255,140,40,0.75)'); g.addColorStop(1, 'rgba(255,60,20,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    for(let i = 0; i < 16; i++){
+      const a = i / 16 * TAU, r = i % 2 ? R * 0.42 : R;
+      ctx.lineTo(Math.cos(a) * r, -f.size * 0.45 + Math.sin(a) * r);
+    }
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  ctx.font = fontTxt(f.size, true);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  ctx.lineJoin = 'round';
+  const tw = ctx.measureText(f.txt).width;
+  ctx.strokeStyle = 'rgba(40,0,0,0.9)'; ctx.lineWidth = 6;
+  ctx.strokeText(f.txt, 0, 0);
+  const gr = ctx.createLinearGradient(0, -f.size, 0, 0);
+  gr.addColorStop(0, '#fff3a3'); gr.addColorStop(0.45, '#ffb020'); gr.addColorStop(1, f.color);
+  ctx.fillStyle = gr;
+  ctx.fillText(f.txt, 0, 0);
+  ctx.font = fontEmoji(f.size * 0.7);
+  ctx.fillText('💥', -tw * 0.5 - f.size * 0.55, -f.size * 0.1);
+  ctx.restore();
 }
 
 /* 💬 izbornik brzih poruka (G) */
@@ -5680,7 +5791,7 @@ function drawHud(){
       const mxR = abilityMaxRank(ab);
       const unlearned = ab.rank === 0;
       const ultLocked = ab.def.ult && unlearned && player.level < CFG.ultLevels[0];
-      const noMana = player.mp < ab.def.mana;
+      const noMana = player.mp < abMana(player, ab);
       const canL = player.skillPoints > 0 && canLearn(player, i);
       const isPending = pendingCast && pendingCast.i === i;
       ctx.fillStyle = ab.def.ult ? '#3b2a4d' : '#1e293b';
@@ -5797,7 +5908,7 @@ function drawHud(){
       ctx.fillText('🏠', tr.x + tr.w / 2, tr.y + tr.h / 2 - 3);
       ctx.globalAlpha = 1;
       if(channeling){
-        drawBar(tr.x + 4, tr.y + tr.h - 9, tr.w - 8, 5, 1 - player.tpChannel / 3, '#60a5fa');
+        drawBar(tr.x + 4, tr.y + tr.h - 9, tr.w - 8, 5, 1 - player.tpChannel / (player.tpDur || 3), '#60a5fa');
       }
       else if(player.tpCd > 0){
         ctx.fillStyle = 'rgba(0,0,0,0.55)';
@@ -5861,14 +5972,15 @@ function drawHud(){
     uiRects.mute = { x: VW - 92, y: 12, w: 38, h: 32 };
     uiRects.help = { x: VW - 48, y: 12, w: 38, h: 32 };
     uiRects.opts = { x: VW - 136, y: 12, w: 38, h: 32 };   // ⚙️ postavke
-    const topBtns = [[muted ? '🔇' : '🔊', uiRects.mute], ['❓', uiRects.help], ['⚙️', uiRects.opts]];
+    uiRects.fs = { x: VW - 180, y: 12, w: 38, h: 32 };     // ⛶ cijeli zaslon
+    const topBtns = [[muted ? '🔇' : '🔊', uiRects.mute], ['❓', uiRects.help], ['⚙️', uiRects.opts], [isFullscreen() ? '🗗' : '⛶', uiRects.fs, isFullscreen()]];
     uiRects.score = uiRects.center = null;
     if(touchMode){   // 👆 tablet: gumbi umjesto tipki Tab i razmaknice
-      uiRects.score = { x: VW - 180, y: 12, w: 38, h: 32 };
-      uiRects.center = { x: VW - 224, y: 12, w: 38, h: 32 };
+      uiRects.score = { x: VW - 224, y: 12, w: 38, h: 32 };
+      uiRects.center = { x: VW - 268, y: 12, w: 38, h: 32 };
       topBtns.push(['📋', uiRects.score, scoreOpen], ['🎯', uiRects.center, cam.follow]);
     }
-    uiRects.dance = { x: VW - (touchMode ? 268 : 180), y: 12, w: 38, h: 32 };   // 💃 ples (J)
+    uiRects.dance = { x: VW - (touchMode ? 312 : 224), y: 12, w: 38, h: 32 };   // 💃 ples (J)
     topBtns.push(['💃', uiRects.dance, player.danceT > 0]);
     for(const [em, r, on] of topBtns){
       drawFrame(r.x, r.y, r.w, r.h, 7);
@@ -6157,6 +6269,70 @@ function drawMinimap(ms, mx, my){
 }
 
 /* 🖱️ rubno pomicanje kamere (kao u DotA i LoL-u): miš uz sam rub ekrana pomiče kameru */
+/* ================= 🖥️ cijeli zaslon i 🔒 zaključani miš =================
+   U cijelom zaslonu (i s dva monitora) pokazivač ne smije pobjeći iz igre: Pointer Lock sakrije pravi
+   pokazivač, igra crta svoj i drži ga unutar prozora — rubno pomicanje kamere uvijek radi.
+   Kad se otvori izbornik (dućan, postavke, pomoć, kraj), miš se otpusti; klik na igru ga opet zaključa. */
+function isFullscreen(){ return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+function enterFullscreen(){
+  if(touchMode || isFullscreen()) return;
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if(!req) return;
+  try {
+    const p = req.call(el, { navigationUI: 'hide' });
+    const kb = () => { try { if(navigator.keyboard && navigator.keyboard.lock) navigator.keyboard.lock(['Escape']).catch(() => {}); } catch(e){} };   // Esc otvara postavke, ne izbacuje iz zaslona
+    if(p && p.then) p.then(kb).catch(() => {}); else kb();
+  } catch(e){}
+}
+function exitFullscreen(){
+  try { if(navigator.keyboard && navigator.keyboard.unlock) navigator.keyboard.unlock(); } catch(e){}
+  const ex = document.exitFullscreen || document.webkitExitFullscreen;
+  if(ex && isFullscreen()) try { const p = ex.call(document); if(p && p.catch) p.catch(() => {}); } catch(e){}
+}
+function toggleFullscreen(){ if(isFullscreen()) exitFullscreen(); else enterFullscreen(); }
+function domOverlayOpen(){
+  for(const id of ['shop', 'options', 'help', 'end', 'pause', 'select']){
+    const el = document.getElementById(id);
+    if(el && !el.classList.contains('hidden')) return true;
+  }
+  return false;
+}
+function mouseLocked(){ return !!hudCv && document.pointerLockElement === hudCv; }
+function wantMouseLock(){ return SETTINGS.lockMouse && !touchMode && running && !gameOver && isFullscreen() && !domOverlayOpen(); }
+let lockFailT = 0;
+function lockMouse(){
+  if(!hudCv.requestPointerLock || performance.now() - lockFailT < 1200) return;   // preglednik ne dopušta odmah nakon Esc
+  try {
+    const p = hudCv.requestPointerLock();
+    if(p && p.catch) p.catch(() => { lockFailT = performance.now(); });
+  } catch(e){ lockFailT = performance.now(); }
+}
+function unlockMouse(){ if(mouseLocked()) try { document.exitPointerLock(); } catch(e){} }
+function watchMouseLock(){   // svaka sličica: otvoren izbornik → otpusti miš
+  if(mouseLocked() && !wantMouseLock()) unlockMouse();
+}
+document.addEventListener('pointerlockchange', () => { if(mouseLocked()) mouseIn = true; curCursor = ''; });
+document.addEventListener('pointerlockerror', () => { lockFailT = performance.now(); });
+document.addEventListener('fullscreenchange', () => { if(!isFullscreen()) unlockMouse(); });
+/* nacrtani pokazivač dok je miš zaključan (isti oblici kao CSS pokazivači) */
+const LOCK_CUR = {};
+function lockCurImg(key, svg){
+  if(!LOCK_CUR[key]){ const im = new Image(); im.src = 'data:image/svg+xml,' + encodeURIComponent(svg); LOCK_CUR[key] = im; }
+  return LOCK_CUR[key];
+}
+const CUR_ARROW = "<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28'><path d='M3 2L3 22L8.5 16.8L12.2 25L16 23.3L12.4 15.3L19.5 15.3Z' fill='#ffffff' stroke='#111827' stroke-width='2' stroke-linejoin='round'/></svg>";
+const CUR_HAND = "<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28'><path d='M9 13V4.5a2 2 0 0 1 4 0V11l1-.2V3.5a2 2 0 0 1 4 0V11l1 .1V5.5a2 2 0 0 1 4 0V17c0 4.5-3 8-7.5 8S8 23 6 19.5L3.3 14.8a1.9 1.9 0 0 1 3.1-2.1Z' fill='#ffffff' stroke='#111827' stroke-width='1.8' stroke-linejoin='round'/></svg>";
+function drawLockedCursor(){
+  if(!mouseLocked()) return;
+  const c = curCursor;
+  let im, hx = 3, hy = 2;
+  if(c === CURSOR.attack){ im = lockCurImg('atk', decodeURIComponent(c.split('"')[1].slice('data:image/svg+xml,'.length))); hx = 3; hy = 3; }
+  else if(c === CURSOR.aim){ im = lockCurImg('aim', decodeURIComponent(c.split('"')[1].slice('data:image/svg+xml,'.length))); hx = 16; hy = 16; }
+  else if(c === 'pointer' || c === 'grabbing'){ im = lockCurImg('hand', CUR_HAND); hx = 9; hy = 2; }
+  else im = lockCurImg('arrow', CUR_ARROW);
+  if(im.complete && im.naturalWidth) ctx.drawImage(im, mouse.sx - hx, mouse.sy - hy);
+}
 function edgePan(dt){
   if(!SETTINGS.edgePan || touchMode || !mouseIn || invDrag || miniDrag || optionsOpen()) return;
   const m = 8;
@@ -6232,9 +6408,12 @@ function frame(now){
   ctx.clearRect(0, 0, VW, VH);
   if(running){
     drawWorldOverlay();
+    drawScreenFx(dt);
     drawHud();
     drawChatWheel();
   }
+  watchMouseLock();
+  drawLockedCursor();
 }
 
 function resize(){

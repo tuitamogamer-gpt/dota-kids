@@ -127,6 +127,16 @@ function abilityTipHtml(h, i){
       (d.passive ? '' : `<span class="tipCd">💧 ${d.mana} &nbsp;⏱️ ${d.cd} s</span>`) + `</div>${escHtml(d.tip(rk))}</div>`;
     if(ab.rank > 0 && ab.rank < max) html += `<div class="tipNote">⬆️ Rang ${ab.rank + 1}: ${escHtml(d.tip(ab.rank + 1))}</div>`;
   }
+  {   // 🎓 odabrani talenti koji jačaju ovu moć
+    const tb = (h.talAb && h.talAb[keyL]) || {}, parts = [];
+    if(tb.dmg) parts.push('+' + tb.dmg + ' štete');
+    if(tb.heal) parts.push('+' + tb.heal + ' liječenja');
+    if(tb.dur) parts.push('+' + tb.dur + ' s trajanja');
+    if(tb.cd) parts.push('−' + Math.abs(tb.cd) + ' s hlađenja');
+    if(tb.mana) parts.push('−' + Math.abs(tb.mana) + ' mane');
+    const fl = Object.keys(h.talFlags || {}).filter(f => f.startsWith(h.hero.id + '_' + keyL.toLowerCase()));
+    if(parts.length || fl.length) html += `<div class="tipNote" style="color:#fde68a">🎓 Talent: ${escHtml(parts.join(', ') || 'posebno pojačanje')}</div>`;
+  }
   html += `<div class="tipFoot">${d.passive ? '✨ Pasivno — uvijek radi' : (d.ult ? '🔓 Ulti na levelima ' + CFG.ultLevels.join(' / ') : '🔓 Rangovi na levelima 1 / 3 / 5 / 7') +
     (ab.rank > 0 && !d.passive ? ' · tipka ' + keyL : '')}</div>`;
   return html;
@@ -134,8 +144,8 @@ function abilityTipHtml(h, i){
 function innateTipHtml(h){
   const pv = h.hero.passive, ir = innateRank(h);
   return `<div class="tipHead q-common"><span class="tipAbIcon" style="background:linear-gradient(160deg, ${pv.color || '#34d399'}, #10141b)">${pv.emoji}</span>` +
-    `<div class="tipT"><b>${escHtml(pv.name)}</b><span class="tipSub">✨ Urođeno · rang ${ir}/4</span>` +
-    `<span class="tipDots">${[0, 1, 2, 3].map(k => `<i class="${k < ir ? 'on' : ''}"></i>`).join('')}</span></div></div>` +
+    `<div class="tipT"><b>${escHtml(pv.name)}</b><span class="tipSub">✨ Urođeno · rang ${ir}/${Math.max(4, ir)}</span>` +
+    `<span class="tipDots">${Array.from({ length: Math.max(4, ir) }, (_, k) => `<i class="${k < ir ? 'on' : ''}"></i>`).join('')}</span></div></div>` +
     `<div class="tipDesc">${escHtml(pv.desc.replace(/^PASIVNO:\s*/, ''))}</div>` +
     (pv.tip ? `<div class="tipBox tipPas"><span class="tipLbl">PASIVNO</span>${escHtml(pv.tip(ir))}</div>` : '') +
     '<div class="tipFoot">✨ Uvijek radi · jača sama na levelima 7 / 13 / 19</div>';
@@ -160,6 +170,7 @@ const TOP_TIPS = {
   center: ['🎯 Kamera', 'Kamera se vrati na tvog junaka i prati ga.', 'Razmaknica'],
   score: ['📋 Tablica', 'Ubojstva, smrti, asistencije, zlato i predmeti svih junaka.', 'Tab (ili ovaj gumb)'],
   opts: ['⚙️ Postavke', 'Glasnoća, glasovi junaka, najavljivač, kvaliteta slike, kamera…', 'Tipka Esc'],
+  fs: ['⛶ Cijeli zaslon', 'Igra preko cijelog ekrana — miš ne može pobjeći iz igre, a kamera se lakše pomiče uz rub.', 'Tipka F11 (ili ovaj gumb)'],
   mute: ['🔊 Zvuk', 'Uključi ili isključi sav zvuk i glasove.', 'Tipka M'],
   help: ['❓ Pomoć', 'Sve tipke i kako se igra.', 'Tipka H'],
 };
@@ -286,8 +297,27 @@ function buyItemId(id){
   else tryBuy(player, it);
 }
 
-/* ---------- 🛒 dućan ---------- */
+/* ---------- 🛒 dućan ----------
+   v0.38: jasniji dućan za djecu — lijevo kategorije s razumljivim imenima, desno kartice predmeta
+   (slika, ime, što daje, cijena, "fali još X"), gore "⭐ Kupi sljedeće", dolje recept i tvoja torba. */
 let shopTab = 'guide', shopSel = null, shopQuery = '';
+const SHOP_CATS = [
+  { id:'guide',  label:'⭐ Za tebe',        tip:'Što kupiti, redom — za tvog junaka' },
+  { id:'afford', label:'💰 Mogu kupiti',    tip:'Sve što možeš kupiti odmah' },
+  { hdr:'🧱 OSNOVNO' },
+  { id:'cons',   label:'🧪 Napitci',        tip:'Liječenje, mana, štapići vida — potroše se' },
+  { id:'attr',   label:'💪 Atributi',       tip:'Snaga, okretnost, inteligencija' },
+  { id:'equip',  label:'🗡️ Oprema',         tip:'Oružje, oklop i čizme za početak' },
+  { id:'misc',   label:'🎒 Razno',          tip:'Obnova, brzina i korisne sitnice' },
+  { id:'secret', label:'💎 Rijetko',        tip:'Skupi dijelovi za najjače predmete' },
+  { hdr:'🏆 VELIKI PREDMETI' },
+  { id:'acc',    label:'👢 Pribor',         tip:'Čizme, narukvice i mali recepti' },
+  { id:'sup',    label:'🤝 Za tim',         tip:'Pomažu cijelom timu' },
+  { id:'magic',  label:'✨ Čarolije',        tip:'Mana, magije i aktivne moći' },
+  { id:'armor',  label:'🛡️ Obrana',         tip:'Život, oklop i zaštita' },
+  { id:'weapon', label:'⚔️ Oružje',          tip:'Šteta, kritični udarci, brzina napada' },
+  { id:'art',    label:'👑 Legendarno',      tip:'Najjači predmeti u igri' },
+];
 /* ima li junak predmet — ili ga je već ugradio u veći recept */
 function ownsOrUsed(h, id){
   const has = (it) => it.id === id || (it.components || []).some(c => has(ITEM_BY_ID[c]));
@@ -297,33 +327,59 @@ function toggleShop(){
   shopOpen = !shopOpen;
   document.getElementById('shop').classList.toggle('hidden', !shopOpen);
   if(!shopOpen){ hideItemTip(); document.getElementById('shopSearch').blur(); }
-  else renderShopBody();
+  else { renderShopTabs(); renderShopBody(); }
 }
 function normTxt(t){ return t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd'); }
+function itemPlan(it){ return it.instant ? { cost: it.cost, ok: true, tagOk: true, slotsOk: true } : planPurchase(player, it); }
+/* kartica predmeta: slika, ime, prvo svojstvo, cijena (ili "fali još") */
 function shopCell(it, extra){
-  return `<div class="sit q-${it.q}${extra ? ' ' + extra : ''}" data-id="${it.id}">${iconImg(it, 'sitImg')}<span class="sitCost" id="sc-${it.id}-${extra ? 'g' : 'c'}"></span><span class="sitOwn">✓</span></div>`;
+  const st = statLines(it)[0] || (it.act ? '⚡ ' + it.act : (it.pas || ''));
+  return `<div class="sit q-${it.q}${extra ? ' ' + extra : ''}" data-id="${it.id}">${iconImg(it, 'sitImg')}` +
+    `<div class="sitInfo"><b class="sitName">${escHtml(it.name)}</b><span class="sitStat">${escHtml(st)}</span></div>` +
+    `<span class="sitCost"></span><span class="sitOwn">✓</span></div>`;
+}
+function renderShopTabs(){
+  const tabs = document.getElementById('shopTabs');
+  if(!tabs) return;
+  tabs.innerHTML = SHOP_CATS.map(c => c.hdr ? `<div class="stHdr">${c.hdr}</div>` :
+    `<button data-tab="${c.id}" title="${escHtml(c.tip)}"><span>${c.label}</span><i class="stN"></i></button>`).join('');
+  tabs.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    shopTab = b.dataset.tab; shopQuery = ''; document.getElementById('shopSearch').value = '';
+    renderShopBody(); sfx('click');
+  }));
+}
+let shopAffordKey = '';
+function affordableItems(){
+  return ITEMS.filter(it => !it.noShop && !(it.tag === 'boots' && ownsOrUsed(player, it.id)) && (() => { const p = itemPlan(it); return p.ok && player.gold >= p.cost; })())
+    .sort((a, b) => itemFullCost(b) - itemFullCost(a));
 }
 function renderShopBody(){
   const body = document.getElementById('shopBody');
-  if(!body) return;
+  if(!body || !player) return;
   document.querySelectorAll('#shopTabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === shopTab && !shopQuery));
   let html = '';
+  const cat = SHOP_CATS.find(c => c.id === shopTab) || SHOP_CATS[0];
   if(shopQuery){
     const q = normTxt(shopQuery);
     const hits = ITEMS.filter(it => !it.noShop && (normTxt(it.name).includes(q) || it.emoji === shopQuery.trim() ||
-      statLines(it).some(l => normTxt(l).includes(q))));
-    html = `<div class="sres"><div class="scolH">🔍 Pronađeno: ${hits.length}</div><div class="sgrid wide">${hits.map(it => shopCell(it)).join('') || '<span class="sempty">Ništa — probaj drugu riječ 🙂</span>'}</div></div>`;
+      statLines(it).some(l => normTxt(l).includes(q)) || normTxt(it.pas || '').includes(q) || normTxt(it.act || '').includes(q)));
+    html = `<div class="sbHead">🔍 Pronađeno: ${hits.length}</div><div class="scards">${hits.map(it => shopCell(it)).join('') || '<span class="sempty">Ništa — probaj drugu riječ 🙂</span>'}</div>`;
   } else if(shopTab === 'guide'){
     const b = (player && player.hero.build) || BOT_BUILD;
-    const rows = [['🌅 Početak', START_ITEMS], ['🌱 Rano', b.slice(0, 2)], ['⚔️ Sredina igre', b.slice(2, 4)], ['🏆 Kasno', b.slice(4)]];
-    html = `<div class="sguide"><div class="sgInfo">⭐ Vodič za <b>${player ? escHtml(player.name) : ''}</b> — kupuj redom, zeleni 🎯 je sljedeći. Klik na predmet = recept, desni klik = kupi.</div>` +
-      rows.map(([lbl, ids]) => `<div class="sgRow"><div class="sgLbl">${lbl}</div><div class="sgrid">${ids.map(id => shopCell(ITEM_BY_ID[id], 'g')).join('')}</div></div>`).join('') + '</div>';
+    const rows = [['🌅 Za početak', START_ITEMS], ['🌱 Rano', b.slice(0, 2)], ['⚔️ Sredina igre', b.slice(2, 4)], ['🏆 Kraj igre', b.slice(4)]];
+    html = '<div id="sgNext"></div>' +
+      rows.map(([lbl, ids]) => `<div class="sbHead">${lbl}</div><div class="scards">${ids.map(id => shopCell(ITEM_BY_ID[id], 'g')).join('')}</div>`).join('');
+  } else if(shopTab === 'afford'){
+    const list = affordableItems();
+    shopAffordKey = list.map(it => it.id).join(',');
+    html = `<div class="sbHead">💰 Za ${Math.floor(player.gold)} 🪙 možeš kupiti (${list.length}):</div><div class="scards">` +
+      (list.map(it => shopCell(it)).join('') || '<span class="sempty">Još nemaš dovoljno zlata — skupljaj ga pobjeđujući vojnike 🪙</span>') + '</div>';
   } else {
-    const tab = SHOP_TABS.find(t => t.id === shopTab);
-    html = '<div class="scols t-' + tab.id + '">' + tab.cats.map(cat => `<div class="scol"><div class="scolH">${ITEM_CAT_INFO[cat].label}</div><div class="sgrid">` +
-      ITEMS.filter(it => it.cat === cat && !it.noShop).map(it => shopCell(it)).join('') + '</div></div>').join('') + '</div>';
+    html = `<div class="sbHead">${cat.label} <small>${escHtml(cat.tip)}</small></div><div class="scards">` +
+      ITEMS.filter(it => it.cat === shopTab && !it.noShop).sort((a, b) => itemFullCost(a) - itemFullCost(b)).map(it => shopCell(it)).join('') + '</div>';
   }
   body.innerHTML = html;
+  body.scrollTop = 0;
   body.querySelectorAll('.sit').forEach(el => {
     const id = el.dataset.id;
     el.addEventListener('click', () => { selectShopItem(id); sfx('click'); });
@@ -331,7 +387,7 @@ function renderShopBody(){
     el.addEventListener('contextmenu', e => { e.preventDefault(); buyItemId(id); });
     el.addEventListener('mouseenter', () => {
       const r = el.getBoundingClientRect();
-      showItemTip(itemTipHtml(ITEM_BY_ID[id], { foot: 'Klik = recept · desni klik = kupi' }), { x: document.getElementById('shop').getBoundingClientRect().x, y: r.y, w: r.width, h: r.height }, 'left');
+      showItemTip(itemTipHtml(ITEM_BY_ID[id], { foot: '🖱️ Klik = recept i opis · desni klik = kupi' }), { x: document.getElementById('shop').getBoundingClientRect().x, y: r.y, w: r.width, h: r.height }, 'left');
     });
     el.addEventListener('mouseleave', hideItemTip);
   });
@@ -341,33 +397,73 @@ function selectShopItem(id){
   shopSel = id;
   renderShopDetail();
 }
+/* gumb kupnje: "Kupi za X" ili "Fali još X" */
+function buyBtnState(it){
+  const plan = itemPlan(it), cost = Math.ceil(plan.cost);
+  if(!plan.tagOk) return { txt: '👢 Već imaš čizme', dis: true, cost };
+  if(!plan.slotsOk) return { txt: '🎒 Torba je puna', dis: true, cost };
+  if(player.gold < cost) return { txt: '🔒 Fali još ' + Math.ceil(cost - player.gold) + ' 🪙', dis: true, cost, poor: true };
+  return { txt: '🛒 Kupi za ' + cost + ' 🪙', dis: false, cost };
+}
 function renderShopDetail(){
   const box = document.getElementById('shopDetail');
   if(!box) return;
   const it = shopSel && ITEM_BY_ID[shopSel];
-  if(!it || !player){ box.innerHTML = '<div class="sdEmpty">👆 Klikni predmet za opis i recept • desni klik ili dvoklik = odmah kupi</div>'; return; }
-  const plan = it.instant ? { cost: it.cost, ok: true, tagOk: true, slotsOk: true } : planPurchase(player, it);
+  if(!it || !player){ box.innerHTML = '<div class="sdEmpty">👆 Klikni predmet — vidjet ćeš što radi i od čega se slaže<br>🖱️ Desni klik ili dvoklik = kupi odmah</div>'; return; }
   const inv = player.items.concat(player.backpack || []).map(x => x.id);
   let comps = '';
   if(it.components){
-    comps = '<div class="sdRow"><span class="sdLbl">Sastojci</span>' + it.components.map(cid => {
+    comps = '<div class="sdRow"><span class="sdLbl">🧩 Recept — složi od:</span>' + it.components.map(cid => {
       const k = inv.indexOf(cid), have = k >= 0; if(have) inv.splice(k, 1);
       const c = ITEM_BY_ID[cid];
-      return `<span class="sdc${have ? ' have' : ''}" data-id="${cid}" title="${escHtml(c.name)}">${iconImg(c, 'sdIcon')}<i>${have ? '✓' : itemFullCost(c)}</i></span>`;
-    }).join('<b class="sdPlus">+</b>') + (it.cost > 0 ? `<b class="sdPlus">+</b><span class="sdc recipe">${iconImg(RECIPE_ICON, 'sdIcon')}<i>${it.cost}</i></span>` : '') + '</div>';
+      return `<span class="sdc${have ? ' have' : ''}" data-id="${cid}" title="${escHtml(c.name)}">${iconImg(c, 'sdIcon')}<i>${have ? '✓ imaš' : itemFullCost(c) + ' 🪙'}</i></span>`;
+    }).join('<b class="sdPlus">+</b>') + (it.cost > 0 ? `<b class="sdPlus">+</b><span class="sdc recipe" title="Recept (svitak)">${iconImg(RECIPE_ICON, 'sdIcon')}<i>${it.cost} 🪙</i></span>` : '') +
+      `<b class="sdPlus">=</b><span class="sdc res">${iconImg(it, 'sdIcon')}<i>${escHtml(it.name)}</i></span></div>`;
   }
-  const into = (it.buildsInto || []).length ? '<div class="sdRow"><span class="sdLbl">Ulazi u</span>' +
+  const into = (it.buildsInto || []).length ? '<div class="sdRow"><span class="sdLbl">⬆️ Ulazi u:</span>' +
     it.buildsInto.map(id => `<span class="sdc" data-id="${id}" title="${escHtml(ITEM_BY_ID[id].name)}">${iconImg(ITEM_BY_ID[id], 'sdIcon')}</span>`).join('') + '</div>' : '';
-  let btnTxt = 'Kupi · 🪙 ' + Math.ceil(plan.cost), dis = player.gold < plan.cost;
-  if(!plan.tagOk){ btnTxt = 'Već imaš čizme'; dis = true; }
-  else if(!plan.slotsOk){ btnTxt = 'Torba je puna 🎒'; dis = true; }
+  const bs = buyBtnState(it);
   box.innerHTML = `<div class="sdMain">${itemTipHtml(it, { compact: true })}</div><div class="sdSide">${comps}${into}
-    <div class="sdBtns"><button id="sdBuy" ${dis ? 'disabled' : ''} class="${dis ? '' : 'afford'}">${btnTxt}</button>
-    ${it.instant ? '' : `<button id="sdPin" class="${quickBuy === it.id ? 'on' : ''}">📌 ${quickBuy === it.id ? 'Prikvačeno' : 'Brza kupnja'}</button>`}</div></div>`;
+    <div class="sdBtns"><button id="sdBuy" ${bs.dis ? 'disabled' : ''} class="${bs.dis ? (bs.poor ? 'poor' : '') : 'afford'}">${bs.txt}</button>
+    ${it.instant ? '' : `<button id="sdPin" class="${quickBuy === it.id ? 'on' : ''}" title="Prikvači: HUD pokazuje što još fali, klik ga kupi">📌 ${quickBuy === it.id ? 'Prikvačeno' : 'Prikvači'}</button>`}</div></div>`;
   box.querySelectorAll('.sdc[data-id]').forEach(el => el.addEventListener('click', () => { selectShopItem(el.dataset.id); sfx('click'); }));
   document.getElementById('sdBuy').addEventListener('click', () => buyItemId(it.id));
   const pin = document.getElementById('sdPin');
   if(pin) pin.addEventListener('click', () => { setQuickBuy(quickBuy === it.id ? null : it.id); sfx('click'); });
+}
+/* ⭐ "Kupi sljedeće": najbliži korak prema sljedećem predmetu iz vodiča (najprije dio koji fali) */
+function renderGuideNext(nextId){
+  const el = document.getElementById('sgNext');
+  if(!el) return;
+  if(!nextId){ el.innerHTML = '<div class="sgN done">🏆 Imaš sve iz vodiča! Kupi što želiš ili prodaj staro za bolje.</div>'; return; }
+  const goal = ITEM_BY_ID[nextId];
+  const step = quickBuyList(player, nextId).find(x => player.gold >= itemPlan(x).cost) || quickBuyList(player, nextId)[0] || goal;
+  const bs = buyBtnState(step);
+  const key = nextId + step.id + bs.txt;
+  if(el.dataset.k === key) return;
+  el.dataset.k = key;
+  el.innerHTML = `<div class="sgN">${iconImg(step, 'sgnImg')}<div class="sgnT"><small>⭐ Kupi sljedeće${step !== goal ? ' (dio za ' + escHtml(goal.name) + ')' : ''}</small>` +
+    `<b>${escHtml(step.name)}</b><span>${escHtml(statLines(step).slice(0, 2).join(' · '))}</span></div>` +
+    `<button id="sgnBuy" ${bs.dis ? 'disabled' : ''} class="${bs.dis ? (bs.poor ? 'poor' : '') : 'afford'}">${bs.txt}</button></div>`;
+  el.querySelector('#sgnBuy').addEventListener('click', () => buyItemId(step.id));
+  el.querySelector('.sgnImg').addEventListener('click', () => { selectShopItem(step.id); sfx('click'); });
+}
+/* 🎒 torba na dnu dućana + gdje stiže predmet */
+function renderShopInv(){
+  const el = document.getElementById('shopInv');
+  if(!el) return;
+  const slots = [];
+  for(let i = 0; i < CFG.inventorySlots; i++) slots.push(player.items[i]);
+  const bp = player.backpack || [];
+  const near = typeof nearBase === 'function' && nearBase(player);
+  const key = slots.map(x => x ? x.id + (x.pending ? 'p' : '') : '-').join(',') + '|' + bp.map(x => x.id).join(',') + '|' + near;
+  if(el.dataset.k === key) return;
+  el.dataset.k = key;
+  const cell = (x, cls) => x ? `<span class="siSlot ${cls || ''}${x.pending ? ' pend' : ''}" title="${escHtml(x.name)}${x.pending ? ' — kurir ga nosi' : ''}">${iconImg(x, 'siImg')}</span>`
+    : `<span class="siSlot empty ${cls || ''}"></span>`;
+  el.innerHTML = `<span class="siLbl">🎒 Torba</span>${slots.map(x => cell(x)).join('')}` +
+    (player.backpack ? `<span class="siLbl small">ruksak</span>${[0, 1, 2].map(i => cell(bp[i], 'bp')).join('')}` : '') +
+    `<span class="siNote">${near ? '🏠 U bazi si — predmet dobiješ odmah' : '🫏 Daleko si od baze — kurir donosi predmet'}</span>`;
 }
 function refreshShop(){
   if(!player) return;
@@ -375,31 +471,41 @@ function refreshShop(){
   if(!gEl) return;
   gEl.textContent = '🪙 ' + Math.floor(player.gold);
   if(!shopOpen) return;
+  if(shopTab === 'afford' && !shopQuery && affordableItems().map(it => it.id).join(',') !== shopAffordKey){ renderShopBody(); return; }
   const build = (player.hero && player.hero.build) || BOT_BUILD;
   const nextId = build.find(id => !ownsOrUsed(player, id)) || null;
   document.querySelectorAll('#shopBody .sit').forEach(el => {
     const it = ITEM_BY_ID[el.dataset.id];
-    const plan = it.instant ? { cost: it.cost, ok: true } : planPurchase(player, it);
+    const plan = itemPlan(it);
     const cost = Math.ceil(plan.cost);
     const own = !it.instant && ownsOrUsed(player, it.id);
-    el.classList.toggle('afford', player.gold >= cost && plan.ok);
+    const can = player.gold >= cost && plan.ok;
+    el.classList.toggle('afford', can);
     el.classList.toggle('poor', player.gold < cost);
     el.classList.toggle('owned', own);
     el.classList.toggle('next', it.id === nextId && el.classList.contains('g'));
     el.classList.toggle('pinned', it.id === quickBuy);
     const ce = el.querySelector('.sitCost');
-    if(ce) ce.textContent = cost;
+    if(ce) ce.innerHTML = player.gold < cost ? `${cost} 🪙<em>fali ${cost - Math.floor(player.gold)}</em>` : `${cost} 🪙`;
   });
+  // broj predmeta koje možeš kupiti po kategoriji (zelena značka)
+  const n = {};
+  for(const it of ITEMS){
+    if(it.noShop) continue;
+    const p = itemPlan(it);
+    if(p.ok && player.gold >= p.cost && !(it.tag && ownsOrUsed(player, it.id))) n[it.cat] = (n[it.cat] || 0) + 1;
+  }
+  n.afford = Object.values(n).reduce((a, b) => a + b, 0);
+  document.querySelectorAll('#shopTabs button').forEach(b => {
+    const i = b.querySelector('.stN');
+    if(i) i.textContent = b.dataset.tab !== 'guide' && n[b.dataset.tab] ? n[b.dataset.tab] : '';
+  });
+  if(shopTab === 'guide' && !shopQuery) renderGuideNext(nextId);
+  renderShopInv();
   renderShopDetail();
 }
 function buildShopDom(){
-  const tabs = document.getElementById('shopTabs');
-  tabs.innerHTML = [['guide', '⭐ Vodič']].concat(SHOP_TABS.map(t => [t.id, t.label])).map(([id, l]) =>
-    `<button data-tab="${id}">${l}</button>`).join('');
-  tabs.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
-    shopTab = b.dataset.tab; shopQuery = ''; document.getElementById('shopSearch').value = '';
-    renderShopBody(); sfx('click');
-  }));
+  renderShopTabs();
   const se = document.getElementById('shopSearch');
   se.addEventListener('input', () => { shopQuery = se.value.trim(); renderShopBody(); });
   document.getElementById('shopClose').addEventListener('click', toggleShop);
