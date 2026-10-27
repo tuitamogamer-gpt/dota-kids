@@ -117,6 +117,17 @@ const VOICES = {
     attack: '[growling] Big bite!', ult: '[frenzied] Frenzy! Now I bite everything!', kill: '[satisfied] Yum! Delicious!',
     death: '[groaning] Ow... my teeth gave up...', respawn: '[hungry] Still hungry!',
     taunt: "[chuckling] Heh heh! Smile! I've got a hundred teeth!" },
+  // ---- v0.38 ----
+  nisan: { voice: '9032b5f2e2554b5a957ad655c052af16',   // Slax — miran, suh, samouvjeren snajperist
+    pick: "[calm, dry and confident] Nishan. One shot is all I need.", move1: '[relaxed] Moving to a better spot.', move2: "[calm, under his breath] Quiet... I've got the angle.",
+    attack: '[focused, cool] Target acquired.', ult: '[slow, deadly calm] Hold still... Perfect shot!', kill: '[satisfied, dry] Right between the acorns.',
+    death: "[sighing, defeated] Should've... found better cover...", respawn: '[calm and ready] Back on the branch. Reloaded.',
+    taunt: "[smug, chuckling] Heh. You can't hit what you can't see." },
+  bikos: { voice: '8ec9973300874562962bbcb300f82213',   // Guyzo — dubok, gromki ratnik
+    pick: '[booming, fierce] Bikosh! Come at me, all of you!', move1: '[gruff] Stomping forward!', move2: '[impatient, snorting] Out of my way!',
+    attack: '[battle roar] Face my axe!', ult: '[huge battle roar] One mighty chop!', kill: '[triumphant, laughing] Ha! Chopped like a log!',
+    death: '[groaning, falling] Moooo... not fair...', respawn: "[angry and pumped] The bull is back! Who's next?",
+    taunt: '[boastful, laughing] Look at these horns! Come on, try me!' },
 };
 // 📣 najavljivač (kao u DotA/LoL): assets/voice/ann/<ključ>.mp3; "ours"/"enemy" ovisi o tvom timu
 const ANNOUNCER = { voice: '92e3ee13d7524fee904324e350a532a0',   // Epic Game Announcer — dubok, gromki
@@ -164,6 +175,8 @@ const VOICE_REMOTE = {
   panda: '2026-10-25/0e3e705bc2c44a97855f5708db47e502 2026-10-25/651ac0db169d4799900e9753029adf26 2026-10-25/d7b53ecabdf6466aa92cfef99f220d7e 2026-10-25/9c03f68a74144925870c554d71f11d39 2026-10-25/e261bc8917e94d40b44aa6d32b7dd07c 2026-10-25/f46b4632c8f14b809801f4f1a23f30a6 2026-10-25/7353d21dea694c7c83597e9dde206355 2026-10-25/7bdd01ca91274ec7bddcb437db40065b 2026-10-25/7a2d8261ca294a5a887a1b891d62065b',
   jednorog: '2026-10-25/adea971db423444fad9e85d524b356b3 2026-10-25/c7ba1f6adc9040c5877047f89e8c7efb 2026-10-25/a30e3e56300f49baa8a122d2f1a2311a 2026-10-25/78a82fbcd0004426ad84ff4834df7213 2026-10-25/d586224fa0574061b669ca11e23f3fbd 2026-10-25/e03070f672d24450a7f5e469d4047e03 2026-10-25/841694e5b03443858620c5c07859e919 2026-10-25/2f05ab6e9e9441e6a9cf97755a6b0914 2026-10-25/2d73e84ac78c4d17a76e2cd8372b4970',
   morskipas: '2026-10-25/3f6811067db64bddb7d61e14cae18e49 2026-10-25/0fd120c5fd3b44b48d30325035411238 2026-10-25/fb9f80ba450146eda6e6dab8c9bb560b 2026-10-25/cd09b796d32b433b856339ad8ccf0550 2026-10-25/2ed5dc661a284f6faaab17371c22b707 2026-10-25/fc8dbcdb9e444f07b47813d3ab97d8db 2026-10-25/b93a99ce06514e539af0db6a59015f3d 2026-10-25/b689a9eb8aa74063a94feb112f283390 2026-10-25/660e8f54d6b24d47a71aa6abf7b10084',
+  nisan: '2026-10-27/f76a07b9c8664933aaf6fd1163c2bf94 2026-10-27/97a39e6ae3b743baa0de254cbcef3972 2026-10-27/5f4dc66989214c23a5c9f186c123053f 2026-10-27/fcd5e76b14054b8ca66d3f048f8ce6ec 2026-10-27/b30b283a300f477daa3fa391349fed36 2026-10-27/f7f7a9d3cf9645afb0b3d24f736f28cb 2026-10-27/93fe8affadf64f668a198a92cc5c7160 2026-10-27/3883b40175eb426ab38718c4c270af16 2026-10-27/e40af20e29a7427b9219e1fdda91a4c5',
+  bikos: '2026-10-27/02c1c815f2034f4389556f9ead43f551 2026-10-27/725e8a2238a94af8bcb45d1e4689f6d8 2026-10-27/0d0b5045cc8043968bb86f9154b8a56b 2026-10-27/099f91bd25d2446f8852568941ec135e 2026-10-27/0ca789ba7c2e4a1cb7e67fce41d7a35f 2026-10-27/629803a59f394a4b86f6ebee5add133d 2026-10-27/db6335d6d2f9426a8b08a05865c42fef 2026-10-27/ad6f1977f81a45c9a31055b504758253 2026-10-27/ceb07ac5281c41949dc5c49ba0b576db',
 };
 const ANN_REMOTE = {
   welcome: '2026-10-25/299b95be31fb43229ae2751293bbf5ac',
