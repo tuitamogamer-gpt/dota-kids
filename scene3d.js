@@ -3681,11 +3681,11 @@ function castFx(u, g, key){
 }
 /* 🔫 bljesak iz cijevi puške (Nišan) */
 function muzzleFx(u, gh, col){
-  const dir = u.dir || 0, off = (u.r || 16) + 34;
+  const dir = u.dir || 0, off = 58;
   const x = u.x + Math.cos(dir) * off, y = u.y + Math.sin(dir) * off;
-  hitSpark(x, y, gh + 52, col || '#ffe08a', 120);
-  spellLight(x, y, gh + 52, col || '#ffe08a', 2, 0.18, 300);
-  for(let i = 0; i < 6; i++) smokePuff(x, y, gh + 52, '#d6d3d1', { life: 0.7, size: 26, alpha: 0.6, up: 20, wind: 2 });
+  hitSpark(x, y, gh + 40, col || '#ffe08a', 120);
+  spellLight(x, y, gh + 40, col || '#ffe08a', 2, 0.18, 300);
+  for(let i = 0; i < 6; i++) smokePuff(x, y, gh + 40, '#d6d3d1', { life: 0.7, size: 26, alpha: 0.6, up: 20, wind: 2 });
 }
 /* 🪓 golemi zamah sjekirom (Bikoš R): crveni luk od junaka preko mete + rez + tresak */
 function cleaveFx(u, x, y){
@@ -3912,8 +3912,9 @@ function chargeFx(u, g, impact, crit){
   const spr = new THREE.Sprite(glowMatOwn(col));
   addFx(spr, impact + 0.12, (o, f, t) => {
     const dir = u.dir || 0, gh = groundHeight(u.x, u.y);
-    const off = (u.r || 16) * 0.8 + 8;
-    o.position.set(u.x + Math.cos(dir) * off, gh + 50, u.y + Math.sin(dir) * off);
+    const gun = u.hero && u.hero.shot === 'pellet';   // 🔫 Nišan: bljesak na ustima cijevi
+    const off = gun ? 58 : (u.r || 16) * 0.8 + 8;
+    o.position.set(u.x + Math.cos(dir) * off, gh + (gun ? 40 : 50), u.y + Math.sin(dir) * off);
     const k = t < impact ? t / impact : 1 + (t - impact) / 0.12 * 0.8;   // raste do ispaljivanja, pa kratko prasne
     const s = (t < impact ? 10 + 26 * k : 36 + 40 * (k - 1)) * (crit ? 1.6 : 1);
     o.scale.set(s, s, 1);

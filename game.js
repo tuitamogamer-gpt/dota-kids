@@ -2251,7 +2251,7 @@ function releaseAttack(u, t, dmg, miss, onHitFx, crit){
   if(u.dead || u.removeMe || !isTargetable(t)) return;
   if(dist(u, t) > u.atkRange + t.r + 160) return;   // meta pobjegla tijekom zamaha: promašaj u zrak
   if(u.projSpeed > 0){
-    const off = (u.r || 16) * 0.8 + 8;   // strijela / kugla polijeće iz ruke ispred junaka, ne iz sredine tijela
+    const off = u.kind === 'hero' && u.hero.shot === 'pellet' ? 58 : (u.r || 16) * 0.8 + 8;   // strijela / kugla polijeće iz ruke (metak iz cijevi puške) ispred junaka, ne iz sredine tijela
     spawnHoming(u, t, {
       x: u.x + Math.cos(u.dir || 0) * off, y: u.y + Math.sin(u.dir || 0) * off,
       speed: u.projSpeed, dmg, miss, atk: true, crit: crit && !miss,
