@@ -2076,6 +2076,7 @@ function shatterFx(x, y, h, team, n){
 
 /* ---------- tresenje kamere i filmska kamera ---------- */
 const shake = { amp: 0, t: 0 };
+let camPunch = 0;
 function shakeAt(x, y, amp, dur){
   const k = Math.max(0, 1 - distXY(x, y, cam.x, cam.y) / 1500);
   if(k <= 0) return;
@@ -3726,6 +3727,28 @@ function helixFx(u, g){
   });
   for(let i = 0; i < 20; i++){ const a = i / 20 * TAU; fxSpawn(u.x + Math.cos(a) * 200, u.y + Math.sin(a) * 200, gh + 30, i % 2 ? '#ef4444' : '#fde68a', { spd: 80, up: 40, grav: -60, life: 0.4, size: 18 }); }
 }
+/* 🪙 zlatnici iz pobijeđenog junaka lete lukom do pobjednika */
+function goldFlyFx(x, y, to){
+  const gh = groundHeight(x, y);
+  for(let i = 0; i < 9; i++){
+    const m = modelInstance('fx_coin', 0, 40);
+    if(!m) break;
+    const delay = i * 0.04, a = Math.random() * TAU, sp = 40 + Math.random() * 60, dur = 0.75;
+    addFx(m, dur + delay, (o, f, t) => {
+      const k = Math.max(0, t - delay) / dur;
+      o.visible = t >= delay;
+      const up = k < 0.35 ? k / 0.35 : 1;   // najprije iskoče gore, pa polete do junaka
+      const fly = k < 0.35 ? 0 : (k - 0.35) / 0.65, e = fly * fly * (3 - 2 * fly);
+      const sx = x + Math.cos(a) * sp * up, sy = y + Math.sin(a) * sp * up;
+      const tx = to.x, ty = to.y, th = groundHeight(tx, ty) + 60;
+      o.position.set(lerp(sx, tx, e), lerp(gh + 40 + 90 * Math.sin(up * Math.PI * 0.5), th, e) + Math.sin(e * Math.PI) * 80, lerp(sy, ty, e));
+      o.rotation.y = t * 16;
+      o.scale.setScalar(40 * (1 - e * 0.5));
+      if(fly > 0 && Math.random() < 0.4) fxSpawn(o.position.x, o.position.z, o.position.y, '#fde047', { spd: 4, up: 0, grav: 0, life: 0.25, size: 12 });
+    });
+  }
+  for(let i = 0; i < 14; i++) fxSpawn(x, y, gh + 40, i % 2 ? '#fde047' : '#ffffff', { spd: 160, up: 120, grav: -200, life: 0.6, size: 18 });
+}
 /* 🎯 nišan nad metom (Savršen hitac) */
 let crossTex = null;
 function crosshairTexture(){
@@ -3789,6 +3812,12 @@ function syncHeroExtras(u, g, gh, tAnim, dt, seen){
     ud.cross.material.opacity = 0.6 + 0.4 * Math.abs(Math.sin(tAnim * (6 + cf * 14)));
   } else if(ud.laser){ ud.laser.visible = false; ud.cross.visible = false; }
   if(!seen) return;
+  // 💨 putovanje izvan borbe: vjetar za petama (plavkast od fontane)
+  if(u.travel && gameTime - (u.lastMoveT == null ? -9 : u.lastMoveT) < 0.15 && Math.random() < dt * (u.travel === 2 ? 24 : 10)){
+    const a = (u.dir || 0) + Math.PI + (Math.random() - 0.5) * 1.1, n = fx.list.length;
+    fxSpawn(u.x + Math.cos(a) * 20, u.y + Math.sin(a) * 20, gh + 8 + Math.random() * 40, u.travel === 2 ? '#bae6fd' : '#f8fafc', { spd: 0, up: 6, grav: 0, life: 0.35, size: u.travel === 2 ? 18 : 14 });
+    if(fx.list.length > n){ fx.list[n].vx = Math.cos(a) * 90; fx.list[n].vy = Math.sin(a) * 90; }
+  }
   // 🍖 ratna glad: narančaste kapi i para nad metom
   if(u.hungerT > 0 && Math.random() < dt * 9)
     fxSpawn(u.x + (Math.random() - 0.5) * 36, u.y + (Math.random() - 0.5) * 36, gh + 60 + Math.random() * 30, Math.random() < 0.5 ? '#fb923c' : '#fdba74', { spd: 10, up: -40, grav: -60, life: 0.6, size: 14 });
@@ -3796,6 +3825,14 @@ function syncHeroExtras(u, g, gh, tAnim, dt, seen){
   if((u.helixN || 0) !== (ud.helixN || 0)){
     if(ud.helixN != null) helixFx(u, g);
     ud.helixN = u.helixN || 0;
+  }
+  // 🪙 pobjeda nad junakom: zlatnici polete do pobjednika; tvoja pobjeda: zlatni bljesak, trzaj kamere i zum
+  if((u.killFxN || 0) !== (ud.killFxN || 0)){
+    if(ud.killFxN != null && u.killAt){
+      goldFlyFx(u.killAt.x, u.killAt.y, u);
+      if(u === player){ screenFlash('#fde047', 0.22); shakeAt(u.x, u.y, 0.45, 0.25); camPunch = 0.14; }
+    }
+    ud.killFxN = u.killFxN || 0;
   }
   // 🎓 talent: zlatni stup i runski krug
   if((u.talN || 0) !== (ud.talN || 0)){
@@ -4358,7 +4395,8 @@ function updateCamera3(){
     oy = (Math.random() - 0.5) * a;
     if(shake.t <= 0) shake.amp = 0;
   }
-  const d = CAM_DIST / cam.zoom;
+  if(camPunch > 0) camPunch = Math.max(0, camPunch - dt * 0.5);
+  const d = CAM_DIST / (cam.zoom * (1 + camPunch));   // 🎥 kratki zum nakon tvoje pobjede nad junakom
   camera3.position.set(cam.x + ox, 40 + Math.sin(CAM_PITCH) * d + oy, cam.y + Math.cos(CAM_PITCH) * d);
   camera3.lookAt(cam.x + ox, 40 + oy, cam.y);
   sunLight.position.set(cam.x - 700, 1700, cam.y + 500);

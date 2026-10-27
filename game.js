@@ -461,6 +461,7 @@ function updateExtraRunes(dt){
 
 /* 💬 brze poruke i 📍 ping */
 let pings = [];                 // { x, y, team, t }
+let botBragT = -99, botHelpT = [-99, -99];   // 🤫 botovi ne zatrpavaju poruke
 let chatOpen = false;
 function say(h, txt){
   if(!h) return;
@@ -894,13 +895,14 @@ function ring(x, y, r, color){ markers.push({ x, y, t: 0, color, r, isRing: true
 function addLine(x1, y1, x2, y2, color, w, life){
   lines.push({ x1, y1, x2, y2, color, w, life, t: 0 });
 }
-function addFloat(x, y, txt, color, size, team, st){   // team: osobna poruka (zlato, "Nema mane!"…) — vidi je samo taj tim; st: 'crit' = 💥 veliki iskačući broj
+function addFloat(x, y, txt, color, size, team, st, who){   // team: osobna poruka (zlato, "Nema mane!"…) — vidi je samo taj tim; st: 'crit' = 💥 veliki iskačući broj; who: vide samo ti junaci (brojevi štete)
   if(floats.length > 70) floats.shift();
   floats.push({ x: x + rand(-10, 10), y: y + rand(-6, 6), h: 70, txt, color: color || '#fff', size: size || 15, t: 0, team: team == null ? -1 : team,
-    st: st || null, rot: st === 'crit' ? rand(-0.12, 0.12) : 0,
+    st: st || null, rot: st === 'crit' ? rand(-0.12, 0.12) : 0, who: who || null,
     local: net.mode === 'guest' });   // gostova vlastita poruka (snimka domaćina je ne briše)
 }
 function feedMsg(txt, color, team){   // team: poruku vidi samo taj tim (npr. buff saveznika)
+  if(feed.some(f => f.txt === txt && f.t < 4)) return;   // ista poruka maloprije: ne ponavljaj
   feed.unshift({ txt, color: color || '#fff', t: 0, team: team == null ? -1 : team });
   if(feed.length > 10) feed.pop();   // prikazuje se najviše 6 (poruke drugog tima se ne broje)
 }
@@ -1156,15 +1158,29 @@ function applyDamage(t, amount, src, kind){
   }
   t.flash = 0.12;
   if(src && src !== t) t.hitAng = Math.atan2(t.y - src.y, t.x - src.x);   // 3D: trzaj od napadača
+  // 🔢 brojevi štete samo kad si TI uključen (tvoj udarac, tvoj prizvani pomoćnik ili udarac u tebe) — u 5 na 5 inače zatrpaju ekran
+  const who = [];
+  if(src && isHuman(src)) who.push(src.id);
+  else if(src && src.summonOf && isHuman(src.summonOf)) who.push(src.summonOf.id);
+  if(isHuman(t)) who.push(t.id);
   if(hitCrit && kind === 'atk'){   // 💥 kritični udarac: veliki broj koji iskoči + 3D rez preko mete
     t.critN = (t.critN || 0) + 1;
-    addFloat(t.x, t.y, SETTINGS.dmgNums ? amount + '!' : 'KRIT!', src && src.team === TEAM_BLUE ? '#ff5a1f' : '#ff3b6b', t.kind === 'hero' ? 27 : 23, undefined, 'crit');
+    if(who.length) addFloat(t.x, t.y, SETTINGS.dmgNums ? amount + '!' : 'KRIT!', src && src.team === TEAM_BLUE ? '#ff5a1f' : '#ff3b6b', t.kind === 'hero' ? 27 : 23, undefined, 'crit', who);
     if(src && (src.isPlayer || t.isPlayer)) sfx('crit'); else sfxAt('crit', t.x, t.y);
   }
-  else if(SETTINGS.dmgNums && (t.kind === 'hero' || t.kind === 'tower' || t.kind === 'ancient' || t.kind === 'barracks' || (src && src.isPlayer))){
-    addFloat(t.x, t.y, '-' + amount, src && src.team === TEAM_BLUE ? '#ffd166' : '#ff8fa3', t.kind === 'hero' ? 16 : 13);
+  else if(SETTINGS.dmgNums && who.length){
+    const mine = isHuman(t) ? 't' : 's', df = t.dmgF;
+    if(df && df.t < 0.3 && df.mine === mine && floats.includes(df)){ df.amt += amount; df.txt = '-' + df.amt; }   // brzi udarci (otrov, glad…) u jedan broj
+    else {
+      addFloat(t.x, t.y, '-' + amount, mine === 't' ? '#ff6b6b' : '#ffd166', t.kind === 'hero' ? 16 : 13, undefined, null, who);
+      t.dmgF = floats[floats.length - 1]; t.dmgF.amt = amount; t.dmgF.mine = mine;
+    }
   }
   if(isStructure(t) && src && src.team !== t.team) t.lastDmgT = gameTime;   // 🤖 obrana: koga upravo ruše
+  if(src && src.team !== t.team){   // 💨 borba prekida putovanje (udarci između junaka, kula i građevina)
+    if(src.kind === 'hero' && (t.kind === 'hero' || isStructure(t))) noteCombat(src);
+    if(t.kind === 'hero' && (src.kind === 'hero' || src.kind === 'tower')) noteCombat(t);
+  }
   if(src && src.kind === 'hero' && !src.dead && src.team !== t.team){
     t.lastHitter = src;
     t.lastHitT = gameTime;
@@ -1309,7 +1325,7 @@ function kill(t, src){
       }
       // višestruko ubojstvo (unutar 10 s) i niz ubojstava — kao najavljivač u DotA
       credit.multiN = gameTime - (credit.lastKillT || -99) < 10 ? (credit.multiN || 1) + 1 : 1;
-      if(credit.bot && Math.random() < 0.3) say(credit, choice(BOT_BRAG));   // botovi se malo pohvale
+      if(credit.bot && Math.random() < 0.3 && gameTime - botBragT > 45){ botBragT = gameTime; say(credit, choice(BOT_BRAG)); }   // botovi se rijetko pohvale
       credit.lastKillT = gameTime;
       const who = credit.emoji + ' ' + credit.name;
       const MULTI = { 2: '⚔️⚔️ Dvostruko ubojstvo!', 3: '🔥 Trostruko ubojstvo!', 4: '💥 ULTRA ubojstvo!', 5: '🌋 POKOLJ!' };
@@ -1378,6 +1394,10 @@ function kill(t, src){
     }
     // osobne najave (i za gosta u mrežnoj igri — svatko vidi samo svoje)
     if(src && isHuman(src) && !milestoneAnn) announceFor(src, 'Bravo! 🎉', 'Pobijedio si ' + t.emoji + ' ' + t.name + '!');
+    if(src && src.kind === 'hero'){   // 🪙 3D: zlatnici polete od pobijeđenog do pobjednika (i kod gosta)
+      src.killFxN = (src.killFxN || 0) + 1; src.killAt = { x: Math.round(t.x), y: Math.round(t.y) };
+      if(src.isPlayer && net.mode !== 'host' && net.mode !== 'guest') slowMo = 0.5;   // ⏱️ tren usporenja (samo protiv botova)
+    }
     if(isHuman(t)) announceFor(t, 'Ne brini! ⏳', 'Oživjet ćeš za ' + Math.ceil(t.deadT) + ' sekundi');
     if(t.isPlayer) sfx('death');
     else if(src && src.isPlayer) sfx('kill');
@@ -1879,6 +1899,7 @@ function castAbility(u, i, aim){
   chargeWands(u);
   u.castFx = u.hero.id + ':' + ab.def.key;   // 3D: efekt moći (scene3d.js)
   u.castN = (u.castN || 0) + 1;              // 3D: animacija čaranja
+  noteCombat(u);
   if(aim && (Math.abs(aim.x - u.x) + Math.abs(aim.y - u.y) > 4)) u.dir = Math.atan2(aim.y - u.y, aim.x - u.x);
   sfxAt(ab.def.ult ? 'ult' : 'cast', u.x, u.y);
 }
@@ -2066,7 +2087,17 @@ function unitSpeed(u){
   if(voda && inRiver(u.x, u.y)) s *= 1.15 + 0.1 * voda;
   if(u.kind === 'hero'){ const sd = drakeN(u.team, 'storm'); if(sd) s *= 1 + 0.05 * sd; }   // ⚡ olujni zmajčići
   if(u.kind === 'hero' && u.hero.id === 'bikos' && units.some(e => e.hungerT > 0 && e.hungerSrc === u && !e.dead)) s *= 1.1;   // 🍖 Ratna glad
+  if(u.kind === 'hero' && u.travel) s *= u.travel === 2 ? CFG.homeGuardSpeed : CFG.travelSpeed;   // 💨 putovanje izvan borbe
   return s;
+}
+/* 💨 putovanje (veća mapa za 5 na 5 — manje dosadnog hodanja):
+   izvan borbe (6 s bez udaraca u junake i građevine) +15 % brzine; od fontane "vjetar doma" +40 % dok ne uđeš u borbu */
+function noteCombat(u){ if(u && u.kind === 'hero'){ u.combatT = gameTime; u.homeGuardT = 0; } }
+function updateTravel(u, dt){
+  if(distXY(u.x, u.y, FOUNTAIN[u.team].x, FOUNTAIN[u.team].y) < 650) u.homeGuardT = CFG.homeGuardT;
+  else if(u.homeGuardT > 0) u.homeGuardT -= dt;
+  const calm = gameTime - (u.combatT == null ? -99 : u.combatT) > CFG.travelCalm;
+  u.travel = u.status.slowT > 0 || u.status.rootT > 0 ? 0 : (u.homeGuardT > 0 ? 2 : (calm ? 1 : 0));
 }
 function moveToward(u, tx, ty, dt){
   const st = u.status;
@@ -2263,8 +2294,8 @@ function releaseAttack(u, t, dmg, miss, onHitFx, crit){
     sfxAt('pew', u.x, u.y);
   } else {
     if(miss){
-      if(u.kind === 'hero' || t.kind === 'hero')
-        addFloat(t.x, t.y, 'Promašaj! 💨', '#e5e7eb', 13);
+      if(isHuman(u) || isHuman(t))
+        addFloat(t.x, t.y, 'Promašaj! 💨', '#e5e7eb', 13, undefined, null, [u, t].filter(isHuman).map(x => x.id));
     } else {
       hitCrit = !!crit;
       applyDamage(t, dmg, u, 'atk');
@@ -2574,7 +2605,14 @@ function endOrder(u){
   u.bot.order = null;
   if(o.type === 'push' && u.homeLane) u.lane = u.homeLane;
 }
-function teamSay(team, txt){ if(team === myTeam || (net.mode === 'host' && team === TEAM_RED)) feedMsg(txt, TEAM_COLOR[team], team); }
+const TEAM_SAY_CD = { '🛡️': 25, '🗡️': 12, '🏰': 30, '🔁': 20, '🐲': 30 };   // 🤫 ista vrsta poruke najviše jednom u N s
+const teamSayT = [{}, {}];
+function teamSay(team, txt){
+  const k = [...txt][0], cd = TEAM_SAY_CD[k] || 10;
+  if(gameTime - (teamSayT[team][k] == null ? -99 : teamSayT[team][k]) < cd) return;
+  teamSayT[team][k] = gameTime;
+  if(team === myTeam || (net.mode === 'host' && team === TEAM_RED)) feedMsg(txt, TEAM_COLOR[team], team);
+}
 /* naša građevina koju upravo ruše: najveća prijetnja (junaci vrijede više od vojnika) */
 function findThreat(team){
   let best = null, bw = 1.9;
@@ -2848,7 +2886,7 @@ function botThink(u){
   }
   const bd = botDiff(u);   // 🤖 težina
   if(u.hp < u.maxhp * bd.flee){
-    if(Math.random() < 0.3 && dist(u, player || u) < 2500){ say(u, CHAT_LINES[1]); addPing(u, u.x, u.y); }   // 🆘
+    if(Math.random() < 0.3 && dist(u, player || u) < 2500 && gameTime - botHelpT[u.team] > 25){ botHelpT[u.team] = gameTime; say(u, CHAT_LINES[1]); addPing(u, u.x, u.y); }   // 🆘
     b.state = 'retreat';
     u.attackTarget = null;
     u.moveTarget = { x: fountain.x, y: fountain.y };
@@ -3243,6 +3281,7 @@ function updateUnit(u, dt){
     if(voda && inRiver(u.x, u.y)) u.hp = Math.min(u.maxhp, u.hp + (2 + 2 * voda) * dt);
     const vid = passiveRank(u, 'vid');         // Orlovski vid (Orlina): veći domet
     if(u.scopeT > 0) u.scopeT -= dt;           // 🔭 Durbin (Nišan)
+    updateTravel(u, dt);                       // 💨 putovanje izvan borbe
     u.atkRange = u.hero.range + 30 * vid + (u.talRange || 0) + (u.scopeT > 0 ? u.scopeR : 0);   // 🎓 talent dometa
     const griva = passiveRank(u, 'griva');     // Čarobna griva (Duga E): aura mane
     if(griva) for(const e of units){
@@ -3438,8 +3477,8 @@ function updateProjectiles(dt){
       const step = p.speed * dt;
       if(d <= step + t.r){
         if(p.miss){
-          if((p.src && p.src.kind === 'hero') || t.kind === 'hero')
-            addFloat(t.x, t.y, 'Promašaj! 💨', '#e5e7eb', 13);
+          if(isHuman(p.src) || isHuman(t))
+            addFloat(t.x, t.y, 'Promašaj! 💨', '#e5e7eb', 13, undefined, null, [p.src, t].filter(isHuman).map(x => x.id));
         } else {
           const prev = abCtx; abCtx = p.abKey ? { src: p.src, key: p.abKey } : null;
           hitCrit = p.crit && p.atk;
@@ -3527,7 +3566,7 @@ function spawnWave(){
     }
   }
   if(waveCount === 1){ announce('⚔️ Bitka počinje!', 'Vojnici kreću na staze — prati ih!'); annEvent('battle'); }
-  if(waveCount % CFG.siegeEveryNthWave === 0 && waveCount > 1)
+  if(waveCount === CFG.siegeEveryNthWave)   // samo prvi put (poslije su stalni dio vala)
     feedMsg('💪 Stigli su veliki vojnici!', '#fde047');
 }
 
@@ -5197,6 +5236,7 @@ function drawWorldOverlay(){
 
   for(const f of floats){
     if(f.team != null && f.team >= 0 && f.team !== myTeam) continue;   // tuđa osobna poruka
+    if(f.who && !(player && f.who.includes(player.id))) continue;      // tuđi brojevi štete (mrežna igra)
     const s = worldToScreen(f.x, groundHeight(f.x, f.y) + f.h, f.y);
     if(!s) continue;
     ctx.globalAlpha = f.t < 0.7 ? 1 : 1 - (f.t - 0.7) / 0.4;
@@ -5325,6 +5365,11 @@ function buffList(h){
   add('🫧', 'Barijera', h.barrierT, true, 'štit od ' + Math.round(h.barrierHp || 0) + ' štete');
   add('👑', 'Nepokolebljiv', st.immuneT, true, 'ništa te ne može omamiti ni usporiti');
   add('🏃', 'Ubrzanje', st.hasteT, true, 'brže kretanje');
+  add('💨', h.travel === 2 ? 'Vjetar doma' : 'Putnik', h.travel ? 999 : 0, true,
+    h.travel === 2 ? '+40% brzine od fontane — dok ne uđeš u borbu' : '+15% brzine kad nisi u borbi');
+  add('🛡️', 'Bojni zov', h.armorBuffT, true, '+' + (h.armorBuff || 0) + ' oklopa');
+  add('🔭', 'Durbin', h.scopeT, true, 'gađaš dalje i brže');
+  add('🍖', 'Ratna glad', h.hungerT, false, 'gubiš život dok nekoga ne pobijediš');
   add('🛡', 'Štit', st.shieldT, true, 'primaš manje štete');
   add('👻', 'Nevidljiv', st.invisT, true, 'neprijatelji te ne vide (napad prekida)');
   add('🦇', 'Žeđ', h.lsBoostT, true, 'udarci kradu puno života');
@@ -6385,11 +6430,13 @@ function updateHoldMove(){
 
 /* ================= Glavna petlja ================= */
 let lastT = performance.now();
+let slowMo = 0;
 function frame(now){
   requestAnimationFrame(frame);
   let dt = (now - lastT) / 1000;
   lastT = now;
   dt = Math.min(dt, 0.05);
+  if(slowMo > 0){ slowMo -= dt; dt *= slowMo > 0.2 ? 0.35 : 0.35 + (0.2 - slowMo) / 0.2 * 0.65; }   // ⏱️ usporenje nakon tvoje pobjede nad junakom
   if(running && !paused && !gameOver){
     if(net.mode === 'guest') guestFrame(dt);   // gost ne simulira — prima snapshotte
     else update(dt);

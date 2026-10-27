@@ -98,6 +98,10 @@ const CFG = {
   //   svaki sljedeći hitac u ISTOG junaka jači je +25% (do +100%, kao "zagrijavanje" kule u LoL-u)
   towerHeroMul: [2.0, 1.3],
   towerHeat: 0.25,
+  travelSpeed: 1.15,        // 💨 izvan borbe (6 s bez udaraca u junake/građevine)
+  travelCalm: 6,
+  homeGuardSpeed: 1.4,      // 💨 "vjetar doma": od fontane dok ne uđeš u borbu (najviše 10 s nakon izlaska iz baze)
+  homeGuardT: 10,
   towerHeatMax: 1.0,
 };
 
