@@ -24,6 +24,30 @@ if(THREE.ColorManagement){
 
 function setFogCanvas(cv){
   fogTex = new THREE.CanvasTexture(cv);
+  fogTex.minFilter = THREE.LinearFilter; fogTex.magFilter = THREE.LinearFilter; fogTex.generateMipmaps = false;
+  FOW.tex.value = fogTex;
+}
+/* 🌫️ v0.38 magla rata u shaderu: tlo, drveće, ukrasi i građevine u magli potamne (prije je magla bila samo
+   prozirni pokrov preko tla, pa su krošnje i kule u magli ostajale jarke) */
+const FOW = { tex: { value: null }, on: { value: 0 }, world: { value: WORLD }, col: { value: new THREE.Color(0.018, 0.03, 0.075) } };
+function patchShader(mat, key, fn){   // nadoveži onBeforeCompile (oblaci, rubno svjetlo, magla…)
+  const prev = mat.onBeforeCompile, prevKey = mat.customProgramCacheKey ? mat.customProgramCacheKey() : '';
+  mat.onBeforeCompile = (sh, r) => { if(prev) prev(sh, r); fn(sh); };
+  mat.customProgramCacheKey = () => prevKey + '|' + key;
+  mat.needsUpdate = true;
+}
+function addFogOfWar(mat){
+  patchShader(mat, 'fow', sh => {
+    sh.uniforms.fowTex = FOW.tex; sh.uniforms.fowOn = FOW.on; sh.uniforms.fowWorld = FOW.world; sh.uniforms.fowCol = FOW.col;
+    sh.vertexShader = 'uniform float fowWorld;\nvarying vec2 vFowUv;\n' + sh.vertexShader.replace('#include <project_vertex>',
+      '#include <project_vertex>\n  vec4 fowP = vec4(transformed, 1.0);\n#ifdef USE_INSTANCING\n  fowP = instanceMatrix * fowP;\n#endif\n' +
+      '  fowP = modelMatrix * fowP;\n  vFowUv = vec2(fowP.x / fowWorld, 1.0 - fowP.z / fowWorld);');
+    sh.fragmentShader = 'uniform sampler2D fowTex; uniform float fowOn; uniform vec3 fowCol; varying vec2 vFowUv;\n' +
+      sh.fragmentShader.replace('#include <dithering_fragment>',
+      '  { float fa = fowOn * texture2D(fowTex, clamp(vFowUv, 0.001, 0.999)).a * 1.3;\n' +
+      '    if(vFowUv.x < 0.0 || vFowUv.y < 0.0 || vFowUv.x > 1.0 || vFowUv.y > 1.0) fa = 0.0;\n' +
+      '    gl_FragColor.rgb = mix(gl_FragColor.rgb, fowCol, clamp(fa, 0.0, 0.85)); }\n#include <dithering_fragment>');
+  });
 }
 function markFogDirty(){
   if(fogTex) fogTex.needsUpdate = true;
@@ -146,6 +170,7 @@ function addRim(m){
   };
   m.customProgramCacheKey = () => 'rim1';
 }
+
 /* variant 'b' = građevine (kule, prijestoli, vojarne, fontane, svetišta): slabiji odsjaj okoline i hrapaviji kamen —
    inače se svijetli kamen pod suncem + studijskim odsjajem "ispere" u bijelo */
 const METAL_ENV = { day: 1.15, night: 0.45 };
@@ -170,6 +195,7 @@ function modelMat(name, team, look, variant){
     if(look === 'c') m.color.lerp(new THREE.Color('#5fb8ff'), 0.7);
     if(look === 'p') m.color.lerp(new THREE.Color('#86efac'), 0.6);
     addRim(m);   // rubno svjetlo: obrisi modela se ističu (noću jače)
+    if(variant === 'b') addFogOfWar(m);   // 🌫️ kule, zidine, šatori u magli potamne
     if(look === 'k') m.color.lerp(new THREE.Color('#a78bfa'), 0.55);                                   // 🌀 kletva
     if(look === 'w'){ m.emissive = new THREE.Color('#ff6a3d'); m.emissiveIntensity = 0.22; }          // 🐺 vučji oblik
     if(look === 'r'){ m.emissive = new THREE.Color('#ef4444'); m.emissiveIntensity = 0.3; }           // 😡 bijes
@@ -779,15 +805,14 @@ function cloudTexture(){
 }
 function addCloudShadows(mat){
   cloudTexture();
-  mat.onBeforeCompile = sh => {
+  patchShader(mat, 'cloud', sh => {
     Object.assign(sh.uniforms, CLOUD.uniforms);
     sh.vertexShader = 'varying vec2 vCloudUv;\n' + sh.vertexShader.replace('#include <project_vertex>',
       '#include <project_vertex>\n  vCloudUv = (modelMatrix * vec4(transformed, 1.0)).xz / 2600.0;');
     sh.fragmentShader = 'uniform sampler2D cloudTex; uniform vec2 cloudOff; uniform float cloudK; varying vec2 vCloudUv;\n' +
       sh.fragmentShader.replace('#include <dithering_fragment>',
       '  gl_FragColor.rgb *= 1.0 - cloudK * smoothstep(0.15, 0.75, texture2D(cloudTex, vCloudUv + cloudOff).r);\n#include <dithering_fragment>');
-  };
-  mat.needsUpdate = true;
+  });
 }
 function updateClouds(dt){
   CLOUD.uniforms.cloudOff.value.x += dt * 0.0042;
@@ -985,6 +1010,7 @@ function setGround(terrainCv){
 
   const gMat = new THREE.MeshLambertMaterial({ map: tex });
   addCloudShadows(gMat);
+  addFogOfWar(gMat);
   groundMesh = new THREE.Mesh(geo, gMat);
   groundMesh.rotation.x = -Math.PI / 2;
   groundMesh.position.set(WORLD / 2, 0, WORLD / 2);
@@ -992,16 +1018,8 @@ function setGround(terrainCv){
   scene3.add(groundMesh);
   tintBorderLand(terrainCv);
 
-  // magla rata: prozirni tamni pokrov preko terena (ista geometrija)
-  if(fogDrape){ scene3.remove(fogDrape); fogDrape.material.dispose(); }
-  if(fogTex){
-    fogDrape = new THREE.Mesh(geo,
-      new THREE.MeshBasicMaterial({ map: fogTex, transparent: true, depthWrite: false }));
-    fogDrape.rotation.x = -Math.PI / 2;
-    fogDrape.position.set(WORLD / 2, 3, WORLD / 2);
-    fogDrape.renderOrder = 4;
-    scene3.add(fogDrape);
-  }
+  // magla rata: v0.38 u shaderu tla (addFogOfWar) — pokrov više ne treba
+  if(fogDrape){ scene3.remove(fogDrape); fogDrape.material.dispose(); fogDrape = null; }
   buildWater();
 }
 
@@ -1010,12 +1028,14 @@ function buildWater(){
   if(waterMesh) return;
   const mat = new THREE.ShaderMaterial({
     transparent: true, depthWrite: false,
-    uniforms: { t: { value: 0 }, night: { value: 0 } },
+    uniforms: { t: { value: 0 }, night: { value: 0 }, fowTex: FOW.tex, fowOn: FOW.on, fowWorld: FOW.world, fowCol: FOW.col },
     vertexShader: `
-      varying vec2 vUv;
-      void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+      varying vec2 vUv; varying vec2 vFowUv; uniform float fowWorld;
+      void main(){ vUv = uv; vec4 wp = modelMatrix * vec4(position, 1.0); vFowUv = vec2(wp.x / fowWorld, 1.0 - wp.z / fowWorld);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
     fragmentShader: `
-      varying vec2 vUv;
+      varying vec2 vUv; varying vec2 vFowUv;
+      uniform sampler2D fowTex; uniform float fowOn; uniform vec3 fowCol;
       uniform float t; uniform float night;
       void main(){
         float edge = smoothstep(0.0, 0.28, vUv.y) * smoothstep(1.0, 0.72, vUv.y);
@@ -1026,6 +1046,8 @@ function buildWater(){
         vec3 deep = mix(vec3(0.16, 0.55, 0.85), vec3(0.08, 0.16, 0.38), night);
         vec3 col = mix(deep, vec3(0.92, 0.98, 1.0), ripple * 0.75);
         float a = edge * (0.42 + ripple * 0.4);
+        float fa = fowOn * texture2D(fowTex, clamp(vFowUv, 0.001, 0.999)).a * 1.3;
+        col = mix(col, fowCol, clamp(fa, 0.0, 0.85));
         gl_FragColor = vec4(col, a);
       }`,
   });
@@ -1051,9 +1073,11 @@ function natureMat(){
   if(!matCache.nature){
     matCache.nature = new THREE.MeshLambertMaterial({ vertexColors: true });
     matCache.nature.userData.shared = true;
+    addFogOfWar(matCache.nature);   // 🌫️ drveće i ukrasi u magli potamne
   }
   return matCache.nature;
 }
+const treeInst = new Map();   // 🌳 indeks stabla → { im, k, it } (instancirano drvo koje se može pojesti / posjeći)
 function instancedFrom(name, items, color){
   const geo = mergedModelGeo(name);
   if(!geo || !items.length) return null;
@@ -1066,6 +1090,7 @@ function instancedFrom(name, items, color){
     dummy.scale.set(it.s, it.s * (it.sy || 1), it.s);
     dummy.updateMatrix();
     im.setMatrixAt(i, dummy.matrix);
+    if(it.ti != null){ treeInst.set(it.ti, { im, k: i, it }); if(trees[it.ti] && trees[it.ti].cut) im.setMatrixAt(i, _zeroM); }
   });
   im.castShadow = true;
   im.receiveShadow = false;
@@ -1107,20 +1132,21 @@ function buildTrees3D(){
     return;
   }
   treesGroup = new THREE.Group();
+  treeInst.clear();
   const buckets = {};
   const add = (name, it) => (buckets[name] = buckets[name] || []).push(it);
-  for(const t of trees){
+  trees.forEach((t, ti) => {
     const r = hash01(t.x, t.y, 1);
     const v = Math.floor(r * 3);
     const gh = groundHeight(t.x, t.y);
     const dire = scourgeSide(t.x, t.y) > 220 && MODELS.tpl.tree_dead0;
     const S = 1.15;   // stabla malo veća (krošnje; sudar ostaje isti)
-    if(dire && t.kind === '🌲') add('tree_dpine' + v, { x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.68 * S, sy: 0.9 + r * 0.25 });
-    else if(dire && hash01(t.x, t.y, 4) < 0.7) add('tree_dead' + v, { x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.82 * S });
-    else if(t.kind === '🌲') add('tree_pine' + v, { x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.68 * S, sy: 0.9 + r * 0.25 });
-    else if(hash01(t.x, t.y, 9) < 0.3 && MODELS.tpl.tree_birch0) add('tree_birch' + (v % 2), { x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.7 * S });
-    else add('tree_oak' + v, { x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.78 * S });
-  }
+    if(dire && t.kind === '🌲') add('tree_dpine' + v, { ti, x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.68 * S, sy: 0.9 + r * 0.25 });
+    else if(dire && hash01(t.x, t.y, 4) < 0.7) add('tree_dead' + v, { ti, x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.82 * S });
+    else if(t.kind === '🌲') add('tree_pine' + v, { ti, x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.68 * S, sy: 0.9 + r * 0.25 });
+    else if(hash01(t.x, t.y, 9) < 0.3 && MODELS.tpl.tree_birch0) add('tree_birch' + (v % 2), { ti, x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.7 * S });
+    else add('tree_oak' + v, { ti, x: t.x, y: t.y, h: gh - 2, rot: r * 6.28, s: t.size * 0.78 * S });
+  });
   // 🌿 grmlje uz stabla: šume izgledaju gušće (samo ukras — ne smeta kretanju)
   if(MODELS.tpl.bush0) for(const t of trees){
     if(scourgeSide(t.x, t.y) > 200 || hash01(t.x, t.y, 13) > 0.6) continue;
@@ -1343,6 +1369,43 @@ function buildTreesBasic(){
   trunks.castShadow = crowns.castShadow = true;
   treesGroup.add(trunks, crowns);
   scene3.add(treesGroup);
+}
+
+/* 🌿 pojedeno / posječeno stablo: nagne se, padne i nestane uz kišu lišća; kad izraste — poraste iz tla */
+const _zeroM = new THREE.Matrix4().makeScale(0, 0, 0);
+function setTreeMatrix(e, tilt, k, sink){
+  const it = e.it;
+  _dummy.position.set(it.x, it.h - (sink || 0), it.y);
+  _dummy.rotation.set(tilt, it.rot, 0, 'YXZ');
+  _dummy.scale.set(it.s * k, it.s * (it.sy || 1) * k, it.s * k);
+  _dummy.updateMatrix();
+  e.im.setMatrixAt(e.k, _dummy.matrix);
+  e.im.instanceMatrix.needsUpdate = true;
+}
+function treeCut3D(i){
+  const e = treeInst.get(i);
+  if(!e || !scene3) return;
+  e.anim = 'cut';
+  const it = e.it, seen = typeof isVisibleTo !== 'function' || isVisibleTo(myTeam, { x: it.x, y: it.y, team: -1, status: null });
+  if(seen){
+    for(let k = 0; k < 26; k++){ const a = Math.random() * TAU, d = Math.random() * 40;
+      fxSpawn(it.x + Math.cos(a) * d, it.y + Math.sin(a) * d, it.h + 30 + Math.random() * 70, k % 3 ? '#4ade80' : '#a3e635', { spd: 90, up: 40, grav: -70, life: 0.9, size: 18 }); }
+    for(let k = 0; k < 8; k++) fxSpawn(it.x, it.y, it.h + 4, '#a16207', { spd: 70, up: 30, grav: -60, life: 0.6, size: 14 });
+  }
+  addFx(new THREE.Group(), 0.55, (o, f) => {
+    if(e.anim !== 'cut') return;
+    setTreeMatrix(e, f * f * 1.35, f < 0.7 ? 1 : 1 - (f - 0.7) / 0.3, f * 18);
+  }, () => { if(e.anim === 'cut'){ e.im.setMatrixAt(e.k, _zeroM); e.im.instanceMatrix.needsUpdate = true; } });
+}
+function treeGrow3D(i){
+  const e = treeInst.get(i);
+  if(!e || !scene3) return;
+  e.anim = 'grow';
+  addFx(new THREE.Group(), 1.1, (o, f) => {
+    if(e.anim !== 'grow') return;
+    const k = f < 0.75 ? f / 0.75 * 1.08 : 1.08 - (f - 0.75) / 0.25 * 0.08;   // naraste s malim "poskokom"
+    setTreeMatrix(e, 0, Math.max(0.02, k), 0);
+  }, () => { if(e.anim === 'grow') setTreeMatrix(e, 0, 1, 0); e.anim = null; });
 }
 
 /* ---------- statika: fontane + zidine oko baza ---------- */
@@ -1572,6 +1635,7 @@ function pendingDef(){
   }
   if(pendingCast.item != null){
     const it = player.items[pendingCast.item];
+    if(it && it.active && it.active.target === 'tree') return { target: 'point', castRange: it.active.castRange || 165, color: '#4ade80', treeAim: true };
     return it && it.active ? { target: 'point', castRange: it.active.castRange || 600, color: '#bae6fd', aoe: it.active.aoe || 0 } : null;
   }
   const ab = player.abilities[pendingCast.i];
@@ -1608,6 +1672,12 @@ function syncCastIndicator(){
     setAnnulus(ci.range, px, pz, cr - 6, cr);
     ci.range.material.color.set('#ffffff');
     if(mode !== 'pending') return;
+    if(def.treeAim){   // 🌿 tango / sjekirica: zeleni krug oko drveta pod mišem
+      const tr = typeof nearestTree === 'function' ? nearestTree(mouse.wx, mouse.wy, 190) : null;
+      ci.range.material.color.set('#86efac');
+      if(tr){ const pulse = 4 * Math.sin(performance.now() / 120); setAnnulus(ci.hover, tr.x, tr.y, 38 + pulse, 48 + pulse); ci.hover.material.color.set('#4ade80'); }
+      return;
+    }
     const raw = aimPoint();
     const aim = clampRange(player, raw, cr);
     let dx = raw.x - px, dz = raw.y - pz, L = Math.hypot(dx, dz);
@@ -3512,6 +3582,7 @@ function startLeap(u, g, now, maxH){
 function syncScene(tAnim){
   const dt = Math.min(0.1, Math.max(0, tAnim - (lastAnimT || tAnim)));
   lastAnimT = tAnim;
+  FOW.on.value = 1;   // 🌫️ magla rata u shaderima
   // jedinice označene za uklanjanje (removeMe) tretiraj kao nestale — i kad je igra
   // gotova (update() više ne radi), prijestol se mora raspasti
   const present = new Set();
@@ -4003,7 +4074,7 @@ const heroPv = { renderer: null, scene: null, camera: null, model: null, anim: n
 
 function showHeroPreview(container, heroId){
   onModelsReady(() => {
-    if(!MODELS.ready || !container.isConnected) return;
+    if(!MODELS.ready || !container.isConnected || !MODELS.tpl['hero_' + heroId]) return;
     try { heroPreviewSetup(); } catch(e){ return; }
     const cv = heroPv.renderer.domElement;
     const img = container.querySelector('.d-img');

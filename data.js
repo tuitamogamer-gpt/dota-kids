@@ -9,7 +9,7 @@
    - Atributi: str/agi/int + rast po levelu; primary daje štetu.
    ============================================================ */
 
-const MAP_S = 1.45;                        // mjerilo mape (1 = stara mapa 3000×3000)
+const MAP_S = 1.85;                        // mjerilo mape (1 = stara mapa 3000×3000); v0.38: 1.45 → 1.85 (5 na 5 treba više prostora)
 const WORLD = Math.round(3000 * MAP_S);
 const TEAM_BLUE = 0, TEAM_RED = 1, TEAM_NEUTRAL = 2;
 const TEAM_COLOR = ['#3b82f6', '#ef4444', '#f59e0b'];
@@ -90,9 +90,15 @@ const CFG = {
   shrineDur: 5,
   shrineR: 320,
   // DotA aggro pravila (creep aggro)
-  creepAggroRange: 500,     // napad na heroja povlači creepove u ovom radijusu
+  creepAggroRange: 500,     // napad (i naredba napada) na heroja povlači creepove u ovom radijusu
   creepAggroChase: 2.3,     // koliko dugo ganjaju
   creepAggroCd: 3,          // pa se smire
+  creepHeroAcq: 500,        // bez neprijateljskih vojnika i građevina u blizini vojnici napadaju junake do 500 (kao u DotA)
+  // 🗼 v0.38: kule rano jako udaraju junake — ×2 do 10. minute, pa pada do ×1.3 u 20. minuti;
+  //   svaki sljedeći hitac u ISTOG junaka jači je +25% (do +100%, kao "zagrijavanje" kule u LoL-u)
+  towerHeroMul: [2.0, 1.3],
+  towerHeat: 0.25,
+  towerHeatMax: 1.0,
 };
 
 // staze junaka u timu (prvi je igrač / čovjek): sredina sama, na bočnim stazama po dvoje (kao u DotA)
@@ -180,7 +186,7 @@ const HEROES = [
         tip:rk => '⚔️ ' + (70 + 45*rk) + ' štete prvom pogođenom',
         bot:{type:'shot', range:680},
         cast(u, aim, rk){
-          return spawnSkillshot(u, aim, {speed:560, r:24, range:760,
+          return spawnSkillshot(u, aim, {speed:560, r:24, range:760, pierce:hasTal(u, 'zarko_q_pierce'),
             dmg:70 + 45*rk, color:'#fb923c', emoji:'🔥'});
         }},
       { key:'W', name:'Plameni krug', emoji:'💍', cd:10, mana:55, color:'#f97316',
@@ -323,6 +329,11 @@ const HEROES = [
           spawnHoming(u, t, {speed:950, dmg:180 + 120*rk, r:12,
             color:'#fde047', emoji:'🌠',
             onHit(e){ burst(e.x, e.y, '#fde047', 26, 300, 7); }});
+          if(hasTal(u, 'strijela_r2')){   // 🎓 talent: druga strijela u drugog najslabijeg junaka
+            let t2 = null, bh = 1e9;
+            for(const e of units) if(e !== t && e.kind === 'hero' && e.team !== u.team && !e.dead && dist(u, e) < 2200 && isVisibleTo(u.team, e) && e.hp < bh){ bh = e.hp; t2 = e; }
+            if(t2) spawnHoming(u, t2, {speed:950, dmg:180 + 120*rk, r:12, color:'#fde047', emoji:'🌠', onHit(e){ burst(e.x, e.y, '#fde047', 26, 300, 7); }});
+          }
           return true;
         }},
     ],
@@ -402,7 +413,7 @@ const HEROES = [
         tip:rk => '⚔️ ' + (55 + 38*rk) + ' štete, skače na 3 mete',
         bot:{type:'chain', range:470},
         cast(u, aim, rk){
-          return chainLightning(u, {range:480, jump:330, max:3, dmg:55 + 38*rk});
+          return chainLightning(u, {range:480, jump:330, max:3 + (hasTal(u, 'munja_q_jumps') ? 2 : 0), dmg:55 + 38*rk});
         }},
       { key:'W', name:'Bljesak', emoji:'🌀', cd:9, mana:40, color:'#fde047',
         desc:'Munjevito juriš prema cilju i ošteti sve na putu',
@@ -625,6 +636,7 @@ const HEROES = [
           for(const e of units){
             if(e.kind !== 'hero' || e.team !== u.team || e.dead) continue;
             e.status.invisT = 5 + 3*rk;
+            if(hasTal(u, 'luna_r_haste')) applyHaste(e, 1.3, 5 + 3*rk);
             addFloat(e.x, e.y, '👻 Nevidljiv!', '#c4b5fd', 15);
             burst(e.x, e.y, '#c4b5fd', 12, 160, 5);
           }
@@ -696,7 +708,7 @@ const HEROES = [
           if(!best) return false;
           best.status.trackT = 25;
           best.trackedBy = u;
-          best.trackBonus = 80 + 40*rk;
+          best.trackBonus = 80 + 40*rk + (hasTal(u, 'tragac_r_gold') ? 150 : 0);
           addFloat(best.x, best.y, '💰 Ucijenjen!', '#fde047', 16);
           addLine(u.x, u.y, best.x, best.y, '#fde047', 4, 0.35);
           burst(best.x, best.y, '#fde047', 14, 200, 5);
@@ -991,8 +1003,9 @@ const HEROES = [
         tip:rk => '🐒 3 majmuna (' + (260 + 140*rk) + ' života, ' + (22 + 14*rk) + ' štete) na ' + (12 + 3*rk) + ' s',
         bot:{type:'ult-aoe', range:500},
         cast(u, aim, rk){
-          for(let i = 0; i < 3; i++){
-            const a = i / 3 * TAU + 0.7;
+          const nM = hasTal(u, 'majmun_r4') ? 4 : 3;
+          for(let i = 0; i < nM; i++){
+            const a = i / nM * TAU + 0.7;
             makeSummon(u, { x:u.x + Math.cos(a) * 60, y:u.y + Math.sin(a) * 60,
               hp:260 + 140*rk, dmg:22 + 14*rk, life:12 + 3*rk, model:'hero_majmun', emoji:'🐒', name:'Majmunčić' });
           }
@@ -1326,9 +1339,10 @@ const HEROES = [
         tip:rk => '🐼 3 pande (' + (300 + 150*rk) + ' života, ' + (25 + 15*rk) + ' štete) ' + (12 + 3*rk) + ' s • 🛡️ štit 40% 6 s',
         bot:{type:'ult-aoe', range:450},
         cast(u, aim, rk){
-          const names = ['Zemlja', 'Oluja', 'Vatra'];
-          for(let i = 0; i < 3; i++){
-            const a = i / 3 * TAU + 0.4;
+          const names = ['Zemlja', 'Oluja', 'Vatra', 'Bambus'];
+          const nP = hasTal(u, 'panda_r4') ? 4 : 3;
+          for(let i = 0; i < nP; i++){
+            const a = i / nP * TAU + 0.4;
             makeSummon(u, { x:u.x + Math.cos(a) * 60, y:u.y + Math.sin(a) * 60,
               hp:300 + 150*rk, dmg:25 + 15*rk, life:12 + 3*rk, model:'hero_panda', emoji:'🐼', name:'Panda ' + names[i] });
           }
@@ -1476,6 +1490,168 @@ const HEROES = [
         }},
     ],
   },
+  // ---- v0.38: novi junaci ----
+  {
+    id:'nisan', name:'Nišan', emoji:'🐿️',
+    role:'🎯 Vjeverica — snajperist (gađa izdaleka)',
+    hp:500, mp:260, dmg:54,
+    attrs:{ str:16, agi:24, int:15, strG:2.2, agiG:6.0, intG:2.4, primary:'agi' },
+    range:430, speed:166, atkCd:1.15, projSpeed:1100, shot:'pellet',
+    passive:{ name:'Pogodak u glavu', emoji:'🎯', color:'#fbbf24', pid:'headshot',
+      desc:'PASIVNO: hitac ponekad pogodi "u glavu" — dodatna šteta, kratka omama i meta odleti malo unatrag',
+      tip:rk => '🎯 ' + (24 + 5*rk) + '% šanse: +' + (20 + 20*rk) + ' štete, omama 0.15 s i odbačaj' },
+    abilities:[
+      { key:'Q', name:'Kiša žirova', emoji:'🌰', cd:14, mana:50, color:'#d97706',
+        desc:'Ispali kišu žirova na daleko mjesto — dugo pada, ranjava i usporava sve u krugu',
+        target:'point', castRange:1400, aoe:300,
+        tip:rk => '⚔️ 8 × ' + (14 + 10*rk) + ' štete + 🐌 usporenje ' + (12 + 6*rk) + '% u krugu 300 (domet 1400)',
+        bot:{type:'zone', range:1150},
+        cast(u, aim, rk){
+          return spawnZone(u, aim, {r:300, delay:0.8, ticks:8, interval:1.0, castRange:1400,
+            dmg:14 + 10*rk, slow:{f:0.12 + 0.06*rk, t:1.2}, color:'#d97706', emoji:'🌰'});
+        }},
+      { key:'W', name:'Šišarka-bomba', emoji:'💣', cd:13, mana:60, color:'#f97316',
+        desc:'Baci šišarku koja prasne — odbaci neprijatelje i uspori ih; stojiš li blizu, i tebe odbaci (bijeg!)',
+        target:'point', castRange:520, aoe:200,
+        tip:rk => '⚔️ ' + (50 + 30*rk) + ' štete + 💥 odbačaj + 🐌 usporenje 40% 2 s (i ti odletiš ako si blizu)',
+        bot:{type:'zone', range:450},
+        cast(u, aim, rk){
+          const p = clampRange(u, aim, 520);
+          for(const e of units){
+            if(e.team === u.team || e.dead || e.removeMe || e.invuln || !isSpellTarget(e)) continue;
+            if(distXY(p.x, p.y, e.x, e.y) > 200 + e.r * 0.5) continue;
+            applyDamage(e, 50 + 30*rk, u); applySlow(e, 0.4, 2); knockback(e, p.x, p.y, 180);
+          }
+          if(distXY(p.x, p.y, u.x, u.y) < 230){ knockback(u, p.x, p.y, 260); addFloat(u.x, u.y - 20, '💨 Juhu!', '#fdba74', 15); }
+          ring(p.x, p.y, 200, '#f97316');
+          burst(p.x, p.y, '#fb923c', 26, 260, 7);
+          return true;
+        }},
+      { key:'E', name:'Durbin', emoji:'🔭', cd:18, mana:40, color:'#7dd3fc',
+        desc:'Pogledaj kroz durbin — 6 sekundi gađaš puno dalje i brže',
+        tip:rk => '🔭 6 s: +' + (120 + 60*rk) + ' dometa napada i ⚡ +20% brzine napada',
+        bot:{type:'haste', range:820},
+        cast(u, aim, rk){
+          u.scopeT = 6; u.scopeR = 120 + 60*rk;
+          applyAtkSpeed(u, 0.2, 6);
+          addFloat(u.x, u.y - 30, '🔭 Vidim te!', '#bae6fd', 15);
+          burst(u.x, u.y, '#7dd3fc', 14, 160, 5);
+          return true;
+        }},
+      { key:'R', name:'Savršen hitac', emoji:'🔫', cd:50, mana:150, ult:true, color:'#ef4444',
+        desc:'ULTI: Nanišani neprijateljskog junaka izdaleka — nakon kratkog nišanjenja hitac ga uvijek pogodi',
+        target:'point', castRange:2000, aoe:170,
+        tip:rk => '🎯 nišani 1.6 s, pa ⚔️ ' + (320 + 160*rk) + ' štete + omama 0.4 s (domet 2000)',
+        bot:{type:'snipe', range:1900},
+        cast(u, aim, rk){
+          const p = clampRange(u, aim, 2000);
+          let best = null, bd = 260;
+          for(const e of units){
+            if(e.kind !== 'hero' || e.team === u.team || e.dead || e.removeMe || !isVisibleTo(u.team, e)) continue;
+            if(e.status.invisT > 0 && e.status.trackT <= 0) continue;
+            const d = distXY(p.x, p.y, e.x, e.y); if(d < bd){ bd = d; best = e; }
+          }
+          if(!best) return false;
+          const dmg = 320 + 160*rk + abBonus(u, 'R', 'dmg');
+          startChannel(u, hasTal(u, 'nisan_r_fast') ? 0.8 : 1.6, best, t => {
+            spawnHoming(u, t, { speed:2600, dmg, r:10, color:'#fde047', shot:'pellet', big:true,
+              onHit(e){ applyStun(e, 0.4); burst(e.x, e.y, '#fde047', 30, 320, 8); addFloat(e.x, e.y, '🎯 POGODAK!', '#fde047', 20); } });
+            sfxAt('pew', u.x, u.y);
+          });
+          addFloat(best.x, best.y, '🎯 Nišani te!', '#fca5a5', 16);
+          return true;
+        }},
+    ],
+  },
+  {
+    id:'bikos', name:'Bikoš', emoji:'🐂',
+    role:'🪓 Bik ratnik — izaziva i sasiječe',
+    hp:760, mp:210, dmg:62,
+    attrs:{ str:26, agi:15, int:12, strG:5.8, agiG:1.8, intG:1.6, primary:'str' },
+    range:90, speed:172, atkCd:1.15, projSpeed:0,
+    passive:{ name:'Bikovski vrtlog', emoji:'🌀', color:'#ef4444', pid:'helix',
+      desc:'PASIVNO: kad te netko udari, ponekad se zavrtiš sa sjekirom i raniš SVE oko sebe',
+      tip:rk => '🌀 ' + (16 + 3*rk) + '% šanse kad te udare: ' + (60 + 35*rk) + ' štete svima u krugu 230' },
+    abilities:[
+      { key:'Q', name:'Bojni zov', emoji:'🗯️', cd:13, mana:70, color:'#ef4444',
+        desc:'Zaurlaj na neprijatelje oko sebe — moraju napadati samo tebe, a ti dobiješ jaki oklop',
+        selfAoe:300,
+        tip:rk => '🗯️ moraju te napadati ' + (1.8 + 0.3*rk).toFixed(1) + ' s • 🛡️ +' + (12 + 4*rk) + ' oklopa',
+        bot:{type:'aoe-self', range:280},
+        cast(u, aim, rk){
+          const d = 1.8 + 0.3*rk;
+          for(const e of units){
+            if(e.team === u.team || e.dead || e.removeMe || isStructure(e) || !isSpellTarget(e)) continue;
+            if(dist(u, e) > 300 + e.r * 0.5) continue;
+            applyTaunt(e, u, d);
+          }
+          u.armorBuffT = d; u.armorBuff = 12 + 4*rk;
+          ring(u.x, u.y, 300, '#ef4444');
+          burst(u.x, u.y, '#f87171', 22, 240, 6);
+          return true;
+        }},
+      { key:'W', name:'Ratna glad', emoji:'🍖', cd:10, mana:60, color:'#f97316',
+        desc:'Probudi glad u neprijatelju — gubi život i sporiji je dok nekoga ne pobijedi; ti trčiš brže',
+        target:'point', castRange:650, aoe:120,
+        tip:rk => '🍖 ' + (14 + 9*rk) + ' štete/s na 10 s + 🐌 12% • ti 🏃 +10% (prestaje kad on nekog pobijedi)',
+        bot:{type:'shot', range:620},
+        cast(u, aim, rk){
+          const p = clampRange(u, aim, 650);
+          let best = null, bd = 240;
+          for(const e of units){
+            if(e.team === u.team || e.dead || e.removeMe || e.invuln || !isSpellTarget(e) || !isVisibleTo(u.team, e)) continue;
+            const d = distXY(p.x, p.y, e.x, e.y) - (e.kind === 'hero' ? 80 : 0);
+            if(d < bd){ bd = d; best = e; }
+          }
+          if(!best) return false;
+          best.hungerT = 10; best.hungerDps = 14 + 9*rk + (hasTal(u, 'bikos_w_plus') ? 15 : 0); best.hungerSrc = u;
+          applySlow(best, 0.12, 10);
+          addFloat(best.x, best.y, '🍖 Gladan!', '#fdba74', 15);
+          addLine(u.x, u.y, best.x, best.y, '#f97316', 4, 0.3);
+          return true;
+        }},
+      { key:'E', name:'Bikovski skok', emoji:'🐂', cd:13, mana:55, color:'#fbbf24',
+        desc:'Skoči sa sjekirom na mjesto — udari i uspori sve gdje padneš',
+        target:'point', castRange:420, aoe:150,
+        tip:rk => '⚔️ ' + (55 + 35*rk) + ' štete + 🐌 usporenje 30% 1.5 s gdje padneš',
+        bot:{type:'gap', range:420},
+        cast(u, aim, rk){
+          leapTo(u, aim, 420);
+          damageCircle(u, u.x, u.y, 150, 55 + 35*rk, {slow:{f:0.3, t:1.5}, color:'#fbbf24'});
+          burst(u.x, u.y, '#fbbf24', 20, 240, 6);
+          return true;
+        }},
+      { key:'R', name:'Smrtni udarac', emoji:'🪓', cd:75, mana:120, ult:true, color:'#dc2626',
+        desc:'ULTI: Golemi zamah sjekirom — ranjenog neprijatelja odmah pobijedi! Uspije li, tvoj tim potrči brže, a ulti je opet spreman',
+        target:'point', castRange:200, aoe:120,
+        tip:rk => '🪓 pobijedi junaka ispod ' + (250 + 75*rk) + ' života (inače ' + (150 + 100*rk) + ' štete) • tim 🏃 +30% 6 s',
+        bot:{type:'execute', range:220},
+        cast(u, aim, rk){
+          const p = clampRange(u, aim, 260);
+          let best = null, bd = 300;
+          for(const e of units){
+            if(e.team === u.team || e.dead || e.removeMe || e.invuln || !isSpellTarget(e) || dist(u, e) > 200 + e.r + u.r + 40) continue;
+            const d = distXY(p.x, p.y, e.x, e.y) - (e.kind === 'hero' ? 120 : 0);
+            if(d < bd){ bd = d; best = e; }
+          }
+          if(!best) return false;
+          u.dir = Math.atan2(best.y - u.y, best.x - u.x);
+          const thr = 250 + 75*rk + (hasTal(u, 'bikos_r_plus') ? 150 : 0);
+          if(best.hp <= thr && best.status.immuneT <= 0){
+            addFloat(best.x, best.y - 20, '🪓 SASJEČEN!', '#fca5a5', 22);
+            burst(best.x, best.y, '#dc2626', 40, 360, 9);
+            const wasHero = best.kind === 'hero';
+            kill(best, u);
+            if(wasHero){
+              for(const e of units) if(e.kind === 'hero' && e.team === u.team && !e.dead && dist(u, e) < 900) applyHaste(e, 1.3, 6);
+              u.cullRefresh = true;
+              announce('🪓 SASJEČEN!', u.emoji + ' ' + u.name + ' je pobijedio jednim udarcem!');
+            }
+          } else applyDamage(best, 150 + 100*rk, u);
+          return true;
+        }},
+    ],
+  },
 ];
 
 /* ---------------- DUĆAN S RECEPTIMA ---------------- */
@@ -1491,8 +1667,18 @@ const ITEMS = [
   // ======================= OSNOVNI =======================
   // ----- 🧪 potrošno -----
   { id:'tango',  emoji:'🌿', name:'Tango', cat:'cons', cost:90, charges:3, consume:true, stats:{},
-    act:'Pojedi list: 16 s polako vraćaš 115 života', lore:'Svježi listovi drveća — omiljena užina svakog junaka.',
-    active:{ cd:1, mana:0, use(h){ h.tangoT = 16; useCharge(h, 'tango'); burst(h.x, h.y, '#86efac', 10, 120, 4); return true; } } },
+    act:'Klikni na DRVO i pojedi ga: 16 s polako vraćaš 115 života (drvo nestane, izraste za 3 min)', lore:'Svježi listovi drveća — omiljena užina svakog junaka.',
+    active:{ cd:1, mana:0, target:'tree', castRange:165,
+      use(h, aim){
+        const t = treeForUse(h, aim, 165, '🌿');
+        if(!t) return false;
+        cutTree(t, h);
+        h.tangoT = 16; useCharge(h, 'tango');
+        h.castAim = { x: t.x, y: t.y };
+        if(isHuman(h)) addFloat(h.x, h.y - 20, '🌿 Njam, njam!', '#86efac', 15, h.team);
+        burst(h.x, h.y, '#86efac', 10, 120, 4);
+        return true;
+      } } },
   { id:'potion', emoji:'🧪', name:'Ljekoviti melem', cat:'cons', cost:120, instant:true, heal:320, stats:{},
     act:'Odmah vrati 320 života (ne zauzima torbu)', lore:'Gorko je, ali radi!' },
   { id:'clarity', emoji:'💧', name:'Bistrina', cat:'cons', cost:60, charges:1, consume:true, stats:{},
@@ -1547,7 +1733,9 @@ const ITEMS = [
   { id:'alacrity',  emoji:'🍃', name:'Oštrica hitrine',   cat:'attr', cost:500, stats:{agi:10}, lore:'Laka kao list na vjetru.' },
   { id:'wizstaff',  emoji:'🔮', name:'Štap čarobnjaka',   cat:'attr', cost:500, stats:{int:10}, lore:'Kugla na vrhu šapuće čarolije.' },
   // ----- ⚔️ oprema -----
-  { id:'quelling',  emoji:'⛏️', name:'Sjekirica',         cat:'equip', cost:50,  stats:{}, creepDmg:12, pas:'+12 štete protiv vojnika i čudovišta', lore:'Za drva — i za vojnike.' },
+  { id:'quelling',  emoji:'⛏️', name:'Sjekirica',         cat:'equip', cost:50,  stats:{}, creepDmg:12, pas:'+12 štete protiv vojnika i čudovišta', lore:'Za drva — i za vojnike.',
+    act:'Posijeci drvo (domet 350) — otvori prolaz i pogled', active:{ cd:4, mana:0, target:'tree', castRange:350,
+      use(h, aim){ const t = treeForUse(h, aim, 350, '⛏️'); if(!t) return false; cutTree(t, h); h.castAim = { x: t.x, y: t.y }; return true; } } },
   { id:'sword',     emoji:'⚔️', name:'Oštrice napada',    cat:'equip', cost:225, stats:{dmg:9},  lore:'Par malih, oštrih noževa.' },
   { id:'broadsword',emoji:'🗡️', name:'Široki mač',        cat:'equip', cost:500, stats:{dmg:15}, lore:'Vitezov vjerni drug.' },
   { id:'claymore',  emoji:'🔪', name:'Dvoručni mač',      cat:'equip', cost:675, stats:{dmg:20}, lore:'Treba ga držati objema rukama.' },
@@ -1826,6 +2014,8 @@ const HERO_BUILDS = {
   tragac: ['wraith', 'phase', 'shadowblade', 'deso', 'daedalus', 'butterfly'],
   skokica: ['bracer', 'phase', 'blink', 'bkb', 'abyssal', 'satanic'],
   morskipas: ['wraith', 'phase', 'mom', 'bfury', 'abyssal', 'satanic'],
+  nisan: ['wraith', 'treads', 'crystalys', 'mkb', 'daedalus', 'butterfly'],   // v0.38
+  bikos: ['bracer', 'vanguard', 'blink', 'bkb', 'assault', 'titanheart'],
 };
 for(const h of HEROES) h.build = HERO_BUILDS[h.id] || BOT_BUILD;
 /* ✨ ČAROLIJE PRIZIVAČA (kao u League of Legends): svaki junak nosi dvije (tipke D i F), bira ih na početku */
@@ -1885,6 +2075,7 @@ const CAMP_TYPES = {
   boss:   { n:1, emoji:'🐲', name:'Veliki Zmaj', hp:2600, dmg:78, range:95, atkCd:1.3, speed:110, r:34, gold:260, xp:300, boss:true, hpRegen:4 },
   golem:  { n:1, emoji:'🗿', name:'Plavi golem', hp:1500, dmg:62, range:85, atkCd:1.4, speed:100, r:27, gold:170, xp:170, stunHit:true, hpRegen:2, buff:'blue', look:'c' },
   redbuff:{ n:1, emoji:'🐺', name:'Vatreni vuk', hp:1150, dmg:52, range:70, atkCd:1.15, speed:130, r:25, gold:120, xp:130, hpRegen:2, buff:'red', model:'redwolf', fallback:'wolves', fallbackLook:'r' },
+  stones: { n:2, emoji:'🪨', name:'Kameni golem', hp:880, dmg:40, range:80, atkCd:1.35, speed:100, r:21, gold:78, xp:82, stunHit:true, hpRegen:1, model:'golem' },   // v0.38
 };
 const CAMP_SPOTS = [
   { x:850,  y:1300, type:'boars'  },
@@ -1895,6 +2086,11 @@ const CAMP_SPOTS = [
   { x:800,  y:800,  type:'boss'   },
   { x:500,  y:1800, type:'golem'  },
   { x:2500, y:1200, type:'golem'  },
+  // v0.38: više džungle za 5 na 5 (simetrično: crveni = 180° okret plavog)
+  { x:1075, y:1575, type:'wolves' },
+  { x:1925, y:1425, type:'wolves' },
+  { x:1950, y:2450, type:'stones' },
+  { x:1050, y:550,  type:'stones' },
 ];
 
 /* ---------------- RUNE ZLATA I MUDROSTI (u džungli) ---------------- */
@@ -1908,13 +2104,166 @@ const BOT_BRAG = ['😎 Hehe, lako!', '💪 Jesam ga!', '🎉 Juhu!', '⭐ Super
 /* ---------------- SVETIŠTA (liječe tim, kao u DotA 7) ---------------- */
 const SHRINE_SPOTS = [{ x:1150, y:2250, team:0 }, { x:1850, y:750, team:1 }];
 
-/* ---------------- TALENTI (level 10 i 15: biraš jedno od dva) ---------------- */
-const TALENTS = [
-  { lvl:10, a:{ id:'dmg', emoji:'⚔️', txt:'+30 štete' },        b:{ id:'hp',  emoji:'❤️', txt:'+300 života' } },
-  { lvl:15, a:{ id:'spd', emoji:'🏃', txt:'+15% brzine' },      b:{ id:'cdr', emoji:'⏱️', txt:'−20% hlađenja moći' } },
-  { lvl:20, a:{ id:'dmg2', emoji:'🗡️', txt:'+60 štete' },        b:{ id:'hp2', emoji:'💖', txt:'+650 života' } },
-  { lvl:25, a:{ id:'aspd', emoji:'⚡', txt:'+35% brzine napada' }, b:{ id:'cdr2', emoji:'⌛', txt:'−15% hlađenja više' } },
+/* ---------------- 🎓 TALENTI (kao u DotA 2): na levelima 10, 15, 20 i 25 biraš jedan od dva ----------------
+   v0.38: svaki junak ima SVOJE talente — vezane uz njegove moći (jača moć, kraće hlađenje, dulja omama…) i
+   pasivu (+1 rang), uz pokoji opći bonus. Učinci (e):
+     dmg, hp, mp, armor, aspd (udio), spd (brzina), cdr (udio), ls (krađa života), hpRegen, mpRegen, range (domet),
+     spellAmp (jačina magija), evasion, pas (+rang urođene pasive), gold (zlato/s),
+     ab:{ Q:{ dmg (šteta po pogotku), cd (s), dur (omama/korijen/tišina/izazov +s), heal, mana } }, flag (posebno) */
+const TALENT_LVLS = [10, 15, 20, 25];
+const TAL = (emoji, txt, e) => ({ emoji, txt, e });
+const DEFAULT_TALENTS = [
+  [TAL('⚔️', '+30 štete', { dmg:30 }), TAL('❤️', '+300 života', { hp:300 })],
+  [TAL('🏃', '+25 brzine', { spd:25 }), TAL('⏱️', '−15% hlađenja moći', { cdr:0.15 })],
+  [TAL('🗡️', '+60 štete', { dmg:60 }), TAL('💖', '+600 života', { hp:600 })],
+  [TAL('⚡', '+35% brzine napada', { aspd:0.35 }), TAL('⌛', '−15% hlađenja više', { cdr:0.15 })],
 ];
+const HERO_TALENTS = {
+  vitez: [
+    [TAL('🌪️', 'Vrtlog +60 štete', { ab:{ Q:{ dmg:60 } } }), TAL('🛡️', '+4 oklopa', { armor:4 })],
+    [TAL('💥', 'Junački skok −4 s hlađenja', { ab:{ E:{ cd:-4 } } }), TAL('❤️', '+300 života', { hp:300 })],
+    [TAL('💥', 'Junački skok +0.6 s omame', { ab:{ E:{ dur:0.6 } } }), TAL('⚔️', '+45 štete', { dmg:45 })],
+    [TAL('🦁', 'Kraljev urlik +1 s omame', { ab:{ R:{ dur:1 } } }), TAL('🦺', 'Lavlja koža +1 rang', { pas:1 })],
+  ],
+  zarko: [
+    [TAL('🔥', 'Vatrena kugla +60 štete', { ab:{ Q:{ dmg:60 } } }), TAL('💧', '+2 obnove mane', { mpRegen:2 })],
+    [TAL('☄️', 'Meteor −5 s hlađenja', { ab:{ E:{ cd:-5 } } }), TAL('✨', '+10% jačine magija', { spellAmp:0.1 })],
+    [TAL('🔥', 'Vatrena kugla probija SVE', { flag:'zarko_q_pierce' }), TAL('❤️', '+350 života', { hp:350 })],
+    [TAL('🐲', 'Zmajev dah +200 štete', { ab:{ R:{ dmg:200 } } }), TAL('⏱️', '−20% hlađenja moći', { cdr:0.2 })],
+  ],
+  ledena: [
+    [TAL('🧊', 'Ledena strijela +55 štete', { ab:{ Q:{ dmg:55 } } }), TAL('🏃', '+20 brzine', { spd:20 })],
+    [TAL('🌨️', 'Snježna oluja +25 štete po udaru', { ab:{ E:{ dmg:25 } } }), TAL('💧', '+200 mane', { mp:200 })],
+    [TAL('🛷', 'Trbušno klizanje −4 s hlađenja', { ab:{ W:{ cd:-4 } } }), TAL('✨', '+12% jačine magija', { spellAmp:0.12 })],
+    [TAL('🥶', 'Ledeno doba +1 s omame', { ab:{ R:{ dur:1 } } }), TAL('❤️', '+500 života', { hp:500 })],
+  ],
+  strijela: [
+    [TAL('🎯', 'Probojna strijela +60 štete', { ab:{ Q:{ dmg:60 } } }), TAL('⚡', '+20% brzine napada', { aspd:0.2 })],
+    [TAL('🕸️', 'Mreža drži +0.8 s', { ab:{ W:{ dur:0.8 } } }), TAL('🏹', '+75 dometa napada', { range:75 })],
+    [TAL('👁️', 'Oštro oko +1 rang', { pas:1 }), TAL('⚔️', '+40 štete', { dmg:40 })],
+    [TAL('🌠', 'Sokolovo oko gađa DVA junaka', { flag:'strijela_r2' }), TAL('🦇', '+15% krađe života', { ls:0.15 })],
+  ],
+  listko: [
+    [TAL('💚', 'Iscjeljenje +60 liječenja', { ab:{ W:{ heal:60 } } }), TAL('🛡️', '+4 oklopa', { armor:4 })],
+    [TAL('🌱', 'Korijenje drži +0.6 s', { ab:{ E:{ dur:0.6 } } }), TAL('❤️', '+300 života', { hp:300 })],
+    [TAL('🌰', 'Trnova kugla +80 štete', { ab:{ Q:{ dmg:80 } } }), TAL('💧', '+3 obnove mane', { mpRegen:3 })],
+    [TAL('🌳', 'Šumsko srce +150 liječenja', { ab:{ R:{ heal:150 } } }), TAL('🌱', 'Korijeni +1 rang', { pas:1 })],
+  ],
+  munja: [
+    [TAL('⚡', 'Munjeviti udar +50 štete', { ab:{ Q:{ dmg:50 } } }), TAL('🏃', '+20 brzine', { spd:20 })],
+    [TAL('🌀', 'Bljesak −4 s hlađenja', { ab:{ W:{ cd:-4 } } }), TAL('⚔️', '+35 štete', { dmg:35 })],
+    [TAL('⚡', 'Munjeviti udar skače na još 2', { flag:'munja_q_jumps' }), TAL('🔋', 'Statički naboj +1 rang', { pas:1 })],
+    [TAL('🌩️', 'Gnjev oluje +150 štete', { ab:{ R:{ dmg:150 } } }), TAL('⚡', '+40% brzine napada', { aspd:0.4 })],
+  ],
+  skokica: [
+    [TAL('👅', 'Jezičina +60 štete', { ab:{ Q:{ dmg:60 } } }), TAL('❤️', '+250 života', { hp:250 })],
+    [TAL('👅', 'Jezičina −3 s hlađenja', { ab:{ Q:{ cd:-3 } } }), TAL('🛡️', '+5 oklopa', { armor:5 })],
+    [TAL('🫧', 'Mjehur liječi +80', { ab:{ E:{ heal:80 } } }), TAL('⚔️', '+40 štete', { dmg:40 })],
+    [TAL('🌊', 'Veliki val +180 štete', { ab:{ R:{ dmg:180 } } }), TAL('💧', 'Vodozemac +1 rang', { pas:1 })],
+  ],
+  orlina: [
+    [TAL('🪶', 'Pero-oštrica +60 štete', { ab:{ Q:{ dmg:60 } } }), TAL('⚡', '+20% brzine napada', { aspd:0.2 })],
+    [TAL('🦅', 'Obrušavanje −4 s hlađenja', { ab:{ E:{ cd:-4 } } }), TAL('🏃', '+25 brzine', { spd:25 })],
+    [TAL('🔭', 'Orlovski vid +1 rang', { pas:1 }), TAL('⚔️', '+45 štete', { dmg:45 })],
+    [TAL('🌪️', 'Kralj neba +150 štete', { ab:{ R:{ dmg:150 } } }), TAL('🦋', '+20% izbjegavanja', { evasion:0.2 })],
+  ],
+  luna: [
+    [TAL('⭐', 'Zvjezdana kiša +50 štete', { ab:{ W:{ dmg:50 } } }), TAL('⚡', '+20% brzine napada', { aspd:0.2 })],
+    [TAL('🌠', 'Sveta strijela +0.7 s omame', { ab:{ Q:{ dur:0.7 } } }), TAL('❤️', '+275 života', { hp:275 })],
+    [TAL('🌙', 'Mjesečeva oštrica +1 rang', { pas:1 }), TAL('⚔️', '+40 štete', { dmg:40 })],
+    [TAL('👻', 'Mjesečeva sjena: tim i +30% brzine', { flag:'luna_r_haste' }), TAL('🦇', '+18% krađe života', { ls:0.18 })],
+  ],
+  tragac: [
+    [TAL('💫', 'Leteća zvijezda +60 štete', { ab:{ Q:{ dmg:60 } } }), TAL('🏃', '+20 brzine', { spd:20 })],
+    [TAL('💨', 'Dimna bomba +1 s tišine', { ab:{ W:{ dur:1 } } }), TAL('⚔️', '+35 štete', { dmg:35 })],
+    [TAL('💢', 'Lukavi udarac +1 rang', { pas:1 }), TAL('🦋', '+15% izbjegavanja', { evasion:0.15 })],
+    [TAL('💰', 'Ucjena +150 zlata', { flag:'tragac_r_gold' }), TAL('⚡', '+40% brzine napada', { aspd:0.4 })],
+  ],
+  jez: [
+    [TAL('🌵', 'Kiša bodlji +40 štete', { ab:{ Q:{ dmg:40 } } }), TAL('❤️', '+275 života', { hp:275 })],
+    [TAL('🌰', 'Klupko +0.5 s omame', { ab:{ E:{ dur:0.5 } } }), TAL('🛡️', '+5 oklopa', { armor:5 })],
+    [TAL('🌵', 'Kiša bodlji −2 s hlađenja', { ab:{ Q:{ cd:-2 } } }), TAL('🦔', 'Oklop od bodlji +1 rang', { pas:1 })],
+    [TAL('🏃', 'Juriš bodlji −25 s hlađenja', { ab:{ R:{ cd:-25 } } }), TAL('❤️', '+700 života', { hp:700 })],
+  ],
+  slon: [
+    [TAL('🦶', 'Topot +60 štete', { ab:{ Q:{ dmg:60 } } }), TAL('🛡️', '+4 oklopa', { armor:4 })],
+    [TAL('💦', 'Tuš iz surle +70 liječenja', { ab:{ E:{ heal:70 } } }), TAL('❤️', '+300 života', { hp:300 })],
+    [TAL('🦶', 'Topot +0.6 s omame', { ab:{ Q:{ dur:0.6 } } }), TAL('⚔️', '+50 štete', { dmg:50 })],
+    [TAL('🐘', 'Stampedo −30 s hlađenja', { ab:{ R:{ cd:-30 } } }), TAL('🛡️', 'Debela koža +1 rang', { pas:1 })],
+  ],
+  pcela: [
+    [TAL('🐝', 'Otrovni ubod +50 štete', { ab:{ Q:{ dmg:50 } } }), TAL('💧', '+2 obnove mane', { mpRegen:2 })],
+    [TAL('🍯', 'Roj +15 štete po ubodu', { ab:{ W:{ dmg:15 } } }), TAL('🏃', '+25 brzine', { spd:25 })],
+    [TAL('🧈', 'Med +1 rang', { pas:1 }), TAL('✨', '+12% jačine magija', { spellAmp:0.12 })],
+    [TAL('🏺', 'Košnica +40 štete po udaru', { ab:{ R:{ dmg:40 } } }), TAL('⏱️', '−20% hlađenja moći', { cdr:0.2 })],
+  ],
+  sova: [
+    [TAL('📣', 'Huk +55 štete', { ab:{ Q:{ dmg:55 } } }), TAL('🏃', '+20 brzine', { spd:20 })],
+    [TAL('📣', 'Huk +1 s tišine', { ab:{ Q:{ dur:1 } } }), TAL('💧', '+250 mane', { mp:250 })],
+    [TAL('🌙', 'Noćna ptica +1 rang', { pas:1 }), TAL('✨', '+12% jačine magija', { spellAmp:0.12 })],
+    [TAL('🌑', 'Vječna noć −30 s hlađenja', { ab:{ R:{ cd:-30 } } }), TAL('❤️', '+500 života', { hp:500 })],
+  ],
+  majmun: [
+    [TAL('🥢', 'Štap-udarac +60 štete', { ab:{ Q:{ dmg:60 } } }), TAL('🏃', '+20 brzine', { spd:20 })],
+    [TAL('🍌', 'Banana +0.6 s omame', { ab:{ E:{ dur:0.6 } } }), TAL('⚔️', '+35 štete', { dmg:35 })],
+    [TAL('👊', 'Kombo +1 rang', { pas:1 }), TAL('🦋', '+15% izbjegavanja', { evasion:0.15 })],
+    [TAL('🐒', 'Majmunska vojska: 4 majmuna', { flag:'majmun_r4' }), TAL('🦇', '+18% krađe života', { ls:0.18 })],
+  ],
+  vuk: [
+    [TAL('🦷', 'Ugriz +60 štete', { ab:{ W:{ dmg:60 } } }), TAL('❤️', '+250 života', { hp:250 })],
+    [TAL('🌕', 'Zavijanje −4 s hlađenja', { ab:{ Q:{ cd:-4 } } }), TAL('⚡', '+25% brzine napada', { aspd:0.25 })],
+    [TAL('🐾', 'Čopor +1 rang', { pas:1 }), TAL('⚔️', '+45 štete', { dmg:45 })],
+    [TAL('🐺', 'Vučji oblik −25 s hlađenja', { ab:{ R:{ cd:-25 } } }), TAL('🦇', '+20% krađe života', { ls:0.2 })],
+  ],
+  gavran: [
+    [TAL('🌀', 'Kletva +60 štete', { ab:{ Q:{ dmg:60 } } }), TAL('💧', '+2 obnove mane', { mpRegen:2 })],
+    [TAL('🔁', 'Zamjena −4 s hlađenja', { ab:{ W:{ cd:-4 } } }), TAL('❤️', '+275 života', { hp:275 })],
+    [TAL('🪶', 'Pernata oluja +20 štete po udaru', { ab:{ E:{ dmg:20 } } }), TAL('✨', '+12% jačine magija', { spellAmp:0.12 })],
+    [TAL('🐦‍⬛', 'Jato gavranova +30 štete po udaru', { ab:{ R:{ dmg:30 } } }), TAL('🪶', 'Gavranovo pero +1 rang', { pas:1 })],
+  ],
+  hobotnica: [
+    [TAL('🖤', 'Mlaz tinte +60 štete', { ab:{ Q:{ dmg:60 } } }), TAL('🛡️', '+4 oklopa', { armor:4 })],
+    [TAL('🫂', 'Zagrljaj pipaka +0.6 s', { ab:{ E:{ dur:0.6 } } }), TAL('❤️', '+300 života', { hp:300 })],
+    [TAL('🐙', 'Pipci −3 s hlađenja', { ab:{ W:{ cd:-3 } } }), TAL('💧', 'Sluzava koža +1 rang', { pas:1 })],
+    [TAL('🌀', 'Vrtlog dubina +1 s omame', { ab:{ R:{ dur:1 } } }), TAL('❤️', '+700 života', { hp:700 })],
+  ],
+  nosorog: [
+    [TAL('🏃', 'Juriš +70 štete', { ab:{ Q:{ dmg:70 } } }), TAL('❤️', '+275 života', { hp:275 })],
+    [TAL('📢', 'Izazov +0.6 s', { ab:{ E:{ dur:0.6 } } }), TAL('🛡️', '+5 oklopa', { armor:5 })],
+    [TAL('🏃', 'Juriš −4 s hlađenja', { ab:{ Q:{ cd:-4 } } }), TAL('⚔️', '+45 štete', { dmg:45 })],
+    [TAL('😡', 'Bijes −25 s hlađenja', { ab:{ R:{ cd:-25 } } }), TAL('🛡️', 'Debeli oklop +1 rang', { pas:1 })],
+  ],
+  panda: [
+    [TAL('👏', 'Grom-pljesak +60 štete', { ab:{ Q:{ dmg:60 } } }), TAL('❤️', '+250 života', { hp:250 })],
+    [TAL('💫', 'Vrtoglavica −4 s hlađenja', { ab:{ W:{ cd:-4 } } }), TAL('🛡️', '+5 oklopa', { armor:5 })],
+    [TAL('🎋', 'Bambus +1 rang', { pas:1 }), TAL('⚔️', '+45 štete', { dmg:45 })],
+    [TAL('🐼', 'Tri pande: 4 pande', { flag:'panda_r4' }), TAL('❤️', '+700 života', { hp:700 })],
+  ],
+  jednorog: [
+    [TAL('💖', 'Ljekoviti rog +70 liječenja', { ab:{ W:{ heal:70 } } }), TAL('💧', '+2 obnove mane', { mpRegen:2 })],
+    [TAL('🌈', 'Dugin snop +70 štete', { ab:{ Q:{ dmg:70 } } }), TAL('❤️', '+275 života', { hp:275 })],
+    [TAL('✨', 'Čarobna griva +1 rang', { pas:1 }), TAL('🏃', '+30 brzine', { spd:30 })],
+    [TAL('🌠', 'Zvjezdani galop +0.8 s omame', { ab:{ R:{ dur:0.8 } } }), TAL('⏱️', '−20% hlađenja moći', { cdr:0.2 })],
+  ],
+  morskipas: [
+    [TAL('🦷', 'Ugriz +60 štete', { ab:{ Q:{ dmg:60 } } }), TAL('🏃', '+20 brzine', { spd:20 })],
+    [TAL('🌀', 'Krvavi vrtlog −3 s hlađenja', { ab:{ E:{ cd:-3 } } }), TAL('⚔️', '+35 štete', { dmg:35 })],
+    [TAL('🩸', 'Miris krvi +1 rang', { pas:1 }), TAL('🦋', '+15% izbjegavanja', { evasion:0.15 })],
+    [TAL('😤', 'Pomama −25 s hlađenja', { ab:{ R:{ cd:-25 } } }), TAL('🦇', '+20% krađe života', { ls:0.2 })],
+  ],
+  nisan: [
+    [TAL('🌰', 'Kiša žirova +8 štete po udaru', { ab:{ Q:{ dmg:8 } } }), TAL('⚡', '+20% brzine napada', { aspd:0.2 })],
+    [TAL('🔭', 'Durbin −6 s hlađenja', { ab:{ E:{ cd:-6 } } }), TAL('🏃', '+25 brzine', { spd:25 })],
+    [TAL('🎯', 'Pogodak u glavu +1 rang', { pas:1 }), TAL('🏹', '+100 dometa napada', { range:100 })],
+    [TAL('🔫', 'Savršen hitac: nišani duplo brže', { flag:'nisan_r_fast' }), TAL('🔫', 'Savršen hitac +250 štete', { ab:{ R:{ dmg:250 } } })],
+  ],
+  bikos: [
+    [TAL('🗯️', 'Bojni zov +0.4 s', { ab:{ Q:{ dur:0.4 } } }), TAL('❤️', '+275 života', { hp:275 })],
+    [TAL('🍖', 'Ratna glad +15 štete/s', { flag:'bikos_w_plus' }), TAL('🛡️', '+5 oklopa', { armor:5 })],
+    [TAL('🌀', 'Bikovski vrtlog +1 rang', { pas:1 }), TAL('🏃', '+30 brzine', { spd:30 })],
+    [TAL('🪓', 'Smrtni udarac: prag +150', { flag:'bikos_r_plus' }), TAL('🗯️', 'Bojni zov −4 s hlađenja', { ab:{ Q:{ cd:-4 } } })],
+  ],
+};
 
 /* ---------------- RUNE NA RIJECI ---------------- */
 

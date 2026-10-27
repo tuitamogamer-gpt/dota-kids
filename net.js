@@ -145,7 +145,8 @@ function tryStartMatch(){
     .filter(i => i !== net.myPick && i !== net.otherPick));
   const bots = pool.slice(0, 2 * (CFG.teamSize - 1));   // 👥 po 4 bota u svakom timu
   genTrees();
-  sendNet({ c: 'start', host: net.myPick, guest: net.otherPick, bots, trees });
+  for(const t of trees){ t.x = Math.round(t.x); t.y = Math.round(t.y); t.size = Math.round(t.size); }   // manja poruka (v0.38: ~900 stabala)
+  sendNet({ c: 'start', host: net.myPick, guest: net.otherPick, bots, trees: trees.map(t => ({ x: t.x, y: t.y, r: t.r, size: t.size, kind: t.kind })) });
   startMatchHost(net.myPick, net.otherPick, bots);
 }
 
@@ -184,7 +185,7 @@ function onNetData(d){
     case 'sell': if(net.mode === 'host' && remoteHero) sellItem(remoteHero, d.i); break;
     case 'swap': if(net.mode === 'host' && remoteHero) swapItems(remoteHero, d.a | 0, d.b | 0); break;
     case 'sum': if(net.mode === 'host' && remoteHero) castSummoner(remoteHero, d.s ? 1 : 0, d.x != null ? { x: d.x, y: d.y } : null); break;
-    case 'tp': if(net.mode === 'host' && remoteHero) startTeleport(remoteHero); break;
+    case 'tp': if(net.mode === 'host' && remoteHero) startTeleport(remoteHero, d.x != null ? tpDestAt(remoteHero, d.x, d.y) : null); break;
     case 'buyback': if(net.mode === 'host' && remoteHero) buyback(remoteHero); break;
     case 'item': if(net.mode === 'host' && remoteHero) useItem(remoteHero, d.i, d.x != null ? { x: d.x, y: d.y } : null); break;
     case 'glyph': if(net.mode === 'host' && remoteHero) useGlyph(remoteHero.team, remoteHero); break;
@@ -204,7 +205,7 @@ function netBuy(id){ sendNet({ c: 'buy', id }); }
 function netSell(i){ sendNet({ c: 'sell', i }); }
 function netSwap(a, b){ sendNet({ c: 'swap', a, b }); }
 function netSum(slot, aim){ sendNet({ c: 'sum', s: slot, x: aim ? Math.round(aim.x) : null, y: aim ? Math.round(aim.y) : null }); }
-function netTp(){ sendNet({ c: 'tp' }); }
+function netTp(aim){ sendNet(aim ? { c: 'tp', x: Math.round(aim.x), y: Math.round(aim.y) } : { c: 'tp' }); }
 function netBuyback(){ sendNet({ c: 'buyback' }); }
 function netItem(i, aim){ sendNet({ c: 'item', i, x: aim ? Math.round(aim.x) : null, y: aim ? Math.round(aim.y) : null }); }
 function netGlyph(){ sendNet({ c: 'glyph' }); }
@@ -225,7 +226,7 @@ function heroExtras(h){
     spd: Math.round(h.speed), dm: Math.round(h.dmg), ib: h.itemBonus.dmg,
     tc: +h.tpCd.toFixed(1), tch: +h.tpChannel.toFixed(2), dt2: +h.deadT.toFixed(1),
     as: h.assists, bb: +h.buybackCd.toFixed(1), ag: h.aegis ? 1 : 0, at: Math.round(h.aegisT), ic: h.itemCd, ich: h.itemCharges,
-    tal: h.talents, cdr: h.cdr || 0,
+    tal: h.talents, cdr: h.cdr || 0, rg: Math.round(h.atkRange),
     sm: h.summoners, smc: (h.sumCd || [0, 0]).map(v => +v.toFixed(1)),
     ab: h.abilities.map(a => [a.rank, +a.cd.toFixed(1)]),
     it: h.items.map(i => i.id),
@@ -253,6 +254,11 @@ function buildSnapshot(){
     if(u.knockN) b.kn = u.knockN % 1000;   // odbačaj
     if(u.danceN){ b.dz = u.danceN % 1000; if(u.danceT > 0) b.dc = 1; }   // 💃 ples
     if(u.charge) b.ch = 1;                 // juriš
+    if(u.tpChannel > 0 && u.tpDest) b.td = [Math.round(u.tpDest.x), Math.round(u.tpDest.y), +(u.tpChannel / (u.tpDur || 3)).toFixed(2)];   // 🌀 TP do kule
+    if(u.chan && u.chan.target) b.cz = [u.chan.target.id, +(1 - u.chan.t / u.chan.dur).toFixed(2)];   // 🎯 nišanjenje
+    if(u.hungerT > 0) b.hg = 1;            // 🍖 ratna glad
+    if(u.helixN) b.hx = u.helixN % 1000;   // 🌀 bikovski vrtlog
+    if(u.talN) b.tn = u.talN % 100;        // 🎓 talent
     if(u.cycloneT > 0) b.cy = 1;           // 🌪️ u vihoru
     if(u.sumN){ b.sn = u.sumN % 1000; b.sf = u.sumFx; if(u.sumAim) b.sa = [Math.round(u.sumAim.x), Math.round(u.sumAim.y)]; if(u.smiteAt) b.sm2 = [Math.round(u.smiteAt.x), Math.round(u.smiteAt.y)]; }
     if(u.barrierT > 0) b.br = Math.round(u.barrierHp);   // 🫧 štit na traci života
@@ -302,6 +308,7 @@ function buildSnapshot(){
     pg: pings.map(p => [Math.round(p.x), Math.round(p.y), p.team, +p.t.toFixed(2)]),
     cu: couriers.map(c => [Math.round(c.x), Math.round(c.y), +c.dir.toFixed(2), ['home', 'go', 'back'].indexOf(c.state), c.carry]),
     wd: wards.map(w => ({ x: Math.round(w.x), y: Math.round(w.y), r: w.r, t: +w.t.toFixed(1), tm: w.team })),
+    tc: treesCut.slice(),   // 🌳 pojedena / posječena stabla
   };
 }
 function maybeSendSnapshot(now){
@@ -406,6 +413,9 @@ function applySnapshot(d){
       u.jbuff = { blue: b.jb ? b.jb[0] : 0, red: b.jb ? b.jb[1] : 0 }; u.atkInt = b.ai || null; u.atkHeavy = !!b.ah;
     u.knockN = b.kn || 0; u.charge = b.ch ? { net: true } : null;
     u.danceN = b.dz || 0; u.danceT = b.dc ? 1 : 0;   // 💃
+    u.tpDest = b.td ? { x: b.td[0], y: b.td[1] } : null; u.tpFrac = b.td ? b.td[2] : 0;
+    u.chanFx = b.cz ? { id: b.cz[0], f: b.cz[1] } : null;
+    u.hungerT = b.hg ? 1 : 0; u.helixN = b.hx || 0; u.talN = b.tn || 0;
     if(u.kind === 'hero'){
       u.level = b.l; u.dead = !!b.dd;
       u.mp = b.mp; u.maxmp = b.mm;
@@ -439,7 +449,10 @@ function applySnapshot(d){
     player.assists = e.as || 0; player.buybackCd = e.bb || 0; player.aegis = !!e.ag; player.aegisT = e.at || 0;
     player.itemCd = e.ic || {};
     player.itemCharges = e.ich || {};
-    player.talents = e.tal || {}; player.cdr = e.cdr || 0;
+    if(!player.talents) player.talents = {};
+    if(JSON.stringify(e.tal || {}) !== JSON.stringify(player.talents)){ player.talents = e.tal || {}; deriveTalents(player); }   // 🎓
+    if(e.rg) player.atkRange = e.rg;
+    player.cdr = e.cdr || 0;
     if(e.sm) player.summoners = e.sm;
     if(e.smc) player.sumCd = e.smc;
     e.ab.forEach((a, j) => {
@@ -499,6 +512,13 @@ function applySnapshot(d){
   if(d.cu){   // 🫏 isti objekti kurira (3D model se gradi samo jednom)
     if(couriers.length !== d.cu.length) makeCouriers();
     d.cu.forEach((v, i) => { const c = couriers[i]; c.x = v[0]; c.y = v[1]; c.dir = v[2]; c.state = ['home', 'go', 'back'][v[3]] || 'home'; c.carry = v[4]; });
+  }
+  if(d.tc){   // 🌳 stabla: pojedena / posječena i ponovo izrasla
+    const now = new Set(d.tc);
+    let changed = false;
+    for(const i of now){ const t = trees[i]; if(t && !t.cut){ t.cut = true; changed = true; if(typeof treeCut3D === 'function') treeCut3D(i); } }
+    for(const i of treesCut){ if(!now.has(i) && trees[i]){ trees[i].cut = false; changed = true; if(typeof treeGrow3D === 'function') treeGrow3D(i); } }
+    if(changed){ treesCut = [...now]; buildTreeGrid(); markTreesDirty(); }
   }
   {   // zadrži iste objekte oka da 3D prikaz ne gradi mrežu iznova svaki snapshot
     const old = wards;
@@ -586,7 +606,7 @@ function resetMatchState(){
   quickBuy = null; shopSel = null; invDrag = null; hideItemTip();   // nova igra: bez stare brze kupnje i opisa
   banner = null; netBanner = guestBanner = null; net.bannerSeen = 0;
   net.lastKills = net.lastLevel = null;
-  remoteHero = null;
+  remoteHero = null; resetTeamAI();
   net.guestUnits.clear();
   net.ringBuilt = false;
 }
@@ -595,6 +615,7 @@ function startMatchHost(hostIdx, guestIdx, botIdcs){
   myTeam = TEAM_BLUE;
   clearScene3D();
   // trees su VEĆ generirane u tryStartMatch (poslane gostu — ista šuma!)
+  treesCut = []; markTreesDirty(); fogA.fill(1);
   buildTerrain();
   buildTrees3D();
   buildStatic3D();
@@ -625,6 +646,7 @@ function startMatchGuest(d){
   resetMatchState();
   myTeam = TEAM_RED;
   trees = d.trees;          // ista šuma kao kod domaćina!
+  buildTreeGrid(); treesCut = []; markTreesDirty(); fogA.fill(1);
   clearScene3D();
   buildTerrain();
   buildTrees3D();
