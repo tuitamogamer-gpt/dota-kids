@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.37: 👥 pravih 5 na 5 kao u DotA-i i LoL-u — ti + 4 bota protiv 5 botova (a s prijateljem: svaki sa po 4 bota).** (v0.36: peglanje za mobitel i opisi gumba, v0.35: u mrežnoj igri svatko vidi svoje, v0.34: 📣 najavljivač, 🤖 težina botova, 💀 pregled pogibije, 💃 ples)
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.38: veliko poliranje — ⛶ cijeli zaslon, 🐿️ Nišan i 🐂 Bikoš, 🎓 svaki junak ima svoje talente, 💥 kritični udarci, 🛒 jasniji dućan, 🗺️ veća mapa, 🗼 aggro kao u Doti, 🌫️ prava magla rata, 🌿 tango jede drvo i 🤖 pametniji botovi (gankovi, guranje, obrana).** (v0.37: 👥 pravih 5 na 5, v0.36: peglanje za mobitel i opisi gumba, v0.35: u mrežnoj igri svatko vidi svoje, v0.34: 📣 najavljivač, 🤖 težina botova, 💀 pregled pogibije, 💃 ples)
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -18,6 +18,25 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- ✨ **Veliko poliranje** (v0.38):
+  - ⛶ **cijeli zaslon** — gumb ⛶ gore desno (i na ekranu odabira), a igra se sama otvori preko cijelog ekrana kad klikneš ▶️ ZAIGRAJ. U cijelom zaslonu **miš ne može pobjeći iz igre** (ni na drugi monitor): igra „zaključa” miš i crta svoj pokazivač (⚔️ mač nad neprijateljem, 🎯 nišan pri ciljanju), pa pomicanje kamere uz rub uvijek radi. Kad otvoriš dućan, postavke ili pomoć, miš se sam otpusti; klik na igru ga opet zaključa, **Esc** ga pusti. Oboje se može isključiti u ⚙️ postavkama (🖥️ Cijeli zaslon, 🔒 Miš ostaje u igri)
+  - 🐿️ **Nišan — novi junak kao Sniper u Doti**: vjeverica snajperist s dugom puškom i durbinom, gađa s 430 (najdalje u igri). Pasiva 🎯 *Pogodak u glavu* (dodatna šteta, kratka omama, odbačaj) • Q 🌰 *Kiša žirova* (dugo pada na daleko mjesto, usporava) • W 💣 *Šišarka-bomba* (odbaci neprijatelje — i tebe ako si blizu, za bijeg!) • E 🔭 *Durbin* (6 s gađaš puno dalje i brže) • R 🔫 *Savršen hitac* (nišani protivničkog junaka do 2000 daleko: crveni laser i nišan nad metom, pa hitac koji uvijek pogodi)
+  - 🐂 **Bikoš — novi junak kao Axe u Doti**: crveni bik s golemom dvostrukom sjekirom. Pasiva 🌀 *Bikovski vrtlog* (kad ga udare, ponekad se zavrti i rani sve oko sebe) • Q 🗯️ *Bojni zov* (neprijatelji oko njega moraju napadati samo njega, a on dobiva jaki oklop) • W 🍖 *Ratna glad* (meta gubi život dok nekoga ne pobijedi) • E 🐂 *Bikovski skok* • R 🪓 *Smrtni udarac* (ranjenog junaka odmah pobijedi — tim potrči brže, a ulti je opet spreman)
+  - 🎙️ oba nova junaka imaju **svoj glas i 9 replika** (na engleskom, kao ostali), 3D model iz Blendera s animacijama (Nišan nišani i trza se od pucnja) i portret
+  - 🎓 **svaki junak ima SVOJE talente** (24 × 4 razine × 2 izbora): umjesto istih bonusa za sve, talenti jačaju baš njegove moći — npr. Žarkova Vatrena kugla probija sve, Strijelino Sokolovo oko gađa dva junaka, Pipkov Zagrljaj pipaka dulje drži, Skakačeva Majmunska vojska ima 4 majmuna. Stablo talenata vidiš na ekranu odabira (🎓 pločica), a odabrani talent se vidi i u opisu moći
+  - 💥 **kritični udarci**: veliki narančasti broj koji iskoči i zatrese se, crveni rez u obliku X preko mete, bljesak oružja prije zamaha, jači crveni trag zamaha, crveni projektil kod daljinskih junaka i poseban zvuk
+  - 🪄 **animacije magija i napada**: vještine vuku svijetlu vrpcu (trag), ulti skupi energiju u junaka uz bljesak ekrana, skokovi ostavljaju trag iskrica, crveni rub ekrana kad te jako udare i kad ti je malo života, efekti za sve nove moći (kiša žirova, šišarka-bomba, laser nišana, zamah sjekirom, vrtlog)
+  - 🛒 **jasniji dućan**: lijevo kategorije s razumljivim imenima (⭐ Za tebe, 💰 Mogu kupiti, 🧪 Napitci, 💪 Atributi, 🗡️ Oprema… ⚔️ Oružje, 👑 Legendarno) sa zelenom značkom koliko toga možeš kupiti; predmeti su **kartice s imenom, onim što daju i cijenom** (crveno „fali 150” kad nemaš dovoljno); gore veliki gumb **„⭐ Kupi sljedeće”**; dolje recept („složi od: A + B + 📜 = predmet”), veliki gumb „🛒 Kupi za X” ili „🔒 Fali još X” i tvoja torba s porukom stiže li predmet odmah ili ga nosi 🫏 kurir
+  - 🗺️ **veća mapa za 5 na 5** — testirano simulacijom: mapa je 28 % veća u svakom smjeru (1,45 → 1,85), protivnici su prosječno ~1550 umjesto ~1240 daleko, ima više mjesta za džunglu (4 nova kampa: vukovi i 🪨 kameni golemi koji omamljuju) i više drveća; igra traje prosječno ~18–23 minute
+  - 🗼 **aggro kao u Doti 2**: napadneš li junaka blizu protivničke kule ili vojnika, kula i njegovi vojnici navale na TEBE (vojnici te ganjaju ~2 s); klikneš li svog vojnika, protivnički vojnici te puste. Vojnici bez druge mete napadaju junake do 500 udaljenosti
+  - 🗡️ **kule su opasne na početku**: prvih 10 minuta junacima rade **dvostruku štetu** (do 20. minute polako pada na ×1,3), a svaki sljedeći pogodak u istog junaka jači je za 25 % (do ×2) — nema više ronjenja pod kulu na levelu 3
+  - 🌫️ **prava magla rata**: vid ide u zrakama — **drveće zaklanja pogled**, a s nizine se ne vidi na viši plato (kao u Doti); kule i fontana vide u krugu, oči 👁️ i noć rade kao prije; neprijatelje u magli ne možeš ciljati, a zaključani cilj se izgubi kad nestane u magli. Magla se crta glatko, i na tlu, zgradama, drveću i vodi
+  - 🌿 **tango jede drvo**: klikni tango pa **klikni drvo** (zeleni krug pokaže najbliže) — junak dođe do njega, pojede ga i 16 s liječi; drvo nestane i izraste za 3 minute (vidi i gost u mrežnoj igri). 🪓 Sjekirica sada siječe drveće (otvori prolaz!)
+  - 🤖 **pametniji botovi — timska taktika**: svaki tim ima „zapovjednika” koji botovima daje naredbe: **🗡️ gank** (2 bota odu na usamljenog ili ranjenog protivnika na drugoj stazi), **🛡️ obrana** (kad ruše našu kulu, najbliži dođu — i teleportom), **🏰 guranje** (kad je tim jači, zajedno guraju stazu), **🔄 promjena staze** i **🐲 Veliki Zmaj** kad protivnici leže. Botovi javljaju u timske poruke što rade („🗡️ Sivko i Zubo idu u gank na Lavka!”, „🛡️ Rogo brani kulu!”), a odgovaraju na tvoje pingove i „⚔️ Napadamo!”
+  - 🌀 **teleport na kulu**: T pa klik na svoju kulu ili vojarnu (i na minimapi) — 3,5 s i stižeš; T dvaput = kući. Na odredištu raste stup svjetla koji vide i protivnici
+  - 🎨 **ljepši 3D modeli**: svi modeli dobili su bolje „oslikano” sjenčanje (plohe prema nebu toplije i svjetlije, odozdo hladnija sjena) pa iz kamere odozgo izgledaju obliji; novi modeli metka, puške i sjekire
+  - 🧪 `tools/sim/sim.js` — simulacija cijelih partija bez preglednika (`node tools/sim/sim.js 4 --max=2700`) za provjeru ravnoteže, veličine mape i ponašanja botova
 
 - 👥 **5 na 5** (v0.37) — timovi su sada veliki kao u DotA-i i LoL-u:
   - 🤖 sam igraš: **ti + 4 bota 🔵 protiv 5 botova 🔴**; s prijateljem: domaćin i gost vode sredinu, a svaki ima **po 4 bota**
@@ -278,8 +297,8 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
 - 🎨 **AI ilustracije** (v0.5): naslikani portreti svih 10 junaka (select ekran, HUD i 3D glave u igri), portreti čudovišta iz džungle, slikovite teksture trave/staze/rijeke i epska splash pozadina — uz automatski fallback na emoji ako se slike ne učitaju
 - 🗺️ **Kompletna mapa**: 3 staze, rijeka u udolini, baze na platoima (high/low ground — pucanje uzbrdo promaši 25%!), šuma, kule, fontane
 - 🤖 **5 protiv 5** (od v0.37; prije 3 protiv 3): ti + 4 bota protiv 5 botova — sredina sama, na bočnim stazama po dvoje; botovi farmaju, koriste moći i ultije, uče vještine, slažu recepte, idu u džunglu, bježe teleportom
-- 🦁 **22 junaka-životinje**: svaki ima ✨ **urođenu pasivu** i 4 aktivne moći (Q/W/E/R); ULTI se otključava na levelu 6
-  - Lavko 🦁, Žarko 🐉, Ledena 🐧, Strijela 🦊, Listko 🐢, Munja 🐯, Skokica 🐸 (kuka jezikom!), Orlina 🦅, Luna 🐱 (Mirana-stil: Sveta strijela + timska nevidljivost), Tragač 🦝 (Gondar-stil: sjena, podmukli udarci i Ucjena s bonus zlatom), Bodljo 🦔, Tutnjo 🐘, Zuja 🐝, Mudra 🦉, Skakač 🐵, Sivko 🐺, Mrak 🐦‍⬛, Pipko 🐙, Rogo 🦏, Bambus 🐼
+- 🦁 **24 junaka-životinje**: svaki ima ✨ **urođenu pasivu**, 4 aktivne moći (Q/W/E/R) i 🎓 **svoje talente**; ULTI se otključava na levelu 6
+  - Lavko 🦁, Žarko 🐉, Ledena 🐧, Strijela 🦊, Listko 🐢, Munja 🐯, Skokica 🐸 (kuka jezikom!), Orlina 🦅, Luna 🐱 (Mirana-stil: Sveta strijela + timska nevidljivost), Tragač 🦝 (Gondar-stil: sjena, podmukli udarci i Ucjena s bonus zlatom), Bodljo 🦔, Tutnjo 🐘, Zuja 🐝, Mudra 🦉, Skakač 🐵, Sivko 🐺, Mrak 🐦‍⬛, Pipko 🐙, Rogo 🦏, Bambus 🐼, Duga 🦄, Zubo 🦈, Nišan 🐿️ (Sniper-stil: dalekometna puška i Savršen hitac), Bikoš 🐂 (Axe-stil: Bojni zov i Smrtni udarac)
 - 🐺 **DotA creep aggro**: creepovi se biju s creepovima, siege vojnici ruše građevine, a napadneš li junaka — njegovi creepovi (i kula!) okreću se na tebe na 2.3 s
 - 🎯 **Indikatori moći**: lebdenje nad gumbom pokazuje domet i krug djelovanja, tooltipi pokazuju štetu za tvoj rang
 - ⬆️ **Poeni vještina**: svaki level (do 18!) = 1 poen — Q/W/E po 3 ranga, ulti 3 ranga (leveli 6/11/16), plus 6 poena za 📊 atribute
@@ -287,11 +306,11 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
 - 🛒 **Dućan s receptima**: kategorije kao u DotA (potrošno, napad, obrana, magija, čizme, legendarno) i **⭐ Preporučeno** — build za tvog junaka s oznakom 🎯 što kupiti sljedeće; torba sa 6 mjesta, aktivni predmeti, prodaja desnim klikom
 - ⚔️ **Auto-napad kao u DotA**: junak koji stoji sam napada neprijatelje u dometu (junaci prvo, pa vojnici) — strijelci više ne čekaju klik
 - 🎯 **DotA ciljanje**: prsten dometa + krug područja prije bacanja moći
-- 🌫️ **Magla rata** — vid po jedinicama, noću kraći; gankovi rade u oba smjera
-- 🏠 **Teleport kući** (T) — kanaliziranje 3 s, prekida se kretanjem/omamom
-- 🐻 **Džungla**: 7 neutralnih kampova (veprići, vukovi, medo, 🗿 golemi) + 🐲 **Veliki Zmaj** (boss — timski plijen, blagoslov i Aegis)
+- 🌫️ **Magla rata** — vid po jedinicama u zrakama (drveće i plato zaklanjaju pogled), noću kraći; gankovi rade u oba smjera
+- 🌀 **Teleport** (T) — na svoju kulu/vojarnu (3,5 s) ili kući (T dvaput, 3 s); prekida se kretanjem/omamom
+- 🐻 **Džungla**: 10 neutralnih kampova (veprići, vatreni vukovi, vukovi, 🗿 golemi, 🪨 kameni golemi) + 🐉 zmajčići + 🐲 **Veliki Zmaj** (boss — timski plijen, blagoslov i Aegis)
 - ✨ **Rune na rijeci** svake 2 minute • 🌙 **dan/noć ciklus** • 💪 veliki vojnik svaki 3. val
-- 🗼 **Aggro kula**: napadneš li junaka ispod kule — kula gađa tebe!
+- 🗼 **Aggro kula**: napadneš li junaka ispod kule — kula gađa tebe! Na početku igre kule junacima rade dvostruku štetu
 - 👑 Pobjeda rušenjem neprijateljskog prijestola (čuvarske kule prvo!)
 
 ## Kontrole
@@ -300,7 +319,7 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
 |---|---|
 | 🖱️ klik | kreći se / napadni |
 | Q W E R | moći (s prikazom dometa) |
-| T | teleport kući |
+| T | teleport (pa klik na svoju kulu; T dvaput = kući) |
 | B | dućan |
 | 1–6 | aktivni predmet iz torbe |
 | O | otkup (kad si mrtav) |
@@ -312,6 +331,7 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
 | razmaknica | kamera prati junaka |
 | strelice / miš uz rub / kotačić | kamera / zum |
 | Esc | postavke |
+| ⛶ gumb | cijeli zaslon (miš ostaje u igri; Esc ga otpusti) |
 | P / M / H | pauza / zvuk / pomoć |
 
 **👆 Na tabletu:** dodir = kreći se / napadni / gumb • povuci prstom = kamera • dva prsta = zum • 📋 tablica • 🎯 kamera na junaka • drži prst na predmetu = opis (1 s = prodaja).
@@ -329,7 +349,7 @@ Replike su u [`voices.js`](voices.js) (svaki junak: Fish Audio glas + 9 replika 
 
 ![Svih 15 junaka i vojnici iz Blendera](tools/blender/preview.jpg)
 
-Svi modeli nastaju iz jedne skripte: [`tools/blender/build_models.py`](tools/blender/build_models.py). Ona u Blenderu slaže modele od jednostavnih oblika (kugle, valjci, stošci, kocke s obrubom), boji ih bojama vrhova, slaže dijelove u hijerarhiju (noge, tijelo, glava, ruke, rep, krila) i animira ih (`idle`, `walk`, `attack`, `cast`), pa sve izveze u **`assets/models.glb`**. Uz jedinice i građevine tu su i projektili (`proj_*`), efekti moći (`fx_*`: meteor, korijenje, led, val, zvijezda, srce, duh, nadgrobni kamen) i rune (`rune_*`). Prije izvoza skripta **ispeče ambijentalnu okluziju** (Cycles, 24 uzorka, ~12 s za 157 objekata) izravno u boje vrhova, pa modeli imaju sjene u udubinama bez tekstura. Three.js ga učita, klonira model za svaku jedinicu i pušta animacije preko `AnimationMixer`-a (`idle`, `idle2`, `walk`, `attack`, `cast`, `channel`, `jump`, `hit`, `die`, `victory`); efekti koji se pojavljuju u velikom broju (kiša strijela, korijenje, srca, roj pčela, zidine) idu kao `InstancedMesh` — jedan draw call za sve primjerke. Ista skripta s `--portraits` rendera portrete novih junaka za ekran odabira.
+Svi modeli nastaju iz jedne skripte (`--dev-v38` brzo prikaže samo Nišana i Bikoša, `--portraits-v38` rendera njihove portrete): [`tools/blender/build_models.py`](tools/blender/build_models.py). Ona u Blenderu slaže modele od jednostavnih oblika (kugle, valjci, stošci, kocke s obrubom), boji ih bojama vrhova, slaže dijelove u hijerarhiju (noge, tijelo, glava, ruke, rep, krila) i animira ih (`idle`, `walk`, `attack`, `cast`), pa sve izveze u **`assets/models.glb`**. Uz jedinice i građevine tu su i projektili (`proj_*`), efekti moći (`fx_*`: meteor, korijenje, led, val, zvijezda, srce, duh, nadgrobni kamen) i rune (`rune_*`). Prije izvoza skripta **ispeče ambijentalnu okluziju** (Cycles, 24 uzorka, ~12 s za 157 objekata) izravno u boje vrhova, pa modeli imaju sjene u udubinama bez tekstura. Three.js ga učita, klonira model za svaku jedinicu i pušta animacije preko `AnimationMixer`-a (`idle`, `idle2`, `walk`, `attack`, `cast`, `channel`, `jump`, `hit`, `die`, `victory`); efekti koji se pojavljuju u velikom broju (kiša strijela, korijenje, srca, roj pčela, zidine) idu kao `InstancedMesh` — jedan draw call za sve primjerke. Ista skripta s `--portraits` rendera portrete novih junaka za ekran odabira.
 
 ```bash
 # Blender 4.2+ / 5.x

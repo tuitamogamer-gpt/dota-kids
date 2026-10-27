@@ -213,7 +213,7 @@ function updateHudTip(){
       html = simpleTipHtml('🛡️ Glif utvrde', 'Sve kule i vojarne tvog tima 5 s ne primaju štetu.', 'Tipka Y · ' + (gl.cd > 0 ? 'puni se još ' + Math.ceil(gl.cd) + ' s' : 'spreman!'));
     } else if(t === 'tp'){
       rect = uiRects.tp; key += Math.ceil(player.tpCd);
-      html = simpleTipHtml('🏠 Teleport kući', 'Nakon 3 s kanaliziranja vraća te do fontane (omama ga prekida).', 'Tipka T · ' + (player.tpCd > 0 ? 'puni se još ' + Math.ceil(player.tpCd) + ' s' : 'spreman!'));
+      html = simpleTipHtml('🌀 Teleport', 'Klikni svoju kulu ili vojarnu (i na minimapi) — za 3.5 s si kod nje. T dvaput = kući (3 s). Omama ga prekida.', 'Tipka T · ' + (player.tpCd > 0 ? 'puni se još ' + Math.ceil(player.tpCd) + ' s' : 'spreman!'));
     } else if(t === 'shop'){
       rect = uiRects.shop; html = simpleTipHtml('🛒 Dućan', 'Kupuj bilo gdje — daleko od baze predmet donosi 🫏 kurir.', 'Tipka B');
     }
