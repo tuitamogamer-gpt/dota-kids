@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.38: veliko poliranje — ⛶ cijeli zaslon, 🐿️ Nišan i 🐂 Bikoš, 🎓 svaki junak ima svoje talente, 💥 kritični udarci, 🛒 jasniji dućan, 🗺️ veća mapa, 🗼 aggro kao u Doti, 🌫️ prava magla rata, 🌿 tango jede drvo i 🤖 pametniji botovi (gankovi, guranje, obrana).** (v0.37: 👥 pravih 5 na 5, v0.36: peglanje za mobitel i opisi gumba, v0.35: u mrežnoj igri svatko vidi svoje, v0.34: 📣 najavljivač, 🤖 težina botova, 💀 pregled pogibije, 💃 ples)
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.39: čišći ekran (brojevi štete samo kad si ti uključen, manje poruka), 💨 brže putovanje izvan borbe i 🪙 zlatnici koji polete do tebe kad pobijediš junaka.** v0.38: veliko poliranje — ⛶ cijeli zaslon, 🐿️ Nišan i 🐂 Bikoš, 🎓 svaki junak ima svoje talente, 💥 kritični udarci, 🛒 jasniji dućan, 🗺️ veća mapa, 🗼 aggro kao u Doti, 🌫️ prava magla rata, 🌿 tango jede drvo i 🤖 pametniji botovi (gankovi, guranje, obrana).** (v0.37: 👥 pravih 5 na 5, v0.36: peglanje za mobitel i opisi gumba, v0.35: u mrežnoj igri svatko vidi svoje, v0.34: 📣 najavljivač, 🤖 težina botova, 💀 pregled pogibije, 💃 ples)
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -18,6 +18,13 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- 🧹 **Čišće i zabavnije** (v0.39):
+  - 🔢 **brojevi štete samo kad si TI uključen** — tvoji udarci, tvoji prizvani pomoćnici i udarci u tebe (crveni); u tučnjavi 5 na 5 ekran više nije zatrpan brojevima, a brzi udarci (otrov, glad, plamen) spoje se u jedan broj. Isto vrijedi za „Promašaj!” i kritične brojeve (crveni rez preko mete i dalje vide svi)
+  - 🤫 **manje poruka**: botovi se rjeđe hvale i zovu pomoć, timske poruke (gank, obrana, guranje) najviše jednom u 12–30 s, „Stigli su veliki vojnici!” samo prvi put, a ista poruka se ne ponavlja odmah (u probnoj partiji prije je bilo 173 poruke u 15 minuta)
+  - 💨 **brže putovanje**: kad 6 s nisi u borbi (ne udaraš junake ni građevine i oni ne udaraju tebe), junak je 15 % brži, a kad izađeš iz fontane, 10 s puše „vjetar doma” (+40 %) — dok ne uđeš u borbu; vidi se po vjetru za petama i znački 💨 među bonusima. Na većoj mapi puno manje dosadnog hodanja
+  - 🪙 **pobjeda nad junakom**: zlatnici iskoče iz pobijeđenog i polete do pobjednika; kad pobijediš TI, ekran zlatno bljesne, kamera se trgne i malo približi, a igra na tren uspori (samo protiv botova)
+  - 🛡️🔭🍖 traka bonusa pokazuje i Bojni zov, Durbin i Ratnu glad
 
 - ✨ **Veliko poliranje** (v0.38):
   - ⛶ **cijeli zaslon** — gumb ⛶ gore desno (i na ekranu odabira), a igra se sama otvori preko cijelog ekrana kad klikneš ▶️ ZAIGRAJ. U cijelom zaslonu **miš ne može pobjeći iz igre** (ni na drugi monitor): igra „zaključa” miš i crta svoj pokazivač (⚔️ mač nad neprijateljem, 🎯 nišan pri ciljanju), pa pomicanje kamere uz rub uvijek radi. Kad otvoriš dućan, postavke ili pomoć, miš se sam otpusti; klik na igru ga opet zaključa, **Esc** ga pusti. Oboje se može isključiti u ⚙️ postavkama (🖥️ Cijeli zaslon, 🔒 Miš ostaje u igri)
