@@ -1643,6 +1643,34 @@ function pendingDef(){
   const ab = player.abilities[pendingCast.i];
   return ab ? ab.def : null;
 }
+/* 🌀 ciljanje teleporta: plavi prstenovi na svim našim građevinama, odabrana (pod mišem) svijetli jače */
+const tpMarks = [];
+function syncTpIndicator(tAnim){
+  const on = !!(pendingCast && pendingCast.tp && player && !player.dead);
+  let n = 0;
+  if(on){
+    const dest = tpDestAt(player, mouse.wx, mouse.wy);
+    for(const u of units){
+      if(!isStructure(u) || u.team !== player.team || u.dead || u.removeMe) continue;
+      let m = tpMarks[n];
+      if(!m){
+        m = new THREE.Mesh(cachedGeo('tpRing', () => new THREE.RingGeometry(0.82, 1, 40)),
+          new THREE.MeshBasicMaterial({ color: '#7dd3fc', transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
+        m.rotation.x = -Math.PI / 2; m.renderOrder = 6;
+        scene3.add(m); tpMarks.push(m);
+      }
+      const sel = u === dest, r = (u.r || 60) + (sel ? 40 : 22) + Math.sin(tAnim * 6 + n) * 6;
+      m.visible = true;
+      m.position.set(u.x, groundHeight(u.x, u.y) + 4, u.y);
+      m.scale.set(r, r, r);
+      m.material.opacity = sel ? 0.95 : 0.4;
+      m.material.color.set(sel ? '#e0f2fe' : '#38bdf8');
+      if(sel && Math.random() < 0.5) fxSpawn(u.x + (Math.random() - 0.5) * r, u.y + (Math.random() - 0.5) * r, groundHeight(u.x, u.y) + 6, '#7dd3fc', { spd: 6, up: 120, grav: 0, life: 0.6, size: 16 });
+      n++;
+    }
+  }
+  for(let i = n; i < tpMarks.length; i++) tpMarks[i].visible = false;
+}
 function syncCastIndicator(){
   const ci = ensureCastInd();
   hideCastInd();
@@ -4303,6 +4331,7 @@ function syncScene(tAnim){
   updateSpellLights(dt);
   updateFx(dt);
   syncCastIndicator();
+  syncTpIndicator(tAnim);
 }
 function seenProj(p){
   if(typeof isVisibleTo !== 'function') return true;
@@ -4423,6 +4452,7 @@ function clearScene3D(){
   shake.amp = 0; shake.t = 0; cine.on = false;
   for(const s of spellLights){ s.L.intensity = 0; s.peak = 0; }
   if(playerRing3){ scene3.remove(playerRing3); playerRing3 = null; }
+  for(const m of tpMarks) m.visible = false;
   hideCastInd();
 }
 

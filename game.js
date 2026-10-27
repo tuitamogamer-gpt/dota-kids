@@ -5769,8 +5769,10 @@ function drawHud(){
         pendingCast.tp ? '🌀 Klikni svoju kulu ili minimapu • T = kući • desni klik = odustani' :
         (pendingCast.quick && pendingCast.key ? '⚡ Pusti tipku za bacanje • desni klik = odustani' :
           (touchMode ? '🎯 Dodirni cilj' : '🎯 Klikni cilj (ili junaka) • desni klik = odustani'));
-      ctx.strokeText(txt, ax0 + (5 * (as + gap) - gap) / 2, ay - 4);
-      ctx.fillText(txt, ax0 + (5 * (as + gap) - gap) / 2, ay - 4);
+      const tw = ctx.measureText(txt).width;   // ne izlazi preko ruba ekrana
+      const tx = Math.min(ax0 + (5 * (as + gap) - gap) / 2, VW - 8 - tw / 2);
+      ctx.strokeText(txt, tx, ay - 4);
+      ctx.fillText(txt, tx, ay - 4);
     }
     else if(player.skillPoints > 0 && !player.dead){
       ctx.font = fontTxt(13, true);
