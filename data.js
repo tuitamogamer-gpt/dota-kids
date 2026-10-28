@@ -966,8 +966,8 @@ const HEROES = [
   {
     id:'majmun', name:L('Skakač', 'Skakach'), emoji:'🐵',
     role:L('🥢 Majmun — brzi borac sa štapom', '🥢 Monkey — fast fighter with a staff'),
-    hp:580, mp:260, dmg:61,
-    attrs:{ str:19, agi:26, int:15, strG:4.0, agiG:6.4, intG:2.2, primary:'agi' },
+    hp:580, mp:260, dmg:58,
+    attrs:{ str:19, agi:26, int:15, strG:4.0, agiG:6.0, intG:2.2, primary:'agi' },
     range:90, speed:180, atkCd:1.0, projSpeed:0,
     passive:{ name:L('Kombo', 'Combo'), emoji:'👊', color:'#fde047', pid:'kombo',
       desc:L('PASIVNO: svaki treći udarac je jači i malo te izliječi', 'PASSIVE: every third hit is stronger and heals you a little'),
@@ -1032,8 +1032,8 @@ const HEROES = [
   {
     id:'vuk', name:LS('Sivko'), emoji:'🐺',
     role:L('🌕 Vuk — vođa čopora', '🌕 Wolf — pack leader'),
-    hp:680, mp:230, dmg:67,
-    attrs:{ str:24, agi:20, int:12, strG:5.0, agiG:3.2, intG:1.6, primary:'str' },
+    hp:700, mp:230, dmg:67,
+    attrs:{ str:24, agi:20, int:12, strG:5.4, agiG:3.2, intG:1.6, primary:'str' },
     range:82, speed:176, atkCd:1.05, projSpeed:0,
     passive:{ name:L('Čopor', 'Pack'), emoji:'🐾', color:'#cbd5e1', pid:'copor',
       desc:L('PASIVNO: brže napadaš i rane ti brže zacjeljuju', 'PASSIVE: you attack faster and your wounds heal faster'),
@@ -1057,21 +1057,21 @@ const HEROES = [
       { key:'W', name:L('Ugriz', 'Bite'), emoji:'🦷', cd:8, mana:40, color:'#fca5a5',
         desc:L('Skoči na neprijatelja i ugrizi ga — rana krvari još 3 sekunde', 'Jump on an enemy and bite — the wound bleeds for 3 more seconds'),
         target:'point', castRange:300, line:true, lineW:50, aoe:110,
-        tip:rk => L('⚔️ ' + (50 + 40*rk) + ' štete + 🩸 ' + (8 + 6*rk) + '/s na 3 s', '⚔️ ' + (50 + 40*rk) + ' damage + 🩸 ' + (8 + 6*rk) + '/s for 3 s'),
+        tip:rk => L('⚔️ ' + (60 + 45*rk) + ' štete + 🩸 ' + (10 + 8*rk) + '/s na 3 s', '⚔️ ' + (60 + 45*rk) + ' damage + 🩸 ' + (10 + 8*rk) + '/s for 3 s'),
         bot:{type:'gap', range:300},
         cast(u, aim, rk){
           leapTo(u, aim, 300);
           const e = nearestEnemyOf(u, 110, x => isSpellTarget(x));
-          if(e){ applyDamage(e, 50 + 40*rk, u); applyPoison(e, 8 + 6*rk, 3, u); addFloat(e.x, e.y, '🦷', '#fca5a5', 16); }
+          if(e){ applyDamage(e, 60 + 45*rk, u); applyPoison(e, 10 + 8*rk, 3, u); addFloat(e.x, e.y, '🦷', '#fca5a5', 16); }
           burst(u.x, u.y, '#fca5a5', 12, 200, 5);
           return true;
         }},
       { key:'E', name:L('Divlje kandže', 'Wild Claws'), emoji:'💢', cd:12, mana:40, color:'#ef4444',
         desc:L('Naoštri kandže — sljedeća 3 napada jače udaraju i usporavaju', 'Sharpen your claws — your next 3 attacks hit harder and slow'),
-        tip:rk => L('⚔️ sljedeća 3 napada +' + (25 + 20*rk) + ' štete i 🐌 usporenje 30%', '⚔️ next 3 attacks +' + (25 + 20*rk) + ' damage and 🐌 30% slow'),
+        tip:rk => L('⚔️ sljedeća 3 napada +' + (30 + 25*rk) + ' štete i 🐌 usporenje 30%', '⚔️ next 3 attacks +' + (30 + 25*rk) + ' damage and 🐌 30% slow'),
         bot:{type:'haste', range:300},
         cast(u, aim, rk){
-          u.clawHits = 3; u.clawDmg = 25 + 20*rk;
+          u.clawHits = 3; u.clawDmg = 30 + 25*rk;
           addFloat(u.x, u.y - 30, L('💢 Kandže!', '💢 Claws!'), '#fca5a5', 15);
           burst(u.x, u.y, '#ef4444', 14, 160, 5);
           return true;
@@ -1105,15 +1105,15 @@ const HEROES = [
       { key:'Q', name:L('Kletva', 'Curse'), emoji:'🌀', cd:9, mana:55, color:'#a78bfa',
         desc:L('Baci kletvu na mjesto — ukleti primaju više štete od svega 5 sekundi', 'Cast a curse on a spot — cursed enemies take more damage from everything for 5 seconds'),
         target:'point', castRange:600, aoe:180,
-        tip:rk => L('⚔️ ' + (50 + 40*rk) + ' štete + 🌀 +' + Math.round((0.2 + 0.05*rk) * 100) + '% primljene štete 5 s', '⚔️ ' + (50 + 40*rk) + ' damage + 🌀 +' + Math.round((0.2 + 0.05*rk) * 100) + '% damage taken for 5 s'),
+        tip:rk => L('⚔️ ' + (45 + 36*rk) + ' štete + 🌀 +' + Math.round((0.15 + 0.05*rk) * 100) + '% primljene štete 5 s', '⚔️ ' + (45 + 36*rk) + ' damage + 🌀 +' + Math.round((0.15 + 0.05*rk) * 100) + '% damage taken for 5 s'),
         bot:{type:'zone', range:550},
         cast(u, aim, rk){
           const p = clampRange(u, aim, 600);
           for(const e of units){
             if(e.team === u.team || e.dead || e.removeMe || e.invuln || !isSpellTarget(e)) continue;
             if(distXY(p.x, p.y, e.x, e.y) > 180 + e.r * 0.5) continue;
-            applyCurse(e, 0.2 + 0.05*rk, 5);
-            applyDamage(e, 50 + 40*rk, u);
+            applyCurse(e, 0.15 + 0.05*rk, 5);
+            applyDamage(e, 45 + 36*rk, u);
           }
           ring(p.x, p.y, 180, '#a78bfa');
           burst(p.x, p.y, '#6d28d9', 16, 200, 5);
@@ -1162,7 +1162,7 @@ const HEROES = [
   {
     id:'hobotnica', name:LS('Pipko'), emoji:'🐙',
     role:L('🌊 Hobotnica — vladar dubina', '🌊 Octopus — ruler of the deep'),
-    hp:700, mp:250, dmg:58,
+    hp:730, mp:250, dmg:58,
     attrs:{ str:26, agi:14, int:14, strG:5.6, agiG:1.8, intG:2.0, primary:'str' },
     range:92, speed:160, atkCd:1.15, projSpeed:0,
     passive:{ name:L('Sluzava koža', 'Slimy Skin'), emoji:'💧', color:'#a5b4fc', pid:'sluz',
@@ -1204,15 +1204,15 @@ const HEROES = [
       { key:'E', name:L('Zagrljaj pipaka', 'Tentacle Hug'), emoji:'🫂', cd:13, mana:60, color:'#8b5cf6',
         desc:L('Pipcima zgrabi neprijatelje ispred sebe — ne mogu se micati i polako gube život', 'Grab enemies in front of you with your tentacles — they can\'t move and slowly lose health'),
         target:'point', castRange:320, aoe:140,
-        tip:rk => L('🐙 drži ' + (1.2 + 0.3*rk).toFixed(1) + ' s + ⚔️ ' + (25 + 15*rk) + ' štete/s', '🐙 holds for ' + (1.2 + 0.3*rk).toFixed(1) + ' s + ⚔️ ' + (25 + 15*rk) + ' damage/s'),
+        tip:rk => L('🐙 drži ' + (1.4 + 0.3*rk).toFixed(1) + ' s + ⚔️ ' + (32 + 18*rk) + ' štete/s', '🐙 holds for ' + (1.4 + 0.3*rk).toFixed(1) + ' s + ⚔️ ' + (32 + 18*rk) + ' damage/s'),
         bot:{type:'zone', range:300},
         cast(u, aim, rk){
-          const p = clampRange(u, aim, 320), d = 1.2 + 0.3*rk;
+          const p = clampRange(u, aim, 320), d = 1.4 + 0.3*rk;
           for(const e of units){
             if(e.team === u.team || e.dead || e.removeMe || e.invuln || !isSpellTarget(e)) continue;
             if(distXY(p.x, p.y, e.x, e.y) > 140 + e.r * 0.5) continue;
             pullToward(e, p.x, p.y, 40);
-            applyRoot(e, d); applyDot(e, 25 + 15*rk, d, u);
+            applyRoot(e, d); applyDot(e, 32 + 18*rk, d, u);
             if(e.kind === 'hero') addFloat(e.x, e.y, '🐙', '#c4b5fd', 18);
           }
           ring(p.x, p.y, 140, '#8b5cf6');
