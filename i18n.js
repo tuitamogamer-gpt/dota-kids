@@ -29,7 +29,22 @@ const LANG = LANG_CHOSEN || (() => {
 const EN = LANG === 'en';
 const SR = LANG === 'sr' || LANG === 'cy';   // srpski (oba pisma)
 const CYR = LANG === 'cy';                   // ćirilica
-function L(hr, en){ return EN && en != null ? en : (SR ? toSr(hr) : hr); }
+function L(hr, en){
+  const r = EN && en != null ? en : (SR ? toSr(hr) : hr);
+  if(L_TRACK && typeof r === 'string') lPairSet(r, hr, en);
+  return r;
+}
+/* 🌐 mrežna igra: domaćin pamti od kojeg je para (hrvatski, engleski) nastao gotov tekst, pa gostu šalje
+   par — gost ga prikaže na SVOM jeziku (poruke, najave, brojke iznad glava) */
+let L_TRACK = false;
+const LPAIR = new Map();
+function lPairSet(r, hr, en){
+  if(LPAIR.has(r)) return;
+  if(LPAIR.size > 4000) LPAIR.delete(LPAIR.keys().next().value);
+  LPAIR.set(r, en != null ? [hr, en] : [hr]);
+}
+function netTx(s){ return (typeof s === 'string' && s && LPAIR.get(s)) || s; }   // domaćin → gost: [hr, en] ili gotov tekst
+function locTx(v){ return Array.isArray(v) ? L(v[0], v[1]) : v; }                 // gost: tekst na svom jeziku
 /* samo hrvatski tekst → odabrana varijanta (gdje je L lokalna varijabla: EN ? 'English' : LS('hrvatski')) */
 function LS(hr){ return SR ? toSr(hr) : hr; }
 function setLang(l){

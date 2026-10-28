@@ -630,7 +630,7 @@ let scoreOpen = false;      // 📋 tablica otvorena gumbom (na tabletu nema tip
 let mouseIn = false;        // miš je iznad igre (za rubno pomicanje kamere)
 /* ⚙️ postavke (pamte se u pregledniku) */
 const SETTINGS = { vol: 0.8, quality: touchMode ? 'med' : 'high', edgePan: true, dmgNums: true, quickCast: false, voices: true, announcer: true, diff: 'normal',
-  fullscreen: true, lockMouse: true, lastHit: true, tips: true, autoSkill: false, nature: true };   // 🌲 zvukovi prirode   // ⬆️ vještine se mogu učiti same   // 🪙 pomoć za zadnji udarac, 💡 savjeti   // 🖥️ cijeli zaslon pri početku igre, 🔒 miš ne može izaći iz igre
+  fullscreen: true, lockMouse: true, lastHit: true, tips: true, autoSkill: false, nature: true, quests: true };   // 🎯 zadaci za početnike   // 🌲 zvukovi prirode   // ⬆️ vještine se mogu učiti same   // 🪙 pomoć za zadnji udarac, 💡 savjeti   // 🖥️ cijeli zaslon pri početku igre, 🔒 miš ne može izaći iz igre
 try {
   const s = JSON.parse(localStorage.getItem('dk_settings') || '{}');
   if(typeof s.vol === 'number') SETTINGS.vol = clamp(s.vol, 0, 1);
@@ -1259,6 +1259,7 @@ function kill(t, src){
       if(t.buff) giveJungleBuff(src, t.buff, JUNGLE_BUFFS[t.buff].dur);   // 🔵🔴 buff džungle
       if(t.boss){
         bossKills++;
+        histEvent('boss', src.team);
         for(const h of units) if(h.kind === 'hero' && h.team === src.team) h.bossKill = true;   // 🏆 Zmajoubojica (cijeli tim)
         if(bossKills >= 2){   // 🧀 od drugog puta Zmaj ostavlja i sir
           const cheese = ITEM_BY_ID.cheese;
@@ -1408,7 +1409,7 @@ function kill(t, src){
       src.killFxN = (src.killFxN || 0) + 1; src.killAt = { x: Math.round(t.x), y: Math.round(t.y) };
       if(src.isPlayer && net.mode !== 'host' && net.mode !== 'guest') slowMo = 0.5;   // ⏱️ tren usporenja (samo protiv botova)
     }
-    if(isHuman(t)) announceFor(t, L('Ne brini! ⏳', "Don't worry! ⏳"), L('Oživjet ćeš za ' + Math.ceil(t.deadT) + ' sekundi', 'You respawn in ' + Math.ceil(t.deadT) + ' seconds'));
+    if(isHuman(t)) announceFor(t, L('Ne brini! ⏳', "Don't worry! ⏳"), '');   // odbrojavanje do oživljavanja je odmah ispod (HUD)
     if(t.isPlayer) sfx('death');
     else if(src && src.isPlayer) sfx('kill');
     else sfxAt('kill', t.x, t.y);
@@ -1416,6 +1417,8 @@ function kill(t, src){
   else if(t.kind === 'tower'){
     t.removeMe = true;
     if(src && src.kind === 'hero' && src.team !== t.team) src.towerKills = (src.towerKills || 0) + 1;   // 🏆 Rušitelj
+    histEvent('tower', 1 - t.team);
+    if(player && !player.dead && player.team !== t.team && dist(player, t) < 1600) player.qTower = true;   // 🎯 pomogao srušiti kulu
     burst(t.x, t.y, '#fbbf24', 30, 300, 8);
     burst(t.x, t.y, '#94a3b8', 20, 200, 7);
     const denied = !!(src && src.team === t.team);   // ⛔ uskraćena kula: protivnik dobiva pola zlata
@@ -1457,6 +1460,7 @@ function kill(t, src){
   }
   else if(t.kind === 'barracks'){
     t.removeMe = true;
+    histEvent('rax', 1 - t.team);
     burst(t.x, t.y, '#fbbf24', 30, 300, 8);
     burst(t.x, t.y, '#a16207', 20, 200, 7);
     const enemy = 1 - t.team;
@@ -1509,7 +1513,8 @@ function levelUp(h){
   if(isHuman(h)){   // i gost u mrežnoj igri dobiva svoje najave
     if(h.isPlayer) sfx('levelup');
     if(h.level === CFG.ultLevels[0]) announceFor(h, L('🌟 ULTI dostupan!', '🌟 ULTIMATE ready!'), L('Pritisni R ili klikni + da ga naučiš!', 'Press R or click + to learn it!'));
-    if(pendingTalent(h)) announceFor(h, LS('🎓 Talent!'), L('Odaberi jedan od dva bonusa (gumbi gore)', 'Pick one of two bonuses (buttons at the top)'));
+    if(pendingTalent(h) && !(h.isPlayer && VH < 520)) announceFor(h, LS('🎓 Talent!'),   // 📱 na mobitelu ploča talenata sama to kaže
+      L('Odaberi jedan od dva bonusa (gumbi gore)', 'Pick one of two bonuses (buttons at the top)'));
   }
 }
 
@@ -1903,6 +1908,7 @@ function castAbility(u, i, aim){
     return;
   }
   u.mp -= abMana(u, ab);
+  if(u.isPlayer) u.qCasts = (u.qCasts || 0) + 1;   // 🎯 zadaci
   ab.cd = Math.max(0.5, ab.def.cd * (1 - (u.cdr || 0) - (u.jbuff && u.jbuff.blue > 0 ? 0.15 : 0)) + abBonus(u, ab.def.key, 'cd'));   // 🎓 talent / 🔵 plavi buff: kraće hlađenje
   if(u.cullRefresh){ ab.cd = 0; u.cullRefresh = false; }   // 🪓 Smrtni udarac: pobjeda nad junakom = ulti odmah spreman
   if(u.windup){ u.windup = null; u.atkTimer = 0; }   // čaranje prekida zamah — napad nije potrošen
@@ -4065,6 +4071,8 @@ function startGame(heroIdx){
   resetExtraRunes(); pings = []; chatOpen = false;
   pendingCast = null; resetTeamAI();
   tip.cur = null; tip.done = {}; tip.next = 8; slowMo = 0; gameRecorded = false;
+  gameHist = { pts: [], ev: [], nextT: 0 };   // 📈
+  quest.i = 0; quest.doneT = 0; quest.chk = 0; quest.allT = 0;   // 🎯
   gameTime = 0; waveTimer = CFG.firstWave; waveCount = 0;
   firstBlood = false; gameOver = false; paused = false;
   quickBuy = null; shopSel = null; invDrag = null; hideItemTip();   // nova igra: bez stare brze kupnje i opisa
@@ -4144,6 +4152,7 @@ function endGame(winTeam){
   endGameView(winTeam);
 }
 function endGameView(winTeam){
+  recordHist(true);   // 📈 zadnja točka grafa
   gameOver = true;
   winnerTeam = winTeam;
   const won = player && player.team === winTeam;
@@ -4156,6 +4165,49 @@ function endGameView(winTeam){
   startCinematic(ANCIENT_POS[1 - winTeam]);   // kamera leti do prijestola koji se raspada
   sfx(won ? 'win' : 'lose');
   setTimeout(() => showEndScreen(winTeam, won), 3200);
+}
+/* 📈 povijest igre za graf na kraju (kao u DotA): svakih 10 s razlika u zlatu i iskustvu timova
+   (plavi − crveni) i događaji — srušene kule i vojarne, Veliki Zmaj */
+let gameHist = { pts: [], ev: [], nextT: 0 };
+function heroXpTotal(h){ let s = h.xp || 0; for(let l = 1; l < h.level; l++) s += xpNeed(l); return s; }
+function recordHist(force){
+  if(!running || gameTime < 0 || (!force && gameTime < gameHist.nextT)) return;
+  gameHist.nextT = gameTime + 10;
+  const nw = [0, 0], xp = [0, 0];
+  for(const h of units) if(h.kind === 'hero' && h.team <= 1){ nw[h.team] += netWorth(h); xp[h.team] += heroXpTotal(h); }
+  gameHist.pts.push([Math.round(gameTime), nw[0] - nw[1], Math.round(xp[0] - xp[1])]);
+}
+function histEvent(kind, team){ if(gameTime >= 0) gameHist.ev.push([Math.round(gameTime), kind, team]); }
+function histGraphHtml(){
+  const P = gameHist.pts;
+  if(P.length < 3) return '';
+  const W = 640, H = 170, pl = 46, pr = 12, pt = 26, pb = 22, iw = W - pl - pr, mid = pt + (H - pt - pb) / 2, hh = (H - pt - pb) / 2;
+  const tMax = Math.max(60, P[P.length - 1][0]);
+  let m = 1000;
+  for(const p of P) m = Math.max(m, Math.abs(p[1]), Math.abs(p[2]));
+  const nice = [1000, 2000, 3000, 5000, 8000, 10000, 15000, 20000, 30000, 50000, 80000, 100000].find(v => v >= m) || m;
+  const X = t => (pl + t / tMax * iw).toFixed(1), Y = v => (mid - v / nice * hh).toFixed(1);
+  const fmt = v => (v > 0 ? '+' : v < 0 ? '−' : '') + (Math.abs(v) >= 1000 ? (Math.abs(v) / 1000) + 'k' : Math.abs(v));
+  const line = P.map(p => X(p[0]) + ',' + Y(p[1])).join(' ');
+  const area = `${X(P[0][0])},${mid} ${line} ${X(P[P.length - 1][0])},${mid}`;
+  let g = `<svg class="etGraph" viewBox="0 0 ${W} ${H}" role="img">` +
+    `<defs><clipPath id="hgTop"><rect x="0" y="0" width="${W}" height="${mid}"/></clipPath><clipPath id="hgBot"><rect x="0" y="${mid}" width="${W}" height="${H}"/></clipPath></defs>`;
+  for(const v of [nice, nice / 2, -nice / 2, -nice])
+    g += `<line x1="${pl}" x2="${W - pr}" y1="${Y(v)}" y2="${Y(v)}" class="hgGrid"/><text x="${pl - 6}" y="${(+Y(v) + 4).toFixed(1)}" class="hgLbl" text-anchor="end">${fmt(v)}</text>`;
+  for(let t = 300; t < tMax; t += tMax > 2400 ? 600 : 300)
+    g += `<line x1="${X(t)}" x2="${X(t)}" y1="${pt}" y2="${H - pb}" class="hgGrid"/><text x="${X(t)}" y="${H - 6}" class="hgLbl" text-anchor="middle">${Math.round(t / 60)}:00</text>`;
+  g += `<polygon points="${area}" class="hgBlue" clip-path="url(#hgTop)"/><polygon points="${area}" class="hgRed" clip-path="url(#hgBot)"/>`;
+  g += `<line x1="${pl}" x2="${W - pr}" y1="${mid}" y2="${mid}" class="hgZero"/>`;
+  g += `<polyline points="${P.map(p => X(p[0]) + ',' + Y(p[2])).join(' ')}" class="hgXp"/><polyline points="${line}" class="hgGold"/>`;
+  for(const [t, k, team] of gameHist.ev){
+    const x = X(t), y = team === TEAM_BLUE ? pt - 12 : pt - 2;
+    g += `<circle cx="${x}" cy="${y}" r="8.5" class="${team === TEAM_BLUE ? 'hgEvB' : 'hgEvR'}"/><text x="${x}" y="${(y + 4).toFixed(1)}" class="hgEv" text-anchor="middle">${{ tower: '🗼', rax: '🏚️', boss: '🐲' }[k] || '•'}</text>`;
+  }
+  g += '</svg>';
+  const me = player ? (player.team === TEAM_BLUE ? L('ti si 🔵', 'you are 🔵') : L('ti si 🔴', 'you are 🔴')) : '';
+  return `<div class="etGraphBox"><div class="etGraphT">📈 ${L('Tko je vodio', 'Who was ahead')} <small>(${me})</small></div>${g}` +
+    `<div class="etGraphL"><span class="hgLB">▲ ${L('Plavi vode', 'Blue ahead')}</span><span class="hgLR">▼ ${L('Crveni vode', 'Red ahead')}</span>` +
+    `<span><i class="hgLGold"></i>${L('zlato', 'gold')}</span><span><i class="hgLXp"></i>${L('iskustvo', 'experience')}</span><span>🗼 ${L('kula', 'tower')} · 🐲 ${L('Zmaj', 'Dragon')}</span></div></div>`;
 }
 function teamNetWorth(team){ return units.reduce((a, h) => a + (h.kind === 'hero' && h.team === team ? netWorth(h) : 0), 0); }
 /* neto vrijednost (kao u DotA): zlato + vrijednost svih predmeta */
@@ -4216,7 +4268,7 @@ function showEndScreen(winTeam, won){
   document.getElementById('endTitle').textContent = won ? L('POBJEDA!', 'VICTORY!') : L('PORAZ!', 'DEFEAT!');
   document.getElementById('endTitle').style.color = won ? '#fde047' : '#fca5a5';
   const fresh = recordGame(won);   // 🏆 nova postignuća idu IZNAD tablice (odmah se vide), profil ispod
-  document.getElementById('endTable').innerHTML = achievementsNewHtml(fresh) + endTableHtml(winTeam) + profileLineHtml();
+  document.getElementById('endTable').innerHTML = achievementsNewHtml(fresh) + endTableHtml(winTeam) + histGraphHtml() + profileLineHtml();
   if(fresh.length) setTimeout(() => sfx('levelup'), 600);
   const conf = document.getElementById('confetti');
   conf.innerHTML = '';
@@ -5158,7 +5210,7 @@ function syncOptionsDom(){
   tog('optEdge', SETTINGS.edgePan);
   tog('optQuick', SETTINGS.quickCast);
   tog('optDmg', SETTINGS.dmgNums);
-  if($('optLh')){ tog('optLh', SETTINGS.lastHit); tog('optTips', SETTINGS.tips); tog('optAuto', SETTINGS.autoSkill); tog('optNature', SETTINGS.nature); }
+  if($('optLh')){ tog('optLh', SETTINGS.lastHit); tog('optTips', SETTINGS.tips); tog('optAuto', SETTINGS.autoSkill); tog('optNature', SETTINGS.nature); if($('optQuests')) tog('optQuests', SETTINGS.quests); }
   tog('optMute', !muted);
   tog('optVoices', SETTINGS.voices);
   tog('optAnn', SETTINGS.announcer);
@@ -5193,6 +5245,7 @@ function buildOptionsDom(){
   }
   $('optQuick').addEventListener('click', () => { SETTINGS.quickCast = !SETTINGS.quickCast; saveSettings(); syncOptionsDom(); sfx('click'); });
   $('optDmg').addEventListener('click', () => { SETTINGS.dmgNums = !SETTINGS.dmgNums; saveSettings(); syncOptionsDom(); sfx('click'); });
+  if($('optQuests')) $('optQuests').addEventListener('click', () => { SETTINGS.quests = !SETTINGS.quests; saveSettings(); syncOptionsDom(); sfx('click'); });
   if($('optLh')){
     $('optLh').addEventListener('click', () => { SETTINGS.lastHit = !SETTINGS.lastHit; saveSettings(); syncOptionsDom(); sfx('click'); });
     $('optAuto').addEventListener('click', () => { SETTINGS.autoSkill = !SETTINGS.autoSkill; saveSettings(); syncOptionsDom(); sfx('click'); });
@@ -5469,7 +5522,8 @@ function updateTips(dt){
   }
 }
 function drawTip(){
-  if(!tip.cur || !SETTINGS.tips || gameOver) return;
+  if(!tip.cur || !SETTINGS.tips || gameOver || keys['tab'] || scoreOpen) return;
+  if(VH < 520 && player && player.dead) return;   // 📱 ne zaklanjaj gumb za otkup
   const HL = hudLayout();
   const a = tip.t < 0.25 ? tip.t / 0.25 : (tip.t > 6.4 ? Math.max(0, (7 - tip.t) / 0.6) : 1);
   ctx.save();
@@ -5484,6 +5538,75 @@ function drawTip(){
   ctx.beginPath(); ctx.roundRect(x, y, w, h, h / 2); ctx.stroke();
   ctx.fillStyle = '#fef9c3'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(txt, x + w / 2, y + h / 2 + 1, w - 24);
+  ctx.restore();
+}
+/* 🎯 ZADACI ZA POČETNIKE (v0.44): jedan po jedan mali zadatak uz minimapu — svaki riješeni daje zlato.
+   Vode dijete kroz igru: kupi → nauči moć → zadnji udarci → moći → pobjeda nad junakom → ulti → kula → prijestol.
+   Samo protiv botova (u igri s prijateljem bi zlato bilo nepravedno); isključuje se u ⚙️ postavkama. */
+const QUESTS = [
+  { e: '🛒', n: L('Kupi predmet u dućanu (B)', 'Buy an item in the shop (B)'), gold: 40, goal: 1,
+    v: p => (p.items.some(Boolean) || (p.backpack || []).some(Boolean)) ? 1 : 0 },
+  { e: '⬆️', n: L('Nauči moć — klikni + iznad Q, W ili E', 'Learn an ability — click + above Q, W or E'), gold: 40, goal: 1,
+    v: p => p.abilities.some(a => a && a.rank > 0) ? 1 : 0 },
+  { e: '🪙', n: L('Dokrajči 5 vojnika zadnjim udarcem', 'Finish off 5 creeps with the last hit'), gold: 75, goal: 5, v: p => p.lastHits || 0 },
+  { e: '✨', n: L('Baci moć 3 puta (Q, W ili E)', 'Cast an ability 3 times (Q, W or E)'), gold: 50, goal: 3, v: p => p.qCasts || 0 },
+  { e: '⚔️', n: L('Pobijedi neprijateljskog junaka ili pomozi timu', 'Defeat an enemy hero or help your team do it'), gold: 100, goal: 1, v: p => p.kills + p.assists },
+  { e: '🌟', n: L('Dođi do levela 6 i otključaj ULTI (R)', 'Reach level 6 and unlock your ULT (R)'), gold: 100, goal: 1,
+    v: p => p.abilities[3] && p.abilities[3].rank > 0 ? 1 : 0 },
+  { e: '🗼', n: L('Budi blizu kad tvoj tim sruši neprijateljsku kulu', 'Be close when your team knocks down an enemy tower'), gold: 150, goal: 1, v: p => p.qTower ? 1 : 0 },
+];
+const quest = { i: 0, doneT: 0, chk: 0, allT: 0, last: null };
+function questsOn(){ return SETTINGS.quests && player && net.mode !== 'host' && net.mode !== 'guest' && !gameOver; }
+function updateQuests(dt){
+  if(!questsOn()) return;
+  if(quest.doneT > 0){ quest.doneT -= dt; if(quest.doneT <= 0) quest.i++; return; }
+  if(quest.i >= QUESTS.length){ quest.allT += dt; return; }
+  if((quest.chk -= dt) > 0) return;
+  quest.chk = 0.4;
+  const q = QUESTS[quest.i];
+  let v = 0;
+  try { v = q.v(player); } catch(e){}
+  if(v >= q.goal){   // ✅ riješeno: zlato, zvuk, zlatnici
+    quest.doneT = 2.6; quest.last = q;
+    player.gold += q.gold;
+    addFloat(player.x, player.y, '+' + q.gold + ' 🪙', '#fde047', 18, player.team);
+    burst(player.x, player.y, '#fde047', 18, 220, 6);
+    sfx('coin'); setTimeout(() => sfx('levelup'), 120);
+  }
+}
+function drawQuest(){
+  if(!questsOn() || gameTime < -28 || VH < 560 || keys['tab'] || scoreOpen || chatOpen) return;   // tablica i brze poruke idu preko
+  const HL = hudLayout();
+  const all = quest.i >= QUESTS.length;
+  if(all && quest.allT > 7) return;
+  const done = quest.doneT > 0, q = done ? quest.last : QUESTS[Math.min(quest.i, QUESTS.length - 1)];
+  const w = 318, h = 62, x = 14, y = HL.my - h - 16;
+  const pop = done ? 1 + Math.max(0, quest.doneT - 2.3) * 0.25 : 1;
+  ctx.save();
+  ctx.translate(x + w / 2, y + h / 2); ctx.scale(pop, pop); ctx.translate(-(x + w / 2), -(y + h / 2));
+  ctx.globalAlpha = all ? Math.min(1, (7 - quest.allT) / 0.8) : 1;
+  ctx.fillStyle = done || all ? 'rgba(20,83,45,0.92)' : 'rgba(15,23,42,0.86)';
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, 12); ctx.fill();
+  ctx.strokeStyle = done || all ? '#4ade80' : '#c9a24a'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, 12); ctx.stroke();
+  ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  if(all){
+    ctx.font = fontTxt(14, true); ctx.fillStyle = '#bbf7d0';
+    ctx.fillText(L('🏆 Svi zadaci riješeni!', '🏆 All quests done!'), x + 12, y + 20, w - 24);
+    ctx.font = fontTxt(13, true); ctx.fillStyle = '#fef9c3';
+    ctx.fillText(L('Sad sruši protivnički prijestol 👑', 'Now knock down the enemy throne 👑'), x + 12, y + 43, w - 24);
+    ctx.restore(); return;
+  }
+  ctx.font = fontTxt(12, true); ctx.fillStyle = done ? '#bbf7d0' : '#c9b27a';
+  ctx.fillText(done ? L('✅ Zadatak riješen!', '✅ Quest done!') : '🎯 ' + L('Zadatak', 'Quest') + ' ' + (quest.i + 1) + '/' + QUESTS.length, x + 12, y + 14);
+  ctx.textAlign = 'right'; ctx.fillStyle = '#fde047';
+  ctx.fillText('+' + q.gold + ' 🪙', x + w - 12, y + 14);
+  ctx.textAlign = 'left'; ctx.font = fontTxt(13.5, true); ctx.fillStyle = '#fff';
+  ctx.fillText(q.e + ' ' + q.n, x + 12, y + 34, w - 24);
+  let v = q.goal;
+  if(!done) try { v = Math.min(q.goal, q.v(player)); } catch(e){ v = 0; }
+  drawBar(x + 12, y + h - 13, w - (q.goal > 1 ? 70 : 24), 6, v / q.goal, done ? '#4ade80' : '#fde047');
+  if(q.goal > 1){ ctx.font = fontTxt(11, true); ctx.textAlign = 'right'; ctx.fillStyle = '#e5e7eb'; ctx.fillText(v + '/' + q.goal, x + w - 12, y + h - 10); }
   ctx.restore();
 }
 /* 🪙 zadnji udarac (kao u DotA): neprijateljski vojnik kojeg tvoj sljedeći udarac pobjeđuje dobije zlatnik iznad trake života,
@@ -6810,6 +6933,7 @@ function frame(now){
   if(running && !paused && !gameOver){
     if(net.mode === 'guest') guestFrame(dt);   // gost ne simulira — prima snapshotte
     else update(dt);
+    recordHist(false);   // 📈 graf na kraju igre
     edgePan(dt);
   }
   if(net.mode === 'host') maybeSendSnapshot(now);
@@ -6826,11 +6950,12 @@ function frame(now){
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.clearRect(0, 0, VW, VH);
   if(running){
-    if(!paused){ updateTips(dt); updateAutoSkill(); }
+    if(!paused){ updateTips(dt); updateAutoSkill(); updateQuests(dt); }
     drawWorldOverlay();
     drawScreenFx(dt);
     drawHud();
     drawTip();
+    drawQuest();
     drawChatWheel();
   }
   watchMouseLock();

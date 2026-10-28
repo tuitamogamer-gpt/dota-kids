@@ -5,7 +5,7 @@
    hrvatsku riječ, dodaj je ovdje. */
 const SR_PHRASES = [
   ["Oživjet ćeš", "Oživećeš"],
-  ["dobit ćeš", "dobićeš"],
+  ["dobit ćeš", "dobićeš"], ["Dobit ćeš", "Dobićeš"], ["Vidjet ćeš", "Videćeš"],
   ["vidjet ćeš što radi", "videćeš šta radi"],
   ["Što kupiti", "Šta kupiti"],
   ["pokazuje što", "pokazuje šta"],
@@ -17,6 +17,7 @@ const SR_PHRASES = [
   ["kratke upute", "kratka uputstva"]
 ];
 const SR_WORDS = {
+  "svatko":"svako", "riješen":"rešen", "riješeni":"rešeni", "riješeno":"rešeno", "riješi":"reši", "zadnjim":"poslednjim",
   "bijeg":"beg", "bijega":"bega", "bijes":"bes", "blijedi":"bledi", "bljesak":"blesak", "branič":"branilac",
   "cijela":"cela", "cijeli":"ceo", "cijelog":"celog", "cijelom":"celom", "cijena":"cena", "cijene":"cene",
   "dijeli":"deli", "dijelovi":"delovi", "dio":"deo", "djecu":"decu", "djeluje":"deluje", "djetelina":"detelina",

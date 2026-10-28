@@ -43,6 +43,7 @@ function initNetUI(){
 function netCreateRoom(){
   if(net.peer) return;
   net.mode = 'host';
+  L_TRACK = true;   // 🌐 poruke gostu idu kao par (hr, en) — vidi ih na svom jeziku
   net.code = makeRoomCode();
   netStatus(L('Stvaram sobu...', 'Creating a room...'));
   net.peer = new Peer('dotakids-' + net.code);
@@ -297,11 +298,11 @@ function buildSnapshot(){
     rn: runes.length ? [{ x: runes[0].x, y: runes[0].y, di: RUNE_TYPES.indexOf(runes[0].def) }] : [],
     mk: markers.map(m => ({ x: Math.round(m.x), y: Math.round(m.y), t: +m.t.toFixed(2), r: Math.round(m.r), ir: m.isRing ? 1 : 0, cl: m.color })),
     ln: lines.map(l => ({ x1: Math.round(l.x1), y1: Math.round(l.y1), x2: Math.round(l.x2), y2: Math.round(l.y2), t: +l.t.toFixed(2), lf: l.life, cl: l.color, w: l.w })),
-    fl: floats.map(f => { const o = { x: Math.round(f.x), y: Math.round(f.y), hh: Math.round(f.h), tx: f.txt, cl: f.color, sz: f.size, t: +f.t.toFixed(2) }; if(f.team >= 0) o.tm = f.team; if(f.st){ o.st = f.st; o.ro = +f.rot.toFixed(2); } if(f.who) o.wh = f.who; return o; }),
-    fd: feed.map(f => f.team >= 0 ? { tx: f.txt, cl: f.color, t: +f.t.toFixed(2), tm: f.team } : { tx: f.txt, cl: f.color, t: +f.t.toFixed(2) }),
+    fl: floats.map(f => { const o = { x: Math.round(f.x), y: Math.round(f.y), hh: Math.round(f.h), tx: netTx(f.txt), cl: f.color, sz: f.size, t: +f.t.toFixed(2) }; if(f.team >= 0) o.tm = f.team; if(f.st){ o.st = f.st; o.ro = +f.rot.toFixed(2); } if(f.who) o.wh = f.who; return o; }),
+    fd: feed.map(f => f.team >= 0 ? { tx: netTx(f.txt), cl: f.color, t: +f.t.toFixed(2), tm: f.team } : { tx: netTx(f.txt), cl: f.color, t: +f.t.toFixed(2) }),
     // najave: zajednička (za sve) i gostova osobna (Bravo!, Ne brini!, ulti…) — gost prikaže svaku novu (po id-u)
-    bn: netBanner && gameTime - netBanner.t0 < 3 ? [netBanner.id, netBanner.txt, netBanner.sub] : 0,
-    gb: guestBanner && gameTime - guestBanner.t0 < 3 ? [guestBanner.id, guestBanner.txt, guestBanner.sub] : 0,
+    bn: netBanner && gameTime - netBanner.t0 < 3 ? [netBanner.id, netTx(netBanner.txt), netTx(netBanner.sub)] : 0,
+    gb: guestBanner && gameTime - guestBanner.t0 < 3 ? [guestBanner.id, netTx(guestBanner.txt), netTx(guestBanner.sub)] : 0,
     av: annLog.filter(a => gameTime - a.t < 3).map(a => [a.n, a.key, a.team]),   // 📣 najave iz zadnje 3 s
     me: remoteHero ? heroExtras(remoteHero) : 0,
     nf: +nightForceT.toFixed(1),
@@ -493,12 +494,12 @@ function applySnapshot(d){
       return { x1: l.x1, y1: l.y1, x2: l.x2, y2: l.y2, t: l.t, life: l.lf, color: l.cl, w: l.w || 4 };
     });
   }
-  floats = d.fl.map(f => ({ x: f.x, y: f.y, h: f.hh, txt: f.tx, color: f.cl, size: f.sz, t: f.t, team: f.tm == null ? -1 : f.tm, st: f.st || null, rot: f.ro || 0, who: f.wh || null }))
+  floats = d.fl.map(f => ({ x: f.x, y: f.y, h: f.hh, txt: locTx(f.tx), color: f.cl, size: f.sz, t: f.t, team: f.tm == null ? -1 : f.tm, st: f.st || null, rot: f.ro || 0, who: f.wh || null }))
     .concat(floats.filter(f => f.local));   // gostove vlastite poruke ("🔒 Treba ti poen vještine!"…) ostaju
-  feed = d.fd.map(f => ({ txt: f.tx, color: f.cl, t: f.t, team: f.tm == null ? -1 : f.tm }));
+  feed = d.fd.map(f => ({ txt: locTx(f.tx), color: f.cl, t: f.t, team: f.tm == null ? -1 : f.tm }));
   {   // nova najava (zajednička ili moja osobna); lokalne (pobjeda/poraz) domaćin ne prepisuje
     const nb = [d.bn, d.gb].filter(b => Array.isArray(b) && b[0] > (net.bannerSeen || 0)).sort((a, b) => a[0] - b[0]).pop();
-    if(nb){ net.bannerSeen = nb[0]; banner = nb[1] ? { txt: nb[1], sub: nb[2] || '', t: 0, dur: 3 } : null; }
+    if(nb){ net.bannerSeen = nb[0]; banner = nb[1] ? { txt: locTx(nb[1]), sub: locTx(nb[2]) || '', t: 0, dur: 3 } : null; }
   }
   for(const a of d.av || []) if(a[0] > VOX.annSeen){ VOX.annSeen = a[0]; annPlay(a[1], a[2]); }   // 📣 iz perspektive gosta
   nightForceT = d.nf || 0;
