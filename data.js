@@ -1499,12 +1499,12 @@ const HEROES = [
   {
     id:'nisan', name:L('Nišan', 'Nishan'), emoji:'🐿️',
     role:L('🎯 Vjeverica — snajperist (gađa izdaleka)', '🎯 Squirrel — sniper (shoots from far away)'),
-    hp:500, mp:260, dmg:47,
+    hp:500, mp:260, dmg:44,
     attrs:{ str:16, agi:24, int:15, strG:2.2, agiG:5.3, intG:2.4, primary:'agi' },
     range:410, speed:166, atkCd:1.15, projSpeed:1100, shot:'pellet',
     passive:{ name:L('Pogodak u glavu', 'Headshot'), emoji:'🎯', color:'#fbbf24', pid:'headshot',
       desc:L('PASIVNO: hitac ponekad pogodi "u glavu" — dodatna šteta, kratka omama i meta odleti malo unatrag', 'PASSIVE: a shot sometimes lands a "headshot" — extra damage, a short stun, and the target gets knocked back a bit'),
-      tip:rk => L('🎯 ' + (24 + 5*rk) + '% šanse: +' + (20 + 20*rk) + ' štete, omama 0.15 s i odbačaj', '🎯 ' + (24 + 5*rk) + '% chance: +' + (20 + 20*rk) + ' damage, 0.15 s stun and knockback') },
+      tip:rk => L('🎯 ' + (20 + 4*rk) + '% šanse: +' + (16 + 16*rk) + ' štete, omama 0.15 s i odbačaj', '🎯 ' + (20 + 4*rk) + '% chance: +' + (16 + 16*rk) + ' damage, 0.15 s stun and knockback') },
     abilities:[
       { key:'Q', name:L('Kiša žirova', 'Acorn Rain'), emoji:'🌰', cd:14, mana:50, color:'#d97706',
         desc:L('Ispali kišu žirova na daleko mjesto — dugo pada, ranjava i usporava sve u krugu', 'Fire a rain of acorns at a faraway spot — it falls for a long time, hurting and slowing everyone in the circle'),
@@ -1534,10 +1534,10 @@ const HEROES = [
         }},
       { key:'E', name:L('Durbin', 'Spyglass'), emoji:'🔭', cd:18, mana:40, color:'#7dd3fc',
         desc:L('Pogledaj kroz durbin — 6 sekundi gađaš puno dalje i brže', 'Look through your spyglass — for 6 seconds you shoot much farther and faster'),
-        tip:rk => L('🔭 6 s: +' + (120 + 60*rk) + ' dometa napada i ⚡ +20% brzine napada', '🔭 6 s: +' + (120 + 60*rk) + ' attack range and ⚡ +20% attack speed'),
+        tip:rk => L('🔭 6 s: +' + (100 + 45*rk) + ' dometa napada i ⚡ +20% brzine napada', '🔭 6 s: +' + (100 + 45*rk) + ' attack range and ⚡ +20% attack speed'),
         bot:{type:'haste', range:820},
         cast(u, aim, rk){
-          u.scopeT = 6; u.scopeR = 120 + 60*rk;
+          u.scopeT = 6; u.scopeR = 100 + 45*rk;
           applyAtkSpeed(u, 0.2, 6);
           addFloat(u.x, u.y - 30, L('🔭 Vidim te!', '🔭 I see you!'), '#bae6fd', 15);
           burst(u.x, u.y, '#7dd3fc', 14, 160, 5);

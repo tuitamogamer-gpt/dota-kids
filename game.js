@@ -2220,8 +2220,8 @@ function performAttack(u, t){
   const krv = passiveRank(u, 'krv');           // Miris krvi (Zubo): jače po ranjenima
   if(krv && t.hp < t.maxhp * 0.5 && !isStructure(t)) dmg *= 1 + 0.12 + 0.12 * krv;
   const hsr = passiveRank(u, 'headshot');      // 🎯 Pogodak u glavu (Nišan)
-  const hsProc = !!(hsr && !isStructure(t) && Math.random() < 0.24 + 0.05 * hsr);
-  if(hsProc) dmg += 20 + 20 * hsr;
+  const hsProc = !!(hsr && !isStructure(t) && Math.random() < 0.20 + 0.04 * hsr);
+  if(hsProc) dmg += 16 + 16 * hsr;
   // pasivne moći napadača
   let crit = false;
   const oko = passiveRank(u, 'oko');                 // Oštro oko: kritični pogodak
@@ -4062,8 +4062,8 @@ function makeWorld(){
 /* ⚡ BRZA IGRA (v0.45, kao Turbo u DotA): više zlata i iskustva, brže oživljavanje, slabije kule — igra traje ~10–12 min.
    Svaka igra kreće od izvornih vrijednosti (CFG_BASE), pa brza igra pomnoži samo ekonomiju i tempo. */
 const CFG_BASE = Object.assign({}, CFG);
-const TURBO = { passiveGold: 2, heroKillGold: 1.5, heroKillGoldPerLvl: 1.5, heroKillXp: 1.6, assistGold: 1.6, creepGoldMul: 1.8, creepXpMul: 1.8,
-  creepXp: 1.8, towerGoldTeam: 1.5, towerXp: 1.5, barracksGoldTeam: 1.5, respawnBase: 0.6, respawnPerLvl: 0.5, towerHp: 0.8,
+const TURBO = { passiveGold: 2.5, heroKillGold: 1.5, heroKillGoldPerLvl: 1.5, heroKillXp: 1.7, assistGold: 1.6, creepGoldMul: 2, creepXpMul: 2,
+  creepXp: 2, towerGoldTeam: 1.5, towerXp: 1.5, barracksGoldTeam: 1.5, respawnBase: 0.6, respawnPerLvl: 0.45, towerHp: 0.6, barracksHp: 0.7, ancientHp: 0.7,
   campRespawn: 0.7, bossRespawn: 0.6, drakeRespawn: 0.6, barracksRespawn: 0.7, buybackCd: 0.5, startGold: 1.3, prepTime: 0.5, creepScaleEvery: 0.6 };
 function gameMode(){ return net.mode === 'host' || net.mode === 'guest' ? 'normal' : (SETTINGS.mode === 'turbo' ? 'turbo' : 'normal'); }
 function applyMode(){
