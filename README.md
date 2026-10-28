@@ -1,6 +1,8 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.42: 🏆 postignuća i profil — 15 postignuća, pobjede sa svakim junakom i 🎖️ „Novo postignuće!” na kraju igre.** v0.41: 🔊 novi zvuk — bogatiji efekti, prostorni zvuk (lijevo/desno, tiše izdaleka) i 🌲 zvukovi prirode.** v0.40: 🪙 pomoć za zadnji udarac, 💡 savjeti za početnike, 🏅 medalje na kraju igre, 🗺️ portreti na minimapi i 🔥 junaci „u vatri”.** v0.39: čišći ekran (brojevi štete samo kad si ti uključen, manje poruka), 💨 brže putovanje izvan borbe i 🪙 zlatnici koji polete do tebe kad pobijediš junaka.** v0.38: veliko poliranje — ⛶ cijeli zaslon, 🐿️ Nišan i 🐂 Bikoš, 🎓 svaki junak ima svoje talente, 💥 kritični udarci, 🛒 jasniji dućan, 🗺️ veća mapa, 🗼 aggro kao u Doti, 🌫️ prava magla rata, 🌿 tango jede drvo i 🤖 pametniji botovi (gankovi, guranje, obrana).** (v0.37: 👥 pravih 5 na 5, v0.36: peglanje za mobitel i opisi gumba, v0.35: u mrežnoj igri svatko vidi svoje, v0.34: 📣 najavljivač, 🤖 težina botova, 💀 pregled pogibije, 💃 ples)
+> 🇬🇧 **English:** a kids' DOTA-style MOBA in 3D that runs in the browser — 24 heroes, 5 vs 5 against bots or with a friend online, talking heroes, achievements, works on tablets. **The whole game is available in English** — pick the language on the start screen (or open the game with `?lang=en`). Play: [dota-kids-brown.vercel.app](https://dota-kids-brown.vercel.app/?lang=en)
+
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.43: 🌍 cijela igra i na engleskom (biraš na početku) i 🎬 novi početni ekran.** v0.42: 🏆 postignuća i profil — 15 postignuća, pobjede sa svakim junakom i 🎖️ „Novo postignuće!” na kraju igre.** v0.41: 🔊 novi zvuk — bogatiji efekti, prostorni zvuk (lijevo/desno, tiše izdaleka) i 🌲 zvukovi prirode.** v0.40: 🪙 pomoć za zadnji udarac, 💡 savjeti za početnike, 🏅 medalje na kraju igre, 🗺️ portreti na minimapi i 🔥 junaci „u vatri”.** v0.39: čišći ekran (brojevi štete samo kad si ti uključen, manje poruka), 💨 brže putovanje izvan borbe i 🪙 zlatnici koji polete do tebe kad pobijediš junaka.** v0.38: veliko poliranje — ⛶ cijeli zaslon, 🐿️ Nišan i 🐂 Bikoš, 🎓 svaki junak ima svoje talente, 💥 kritični udarci, 🛒 jasniji dućan, 🗺️ veća mapa, 🗼 aggro kao u Doti, 🌫️ prava magla rata, 🌿 tango jede drvo i 🤖 pametniji botovi (gankovi, guranje, obrana).** (v0.37: 👥 pravih 5 na 5, v0.36: peglanje za mobitel i opisi gumba, v0.35: u mrežnoj igri svatko vidi svoje, v0.34: 📣 najavljivač, 🤖 težina botova, 💀 pregled pogibije, 💃 ples)
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -18,6 +20,13 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- 🌍 **Engleski jezik i novi početni ekran** (v0.43):
+  - cijela igra postoji i **na engleskom** — junaci, moći, predmeti, dućan, savjeti, poruke, najavljivač, pomoć i postavke
+  - pri prvom pokretanju igra pita **„Odaberi jezik · Choose your language”**; kasnije se jezik mijenja gumbom gore desno na početnom ekranu ili u ⚙️ postavkama (🌍 Jezik); izbor se pamti
+  - link s `?lang=en` ili `?lang=hr` odmah otvara igru na tom jeziku
+  - 🎬 **novi početni ekran**: veliki logo, ▶️ ZAIGRAJ, gumbi 👥 S prijateljem / ❓ Kako se igra / 🏆 Postignuća / ⚙️ Postavke, traka sa svim junacima (klik na junaka = odmah ga odabereš), kratki profil (pobjede, igre, postignuća) i kartice što sve igra ima; radi i na mobitelu
+  - 🏠 gumb gore lijevo na ekranu odabira vraća na početni ekran; „Igraj ponovo” ide ravno na odabir junaka
 
 - 🏆 **Postignuća i profil** (v0.42) — igra pamti (u pregledniku) tvoje igre i pobjede:
   - 🎖️ **15 postignuća**: 🎉 Prva pobjeda, 🩸 Prva krv, ⚔️ Lovac (10 pobjeda nad junacima u igri), 🪙 Zlatar (100 zadnjih udaraca), 🔥 U vatri (5 zaredom bez pada), 🛡️ Neuništiv (pobjeda bez ijednog pada), 🤝 Timski igrač (15 asistencija), 🏰 Rušitelj (zadnji udarac na 3 kule), 🐲 Zmajoubojica, 🌿 Proždrljivac (4 drveta tangom), 👑 Najbolji, 🎓 Legenda (level 25), 🦸 Junak (pobjeda na „Teško”), 🌈 Svestran (pobjede s 5 junaka) i 🏆 Prvak (10 pobjeda)
@@ -370,7 +379,7 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
 ## Tehnologija
 
 Čisti JavaScript + [Three.js](https://threejs.org/) (r149, vendoran u `lib/` zajedno s GLTFLoaderom i RoomEnvironmentom) — bez build koraka.
-`data.js` (junaci, predmeti, konfiguracija) • `voices.js` (glasovi junaka) • `game.js` (logika, AI, HUD) • `scene3d.js` (3D prikaz, modeli, animacije, čestice) • `net.js` (multiplayer) • `2d-verzija/` (originalna 2D verzija).
+`i18n.js` (jezik: `L('hrvatski', 'English')` i `data-en` atributi u HTML-u) • `data.js` (junaci, predmeti, konfiguracija) • `voices.js` (glasovi junaka) • `game.js` (logika, AI, HUD) • `scene3d.js` (3D prikaz, modeli, animacije, čestice) • `net.js` (multiplayer) • `shop.js` (dućan, opisi) • `landing.js` (početni ekran) • `2d-verzija/` (originalna 2D verzija).
 
 ### 🗣️ Glasovi junaka (Fish Audio)
 

@@ -33,7 +33,7 @@ function stubEl(){
   return el;
 }
 function makeContext(){
-  const store = {};
+  const store = process.argv.includes('--en') ? { dk_lang: 'en' } : {};   // --en: engleska verzija
   const ctx = {
     console, Math, Date, JSON, Map, Set, WeakMap, Array, Object, Number, String, Boolean, Promise, Symbol, Error, RegExp, Proxy,
     Float32Array, Uint8Array, Uint8ClampedArray, Int16Array, Int32Array, Uint16Array, Float64Array,
@@ -67,7 +67,7 @@ function syncScene(){} function updateCamera3(){} function applyDayNight(){} fun
 function showHeroPreview(){} function screenToWorld(){ return { x: 0, y: 0 }; } function worldToScreen(){ return null; } function pickUnitScreen(){ return null; }
 function unitHitShape(){ return { H: 1, R: 1 }; } function treeCut3D(){} function treeGrow3D(){}
 `;
-const SRC = ['data.js', 'voices.js'].map(f => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n') + STUBS +
+const SRC = ['i18n.js', 'data.js', 'voices.js'].map(f => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n') + STUBS +
   ['game.js', 'shop.js', 'net.js'].map(f => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n') + `
 ;globalThis.__G = { get units(){ return units; }, get gameTime(){ return gameTime; }, get gameOver(){ return gameOver; },
   get winnerTeam(){ return winnerTeam; }, get kills(){ return kills; }, get player(){ return player; }, get teamAI(){ return typeof teamAI !== 'undefined' ? teamAI : null; },

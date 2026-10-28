@@ -36,7 +36,7 @@ function initNetUI(){
   document.getElementById('mpJoin').addEventListener('click', () => {
     const code = document.getElementById('mpCode').value.trim().toUpperCase();
     if(code.length === 4) netJoinRoom(code);
-    else netStatus('Upiši kod sobe od 4 znaka!');
+    else netStatus(L('Upiši kod sobe od 4 znaka!', 'Type a 4-letter room code!'));
   });
 }
 
@@ -44,13 +44,13 @@ function netCreateRoom(){
   if(net.peer) return;
   net.mode = 'host';
   net.code = makeRoomCode();
-  netStatus('Stvaram sobu...');
+  netStatus(L('Stvaram sobu...', 'Creating a room...'));
   net.peer = new Peer('dotakids-' + net.code);
   net.peer.on('open', () => {
     const big = document.getElementById('mpCodeBig');
     big.textContent = '🔑 ' + net.code;
     big.classList.remove('hidden');
-    netStatus('Pošalji prijatelju kod i čekaj da uđe...');
+    netStatus(L('Pošalji prijatelju kod i čekaj da uđe...', 'Send the code to your friend and wait for them to join...'));
   });
   net.peer.on('connection', (c) => {
     if(net.conn){ c.close(); return; }
@@ -58,7 +58,7 @@ function netCreateRoom(){
     bindConn();
   });
   net.peer.on('error', (e) => {
-    netStatus('⚠️ Greška veze: ' + e.type);
+    netStatus(L('⚠️ Greška veze: ', '⚠️ Connection error: ') + e.type);
     netResetLobby();
   });
 }
@@ -67,14 +67,14 @@ function netJoinRoom(code){
   net.mode = 'guest';
   net.code = code;
   myTeam = TEAM_RED;
-  netStatus('Spajam se na sobu ' + code + '...');
+  netStatus(L('Spajam se na sobu ' + code + '...', 'Joining room ' + code + '...'));
   net.peer = new Peer();
   net.peer.on('open', () => {
     net.conn = net.peer.connect('dotakids-' + code, { reliable: true });
     bindConn();
   });
   net.peer.on('error', (e) => {
-    netStatus('⚠️ Ne mogu se spojiti (' + e.type + ') — provjeri kod!');
+    netStatus(L('⚠️ Ne mogu se spojiti (' + e.type + ') — provjeri kod!', '⚠️ Can\'t connect (' + e.type + ') — check the code!'));
     netResetLobby();
   });
 }
@@ -87,10 +87,10 @@ function netResetLobby(){
 }
 function bindConn(){
   net.conn.on('open', () => {
-    document.getElementById('startBtn').textContent = '✅ SPREMAN!';
+    document.getElementById('startBtn').textContent = L('✅ SPREMAN!', '✅ READY!');
     netStatus(net.mode === 'host'
-      ? '✅ Prijatelj je tu! Odaberite junake pa stisnite SPREMAN.'
-      : '✅ Spojen! Ti si 🔴 crveni — odaberi junaka pa SPREMAN.');
+      ? L('✅ Prijatelj je tu! Odaberite junake pa stisnite SPREMAN.', '✅ Your friend is here! Both pick heroes, then press READY.')
+      : L('✅ Spojen! Ti si 🔴 crveni — odaberi junaka pa SPREMAN.', '✅ Connected! You are 🔴 Red — pick a hero, then READY.'));
     sendNet({ c: 'hello' });
   });
   net.conn.on('data', onNetData);
@@ -107,14 +107,14 @@ function onNetClose(){
     if(net.mode === 'host' && remoteHero){
       remoteHero.human = false;
       remoteHero.bot = { state: 'lane', thinkT: 0.5 };
-      announce('🔌 Prijatelj je izašao', 'Preuzima ga bot');
+      announce(L('🔌 Prijatelj je izašao', '🔌 Your friend left'), L('Preuzima ga bot', 'A bot takes over'));
       net.conn = null;
     } else if(net.mode === 'guest'){
-      alert('Veza s domaćinom je prekinuta. 😢');
+      alert(L('Veza s domaćinom je prekinuta. 😢', 'Lost connection to the host. 😢'));
       location.reload();
     }
   } else {
-    netStatus('Veza prekinuta.');
+    netStatus(L('Veza prekinuta.', 'Connection lost.'));
     net.conn = null;
   }
 }
@@ -126,7 +126,7 @@ function netPick(i){
   syncLobbyText();
 }
 function netReady(){
-  if(net.myPick < 0){ netStatus('Prvo klikni junaka!'); return; }
+  if(net.myPick < 0){ netStatus(L('Prvo klikni junaka!', 'Click a hero first!')); return; }
   net.myReady = true;
   sendNet({ c: 'ready', sm: pickedSummoners });
   syncLobbyText();
@@ -135,8 +135,8 @@ function netReady(){
 function syncLobbyText(){
   if(!net.conn || running) return;
   const nm = (i) => i >= 0 ? HEROES[i].emoji + ' ' + HEROES[i].name : '…';
-  netStatus('Ti: ' + nm(net.myPick) + (net.myReady ? ' ✅' : '') +
-    '  •  Prijatelj: ' + nm(net.otherPick) + (net.otherReady ? ' ✅' : ''));
+  netStatus(L('Ti: ', 'You: ') + nm(net.myPick) + (net.myReady ? ' ✅' : '') +
+    L('  •  Prijatelj: ', '  •  Friend: ') + nm(net.otherPick) + (net.otherReady ? ' ✅' : ''));
 }
 function tryStartMatch(){
   if(net.mode !== 'host' || !net.myReady || !net.otherReady) return;
@@ -642,7 +642,7 @@ function startMatchHost(hostIdx, guestIdx, botIdcs){
   cam.x = player.x; cam.y = player.y; cam.zoom = 0.9; cam.follow = true;
   running = true;
   document.getElementById('select').classList.add('hidden');
-  localBanner(`⚔️ ${CFG.teamSize} NA ${CFG.teamSize}!`, 'Sruši crveni prijestol! 👑');   // gost ima svoju ("Sruši plavi prijestol!")
+  localBanner(L(`⚔️ ${CFG.teamSize} NA ${CFG.teamSize}!`, `⚔️ ${CFG.teamSize} VS ${CFG.teamSize}!`), L('Sruši crveni prijestol! 👑', 'Destroy the Red throne! 👑'));   // gost ima svoju ("Sruši plavi prijestol!")
   refreshShop();
   beginPrep();
   sfx('levelup');
@@ -661,7 +661,7 @@ function startMatchGuest(d){
   running = true;
   cam.x = FOUNTAIN[1].x; cam.y = FOUNTAIN[1].y; cam.zoom = 0.9; cam.follow = true;
   document.getElementById('select').classList.add('hidden');
-  banner = { txt: `⚔️ ${CFG.teamSize} NA ${CFG.teamSize}!`, sub: 'Sruši plavi prijestol! 👑', t: 0, dur: 3 };
+  banner = { txt: L(`⚔️ ${CFG.teamSize} NA ${CFG.teamSize}!`, `⚔️ ${CFG.teamSize} VS ${CFG.teamSize}!`), sub: L('Sruši plavi prijestol! 👑', 'Destroy the Blue throne! 👑'), t: 0, dur: 3 };
   annLog = []; VOX.annSeen = 0;   // 📣 najave stižu u snimkama (av)
   gameTime = -CFG.prepTime; prepShop = false;   // ⏳ priprema: domaćin šalje sat, dućan se sam otvori
   if(CFG.prepTime > 0 && !shopOpen){ toggleShop(); prepShop = true; }

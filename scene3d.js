@@ -128,7 +128,7 @@ function loadModels3D(){
       if(!el) return;
       const total = xhr.total || 3600000;
       const pct = Math.min(99, Math.round(xhr.loaded / total * 100));
-      el.textContent = '⏳ Učitavam 3D modele… ' + pct + '%';
+      el.textContent = L('⏳ Učitavam 3D modele… ', '⏳ Loading 3D models… ') + pct + '%';
       el.style.display = 'block';
     }, fail);
   }
@@ -618,7 +618,7 @@ function render3D(){
     if(POST.auto && POST.last){
       POST.acc += now - POST.last; POST.frames++;
       if(POST.acc > 4000){
-        if(POST.frames / (POST.acc / 1000) < 28){ POST.on = false; if(typeof feedMsg === 'function') feedMsg('✨ Efekti isključeni da igra bude brža (K = uključi)', '#e5e7eb'); }
+        if(POST.frames / (POST.acc / 1000) < 28){ POST.on = false; if(typeof feedMsg === 'function') feedMsg(L('✨ Efekti isključeni da igra bude brža (K = uključi)', '✨ Effects turned off so the game runs faster (K = turn on)'), '#e5e7eb'); }
         POST.acc = 0; POST.frames = 0;
       }
     }

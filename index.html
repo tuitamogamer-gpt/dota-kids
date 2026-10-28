@@ -3,6 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#16331f">
+<meta name="description" content="DOTA Kids 3D — MOBA za djecu: 24 junaka, bitka 5 na 5 s botovima ili s prijateljem preko interneta. A MOBA for kids: 24 heroes, 5 vs 5 battles with bots or with a friend online. Hrvatski / Bosanski · English.">
+<meta property="og:title" content="🏰 DOTA Kids 3D ⚔️">
+<meta property="og:description" content="Prava bitka 5 na 5 za djecu · A real 5 vs 5 battle arena for kids">
+<meta property="og:image" content="assets/splash.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E%F0%9F%8F%B0%3C/text%3E%3C/svg%3E">
 <title>🏰 DOTA Kids 3D ⚔️</title>
 <style>
   *{ margin:0; padding:0; box-sizing:border-box; user-select:none; -webkit-user-select:none; }
@@ -451,6 +457,131 @@
     .etItem{ height:17px; }
     .etNeut{ width:17px; height:17px; }
   }
+
+  /* ---------- 🎬 početni ekran (v0.43) ---------- */
+  #landing{ z-index:22; justify-content:space-between; padding:0; overflow-x:hidden; overflow-y:auto;
+    background:
+      radial-gradient(ellipse at 50% 38%, rgba(0,0,0,0) 0%, rgba(3,10,8,.35) 70%, rgba(3,10,8,.7) 100%),
+      linear-gradient(rgba(10,20,40,.35) 0%, rgba(10,20,40,0) 26%, rgba(5,18,12,0) 52%, rgba(5,18,12,.9) 100%),
+      url('assets/splash.jpg') center/cover no-repeat, #16331f; }
+  #landing.out{ animation:lgOut .45s ease-in forwards; pointer-events:none; }
+  @keyframes lgOut{ to{ opacity:0; transform:scale(1.06); } }
+  .lgTop{ position:absolute; top:10px; right:12px; left:12px; display:flex; justify-content:flex-end; align-items:center; gap:8px; z-index:3; }
+  .lgFs{ position:static; }
+  .lgLang{ display:flex; gap:4px; padding:4px; border-radius:14px; background:rgba(15,23,42,.55); border:2px solid rgba(253,224,71,.35); backdrop-filter:blur(4px); }
+  .lgLang button, .lgBtns button, .lgPickBtns button{ font-family:inherit; cursor:pointer; transition:transform .12s, background .12s; }
+  .lgLang button{ font-size:14px; font-weight:bold; color:#e2e8f0; background:transparent; border:none; border-radius:10px; padding:6px 12px; }
+  .lgLang button.on{ background:linear-gradient(#fde047,#f59e0b); color:#431407; box-shadow:0 3px 0 #b45309; }
+  .lgLang button:not(.on):hover{ background:rgba(255,255,255,.14); }
+  .lgLangSh{ display:none; }
+  .flag{ font-family:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif; }
+  .lgMain{ display:flex; flex-direction:column; align-items:center; gap:14px; padding:64px 16px 10px; }
+  .lgLogo{ font-size:clamp(46px, 8.2vw, 104px); line-height:1; color:#fde047; letter-spacing:1px; white-space:nowrap;
+    text-shadow:0 5px 0 #c2410c, 0 10px 0 #7c2d12, 0 16px 34px rgba(0,0,0,.6); animation:lgFloat 3.2s ease-in-out infinite; }
+  .lgL2{ display:inline-block; font-size:.58em; color:#fff; background:linear-gradient(#ef4444,#b91c1c); border:3px solid #fde047;
+    border-radius:16px; padding:2px 14px 6px; transform:rotate(-7deg) translateY(-6px); text-shadow:0 3px 0 #7f1d1d; box-shadow:0 6px 0 #7f1d1d, 0 10px 24px rgba(0,0,0,.45); }
+  @keyframes lgFloat{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-8px); } }
+  .lgTag{ max-width:660px; color:#fff; font-size:clamp(15px, 1.9vw, 20px); line-height:1.4; padding:8px 18px; border-radius:16px;
+    background:rgba(8,20,16,.5); backdrop-filter:blur(3px); text-shadow:0 2px 4px rgba(0,0,0,.6); }
+  .lgTag b{ color:#fde047; }
+  .lgPlay{ position:relative; overflow:hidden; font-family:inherit; font-size:clamp(30px, 4.4vw, 46px); font-weight:bold; color:#431407; cursor:pointer;
+    background:linear-gradient(#fef08a,#fbbf24 45%,#f59e0b); border:4px solid #fff7ad; border-radius:24px; padding:14px 74px;
+    box-shadow:0 8px 0 #b45309, 0 0 0 0 rgba(253,224,71,.7), 0 14px 30px rgba(0,0,0,.45); animation:lgPulse 1.8s ease-in-out infinite; transition:transform .1s; }
+  .lgPlay::after{ content:""; position:absolute; top:-20%; bottom:-20%; width:34%; left:-50%; transform:skewX(-20deg);
+    background:linear-gradient(90deg, transparent, rgba(255,255,255,.75), transparent); animation:lgShine 3s ease-in-out infinite; }
+  .lgPlay:hover{ transform:scale(1.06); }
+  .lgPlay:active{ transform:translateY(5px); box-shadow:0 3px 0 #b45309; }
+  @keyframes lgPulse{ 0%,100%{ box-shadow:0 8px 0 #b45309, 0 0 0 0 rgba(253,224,71,.65), 0 14px 30px rgba(0,0,0,.45); }
+    50%{ box-shadow:0 8px 0 #b45309, 0 0 0 16px rgba(253,224,71,0), 0 14px 30px rgba(0,0,0,.45); } }
+  @keyframes lgShine{ 0%,55%{ left:-50%; } 100%{ left:130%; } }
+  .lgBtns{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; }
+  .lgBtns button{ font-size:16px; font-weight:bold; color:#fff; border:2px solid rgba(255,255,255,.28); border-radius:14px; padding:9px 16px;
+    background:rgba(15,23,42,.6); backdrop-filter:blur(4px); box-shadow:0 4px 0 rgba(0,0,0,.45); }
+  .lgBtns button:hover{ transform:translateY(-2px) scale(1.04); background:rgba(30,58,138,.75); border-color:#fde047; }
+  #lgFriend{ background:linear-gradient(rgba(14,165,233,.85), rgba(3,105,161,.85)); }
+  #lgProfile{ min-height:20px; color:#fde68a; font-size:13.5px; font-weight:bold; text-shadow:0 2px 3px #000; }
+  #lgProfile:empty{ display:none; }
+  .lgBottom{ display:flex; flex-direction:column; align-items:center; gap:10px; padding:10px 14px 12px; width:100%; }
+  .lgMarq{ width:min(1100px, 100%); overflow:hidden; padding:6px 0 2px;
+    -webkit-mask-image:linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image:linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+  .lgTrack{ display:flex; gap:12px; width:max-content; animation:lgScroll 70s linear infinite; }
+  .lgMarq:hover .lgTrack{ animation-play-state:paused; }
+  @keyframes lgScroll{ from{ transform:translateX(0); } to{ transform:translateX(-50%); } }
+  .lgHero{ display:flex; flex-direction:column; align-items:center; gap:3px; width:76px; cursor:pointer; background:none; border:none; font-family:inherit; }
+  .lgHero img, .lgHero .lgEmo{ width:64px; height:64px; border-radius:50%; object-fit:cover; border:3px solid #fde047; background:#fffbeb;
+    box-shadow:0 4px 10px rgba(0,0,0,.5); transition:transform .15s; font-size:36px; line-height:58px; text-align:center; }
+  .lgHero.R img, .lgHero.R .lgEmo{ border-color:#5eead4; }
+  .lgHero span{ font-size:11.5px; font-weight:bold; color:#fff; text-shadow:0 1px 3px #000, 0 0 6px #000; white-space:nowrap; }
+  .lgHero:hover img, .lgHero:hover .lgEmo{ transform:scale(1.15) translateY(-3px); }
+  .lgFeats{ display:grid; grid-template-columns:repeat(6, minmax(0, 1fr)); gap:8px; width:min(1100px, 100%); }
+  .lgFeat{ display:flex; align-items:center; gap:8px; text-align:left; padding:8px 10px; border-radius:14px; color:#fff;
+    background:rgba(8,20,16,.62); border:1px solid rgba(253,224,71,.25); backdrop-filter:blur(4px); }
+  .lgFeat b{ font-size:26px; line-height:1; }
+  .lgFeat span{ display:flex; flex-direction:column; min-width:0; }
+  .lgFeat strong{ font-size:14px; color:#fde047; }
+  .lgFeat small{ font-size:11px; color:#d1fae5; line-height:1.25; }
+  .lgFoot{ font-size:11.5px; color:#a7f3d0; opacity:.8; }
+  .lgFoot .ver{ opacity:.8; }
+  #lgPick{ position:fixed; inset:0; z-index:5; display:flex; align-items:center; justify-content:center; padding:16px;
+    background:rgba(3,10,8,.72); backdrop-filter:blur(3px); }
+  .lgPickBox{ background:#fffbeb; border:4px solid #f59e0b; border-radius:24px; padding:20px 22px; width:min(560px, 100%); color:#422006;
+    box-shadow:0 14px 40px rgba(0,0,0,.55); animation:achPop .5s ease-out both; }
+  .lgPickT{ font-size:22px; font-weight:bold; color:#b45309; margin-bottom:14px; }
+  .lgPickBtns{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .lgPickBtns button{ display:flex; flex-direction:column; align-items:center; gap:4px; padding:14px 8px; border-radius:18px; color:#431407;
+    background:linear-gradient(#fef9c3,#fde68a); border:3px solid #f59e0b; box-shadow:0 5px 0 #b45309; }
+  .lgPickBtns button:hover{ transform:scale(1.05); background:linear-gradient(#fef08a,#fbbf24); }
+  .lgPickBtns .flag{ font-size:40px; line-height:1.1; }
+  .lgPickBtns b{ font-size:18px; }
+  .lgPickBtns small{ font-size:12px; color:#78350f; }
+  .lgPickS{ margin-top:12px; font-size:12px; color:#78716c; }
+  .selBack{ position:absolute; top:10px; left:12px; z-index:5; width:44px; height:40px; font-size:20px; line-height:1; cursor:pointer;
+    color:#fde68a; background:linear-gradient(#3b2f1c,#1f1810); border:2px solid #b8860b; border-radius:10px; box-shadow:0 3px 0 #000a; }
+  .selBack:hover{ transform:scale(1.08); border-color:#fde047; }
+  #help{ z-index:30; }
+  html[lang="en"] #diffTabs.mpOff::after{ content:"(with a friend, bots are Normal)"; }
+  @media (max-width: 900px){
+    .lgFeats{ grid-template-columns:repeat(3, minmax(0, 1fr)); }
+  }
+  @media (max-width: 560px){
+    .lgLang button{ font-size:12px; padding:5px 8px; }
+    .lgLang .lgLangTxt{ display:none; }
+    .lgLang .lgLangSh{ display:inline; }
+    .lgMain{ padding-top:70px; gap:12px; }
+    .lgLogo{ white-space:normal; }
+    .lgPlay{ padding:12px 46px; }
+    .lgBtns button{ font-size:14px; padding:8px 11px; }
+    .lgFeats{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
+    .lgFeat small{ display:none; }
+    .lgPickBtns{ grid-template-columns:1fr; }
+  }
+  @media (max-height: 760px){
+    .lgMain{ padding-top:54px; gap:10px; }
+    .lgFeat small{ display:none; }
+    .lgFeat{ padding:6px 9px; }
+    .lgFeat b{ font-size:21px; }
+  }
+  @media (max-height: 560px){   /* 📱 mobitel položen */
+    .lgMain{ padding-top:50px; gap:7px; }
+    .lgTop{ top:6px; }
+    .lgLang button{ font-size:12px; padding:5px 8px; }
+    .lgLang .lgLangTxt{ display:none; }
+    .lgLang .lgLangSh{ display:inline; }
+    .lgLogo{ font-size:38px; }
+    .lgTag{ font-size:13px; padding:4px 12px; max-width:440px; }
+    .lgPlay{ font-size:26px; padding:8px 44px; border-width:3px; }
+    .lgBtns button{ font-size:13px; padding:6px 10px; }
+    .lgFeats{ display:none; }
+    .lgBottom{ gap:4px; padding:4px 10px 6px; }
+    .lgHero{ width:58px; }
+    .lgHero img, .lgHero .lgEmo{ width:46px; height:46px; border-width:2px; font-size:26px; line-height:42px; }
+    .lgHero span{ font-size:10px; }
+  }
+  @media (max-height: 400px){
+    .lgTag{ display:none; }
+    .lgLogo{ font-size:32px; }
+    .lgHero span{ display:none; }
+  }
 </style>
 </head>
 <body>
@@ -458,55 +589,102 @@
 <canvas id="hud"></canvas>
 <div id="err"></div>
 
+<!-- POČETNI EKRAN (landing) -->
+<div id="landing" class="overlay">
+  <div class="lgTop">
+    <div class="lgLang" id="lgLang" title="Jezik · Language">
+      <button data-l="hr"><span class="flag">🇭🇷🇧🇦</span><span class="lgLangTxt"> Hrvatski / Bosanski</span><span class="lgLangSh"> HR</span></button>
+      <button data-l="en"><span class="flag">🇬🇧🇺🇸</span><span class="lgLangTxt"> English</span><span class="lgLangSh"> EN</span></button>
+    </div>
+    <button id="lgFs" class="fsBtn lgFs" title="Cijeli zaslon" data-en-title="Fullscreen">⛶</button>
+  </div>
+  <div class="lgMain">
+    <h1 class="lgLogo"><span class="lgL1">🏰 DOTA Kids</span> <span class="lgL2">3D ⚔️</span></h1>
+    <p class="lgTag" data-en="A real <b>5 vs 5</b> battle arena for kids — pick a hero, team up and knock down the enemy throne! 👑">Prava <b>bitka 5 na 5</b> za djecu — odaberi junaka, udruži se s timom i sruši protivnički prijestol! 👑</p>
+    <button id="lgPlay" class="lgPlay" data-en="▶️ PLAY">▶️ ZAIGRAJ</button>
+    <div class="lgBtns">
+      <button id="lgFriend" data-en="👥 With a friend">👥 S prijateljem</button>
+      <button id="lgHelp" data-en="❓ How to play">❓ Kako se igra</button>
+      <button id="lgAch" data-en="🏆 Achievements">🏆 Postignuća</button>
+      <button id="lgOpt" data-en="⚙️ Settings">⚙️ Postavke</button>
+    </div>
+    <div id="lgProfile"></div>
+  </div>
+  <div class="lgBottom">
+    <div class="lgMarq" title="Klikni junaka i igraj s njim!" data-en-title="Click a hero to play with them!"><div class="lgTrack" id="lgTrack"></div></div>
+    <div class="lgFeats">
+      <div class="lgFeat"><b>🦁</b><span><strong id="lgHeroN" data-en="24 heroes">24 junaka</strong><small data-en="each with own abilities and talents">svaki sa svojim moćima i talentima</small></span></div>
+      <div class="lgFeat"><b>⚔️</b><span><strong data-en="5 vs 5">5 na 5</strong><small data-en="you + 4 bots vs 5 bots">ti + 4 bota protiv 5 botova</small></span></div>
+      <div class="lgFeat"><b>👥</b><span><strong data-en="Play with a friend">Igraj s prijateljem</strong><small data-en="online, just a 4-letter code">preko interneta, samo kod od 4 slova</small></span></div>
+      <div class="lgFeat"><b>🗣️</b><span><strong data-en="Heroes talk">Junaci govore</strong><small data-en="every hero has their own voice">svaki junak ima svoj glas</small></span></div>
+      <div class="lgFeat"><b>🏆</b><span><strong data-en="Achievements">Postignuća</strong><small data-en="medals, wins and records">medalje, pobjede i rekordi</small></span></div>
+      <div class="lgFeat"><b>📱</b><span><strong data-en="Tablet too">I na tabletu</strong><small data-en="tap, drag and pinch to zoom">dodir, povlačenje i zum prstima</small></span></div>
+    </div>
+    <div class="lgFoot"><span data-en="free · no ads · plays in the browser">besplatno · bez reklama · igra se u pregledniku</span> · <span class="ver">v0.43</span></div>
+  </div>
+  <div id="lgPick" class="hidden">
+    <div class="lgPickBox">
+      <div class="lgPickT">🌍 Odaberi jezik · Choose your language</div>
+      <div class="lgPickBtns">
+        <button data-l="hr"><span class="flag">🇭🇷🇧🇦</span><b>Hrvatski / Bosanski</b><small>Igraj na našem jeziku</small></button>
+        <button data-l="en"><span class="flag">🇬🇧🇺🇸</span><b>English</b><small>Play in English</small></button>
+      </div>
+      <div class="lgPickS">Možeš promijeniti kasnije gore desno · You can change it later at the top right</div>
+    </div>
+  </div>
+</div>
+
 <!-- ODABIR JUNAKA -->
 <div id="select" class="overlay">
-  <button id="fsBtn" class="fsBtn" title="Cijeli zaslon (miš ne može pobjeći iz igre)">⛶</button>
+  <button id="selBack" class="selBack" title="Natrag na početni ekran" data-en-title="Back to the start screen">🏠</button>
+  <button id="fsBtn" class="fsBtn" title="Cijeli zaslon (miš ne može pobjeći iz igre)" data-en-title="Fullscreen (the mouse can't escape the game)">⛶</button>
   <header>
     <h1>🏰 DOTA Kids 3D ⚔️</h1>
-    <p class="sub">Odaberi junaka i sruši protivnički prijestol! Ti + 4 bota 🔵 protiv 5 botova 🔴 (5 na 5) <span class="ver">v0.42</span></p>
+    <p class="sub"><span data-en="Pick a hero and knock down the enemy throne! You + 4 bots 🔵 vs 5 bots 🔴 (5 vs 5)">Odaberi junaka i sruši protivnički prijestol! Ti + 4 bota 🔵 protiv 5 botova 🔴 (5 na 5)</span> <span class="ver">v0.43</span></p>
   </header>
-  <div id="loadBar">⏳ Učitavam 3D modele…</div>
+  <div id="loadBar" data-en="⏳ Loading 3D models…">⏳ Učitavam 3D modele…</div>
   <div class="selWrap">
     <div class="pickCol">
       <div id="roleTabs">
-        <button data-f="all" class="on">Svi</button>
-        <button data-f="M">⚔️ Blizina</button>
-        <button data-f="R">🏹 Daljina</button>
+        <button data-f="all" class="on" data-en="All">Svi</button>
+        <button data-f="M" data-en="⚔️ Melee">⚔️ Blizina</button>
+        <button data-f="R" data-en="🏹 Ranged">🏹 Daljina</button>
       </div>
       <div id="cards"></div>
-      <div id="diffTabs" title="Koliko su jaki protivnički botovi">
-        <span>🤖 Botovi:</span>
-        <button data-d="easy">🐣 Lako</button>
-        <button data-d="normal">⚔️ Normalno</button>
-        <button data-d="hard">🔥 Teško</button>
+      <div id="diffTabs" title="Koliko su jaki protivnički botovi" data-en-title="How strong the enemy bots are">
+        <span>🤖 <span data-en="Bots:">Botovi:</span></span>
+        <button data-d="easy" data-en="🐣 Easy">🐣 Lako</button>
+        <button data-d="normal" data-en="⚔️ Normal">⚔️ Normalno</button>
+        <button data-d="hard" data-en="🔥 Hard">🔥 Teško</button>
       </div>
     </div>
     <div id="heroDetail" class="detail"></div>
   </div>
   <div class="btnRow">
-    <button id="startBtn" class="bigBtn" disabled>▶️ ZAIGRAJ</button>
-    <button id="randomBtn" class="rndBtn" title="Nasumični junak">🎲<span class="lbl"> Nasumično</span></button>
-    <button id="mpToggle" class="ghostBtn" title="Ti protiv prijatelja preko interneta (5 na 5 s botovima)">👥<span class="lbl"> S prijateljem</span></button>
-    <button id="achBtn" class="achBtn" title="Tvoje pobjede i postignuća">🏆<span class="lbl"> Postignuća</span></button>
+    <button id="startBtn" class="bigBtn" disabled data-en="▶️ PLAY">▶️ ZAIGRAJ</button>
+    <button id="randomBtn" class="rndBtn" title="Nasumični junak" data-en-title="Random hero">🎲<span class="lbl" data-en=" Random"> Nasumično</span></button>
+    <button id="mpToggle" class="ghostBtn" title="Ti protiv prijatelja preko interneta (5 na 5 s botovima)" data-en-title="You vs a friend over the internet (5 vs 5 with bots)">👥<span class="lbl" data-en=" With a friend"> S prijateljem</span></button>
+    <button id="achBtn" class="achBtn" title="Tvoje pobjede i postignuća" data-en-title="Your wins and achievements">🏆<span class="lbl" data-en=" Achievements"> Postignuća</span></button>
   </div>
   <div id="mpBox" class="hidden">
-    <div class="mpTitle">🌐 Ti protiv prijatelja, 5 na 5 — svaki vodi sredinu, po 4 bota pomažu</div>
+    <div class="mpTitle" data-en="🌐 You vs a friend, 5 vs 5 — each of you plays mid, 4 bots help each side">🌐 Ti protiv prijatelja, 5 na 5 — svaki vodi sredinu, po 4 bota pomažu</div>
     <div class="mpRow">
-      <button id="mpHost" class="mpBtn">📡 Napravi sobu</button>
-      <span class="mpOr">ili upiši kod:</span>
-      <input id="mpCode" maxlength="4" placeholder="KOD" autocomplete="off">
-      <button id="mpJoin" class="mpBtn">🔌 Uđi</button>
+      <button id="mpHost" class="mpBtn" data-en="📡 Create room">📡 Napravi sobu</button>
+      <span class="mpOr" data-en="or type a code:">ili upiši kod:</span>
+      <input id="mpCode" maxlength="4" placeholder="KOD" data-en-ph="CODE" autocomplete="off">
+      <button id="mpJoin" class="mpBtn" data-en="🔌 Join">🔌 Uđi</button>
       <span id="mpCodeBig" class="hidden"></span>
     </div>
-    <div id="mpStatus">Napravi sobu i pošalji kod prijatelju (treba internet).</div>
+    <div id="mpStatus" data-en="Create a room and send the code to your friend (needs internet).">Napravi sobu i pošalji kod prijatelju (treba internet).</div>
   </div>
-  <p class="hint">🖱️ klik = hodaj i napadaj &nbsp;·&nbsp; <kbd>A</kbd>+klik napad u hodu &nbsp;·&nbsp; <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>R</kbd> moći &nbsp;·&nbsp; <kbd>D</kbd> <kbd>F</kbd> čarolije &nbsp;·&nbsp; <kbd>B</kbd> dućan &nbsp;·&nbsp; <kbd>Esc</kbd> postavke &nbsp;·&nbsp; <kbd>H</kbd> sve tipke &nbsp;·&nbsp; 👆 tablet: dodir i povlačenje</p>
+  <p class="hint" data-en="🖱️ click = walk and attack &nbsp;·&nbsp; <kbd>A</kbd>+click attack-move &nbsp;·&nbsp; <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>R</kbd> abilities &nbsp;·&nbsp; <kbd>D</kbd> <kbd>F</kbd> spells &nbsp;·&nbsp; <kbd>B</kbd> shop &nbsp;·&nbsp; <kbd>Esc</kbd> settings &nbsp;·&nbsp; <kbd>H</kbd> all keys &nbsp;·&nbsp; 👆 tablet: tap and drag">🖱️ klik = hodaj i napadaj &nbsp;·&nbsp; <kbd>A</kbd>+klik napad u hodu &nbsp;·&nbsp; <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>R</kbd> moći &nbsp;·&nbsp; <kbd>D</kbd> <kbd>F</kbd> čarolije &nbsp;·&nbsp; <kbd>B</kbd> dućan &nbsp;·&nbsp; <kbd>Esc</kbd> postavke &nbsp;·&nbsp; <kbd>H</kbd> sve tipke &nbsp;·&nbsp; 👆 tablet: dodir i povlačenje</p>
 </div>
 
 <!-- POMOĆ -->
 <div id="help" class="overlay hidden">
-  <div class="helpBox">
+  <div class="helpBox" data-lang="hr">
     <h2>❓ Kako se igra</h2>
+    🆕 <b>v0.43</b>: 🌍 <b>igra na engleskom</b> (biraš na početnom ekranu, gore desno) • 🎬 novi početni ekran s junacima<br>
     🆕 <b>v0.42</b>: 🏆 postignuća i profil — gumb „Postignuća” na ekranu odabira, nova postignuća na kraju igre, pobjede sa svakim junakom<br>
     🆕 <b>v0.41</b>: 🔊 novi zvuk (lijevo/desno, tiše izdaleka) • 🌲 vjetar, ptice, cvrčci i žubor rijeke (⚙️ postavke)<br>
     🆕 <b>v0.40</b>: 🪙 zlatnik iznad vojnika = udari ga sada i dobiješ zlato • 💡 savjeti za početnike • 🏅 medalje na kraju • 🔥 junak u nizu pobjeda gori • ⚙️ vještine se mogu učiti same<br>
@@ -549,50 +727,96 @@
     🎥 <b>Razmak</b> — prati junaka • <b>strelice</b> ili miš uz rub ekrana — kamera • <b>kotačić</b> — zum • ⏸️ <b>P</b> pauza • <b>M</b> zvuk • <b>S</b> stani • <b>A</b> napad u hodu<br>
     🏆 <b>Cilj:</b> sruši čuvarske kule pa crveni <b>prijestol 👑</b> — i čuvaj svoj!
   </div>
-  <button id="helpClose">Razumijem! 👍</button>
+  <div class="helpBox" data-lang="en">
+    <h2>❓ How to play</h2>
+    🆕 <b>v0.43</b>: 🌍 <b>English version</b> (pick it on the start screen, top right) • 🎬 new start screen with all the heroes<br>
+    🆕 <b>v0.42</b>: 🏆 achievements and profile — “Achievements” button on the hero screen, new achievements at the end of a game, wins with every hero<br>
+    🆕 <b>v0.41</b>: 🔊 new sound (left/right, quieter from far away) • 🌲 wind, birds, crickets and a babbling river (⚙️ settings)<br>
+    🆕 <b>v0.40</b>: 🪙 a coin above a creep = hit it now and you get the gold • 💡 tips for beginners • 🏅 medals at the end • 🔥 a hero on a kill streak is on fire • ⚙️ abilities can level up by themselves<br>
+    🆕 <b>v0.39</b>: 💨 you are faster out of combat (even faster near the fountain) • 🔢 damage numbers only for your own hits • 🪙 coins fly to you when you defeat a hero<br>
+    🆕 <b>v0.38</b>: ⛶ <b>fullscreen</b> (button at the top right — the mouse can't escape the game, Esc lets it go) • 🐿️ <b>Nishan</b> (sniper) and 🐂 <b>Bikosh</b> (bull with an axe) • 🎓 <b>every hero has their own talents</b> • 💥 critical hits look and sound big • 🛒 clearer shop with cards and “Buy next”<br>
+    🖱️ <b>Left or right click</b> — move / attack an enemy (click anywhere on their body — a red ring lights up under the mouse and the pointer becomes a ⚔️ sword) • <b>hold the mouse button</b> — your hero keeps following the mouse<br>
+    🎯 <b>Aiming</b> — press an ability (Q/W/E/R): you see the <b>range ring</b>, an area circle or an arrow (the arrow shows where the projectile REALLY flies), then <b>click the target</b> — click a hero and the ability goes right at them; right click or Esc cancels • ⚡ in settings you can turn on <b>quick cast</b> (hold the key = range, release = cast)<br>
+    ⚔️ <b>A then click — attack-move</b>: your hero walks there and attacks every enemy on the way<br>
+    ⏳ <b>Preparation</b> — for the first 30 seconds (clock from -0:30) the shop is open: buy items! Creeps, jungle and runes start at 0:00 with a horn (against bots you can click ▶️ Start now)<br>
+    🗣️ <b>Heroes talk!</b> Each one has their own voice: they speak when you pick them, cast their ult, defeat a hero, fall and come back (sometimes while walking or attacking) • you also hear enemy ults nearby • turn voices off in ⚙️ settings<br>
+    📣 The <b>announcer</b> calls first blood, multi-kills and streaks, fallen towers, dragons, victory and defeat (turn it off in ⚙️ settings) • 💃 <b>J</b> or the 💃 button — dance and a funny line • 💀 when you fall, you see <b>who defeated you and with what</b> • 🤖 on the hero screen you pick the <b>bot difficulty</b> (Easy / Normal / Hard)<br>
+    🌀 <b>T — teleport!</b> Press T then click <b>your tower or barracks</b> (also on the minimap) — in 3.5 s you are there; T twice = home (3 s). Enemies see the beam of light at the destination too! Moving or a stun stops it, it recharges in 60 s<br>
+    🌫️ <b>Fog of war</b> — you only see where your team is! <b>Trees and cliffs block the view</b> (from the lowground you can't see up onto the high ground), enemies hide in the fog, and <b>at night you see less</b> — watch out for ambushes from the jungle<br>
+    ⬆️ <b>Skill points</b> — every level gives 1 point to spend on your abilities, and the <b>📊 Attributes+</b> button gives +2 to all attributes<br>
+    💪🤸🧠 <b>Attributes like in DotA</b> — Strength gives health, Agility gives speed and attack speed, Intelligence gives mana; the <b>main attribute</b> (gold) gives your hero damage and grows every level<br>
+    ⛰️ <b>Height</b> — the river is the lowground, the bases are high ground: whoever shoots <b>uphill misses 25%</b>!<br>
+    🗼 <b>Towers are strong and PROTECT their heroes</b> — attack a hero under their tower and the tower shoots YOU (⚠️ warning), and early in the game it hits heroes twice as hard and harder with every shot! • ⚔️ <b>Aggro like in Dota</b>: attack a hero near their creeps and those creeps rush at you; click your own creep to “calm” them<br>
+    👻 <b>Invisibility</b> (Luna’s ult) — enemies can’t see or target you; attacking breaks it<br>
+    🖥️ <b>Layout like Warcraft 3</b>: minimap bottom left, 2×3 inventory next to the portrait, abilities bottom right<br>
+    🛒 <b>B</b> (or the 🛒 button bottom right) — shop like in DotA: <b>Basic</b> / <b>Upgrades</b> / ⭐ <b>Guide</b>; <b>right click</b> = buy, click = recipe, 📌 quick buy • 🎒 inventory 6 + backpack 3 (drag with the mouse; items in the backpack don’t work) • active items: keys <b>1–6</b> or click • <b>right click</b> an item in your inventory = sell for half price<br>
+    🏰 <b>Fortified buildings</b> — heroes do half damage to towers, so push with your creeps (siege creeps hit harder) • 🤝 <b>assist</b>: be close when a teammate defeats a hero<br>
+    🏚️ <b>Barracks</b> — behind the 2nd tower of every lane; destroy the enemy barracks and your creeps in that lane become <b>💪 SUPER creeps</b>!<br>
+    💸 <b>O — buyback!</b> When you fall, you can pay gold to come back right away (recharges in 3 min) • 🛡️ The dragon gives the <b>Aegis</b> — one free respawn<br>
+    ✨ <b>D / F — summoner spells</b> (pick them on the hero screen) • 🔵🔴 <b>jungle buffs</b>: the Blue golem (mana, shorter cooldowns) and the Fire wolf (hits burn) — 90 s, and whoever defeats you steals it<br>
+    🛡️ <b>Y — Glyph!</b> All towers and barracks of your team take no damage for 5 s (recharges in 5 min) — save a tower at the last second<br>
+    ✨ <b>K</b> — effects on/off (glow, colors; they turn off by themselves on slow devices) • 💬 <b>G</b> — quick chat (then 1–6: Well done, Help, Attack…) • 📍 <b>V</b> — ping where the mouse is (teammates see it on the map and minimap)<br>
+    💰 <b>Bounty runes</b> (4 in the jungle, every 3 min) give gold to the whole team • 📘 <b>Wisdom runes</b> (jungle corners, every 7 min) give lots of experience • 🌰 <b>Neutral items</b> sometimes drop from jungle monsters and go into the round slot next to your inventory (better the longer the game goes)<br>
+    🍼 <b>Bottle</b> (3 sips, refills at the fountain), 🌫️ <b>Dust</b> (reveals invisible enemies), 👁️ <b>Ward</b> (puts an eye into the fog), ☀️ <b>Sunstone</b> (burns everything around you)<br>
+    🌀 <b>Curse</b> = you take more damage • 😵 <b>Ink/dizzy</b> = you miss • 🏃 <b>Charges</b> and 🐙 <b>tentacles</b> push and pull heroes<br>
+    ✨ <b>Innate passive</b> — every hero has one passive (round badge on the portrait) that always works and gets stronger by itself at levels 7, 13 and 19; plus 4 active abilities Q W E R (Q/W/E up to rank 4, ult up to 3) • ⬆️ max level is <b>25</b> • 🎓 <b>Talents</b> — at levels 10, 15, 20 and 25 you pick one of two bonuses (buttons at the top); <b>every hero has their own</b> (they make abilities stronger — see 🎓 on the hero screen) • 🕊️ <b>Shrine</b> in your team’s jungle: a hurt hero stands next to it and it heals the whole team for 5 s (recharges in 4 min) • 🫏 <b>Courier</b>: an item bought far from base stays faded in your inventory until the flying donkey brings it (or you go home)<br>
+    🗿 <b>Stone Golem</b> — a jungle monster, every third hit stuns • 💪 creeps on both sides get stronger every 7.5 min<br>
+    ❗ <b>Deny</b> — click your own creep below half health and finish it yourself: the enemy gets no gold and only half the experience (a tower below 10% too)<br>
+    🛡️ <b>Towers without creeps</b> — a tower with no enemy creeps nearby takes half damage and heals itself: push together with your creeps!<br>
+    🌿 <b>Tango</b>: click it then click a <b>TREE</b> — your hero eats it and slowly gets health back (the tree grows back in 3 min) • 🪓 the Hatchet cuts trees • 💧 <b>Clarity</b> slowly gives mana back • 🧀 the second time the Dragon falls it leaves <b>cheese</b> • 🛑 defeat a hero on a streak and you get extra gold<br>
+    📋 <b>Tab</b> — scoreboard (kills, deaths, assists, gold) • 💃 <b>J</b> — dance<br>
+    🐉 <b>Drakes</b> on the river (bottom right): 🔥 fire, 💧 water, ⚡ storm or 🌿 forest — defeat it with your team and <b>the whole team gets a bonus forever</b> (bonuses add up); a new one comes after 2.5 min<br>
+    ⚙️ <b>Esc</b> or the ⚙️ button — settings (volume, hero voices, announcer, picture quality, edge camera, damage numbers) • 👆 <b>tablet</b>: tap = walk/attack, drag a finger = camera, two fingers = zoom, 📋 scoreboard, 🎯 camera on your hero<br>
+    ⚔️/🏹 <b>Melee and Ranged</b> — the badge tells you if the hero fights up close or from far away<br>
+    🐗 <b>Jungle</b> and 🐲 <b>Great Dragon</b> • ✨ <b>runes</b> every 2 min • 🌙 day/night • 💪 big creeps • ⛲ the fountain heals<br>
+    🎥 <b>Space</b> — follow your hero • <b>arrow keys</b> or the mouse at the screen edge — camera • <b>mouse wheel</b> — zoom • ⏸️ <b>P</b> pause • <b>M</b> sound • <b>S</b> stop • <b>A</b> attack-move<br>
+    🏆 <b>Goal:</b> knock down the guard towers and then the red <b>throne 👑</b> — and protect your own!
+  </div>
+  <button id="helpClose" data-en="Got it! 👍">Razumijem! 👍</button>
 </div>
 
 <!-- DUĆAN -->
 <div id="shop" class="hidden">
-  <div class="shopHead"><span class="shopTitle">🛒 DUĆAN</span><input id="shopSearch" type="text" placeholder="🔍 Traži predmet…" autocomplete="off"><span id="shopGold">🪙 0</span><button id="shopClose">✖</button></div>
-  <div id="shopPrep" class="hidden">⏳ Priprema: još <b id="shopPrepT">30</b> s do bitke — kupi predmete!<button id="shopPrepGo">▶️ Kreni odmah</button></div>
+  <div class="shopHead"><span class="shopTitle" data-en="🛒 SHOP">🛒 DUĆAN</span><input id="shopSearch" type="text" placeholder="🔍 Traži predmet…" data-en-ph="🔍 Search item…" autocomplete="off"><span id="shopGold">🪙 0</span><button id="shopClose">✖</button></div>
+  <div id="shopPrep" class="hidden"><span data-en="⏳ Preparation: <b id=&quot;shopPrepT&quot;>30</b> s until the battle — buy items!">⏳ Priprema: još <b id="shopPrepT">30</b> s do bitke — kupi predmete!</span><button id="shopPrepGo" data-en="▶️ Start now">▶️ Kreni odmah</button></div>
   <div class="shopMain">
     <div id="shopTabs"></div>
     <div id="shopBody"></div>
   </div>
   <div id="shopDetail"></div>
   <div id="shopInv"></div>
-  <p class="shopTip">🖱️ Klik = opis i recept • desni klik ili dvoklik = kupi • 📌 prikvači = HUD pokazuje što fali • tipka B</p>
+  <p class="shopTip" data-en="🖱️ Click = info and recipe • right click or double click = buy • 📌 pin = HUD shows what's missing • key B">🖱️ Klik = opis i recept • desni klik ili dvoklik = kupi • 📌 prikvači = HUD pokazuje što fali • tipka B</p>
 </div>
 
 <div id="itemTip" class="hidden"></div>
 
 <!-- PAUZA -->
 <div id="pause" class="overlay hidden">
-  <div class="pauseBox">⏸️ PAUZA<br><small>Pritisni P za nastavak</small></div>
+  <div class="pauseBox" data-en="⏸️ PAUSED<br><small>Press P to continue</small>">⏸️ PAUZA<br><small>Pritisni P za nastavak</small></div>
 </div>
 
 <!-- POSTAVKE (⚙️ gumb gore desno ili Esc) -->
 <div id="options" class="overlay hidden">
   <div class="optBox">
-    <h2>⚙️ Postavke</h2>
-    <div class="optRow"><span>🔊 Glasnoća</span><span class="optCtl"><input id="optVol" type="range" min="0" max="100" step="5"><b id="optVolV"></b></span></div>
-    <div class="optRow"><span>🎵 Zvuk</span><button class="optTog" id="optMute"></button></div>
-    <div class="optRow"><span>🗣️ Glasovi junaka</span><button class="optTog" id="optVoices"></button></div>
-    <div class="optRow"><span>🌲 Zvukovi prirode<br><small>vjetar, ptice, cvrčci noću, žubor rijeke</small></span><button class="optTog" id="optNature"></button></div>
-    <div class="optRow"><span>📣 Najavljivač</span><button class="optTog" id="optAnn"></button></div>
-    <div class="optRow"><span>🖼️ Kvaliteta slike</span><span class="optSeg" id="optQ"><button data-q="low">Niska</button><button data-q="med">Srednja</button><button data-q="high">Visoka</button></span></div>
-    <div class="optRow"><span>✨ Efekti (sjaj, boje)</span><button class="optTog" id="optPost"></button></div>
-    <div class="optRow" id="optFsRow"><span>🖥️ Cijeli zaslon<br><small>igra se otvori preko cijelog ekrana</small></span><button class="optTog" id="optFs"></button></div>
-    <div class="optRow" id="optLockRow"><span>🔒 Miš ostaje u igri<br><small>u cijelom zaslonu pokazivač ne može pobjeći (Esc ga otpusti)</small></span><button class="optTog" id="optLock"></button></div>
-    <div class="optRow" id="optEdgeRow"><span>🖱️ Kamera uz rub ekrana</span><button class="optTog" id="optEdge"></button></div>
-    <div class="optRow" id="optQuickRow"><span>⚡ Brzo bacanje moći<br><small>drži tipku = vidiš domet, pusti = baci prema mišu</small></span><button class="optTog" id="optQuick"></button></div>
-    <div class="optRow"><span>💥 Brojevi štete</span><button class="optTog" id="optDmg"></button></div>
-    <div class="optRow"><span>🪙 Pomoć za zadnji udarac<br><small>zlatnik iznad vojnika kojeg tvoj udarac pobjeđuje</small></span><button class="optTog" id="optLh"></button></div>
-    <div class="optRow"><span>💡 Savjeti za početnike<br><small>kratke upute u pravom trenutku</small></span><button class="optTog" id="optTips"></button></div>
-    <div class="optRow"><span>⬆️ Vještine se uče same<br><small>poen koji ne potrošiš za 2–3 s potroši se sam</small></span><button class="optTog" id="optAuto"></button></div>
-    <p class="optHint">Igra trza? Stavi kvalitetu na <b>Niska</b> i isključi efekte.<br>👆 Tablet: dodir = hodaj/napadni, povuci prstom = kamera, dva prsta = zum.</p>
-    <div class="optBtns"><button id="optResume">▶️ Nastavi</button><button id="optQuit">🏠 Izlaz u izbornik</button></div>
+    <h2 data-en="⚙️ Settings">⚙️ Postavke</h2>
+    <div class="optRow"><span>🌍 <span data-en="Language">Jezik</span><br><small data-en="the game restarts in the new language">igra se ponovo pokrene na novom jeziku</small></span><span class="optSeg" id="optLang"><button data-l="hr">HR / BS</button><button data-l="en">EN</button></span></div>
+    <div class="optRow"><span data-en="🔊 Volume">🔊 Glasnoća</span><span class="optCtl"><input id="optVol" type="range" min="0" max="100" step="5"><b id="optVolV"></b></span></div>
+    <div class="optRow"><span data-en="🎵 Sound">🎵 Zvuk</span><button class="optTog" id="optMute"></button></div>
+    <div class="optRow"><span data-en="🗣️ Hero voices">🗣️ Glasovi junaka</span><button class="optTog" id="optVoices"></button></div>
+    <div class="optRow"><span data-en="🌲 Nature sounds<br><small>wind, birds, crickets at night, river</small>">🌲 Zvukovi prirode<br><small>vjetar, ptice, cvrčci noću, žubor rijeke</small></span><button class="optTog" id="optNature"></button></div>
+    <div class="optRow"><span data-en="📣 Announcer">📣 Najavljivač</span><button class="optTog" id="optAnn"></button></div>
+    <div class="optRow"><span data-en="🖼️ Picture quality">🖼️ Kvaliteta slike</span><span class="optSeg" id="optQ"><button data-q="low" data-en="Low">Niska</button><button data-q="med" data-en="Medium">Srednja</button><button data-q="high" data-en="High">Visoka</button></span></div>
+    <div class="optRow"><span data-en="✨ Effects (glow, colors)">✨ Efekti (sjaj, boje)</span><button class="optTog" id="optPost"></button></div>
+    <div class="optRow" id="optFsRow"><span data-en="🖥️ Fullscreen<br><small>the game fills the whole screen</small>">🖥️ Cijeli zaslon<br><small>igra se otvori preko cijelog ekrana</small></span><button class="optTog" id="optFs"></button></div>
+    <div class="optRow" id="optLockRow"><span data-en="🔒 Mouse stays in the game<br><small>in fullscreen the pointer can't escape (Esc lets it go)</small>">🔒 Miš ostaje u igri<br><small>u cijelom zaslonu pokazivač ne može pobjeći (Esc ga otpusti)</small></span><button class="optTog" id="optLock"></button></div>
+    <div class="optRow" id="optEdgeRow"><span data-en="🖱️ Camera at screen edge">🖱️ Kamera uz rub ekrana</span><button class="optTog" id="optEdge"></button></div>
+    <div class="optRow" id="optQuickRow"><span data-en="⚡ Quick cast<br><small>hold the key = see range, release = cast at the mouse</small>">⚡ Brzo bacanje moći<br><small>drži tipku = vidiš domet, pusti = baci prema mišu</small></span><button class="optTog" id="optQuick"></button></div>
+    <div class="optRow"><span data-en="💥 Damage numbers">💥 Brojevi štete</span><button class="optTog" id="optDmg"></button></div>
+    <div class="optRow"><span data-en="🪙 Last-hit helper<br><small>a coin above a creep your hit will finish</small>">🪙 Pomoć za zadnji udarac<br><small>zlatnik iznad vojnika kojeg tvoj udarac pobjeđuje</small></span><button class="optTog" id="optLh"></button></div>
+    <div class="optRow"><span data-en="💡 Beginner tips<br><small>short hints at the right moment</small>">💡 Savjeti za početnike<br><small>kratke upute u pravom trenutku</small></span><button class="optTog" id="optTips"></button></div>
+    <div class="optRow"><span data-en="⬆️ Auto-learn abilities<br><small>a point you don't spend in 2–3 s spends itself</small>">⬆️ Vještine se uče same<br><small>poen koji ne potrošiš za 2–3 s potroši se sam</small></span><button class="optTog" id="optAuto"></button></div>
+    <p class="optHint" data-en="Game stuttering? Set quality to <b>Low</b> and turn effects off.<br>👆 Tablet: tap = walk/attack, drag a finger = camera, two fingers = zoom.">Igra trza? Stavi kvalitetu na <b>Niska</b> i isključi efekte.<br>👆 Tablet: dodir = hodaj/napadni, povuci prstom = kamera, dva prsta = zum.</p>
+    <div class="optBtns"><button id="optResume" data-en="▶️ Resume">▶️ Nastavi</button><button id="optQuit" data-en="🏠 Quit to menu">🏠 Izlaz u izbornik</button></div>
   </div>
 </div>
 
@@ -601,7 +825,7 @@
   <div id="confetti"></div>
   <div id="endHead"><div id="endEmoji"></div><h1 id="endTitle"></h1></div>
   <div id="endTable"></div>
-  <button id="againBtn" class="bigBtn">🔄 Igraj ponovo!</button>
+  <button id="againBtn" class="bigBtn" data-en="🔄 Play again!">🔄 Igraj ponovo!</button>
 </div>
 
 <script src="lib/three.min.js"></script>
@@ -611,11 +835,13 @@
   if(location.protocol === 'file:') document.write('<script src="assets/models.js"><\/script>');
 </script>
 <script src="lib/peerjs.min.js"></script>
+<script src="i18n.js"></script>
 <script src="data.js"></script>
 <script src="voices.js"></script>
 <script src="scene3d.js"></script>
 <script src="net.js"></script>
 <script src="game.js"></script>
 <script src="shop.js"></script>
+<script src="landing.js"></script>
 </body>
 </html>
