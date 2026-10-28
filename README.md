@@ -33,6 +33,8 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
     - na početku su daljinski nosači s okretnošću pobjeđivali ~69% igara (Nišan 81%), a čarobnjaci s inteligencijom ~41%
     - 🧠 **inteligencija jača moći** (+0.25% štete moći po bodu) • 🤸 okretnost daje manje brzine napada (0.42% po bodu), kretanja (0.22 po bodu) i oklopa (1 po 12 bodova) • 💪 snaga daje 21 život po bodu • ⚔️ **junaci izbliza primaju 8% manje štete**
     - slabiji ulti Nišana, Strijele, Orline i Gavrana, slabiji Skakač; jači Skokica, Bambus, Sivko, Pipko, Pčela, Žarko, Mudra (i noć koja timu daje jače udarce), Rogo, Duga, Munja, Listko, Ledena, Lavko
+    - Sivko: jača pasiva Čopor (+12% brzine napada po rangu, 2 + 2 života/s)
+    - nakon zadnjeg kruga grupe junaka (po atributu i blizini/daljini) pobjeđuju 46–55% igara (na početku 41–69%)
     - botovi: Bikoš sad koristi ulti i na ranjenom junaku, Mudra baca noć i u timskoj borbi
     - ⚡ u brzoj igri i odluke botova (kada guraju, Veliki Zmaj) i jačina kula idu po bržem satu — igra traje ~12 min (prije ~17)
   - 🐛 postavke „zadaci za početnike” (i nove: glazba, brza igra) sada se pamte i nakon ponovnog učitavanja

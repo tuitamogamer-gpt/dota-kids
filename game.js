@@ -2174,7 +2174,7 @@ function separation(){
 function performAttack(u, t){
   const copor = passiveRank(u, 'copor');       // Čopor: brži napad
   const raging = u.status.rageT > 0;           // Bijes: +40% brzine napada
-  u.atkTimer = u.atkCd / (u.status.hasteT > 0 ? u.status.hasteF : 1) / (1 + (u.atkSpdBonus || 0) + 0.1 * copor + (raging ? 0.4 : 0) + (u.aspdT > 0 ? u.aspdF : 0) + (u.talAspd || 0) + (u.auraAspd || 0) / 100);
+  u.atkTimer = u.atkCd / (u.status.hasteT > 0 ? u.status.hasteF : 1) / (1 + (u.atkSpdBonus || 0) + 0.12 * copor + (raging ? 0.4 : 0) + (u.aspdT > 0 ? u.aspdF : 0) + (u.talAspd || 0) + (u.auraAspd || 0) / 100);
   u.atkN = (u.atkN || 0) + 1;   // 3D: animacija napada
   u.atkInt = u.atkTimer;        // 3D: animacija se ubrzava s brzinom napada
   if(Math.abs(t.x - u.x) > 2) u.face = t.x < u.x ? -1 : 1;
@@ -3293,7 +3293,7 @@ function updateUnit(u, dt){
       if(e.kind === 'hero' && e.team === u.team && !e.dead && dist(u, e) <= 300) e.hp = Math.min(e.maxhp, e.hp + (1 + med) * dt);
     }
     const cop = passiveRank(u, 'copor');       // Čopor (Sivko E): obnova života
-    if(cop) u.hp = Math.min(u.maxhp, u.hp + (1 + cop) * dt);
+    if(cop) u.hp = Math.min(u.maxhp, u.hp + (2 + 2 * cop) * dt);   // ⚖️ v0.45: jača obnova (bilo 1 + rang)
     if(u.frenzyT > 0) u.frenzyT -= dt;
     if(u.aspdT > 0) u.aspdT -= dt;
     if(u.dodgeT > 0) u.dodgeT -= dt;

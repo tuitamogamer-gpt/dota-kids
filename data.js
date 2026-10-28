@@ -968,7 +968,7 @@ const HEROES = [
     id:'majmun', name:L('Skakač', 'Skakach'), emoji:'🐵',
     role:L('🥢 Majmun — brzi borac sa štapom', '🥢 Monkey — fast fighter with a staff'),
     hp:580, mp:260, dmg:56,
-    attrs:{ str:19, agi:26, int:15, strG:4.0, agiG:6.0, intG:2.2, primary:'agi' },
+    attrs:{ str:19, agi:26, int:15, strG:4.0, agiG:5.6, intG:2.2, primary:'agi' },
     range:90, speed:180, atkCd:1.0, projSpeed:0,
     passive:{ name:L('Kombo', 'Combo'), emoji:'👊', color:'#fde047', pid:'kombo',
       desc:L('PASIVNO: svaki treći udarac je jači i malo te izliječi', 'PASSIVE: every third hit is stronger and heals you a little'),
@@ -1038,7 +1038,7 @@ const HEROES = [
     range:82, speed:176, atkCd:1.05, projSpeed:0,
     passive:{ name:L('Čopor', 'Pack'), emoji:'🐾', color:'#cbd5e1', pid:'copor',
       desc:L('PASIVNO: brže napadaš i rane ti brže zacjeljuju', 'PASSIVE: you attack faster and your wounds heal faster'),
-      tip:rk => L('⚡ +' + (10*rk) + '% brzine napada • 💚 +' + (1 + rk) + ' života/s', '⚡ +' + (10*rk) + '% attack speed • 💚 +' + (1 + rk) + ' HP/s') },
+      tip:rk => L('⚡ +' + (12*rk) + '% brzine napada • 💚 +' + (2 + 2*rk) + ' života/s', '⚡ +' + (12*rk) + '% attack speed • 💚 +' + (2 + 2*rk) + ' HP/s') },
     abilities:[
       { key:'Q', name:L('Zavijanje', 'Howl'), emoji:'🌕', cd:11, mana:45, color:'#e2e8f0',
         desc:L('Zavij na mjesec — tvoj tim udara jače, a neprijatelji se od straha usporavaju', 'Howl at the moon — your team hits harder, and scared enemies slow down'),
