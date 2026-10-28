@@ -443,13 +443,13 @@ function updateExtraRunes(dt){
     if(!h) continue;
     extraRunes.splice(i, 1);
     if(r.kind === 'bounty'){
-      const g = Math.round(40 + gameTime / 60 * 3);
+      const g = Math.round(40 + gameClock() / 60 * 3);
       for(const e of units) if(e.kind === 'hero' && e.team === h.team) e.gold += g;
       addFloat(h.x, h.y - 30, L('💰 +' + g + ' zlata cijelom timu!', '💰 +' + g + ' gold for the whole team!'), '#fde047', 16);
       feedMsg(L('💰 ' + h.emoji + ' ' + h.name + ' je uzeo runu zlata (+' + g + ' svima u timu)', '💰 ' + h.emoji + ' ' + h.name + ' took a bounty rune (+' + g + ' for the whole team)'), TEAM_COLOR[h.team]);
       if(h.team === myTeam) sfx('buy');
     } else {
-      const xp = Math.round(220 + gameTime / 60 * 22);
+      const xp = Math.round(220 + gameClock() / 60 * 22);
       giveXp(h, xp);
       addFloat(h.x, h.y - 30, L('📘 +' + xp + ' iskustva!', '📘 +' + xp + ' XP!'), '#93c5fd', 16);
       feedMsg(L('📘 ' + h.emoji + ' ' + h.name + ' je uzeo runu mudrosti!', '📘 ' + h.emoji + ' ' + h.name + ' took a wisdom rune!'), TEAM_COLOR[h.team]);
@@ -2408,7 +2408,7 @@ function dropAggro(h, own){
 }
 /* 🗼 koliko jače kula udara junake: ×2 do 10. minute, pa pada do ×1.3 u 20. minuti */
 function towerHeroMul(){
-  const m = gameTime / 60, [a, b] = CFG.towerHeroMul;
+  const m = gameClock() / 60, [a, b] = CFG.towerHeroMul;
   return m <= 10 ? a : (m >= 20 ? b : a + (b - a) * (m - 10) / 10);
 }
 /* kula neprijatelja tima `team` koja pokriva točku (x, y) — za botove (ne ulazi pod kulu) */
@@ -2708,7 +2708,7 @@ function planTeam(ai){
   }
   // 🐲 2) Veliki Zmaj kad protivnici leže
   const bc = camps.find(c => c.type === 'boss'), boss = bc && bc.units[0];
-  if(!th && boss && !boss.dead && gameTime > 900 && theirsAlive.length <= 2 && mineAlive.length >= 3 && avgLvl(mineAlive) >= 11){
+  if(!th && boss && !boss.dead && gameClock() > 900 && theirsAlive.length <= 2 && mineAlive.length >= 3 && avgLvl(mineAlive) >= 11){
     let n = 0;
     for(const u of bots) if(aiFree(u) && dist(u, boss) < 3200){ giveOrder(u, { type: 'boss', until: gameTime + 35 }); n++; }
     if(n){ ai.stats.boss++; teamSay(team, L('🐲 Tim ide na Velikog Zmaja!', '🐲 The team goes for the Great Dragon!')); ai.log = 'zmaj'; }
@@ -2716,8 +2716,8 @@ function planTeam(ai){
   // 🏰 3) guranje kad smo jači
   const deadFoes = theirs.filter(h => h.dead && h.deadT > 10).length;
   const nwLead = teamNetWorth(team) / Math.max(1, teamNetWorth(foe));
-  const strong = (deadFoes >= 2 && mineAlive.length >= 3) || (gameTime > 840 && nwLead > 1.2 && mineAlive.length >= theirsAlive.length) ||
-    (gameTime > 1260 && mineAlive.length >= theirsAlive.length && mineAlive.length >= 4);
+  const strong = (deadFoes >= 2 && mineAlive.length >= 3) || (gameClock() > 840 && nwLead > 1.2 && mineAlive.length >= theirsAlive.length) ||
+    (gameClock() > 1260 && mineAlive.length >= theirsAlive.length && mineAlive.length >= 4);
   if(!th && !ai.push && ai.pushCd <= 0 && strong && Math.random() < mk){
     const lane = pushLane(team);
     if(lane){
@@ -2964,7 +2964,7 @@ function botThink(u){
     for(const r of extraRunes){ const d = distXY(u.x, u.y, r.x, r.y); if(d < bd){ bd = d; rn = r; } }
     if(rn){ u.attackTarget = null; u.moveTarget = { x: rn.x, y: rn.y }; return; }
   }
-  if(!eh && gameTime > 300 && u.level >= 6){   // 🐉 zmajčić: botovi ga love u paru (ili sami kad su jaki)
+  if(!eh && gameClock() > 300 && u.level >= 6){   // 🐉 zmajčić: botovi ga love u paru (ili sami kad su jaki)
     const dc = camps.find(c => c.type === 'drake'), dr = dc && dc.units[0];
     if(dr && !dr.dead && !dr.removeMe && u.hp > u.maxhp * (u.attackTarget === dr ? 0.35 : 0.7) && dist(u, dr) < 1300){
       const allies = units.reduce((a, h) => a + (h.kind === 'hero' && h.team === u.team && !h.dead && dist(h, dr) < 1300 ? 1 : 0), 0);
@@ -3209,7 +3209,7 @@ function updateUnit(u, dt){
       u.deadT -= dt;
       if(u.buybackCd > 0) u.buybackCd -= dt;
       // botovi se otkupljuju kasnije u igri kad su bogati
-      if(u.bot && botDiff(u).buyback && u.deadT > 12 && gameTime > 420 && u.buybackCd <= 0 && u.gold > buybackCost(u) * 2.5) buyback(u);
+      if(u.bot && botDiff(u).buyback && u.deadT > 12 && gameClock() > 420 && u.buybackCd <= 0 && u.gold > buybackCost(u) * 2.5) buyback(u);
       else if(u.deadT <= 0) respawn(u);
     }
     return;
@@ -4066,8 +4066,10 @@ function makeWorld(){
    Svaka igra kreće od izvornih vrijednosti (CFG_BASE), pa brza igra pomnoži samo ekonomiju i tempo. */
 const CFG_BASE = Object.assign({}, CFG);
 const TURBO = { passiveGold: 2.5, heroKillGold: 1.5, heroKillGoldPerLvl: 1.5, heroKillXp: 1.7, assistGold: 1.6, creepGoldMul: 2, creepXpMul: 2,
-  creepXp: 2, towerGoldTeam: 1.5, towerXp: 1.5, barracksGoldTeam: 1.5, respawnBase: 0.75, respawnPerLvl: 0.7, towerHp: 0.6, waveEvery: 0.85, barracksHp: 0.7, ancientHp: 0.7,
+  creepXp: 2, towerGoldTeam: 1.5, towerXp: 1.5, barracksGoldTeam: 1.5, respawnBase: 0.75, respawnPerLvl: 0.7, towerHp: 0.6, waveEvery: 0.85, timeScale: 0.6, barracksHp: 0.7, ancientHp: 0.7,
   campRespawn: 0.7, bossRespawn: 0.6, drakeRespawn: 0.6, barracksRespawn: 0.7, buybackCd: 0.5, startGold: 1.3, prepTime: 0.5, creepScaleEvery: 0.6 };
+/* ⏱️ „sat igre” za odluke koje ovise o vremenu (kada botovi guraju, jačina kula, rune): u brzoj igri teče brže */
+function gameClock(){ return gameTime / (CFG.timeScale || 1); }
 function gameMode(){ return net.mode === 'host' || net.mode === 'guest' ? 'normal' : (SETTINGS.mode === 'turbo' ? 'turbo' : 'normal'); }
 function applyMode(){
   Object.assign(CFG, CFG_BASE);

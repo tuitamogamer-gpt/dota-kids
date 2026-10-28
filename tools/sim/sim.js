@@ -138,7 +138,7 @@ function runGame(gi){
     ai: G.teamAI ? G.teamAI.map(a => a.stats) : null,
     deaths: heroes.reduce((a, h) => a + h.deaths, 0),
   };
-  if(JSON_OUT) fs.appendFileSync(JSON_OUT, JSON.stringify({ min: res.min, win: res.win, heroes: heroes.map(h => ({ id: h.hero.id, t: h.team, k: h.kills, d: h.deaths, a: h.assists, nw: G.netWorth(h), lv: h.level, hd: Math.round(h.heroDmg || 0), c: h.casts || {} })) }) + '\n');
+  if(JSON_OUT) fs.appendFileSync(JSON_OUT, JSON.stringify({ min: res.min, win: res.win, heroes: heroes.map(h => ({ id: h.hero.id, t: h.team, k: h.kills, d: h.deaths, a: h.assists, nw: G.netWorth(h), lv: h.level, hd: Math.round(h.heroDmg || 0), c: h.casts || {}, it: h.items.filter(Boolean).map(i => i.id) })) }) + '\n');
   if(CHECK) for(const h of heroes){
     const tl = Object.keys(h.talents).map(l => l + (h.talents[l])).join(' ');
     console.log(`   ${h.team ? '🔴' : '🔵'} ${h.hero.id.padEnd(10)} lvl ${String(h.level).padStart(2)} K/D/A ${h.kills}/${h.deaths}/${h.assists}  talenti [${tl}]` +

@@ -85,6 +85,7 @@ const CFG = {
   courierSpeed: 520,        // 🫏 kurir leti brže od junaka
   courierBaseR: 900,        // kupljeno dalje od ovoga od fontane čeka kurira
   creepScaleEvery: 450,     // vojnici jačaju svakih 7.5 min (kao u DotA)
+  timeScale: 1,             // ⏱️ brza igra: 0.6 — botovi ranije guraju, kule ranije gube bonus protiv junaka
   intSpellAmp: 0.0025,      // ⚖️ v0.45: svaki bod inteligencije +0.25% štete moćima (čarobnjaci jačaju s levelima)
   agiAtkSpd: 0.0052,        // ⚖️ v0.45: brzina napada po bodu okretnosti (bilo 0.006 — nosači su bili prejaki)
   creepGoldMul: 1, creepXpMul: 1,   // ⚡ brza igra množi zlato i iskustvo od vojnika i čudovišta
