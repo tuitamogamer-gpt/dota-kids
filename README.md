@@ -29,7 +29,7 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
     - novo postignuće na kraju igre javlja i 🎁 novu nagradu
   - 🎶 **glazba** stvorena u pregledniku (bez datoteka): mirna melodija na izborniku, živahnija u bitci, bubanj svira kad si u borbi; isključuje se u ⚙️ postavkama
   - 📊 **statistika s junakom** na ekranu odabira: broj igara i pobjeda, prosječni K/D/A i rekord
-  - ⚖️ **ravnoteža junaka** — 8 krugova po 40–100 simuliranih igara 5 na 5 (oko 650 igara) (botovi vode oba tima; `tools/sim/sim.js --json`, procjena snage junaka iz sastava timova):
+  - ⚖️ **ravnoteža junaka** — 9 krugova po 40–100 simuliranih igara 5 na 5 (oko 750 igara) (botovi vode oba tima; `tools/sim/sim.js --json`, procjena snage junaka iz sastava timova):
     - na početku su daljinski nosači s okretnošću pobjeđivali ~69% igara (Nišan 81%), a čarobnjaci s inteligencijom ~41%
     - 🧠 **inteligencija jača moći** (+0.25% štete moći po bodu) • 🤸 okretnost daje manje brzine napada (0.4% po bodu), kretanja (0.22 po bodu) i oklopa (1 po 12 bodova) • 💪 snaga daje 21 život po bodu • ⚔️ **junaci izbliza primaju 8% manje štete**
     - slabiji ulti Nišana, Strijele, Orline i Gavrana, slabiji Skakač; jači Skokica, Bambus, Sivko, Pipko, Pčela, Žarko, Mudra (i noć koja timu daje jače udarce), Rogo, Duga, Munja, Listko, Ledena, Lavko

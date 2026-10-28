@@ -123,7 +123,7 @@ const HEROES = [
   {
     id:'vitez', name:LS('Lavko'), emoji:'🦁',
     role:L('🛡️ Vitez — hrabri tenk', '🛡️ Knight — brave tank'),
-    hp:700, mp:240, dmg:60,
+    hp:680, mp:240, dmg:58,
     attrs:{ str:25, agi:16, int:13, strG:5.6, agiG:2.2, intG:2.0, primary:'str' },
     range:78, speed:168, atkCd:1.1, projSpeed:0,
     passive:{ name:L('Lavlja koža', 'Lion Hide'), emoji:'🦺', color:'#fde047', pid:'koza',
@@ -185,7 +185,7 @@ const HEROES = [
   {
     id:'zarko', name:L('Žarko', 'Zharko'), emoji:'🐉',
     role:L('🔥 Vatreni zmaj — čarobnjak', '🔥 Fire dragon — mage'),
-    hp:580, mp:300, dmg:52,
+    hp:620, mp:300, dmg:54,
     attrs:{ str:18, agi:16, int:24, strG:3.6, agiG:2.4, intG:5.4, primary:'int' },
     range:330, speed:165, atkCd:1.15, projSpeed:600, shot:'fire',
     passive:{ name:L('Vatrena krv', 'Fire Blood'), emoji:'🔥', color:'#fb923c', pid:'zar',
@@ -237,7 +237,7 @@ const HEROES = [
   {
     id:'ledena', name:LS('Ledena'), emoji:'🐧',
     role:L('❄️ Snježna čarobnica', '❄️ Snow witch'),
-    hp:600, mp:310, dmg:54,
+    hp:640, mp:310, dmg:56,
     attrs:{ str:18, agi:16, int:24, strG:3.6, agiG:2.4, intG:5.2, primary:'int' },
     range:330, speed:165, atkCd:1.15, projSpeed:600, shot:'ice',
     passive:{ name:L('Ledeni dodir', 'Icy Touch'), emoji:'❄️', color:'#7dd3fc', pid:'dodir',
@@ -333,18 +333,18 @@ const HEROES = [
         }},
       { key:'R', name:L('Sokolovo oko', 'Falcon\'s Eye'), emoji:'🌠', cd:65, mana:110, ult:true, color:'#fde047',
         desc:L('ULTI: Čarobna strijela sama pronađe najslabijeg neprijateljskog junaka!', 'ULT: A magic arrow finds the weakest enemy hero by itself!'),
-        tip:rk => L('⚔️ ' + (160 + 100*rk) + ' štete najslabijem junaku (ne može promašiti)', '⚔️ ' + (160 + 100*rk) + ' damage to the weakest hero (can\'t miss)'),
+        tip:rk => L('⚔️ ' + (150 + 92*rk) + ' štete najslabijem junaku (ne može promašiti)', '⚔️ ' + (150 + 92*rk) + ' damage to the weakest hero (can\'t miss)'),
         bot:{type:'snipe', range:2000},
         cast(u, aim, rk){
           const t = weakestEnemyHero(u, 2200);
           if(!t) return false;
-          spawnHoming(u, t, {speed:950, dmg:160 + 100*rk, r:12,
+          spawnHoming(u, t, {speed:950, dmg:150 + 92*rk, r:12,
             color:'#fde047', emoji:'🌠',
             onHit(e){ burst(e.x, e.y, '#fde047', 26, 300, 7); }});
           if(hasTal(u, 'strijela_r2')){   // 🎓 talent: druga strijela u drugog najslabijeg junaka
             let t2 = null, bh = 1e9;
             for(const e of units) if(e !== t && e.kind === 'hero' && e.team !== u.team && !e.dead && dist(u, e) < 2200 && isVisibleTo(u.team, e) && e.hp < bh){ bh = e.hp; t2 = e; }
-            if(t2) spawnHoming(u, t2, {speed:950, dmg:160 + 100*rk, r:12, color:'#fde047', emoji:'🌠', onHit(e){ burst(e.x, e.y, '#fde047', 26, 300, 7); }});
+            if(t2) spawnHoming(u, t2, {speed:950, dmg:150 + 92*rk, r:12, color:'#fde047', emoji:'🌠', onHit(e){ burst(e.x, e.y, '#fde047', 26, 300, 7); }});
           }
           return true;
         }},
@@ -466,7 +466,7 @@ const HEROES = [
   {
     id:'skokica', name:L('Skokica', 'Skokitsa'), emoji:'🐸',
     role:L('👅 Žabac — vuče neprijatelje k sebi', '👅 Frog — pulls enemies in'),
-    hp:720, mp:260, dmg:63,
+    hp:740, mp:260, dmg:63,
     attrs:{ str:24, agi:18, int:14, strG:5.2, agiG:3.0, intG:2.2, primary:'str' },
     range:85, speed:172, atkCd:1.05, projSpeed:0,
     passive:{ name:L('Vodozemac', 'Amphibian'), emoji:'💧', color:'#38bdf8', pid:'voda',
@@ -659,7 +659,7 @@ const HEROES = [
   {
     id:'tragac', name:L('Tragač', 'Tracker'), emoji:'🦝',
     role:L('💰 Lovac na glave — nevidljivi plaćenik', '💰 Bounty hunter — invisible mercenary'),
-    hp:560, mp:250, dmg:60,
+    hp:600, mp:250, dmg:62,
     attrs:{ str:19, agi:25, int:16, strG:3.8, agiG:6.2, intG:2.4, primary:'agi' },
     range:95, speed:175, atkCd:1.0, projSpeed:0,
     passive:{ name:L('Lukavi udarac', 'Sneaky Strike'), emoji:'💢', color:'#fb923c', pid:'jinada',
@@ -669,11 +669,11 @@ const HEROES = [
       { key:'Q', name:L('Leteća zvijezda', 'Throwing Star'), emoji:'💫', cd:8, mana:45, color:'#fbbf24',
         desc:L('Baci oštru zvijezdu koja ranjava i kratko omami', 'Throw a sharp star that hurts and stuns briefly'),
         target:'point', castRange:600, line:true, lineFull:true, lineW:52,
-        tip:rk => L('⚔️ ' + (60 + 45*rk) + ' štete + omama 0.4 s', '⚔️ ' + (60 + 45*rk) + ' damage + 0.4 s stun'),
+        tip:rk => L('⚔️ ' + (70 + 50*rk) + ' štete + omama 0.4 s', '⚔️ ' + (70 + 50*rk) + ' damage + 0.4 s stun'),
         bot:{type:'shot', range:560},
         cast(u, aim, rk){
           return spawnSkillshot(u, aim, {speed:750, r:16, range:600,
-            dmg:60 + 45*rk, color:'#fbbf24', emoji:'💫',
+            dmg:70 + 50*rk, color:'#fbbf24', emoji:'💫',
             onHit(e){ applyStun(e, 0.4); }});
         }},
       { key:'W', name:L('Dimna bomba', 'Smoke Bomb'), emoji:'💨', cd:14, mana:60, color:'#94a3b8',
@@ -907,7 +907,7 @@ const HEROES = [
   {
     id:'sova', name:LS('Mudra'), emoji:'🦉',
     role:L('🌙 Sova — gospodarica noći', '🌙 Owl — queen of the night'),
-    hp:620, mp:300, dmg:62,
+    hp:660, mp:300, dmg:62,
     attrs:{ str:18, agi:19, int:23, strG:3.6, agiG:3.2, intG:5.6, primary:'int' },
     range:350, speed:170, atkCd:1.1, projSpeed:650, shot:'feather',
     passive:{ name:L('Noćna ptica', 'Night Bird'), emoji:'🌙', color:'#a78bfa', pid:'noc',
@@ -967,8 +967,8 @@ const HEROES = [
   {
     id:'majmun', name:L('Skakač', 'Skakach'), emoji:'🐵',
     role:L('🥢 Majmun — brzi borac sa štapom', '🥢 Monkey — fast fighter with a staff'),
-    hp:580, mp:260, dmg:54,
-    attrs:{ str:19, agi:26, int:15, strG:4.0, agiG:5.6, intG:2.2, primary:'agi' },
+    hp:580, mp:260, dmg:52,
+    attrs:{ str:19, agi:26, int:15, strG:4.0, agiG:5.2, intG:2.2, primary:'agi' },
     range:90, speed:180, atkCd:1.0, projSpeed:0,
     passive:{ name:L('Kombo', 'Combo'), emoji:'👊', color:'#fde047', pid:'kombo',
       desc:L('PASIVNO: svaki treći udarac je jači i malo te izliječi', 'PASSIVE: every third hit is stronger and heals you a little'),
@@ -1509,7 +1509,7 @@ const HEROES = [
   {
     id:'nisan', name:L('Nišan', 'Nishan'), emoji:'🐿️',
     role:L('🎯 Vjeverica — snajperist (gađa izdaleka)', '🎯 Squirrel — sniper (shoots from far away)'),
-    hp:500, mp:260, dmg:44,
+    hp:500, mp:260, dmg:42,
     attrs:{ str:16, agi:24, int:15, strG:2.2, agiG:5.3, intG:2.4, primary:'agi' },
     range:410, speed:166, atkCd:1.15, projSpeed:1100, shot:'pellet',
     passive:{ name:L('Pogodak u glavu', 'Headshot'), emoji:'🎯', color:'#fbbf24', pid:'headshot',
@@ -1556,7 +1556,7 @@ const HEROES = [
       { key:'R', name:L('Savršen hitac', 'Perfect Shot'), emoji:'🔫', cd:60, mana:150, ult:true, color:'#ef4444',
         desc:L('ULTI: Nanišani neprijateljskog junaka izdaleka — nakon kratkog nišanjenja hitac ga uvijek pogodi', 'ULT: Aim at an enemy hero from far away — after a short aim, the shot always hits'),
         target:'point', castRange:2000, aoe:170,
-        tip:rk => L('🎯 nišani 1.6 s, pa ⚔️ ' + (280 + 130*rk) + ' štete + omama 0.4 s (domet 2000)', '🎯 aims for 1.6 s, then ⚔️ ' + (280 + 130*rk) + ' damage + 0.4 s stun (range 2000)'),
+        tip:rk => L('🎯 nišani 1.6 s, pa ⚔️ ' + (260 + 120*rk) + ' štete + omama 0.4 s (domet 2000)', '🎯 aims for 1.6 s, then ⚔️ ' + (260 + 120*rk) + ' damage + 0.4 s stun (range 2000)'),
         bot:{type:'snipe', range:1900},
         cast(u, aim, rk){
           const p = clampRange(u, aim, 2000);
@@ -1567,7 +1567,7 @@ const HEROES = [
             const d = distXY(p.x, p.y, e.x, e.y); if(d < bd){ bd = d; best = e; }
           }
           if(!best) return false;
-          const dmg = 280 + 130*rk + abBonus(u, 'R', 'dmg');
+          const dmg = 260 + 120*rk + abBonus(u, 'R', 'dmg');
           startChannel(u, hasTal(u, 'nisan_r_fast') ? 0.8 : 1.6, best, t => {
             spawnHoming(u, t, { speed:2600, dmg, r:10, color:'#fde047', shot:'pellet', big:true,
               onHit(e){ applyStun(e, 0.4); burst(e.x, e.y, '#fde047', 30, 320, 8); addFloat(e.x, e.y, L('🎯 POGODAK!', '🎯 BULLSEYE!'), '#fde047', 20); } });
