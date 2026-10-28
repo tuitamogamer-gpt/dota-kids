@@ -1259,6 +1259,7 @@ function kill(t, src){
       if(t.buff) giveJungleBuff(src, t.buff, JUNGLE_BUFFS[t.buff].dur);   // 🔵🔴 buff džungle
       if(t.boss){
         bossKills++;
+        for(const h of units) if(h.kind === 'hero' && h.team === src.team) h.bossKill = true;   // 🏆 Zmajoubojica (cijeli tim)
         if(bossKills >= 2){   // 🧀 od drugog puta Zmaj ostavlja i sir
           const cheese = ITEM_BY_ID.cheese;
           const taker = [src].concat(units.filter(h => h.kind === 'hero' && h.team === src.team && h !== src && !h.dead))
@@ -1320,6 +1321,7 @@ function kill(t, src){
     if(credit){
       credit.kills++;
       credit.streak = (credit.streak || 0) + 1;
+      credit.bestStreak = Math.max(credit.bestStreak || 0, credit.streak);
       credit.gold += CFG.heroKillGold + t.level * CFG.heroKillGoldPerLvl;
       giveXp(credit, CFG.heroKillXp + t.level * 15);
       killerName = credit.emoji + ' ' + credit.name;
@@ -1392,7 +1394,7 @@ function kill(t, src){
         giveXp(h, 70);
     }
     feedMsg(killerName + '  ⚔️  ' + t.emoji + ' ' + t.name, TEAM_COLOR[1 - t.team]);
-    if(!firstBlood){ firstBlood = true; announce('🩸 Prva krv!', killerName); annEvent('first_blood'); }
+    if(!firstBlood){ firstBlood = true; announce('🩸 Prva krv!', killerName); annEvent('first_blood'); if(src && src.kind === 'hero') src.firstBlood = true; }
     // 💀 ACE (kao u LoL-u): pao je cijeli tim
     else if(units.filter(h => h.kind === 'hero' && h.team === t.team).every(h => h.dead)){
       announce('💀 ACE!', 'Cijeli tim ' + TEAM_NAME[t.team] + ' je pao — sada guraj!');
@@ -1413,6 +1415,7 @@ function kill(t, src){
   }
   else if(t.kind === 'tower'){
     t.removeMe = true;
+    if(src && src.kind === 'hero' && src.team !== t.team) src.towerKills = (src.towerKills || 0) + 1;   // 🏆 Rušitelj
     burst(t.x, t.y, '#fbbf24', 30, 300, 8);
     burst(t.x, t.y, '#94a3b8', 20, 200, 7);
     const denied = !!(src && src.team === t.team);   // ⛔ uskraćena kula: protivnik dobiva pola zlata
@@ -4059,7 +4062,7 @@ function startGame(heroIdx){
   neutralDrops = [{ 1: 0, 2: 0, 3: 0 }, { 1: 0, 2: 0, 3: 0 }]; neutralFx = [];
   resetExtraRunes(); pings = []; chatOpen = false;
   pendingCast = null; resetTeamAI();
-  tip.cur = null; tip.done = {}; tip.next = 8; slowMo = 0;
+  tip.cur = null; tip.done = {}; tip.next = 8; slowMo = 0; gameRecorded = false;
   gameTime = 0; waveTimer = CFG.firstWave; waveCount = 0;
   firstBlood = false; gameOver = false; paused = false;
   quickBuy = null; shopSel = null; invDrag = null; hideItemTip();   // nova igra: bez stare brze kupnje i opisa
@@ -4210,7 +4213,9 @@ function showEndScreen(winTeam, won){
   document.getElementById('endEmoji').textContent = won ? '🎉🏆🎉' : '😢💔😢';
   document.getElementById('endTitle').textContent = won ? 'POBJEDA!' : 'PORAZ!';
   document.getElementById('endTitle').style.color = won ? '#fde047' : '#fca5a5';
-  document.getElementById('endTable').innerHTML = endTableHtml(winTeam);
+  const fresh = recordGame(won);   // 🏆 nova postignuća idu IZNAD tablice (odmah se vide), profil ispod
+  document.getElementById('endTable').innerHTML = achievementsNewHtml(fresh) + endTableHtml(winTeam) + profileLineHtml();
+  if(fresh.length) setTimeout(() => sfx('levelup'), 600);
   const conf = document.getElementById('confetti');
   conf.innerHTML = '';
   if(won){
@@ -4224,6 +4229,95 @@ function showEndScreen(winTeam, won){
     }
   }
   document.getElementById('end').classList.remove('hidden');
+}
+
+/* ================= 🏆 PROFIL I POSTIGNUĆA =================
+   Igra pamti (u pregledniku) koliko si igara odigrao i dobio, pobjede sa svakim junakom
+   i postignuća. Novo postignuće se pokaže na završnom ekranu; sve se vide na ekranu odabira. */
+const ACHIEVEMENTS = [
+  { k: 'first_win',  e: '🎉', n: 'Prva pobjeda',   d: 'pobijedi u igri' },
+  { k: 'first_blood',e: '🩸', n: 'Prva krv',       d: 'pobijedi prvog junaka u igri' },
+  { k: 'hunter',     e: '⚔️', n: 'Lovac',          d: '10 pobjeda nad junacima u jednoj igri' },
+  { k: 'farmer',     e: '🪙', n: 'Zlatar',         d: '100 zadnjih udaraca u jednoj igri' },
+  { k: 'spree',      e: '🔥', n: 'U vatri',        d: '5 junaka zaredom bez pada' },
+  { k: 'survivor',   e: '🛡️', n: 'Neuništiv',      d: 'pobijedi a da ni jednom ne padneš' },
+  { k: 'helper',     e: '🤝', n: 'Timski igrač',   d: '15 asistencija u jednoj igri' },
+  { k: 'towers',     e: '🏰', n: 'Rušitelj',       d: 'zadnji udarac na 3 kule u jednoj igri' },
+  { k: 'dragon',     e: '🐲', n: 'Zmajoubojica',   d: 'tvoj tim pobijedi Velikog Zmaja' },
+  { k: 'tango',      e: '🌿', n: 'Proždrljivac',   d: 'pojedi 4 drveta tangom u jednoj igri' },
+  { k: 'mvp',        e: '👑', n: 'Najbolji',       d: 'budi najbolji igrač igre' },
+  { k: 'legend',     e: '🎓', n: 'Legenda',        d: 'dođi do levela 25' },
+  { k: 'hard',       e: '🦸', n: 'Junak',          d: 'pobijedi botove na težini 🔥 Teško' },
+  { k: 'five',       e: '🌈', n: 'Svestran',       d: 'pobijedi s 5 različitih junaka' },
+  { k: 'ten_wins',   e: '🏆', n: 'Prvak',          d: 'ukupno 10 pobjeda' },
+];
+function loadProfile(){
+  let p = null;
+  try { p = JSON.parse(localStorage.getItem('dk_profile') || 'null'); } catch(e){}
+  if(!p || typeof p !== 'object') p = {};
+  return Object.assign({ games: 0, wins: 0, heroWins: {}, heroGames: {}, ach: {} }, p);
+}
+function saveProfile(p){ try { localStorage.setItem('dk_profile', JSON.stringify(p)); } catch(e){} }
+let gameRecorded = false;
+/* upiši ovu igru u profil; vrati popis NOVIH postignuća */
+function recordGame(won){
+  if(!player || gameRecorded) return [];
+  gameRecorded = true;
+  const p = loadProfile(), id = player.hero.id, h = player;
+  p.games++; p.heroGames[id] = (p.heroGames[id] || 0) + 1;
+  if(won){ p.wins++; p.heroWins[id] = (p.heroWins[id] || 0) + 1; }
+  const heroesAll = units.filter(u => u.kind === 'hero');
+  const score = x => x.kills * 3 + x.assists * 1.5 - x.deaths + (x.lastHits || 0) / 15 + netWorth(x) / 1500;
+  const mvp = heroesAll.slice().sort((a, b) => score(b) - score(a))[0];
+  const got = {
+    first_win: won, first_blood: !!h.firstBlood, hunter: h.kills >= 10, farmer: (h.lastHits || 0) >= 100,
+    spree: (h.bestStreak || h.streak || 0) >= 5, survivor: won && h.deaths === 0, helper: h.assists >= 15,
+    towers: (h.towerKills || 0) >= 3, dragon: !!h.bossKill, tango: (h.treesEaten || 0) >= 4, mvp: mvp === h,
+    legend: h.level >= 25, hard: won && net.mode !== 'host' && net.mode !== 'guest' && SETTINGS.diff === 'hard',
+    five: Object.keys(p.heroWins).length >= 5, ten_wins: p.wins >= 10,
+  };
+  const fresh = [];
+  for(const a of ACHIEVEMENTS) if(got[a.k] && !p.ach[a.k]){ p.ach[a.k] = Date.now(); fresh.push(a); }
+  saveProfile(p);
+  return fresh;
+}
+function achievementsNewHtml(fresh){
+  if(!fresh.length) return '';
+  return `<div class="achNew"><span class="achNewT">🎖️ Novo postignuće${fresh.length > 1 ? ' ×' + fresh.length : ''}!</span>` +
+    fresh.map((a, i) => `<span class="achBadge" style="animation-delay:${0.4 + i * 0.2}s" title="${a.d}"><b>${a.e}</b>${a.n}</span>`).join('') + '</div>';
+}
+function profileLineHtml(){
+  const p = loadProfile();
+  return `<div class="etMvp">🏆 Tvoj profil: <b>${p.wins}</b> pobjeda u <b>${p.games}</b> igara · postignuća <b>${Object.keys(p.ach).length}/${ACHIEVEMENTS.length}</b></div>`;
+}
+/* 🏆 ploča postignuća na ekranu odabira */
+function showAchievements(){
+  const p = loadProfile();
+  let el = document.getElementById('achPanel');
+  if(!el){ el = document.createElement('div'); el.id = 'achPanel'; el.className = 'overlay'; document.body.appendChild(el); el.addEventListener('click', e => { if(e.target === el) el.classList.add('hidden'); }); }
+  const best = Object.entries(p.heroWins).sort((a, b) => b[1] - a[1]).slice(0, 3)
+    .map(([id, n]) => { const hh = HEROES.find(x => x.id === id); return hh ? hh.emoji + ' ' + hh.name + ' ×' + n : ''; }).filter(Boolean).join(' · ');
+  el.innerHTML = `<div class="achBox"><h2>🏆 Postignuća</h2>
+    <div class="achSum">🎮 ${p.games} igara · 🏆 ${p.wins} pobjeda${best ? ' · najčešće pobjeđuješ s: ' + best : ''}</div>
+    <div class="achGrid">${ACHIEVEMENTS.map(a => `<div class="achItem${p.ach[a.k] ? ' on' : ''}"><b>${p.ach[a.k] ? a.e : '🔒'}</b><span><strong>${a.n}</strong><small>${a.d}</small></span></div>`).join('')}</div>
+    <button class="achClose">Zatvori ✖</button></div>`;
+  el.querySelector('.achClose').addEventListener('click', () => el.classList.add('hidden'));
+  el.classList.remove('hidden');
+  sfx('click');
+}
+/* broj pobjeda sa svakim junakom na njegovoj kartici */
+function refreshHeroWins(){
+  const p = loadProfile();
+  HEROES.forEach((h, i) => {
+    const c = document.getElementById('card-' + i); if(!c) return;
+    let b = c.querySelector('.c-wins');
+    const n = p.heroWins[h.id] || 0;
+    if(!n){ if(b) b.remove(); return; }
+    if(!b){ b = document.createElement('div'); b.className = 'c-wins'; c.appendChild(b); }
+    b.textContent = '🏆' + n; b.title = n + ' pobjeda s ovim junakom';
+  });
+  const btn = document.getElementById('achBtn');
+  if(btn) btn.innerHTML = '🏆<span class="lbl"> Postignuća ' + Object.keys(p.ach).length + '/' + ACHIEVEMENTS.length + '</span>';
 }
 
 /* ================= Zvuk ================= */
@@ -5157,6 +5251,8 @@ function buildSelectScreen(){
     if(net.conn){ netReady(); return; }   // multiplayer: čekaj oba igrača
     if(selectedHero >= 0) startGame(selectedHero);
   });
+  { const ab = document.getElementById('achBtn'); if(ab) ab.addEventListener('click', showAchievements); }
+  refreshHeroWins();
   document.getElementById('randomBtn').addEventListener('click', () => {
     const vis = HEROES.map((h, i) => i).filter(i => !document.getElementById('card-' + i).classList.contains('off'));
     const i = vis[Math.floor(Math.random() * vis.length)];

@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.41: 🔊 novi zvuk — bogatiji efekti, prostorni zvuk (lijevo/desno, tiše izdaleka) i 🌲 zvukovi prirode.** v0.40: 🪙 pomoć za zadnji udarac, 💡 savjeti za početnike, 🏅 medalje na kraju igre, 🗺️ portreti na minimapi i 🔥 junaci „u vatri”.** v0.39: čišći ekran (brojevi štete samo kad si ti uključen, manje poruka), 💨 brže putovanje izvan borbe i 🪙 zlatnici koji polete do tebe kad pobijediš junaka.** v0.38: veliko poliranje — ⛶ cijeli zaslon, 🐿️ Nišan i 🐂 Bikoš, 🎓 svaki junak ima svoje talente, 💥 kritični udarci, 🛒 jasniji dućan, 🗺️ veća mapa, 🗼 aggro kao u Doti, 🌫️ prava magla rata, 🌿 tango jede drvo i 🤖 pametniji botovi (gankovi, guranje, obrana).** (v0.37: 👥 pravih 5 na 5, v0.36: peglanje za mobitel i opisi gumba, v0.35: u mrežnoj igri svatko vidi svoje, v0.34: 📣 najavljivač, 🤖 težina botova, 💀 pregled pogibije, 💃 ples)
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.42: 🏆 postignuća i profil — 15 postignuća, pobjede sa svakim junakom i 🎖️ „Novo postignuće!” na kraju igre.** v0.41: 🔊 novi zvuk — bogatiji efekti, prostorni zvuk (lijevo/desno, tiše izdaleka) i 🌲 zvukovi prirode.** v0.40: 🪙 pomoć za zadnji udarac, 💡 savjeti za početnike, 🏅 medalje na kraju igre, 🗺️ portreti na minimapi i 🔥 junaci „u vatri”.** v0.39: čišći ekran (brojevi štete samo kad si ti uključen, manje poruka), 💨 brže putovanje izvan borbe i 🪙 zlatnici koji polete do tebe kad pobijediš junaka.** v0.38: veliko poliranje — ⛶ cijeli zaslon, 🐿️ Nišan i 🐂 Bikoš, 🎓 svaki junak ima svoje talente, 💥 kritični udarci, 🛒 jasniji dućan, 🗺️ veća mapa, 🗼 aggro kao u Doti, 🌫️ prava magla rata, 🌿 tango jede drvo i 🤖 pametniji botovi (gankovi, guranje, obrana).** (v0.37: 👥 pravih 5 na 5, v0.36: peglanje za mobitel i opisi gumba, v0.35: u mrežnoj igri svatko vidi svoje, v0.34: 📣 najavljivač, 🤖 težina botova, 💀 pregled pogibije, 💃 ples)
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -18,6 +18,12 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- 🏆 **Postignuća i profil** (v0.42) — igra pamti (u pregledniku) tvoje igre i pobjede:
+  - 🎖️ **15 postignuća**: 🎉 Prva pobjeda, 🩸 Prva krv, ⚔️ Lovac (10 pobjeda nad junacima u igri), 🪙 Zlatar (100 zadnjih udaraca), 🔥 U vatri (5 zaredom bez pada), 🛡️ Neuništiv (pobjeda bez ijednog pada), 🤝 Timski igrač (15 asistencija), 🏰 Rušitelj (zadnji udarac na 3 kule), 🐲 Zmajoubojica, 🌿 Proždrljivac (4 drveta tangom), 👑 Najbolji, 🎓 Legenda (level 25), 🦸 Junak (pobjeda na „Teško”), 🌈 Svestran (pobjede s 5 junaka) i 🏆 Prvak (10 pobjeda)
+  - na kraju igre nova postignuća iskoče odmah ispod „POBJEDA!” (uz zvono), a ispod tablice piše tvoj profil (pobjede, igre, postignuća)
+  - 🏆 gumb **Postignuća** na ekranu odabira: sva postignuća (otključana i 🔒 zaključana s opisom što treba napraviti), broj igara i pobjeda i junaci s kojima najčešće pobjeđuješ
+  - 🏆 na kartici junaka piše koliko si puta pobijedio s njim
 
 - 🔊 **Novi zvuk** (v0.41):
   - 🎚️ svi zvučni efekti idu kroz zajednički „mikser” (kompresor + malo jeke): kad je puno toga odjednom, zvuk više ne pucketa i ne preglasi se, a bojište zvuči kao prostor

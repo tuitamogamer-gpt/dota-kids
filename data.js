@@ -1677,6 +1677,7 @@ const ITEMS = [
         const t = treeForUse(h, aim, 165, '🌿');
         if(!t) return false;
         cutTree(t, h);
+        h.treesEaten = (h.treesEaten || 0) + 1;   // 🏆 postignuće Proždrljivac
         h.tangoT = 16; useCharge(h, 'tango');
         h.castAim = { x: t.x, y: t.y };
         if(isHuman(h)) addFloat(h.x, h.y - 20, '🌿 Njam, njam!', '#86efac', 15, h.team);

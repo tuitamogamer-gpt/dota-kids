@@ -111,6 +111,27 @@
   .talL{ flex:none; width:26px; height:20px; line-height:20px; text-align:center; border-radius:6px; background:#b45309; color:#fff; font-weight:bold; font-size:12px; }
   .talO{ flex:1; padding:2px 6px; border-radius:6px; background:rgba(255,255,255,.55); border:1px solid #d6c08a; line-height:1.25; }
   .talRow i{ font-style:normal; font-size:10.5px; color:#92400e; }
+  .achBtn{ font-family:inherit; font-size:17px; font-weight:bold; color:#fff; border:none; border-radius:14px; padding:12px 18px; cursor:pointer;
+    background:linear-gradient(#f59e0b,#b45309); box-shadow:0 5px 0 #78350f; }
+  .achBtn:hover{ transform:scale(1.06); }
+  .c-wins{ position:absolute; bottom:30px; right:6px; font-size:11px; font-weight:bold; color:#78350f; background:rgba(254,243,199,.95); border-radius:8px; padding:1px 5px; }
+  #achPanel{ z-index:60; }
+  .achBox{ background:#fffbeb; border:4px solid #f59e0b; border-radius:22px; padding:18px 22px; width:min(760px, 94vw); max-height:88vh; overflow-y:auto; color:#422006; box-shadow:0 12px 40px rgba(0,0,0,.5); }
+  .achBox h2{ text-align:center; color:#b45309; margin-bottom:6px; }
+  .achSum{ text-align:center; font-size:14px; margin-bottom:12px; color:#78350f; }
+  .achGrid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:8px; }
+  .achItem{ display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:12px; background:#f5f5f4; border:2px solid #e7e5e4; opacity:.65; }
+  .achItem.on{ background:#fef3c7; border-color:#f59e0b; opacity:1; }
+  .achItem b{ font-size:26px; }
+  .achItem span{ display:flex; flex-direction:column; text-align:left; }
+  .achItem small{ font-size:11.5px; color:#78716c; }
+  .achClose{ display:block; margin:14px auto 0; font-family:inherit; font-size:16px; font-weight:bold; border:none; background:#f59e0b; color:#fff; padding:8px 24px; border-radius:12px; cursor:pointer; box-shadow:0 4px 0 #b45309; }
+  .achNew{ display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:6px; margin:0 0 8px; }
+  .achNewT{ font-weight:bold; color:#fde047; font-size:15px; text-shadow:0 2px 3px #000; margin-right:4px; }
+  .achBadge{ display:flex; align-items:center; gap:6px; padding:4px 12px 4px 8px; border-radius:20px; color:#fde68a; font-weight:bold; font-size:13px;
+    background:linear-gradient(180deg, #78350f, #451a03); border:2px solid #fbbf24; box-shadow:0 0 14px rgba(251,191,36,.5); opacity:0; animation:achPop .6s ease-out forwards; }
+  .achBadge b{ font-size:20px; line-height:1; }
+  @keyframes achPop{ 0%{ opacity:0; transform:scale(.3) rotate(-8deg); } 70%{ opacity:1; transform:scale(1.15) rotate(3deg); } 100%{ opacity:1; transform:scale(1) rotate(0); } }
   .fsBtn{ position:absolute; top:10px; right:12px; z-index:5; width:44px; height:40px; font-size:22px; line-height:1; cursor:pointer;
     color:#fde68a; background:linear-gradient(#3b2f1c,#1f1810); border:2px solid #b8860b; border-radius:10px; box-shadow:0 3px 0 #000a; }
   .fsBtn:hover{ transform:scale(1.08); border-color:#fde047; }
@@ -442,7 +463,7 @@
   <button id="fsBtn" class="fsBtn" title="Cijeli zaslon (miš ne može pobjeći iz igre)">⛶</button>
   <header>
     <h1>🏰 DOTA Kids 3D ⚔️</h1>
-    <p class="sub">Odaberi junaka i sruši protivnički prijestol! Ti + 4 bota 🔵 protiv 5 botova 🔴 (5 na 5) <span class="ver">v0.41</span></p>
+    <p class="sub">Odaberi junaka i sruši protivnički prijestol! Ti + 4 bota 🔵 protiv 5 botova 🔴 (5 na 5) <span class="ver">v0.42</span></p>
   </header>
   <div id="loadBar">⏳ Učitavam 3D modele…</div>
   <div class="selWrap">
@@ -466,6 +487,7 @@
     <button id="startBtn" class="bigBtn" disabled>▶️ ZAIGRAJ</button>
     <button id="randomBtn" class="rndBtn" title="Nasumični junak">🎲<span class="lbl"> Nasumično</span></button>
     <button id="mpToggle" class="ghostBtn" title="Ti protiv prijatelja preko interneta (5 na 5 s botovima)">👥<span class="lbl"> S prijateljem</span></button>
+    <button id="achBtn" class="achBtn" title="Tvoje pobjede i postignuća">🏆<span class="lbl"> Postignuća</span></button>
   </div>
   <div id="mpBox" class="hidden">
     <div class="mpTitle">🌐 Ti protiv prijatelja, 5 na 5 — svaki vodi sredinu, po 4 bota pomažu</div>
@@ -485,6 +507,7 @@
 <div id="help" class="overlay hidden">
   <div class="helpBox">
     <h2>❓ Kako se igra</h2>
+    🆕 <b>v0.42</b>: 🏆 postignuća i profil — gumb „Postignuća” na ekranu odabira, nova postignuća na kraju igre, pobjede sa svakim junakom<br>
     🆕 <b>v0.41</b>: 🔊 novi zvuk (lijevo/desno, tiše izdaleka) • 🌲 vjetar, ptice, cvrčci i žubor rijeke (⚙️ postavke)<br>
     🆕 <b>v0.40</b>: 🪙 zlatnik iznad vojnika = udari ga sada i dobiješ zlato • 💡 savjeti za početnike • 🏅 medalje na kraju • 🔥 junak u nizu pobjeda gori • ⚙️ vještine se mogu učiti same<br>
     🆕 <b>v0.39</b>: 💨 izvan borbe si brži (od fontane još brži) • 🔢 brojevi štete samo za tvoje udarce • 🪙 zlatnici polete do tebe kad pobijediš junaka<br>
