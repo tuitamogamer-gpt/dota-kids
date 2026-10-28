@@ -5375,13 +5375,14 @@ function drawTip(){
   const a = tip.t < 0.25 ? tip.t / 0.25 : (tip.t > 6.4 ? Math.max(0, (7 - tip.t) / 0.6) : 1);
   ctx.save();
   ctx.globalAlpha = a;
-  ctx.font = fontTxt(15, true);
-  const txt = '💡 ' + tip.cur.txt, w = Math.min(VW - 40, ctx.measureText(txt).width + 34), h = 36;
-  const x = clamp(HL.px + HL.pw / 2 - w / 2, 10, VW - w - 10), y = HL.py - h - 44 - (1 - a) * 8;
+  const small = VH < 520;   // 📱 mobitel: manji savjet, manje zaklanja igru
+  ctx.font = fontTxt(small ? 12 : 15, true);
+  const txt = '💡 ' + tip.cur.txt, w = Math.min(VW - 40, ctx.measureText(txt).width + 34), h = small ? 28 : 36;
+  const x = clamp(HL.px + HL.pw / 2 - w / 2, 10, VW - w - 10), y = HL.py - h - (small ? 30 : 44) - (1 - a) * 8;
   ctx.fillStyle = 'rgba(15,23,42,0.88)';
-  ctx.beginPath(); ctx.roundRect(x, y, w, h, 18); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, h / 2); ctx.fill();
   ctx.strokeStyle = '#fde047'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.roundRect(x, y, w, h, 18); ctx.stroke();
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, h / 2); ctx.stroke();
   ctx.fillStyle = '#fef9c3'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(txt, x + w / 2, y + h / 2 + 1, w - 24);
   ctx.restore();
