@@ -207,7 +207,7 @@ function updateHudTip(){
     } else if(t === 'stat'){
       rect = uiRects.statBtn; key += player.statRanks;
       html = simpleTipHtml(L('📊 Atributi+  (', '📊 Attributes+  (') + player.statRanks + '/' + CFG.statMaxRanks + ')', L('+2 💪 snage, +2 🤸 okretnosti, +2 🧠 inteligencije', '+2 💪 strength, +2 🤸 agility, +2 🧠 intelligence'),
-        L('💪 = život · 🤸 = brzina napada i oklop · 🧠 = mana · troši poen vještine', '💪 = HP · 🤸 = attack speed and armor · 🧠 = mana · costs a skill point'));
+        L('💪 = život · 🤸 = brzina napada i oklop · 🧠 = mana i jače moći · troši poen vještine', '💪 = HP · 🤸 = attack speed and armor · 🧠 = mana and stronger abilities · costs a skill point'));
     } else if(t === 'glyph'){
       const gl = glyph[player.team]; rect = uiRects.glyph; key += Math.ceil(gl.cd);
       html = simpleTipHtml(L('🛡️ Glif utvrde', '🛡️ Glyph'), L('Sve kule i vojarne tvog tima 5 s ne primaju štetu.', 'All your towers and barracks take no damage for 5 s.'), L('Tipka Y · ', 'Key Y · ') + (gl.cd > 0 ? L('puni se još ' + Math.ceil(gl.cd) + ' s', 'recharging, ' + Math.ceil(gl.cd) + ' s') : L('spreman!', 'ready!')));

@@ -1132,6 +1132,7 @@ function applyDamage(t, amount, src, kind){
   if(kind !== 'atk' && src && src.kind === 'hero'){
     if(abCtx && abCtx.src === src){ const b = abBonus(src, abCtx.key, 'dmg'); if(b) amount += b; }   // 🎓 talent: jača moć
     if(src.spellAmp) amount *= 1 + src.spellAmp;                                                      // 🎓 jačina magija
+    amount *= 1 + (src.int + (src.itemAttr ? src.itemAttr.int : 0)) * CFG.intSpellAmp;              // 🧠 inteligencija jača moći
   }
   const kz = passiveRank(t, 'koza');                 // Lavlja koža: pasivno smanjenje štete
   if(kz) amount *= 1 - (0.03 + 0.03 * kz);
@@ -1522,7 +1523,7 @@ function levelUp(h){
 }
 
 // ATRIBUTI (kao u DotA): 💪 snaga = život, 🤸 okretnost = brzina i brzina
-// napada, 🧠 inteligencija = mana; GLAVNI atribut junaku daje štetu.
+// napada, 🧠 inteligencija = mana i jače moći (CFG.intSpellAmp); GLAVNI atribut junaku daje štetu.
 function recomputeAttrStats(h){
   const a = h.hero.attrs, ia = h.itemAttr || { str: 0, agi: 0, int: 0 };
   const dStr = h.str + ia.str - a.str, dAgi = h.agi + ia.agi - a.agi, dInt = h.int + ia.int - a.int;
@@ -1545,7 +1546,7 @@ function recomputeAttrStats(h){
   h.hpRegen += nb.hpRegen - ob.hpRegen;
   h.mpRegen += nb.mpRegen - ob.mpRegen;
   h.attrBonus = nb;
-  h.atkSpdBonus = dAgi * 0.006 + (h.itemAspd || 0) / 100;
+  h.atkSpdBonus = dAgi * CFG.agiAtkSpd + (h.itemAspd || 0) / 100;
   h.armor = (h.agi + ia.agi) / 10 + (h.itemArmor || 0) + 3 * drakeN(h.team, 'forest') + (h.talArmor || 0);   // okretnost daje malo oklopa; 🌿 šumski zmajčići; 🎓 talent
 }
 function canLearnStats(h){
@@ -2562,7 +2563,8 @@ function botUseAbilities(u, eh){
       }
       case 'execute': {   // 🪓 Smrtni udarac: samo kad meta pada odjednom
         const thr = 250 + 75 * ab.rank + (hasTal(u, 'bikos_r_plus') ? 150 : 0);
-        const tg = nearestEnemyOf(u, hint.range, e => e.kind === 'hero' && e.hp <= thr && e.status.immuneT <= 0);
+        const tg = nearestEnemyOf(u, hint.range, e => e.kind === 'hero' && e.hp <= thr && e.status.immuneT <= 0)
+          || nearestEnemyOf(u, hint.range, e => e.kind === 'hero' && e.hp < e.maxhp * 0.4);   // ⚖️ v0.45: i kao jak udarac na ranjenog junaka (ulti se prije gotovo nikad nije bacao)
         if(tg) castAbility(u, i, { x: tg.x, y: tg.y });
         break;
       }
@@ -2581,8 +2583,9 @@ function botUseAbilities(u, eh){
         if(rs) castAbility(u, i, { x: rs.x, y: rs.y });
         break;
       }
-      case 'night':
-        if(eh && dEh < hint.range && !isNight) castAbility(u, i, { x: u.x, y: u.y });
+      case 'night':   // 🌑 Vječna noć: danju uvijek u borbi, noću kad su prijatelji uz nju (tim dobiva jače udarce)
+        if(eh && dEh < hint.range && (!isNight || units.some(e => e.kind === 'hero' && e.team === u.team && e !== u && !e.dead && dist(u, e) < 800)))
+          castAbility(u, i, { x: u.x, y: u.y });
         break;
       case 'escape': {   // bijeg prema fontani kad je ranjen i neprijatelj je blizu
         if(eh && dEh < hint.range && u.hp < u.maxhp * 0.4){
@@ -4063,7 +4066,7 @@ function makeWorld(){
    Svaka igra kreće od izvornih vrijednosti (CFG_BASE), pa brza igra pomnoži samo ekonomiju i tempo. */
 const CFG_BASE = Object.assign({}, CFG);
 const TURBO = { passiveGold: 2.5, heroKillGold: 1.5, heroKillGoldPerLvl: 1.5, heroKillXp: 1.7, assistGold: 1.6, creepGoldMul: 2, creepXpMul: 2,
-  creepXp: 2, towerGoldTeam: 1.5, towerXp: 1.5, barracksGoldTeam: 1.5, respawnBase: 0.6, respawnPerLvl: 0.45, towerHp: 0.6, barracksHp: 0.7, ancientHp: 0.7,
+  creepXp: 2, towerGoldTeam: 1.5, towerXp: 1.5, barracksGoldTeam: 1.5, respawnBase: 0.75, respawnPerLvl: 0.7, towerHp: 0.6, waveEvery: 0.85, barracksHp: 0.7, ancientHp: 0.7,
   campRespawn: 0.7, bossRespawn: 0.6, drakeRespawn: 0.6, barracksRespawn: 0.7, buybackCd: 0.5, startGold: 1.3, prepTime: 0.5, creepScaleEvery: 0.6 };
 function gameMode(){ return net.mode === 'host' || net.mode === 'guest' ? 'normal' : (SETTINGS.mode === 'turbo' ? 'turbo' : 'normal'); }
 function applyMode(){
@@ -6051,7 +6054,7 @@ function buffList(h){
   if(h.jbuff){ add('🔵', JUNGLE_BUFFS.blue.name, h.jbuff.blue, true, JUNGLE_BUFFS.blue.desc); add('🔴', JUNGLE_BUFFS.red.name, h.jbuff.red, true, JUNGLE_BUFFS.red.desc); }
   // (ovdje je L lokalni popis, pa se tekst bira s EN ? 'English' : 'hrvatski')
   if(h.aegis) add('🛡️', EN ? 'Aegis' : LS('Zmajev štit'), h.aegisT, true, EN ? 'one free respawn where you fell' : LS('jedno besplatno oživljavanje na mjestu smrti'));
-  if(st.dmgMulT > 0 && st.dmgMulF > 1) add('🐲', EN ? 'Dragon Blessing' : LS('Zmajev blagoslov'), st.dmgMulT, true, EN ? 'stronger attacks' : LS('jači udarci'));
+  if(st.dmgMulT > 0 && st.dmgMulF > 1) add('⚔️', EN ? 'Stronger attacks' : LS('Jači udarci'), st.dmgMulT, true, EN ? '+' + Math.round((st.dmgMulF - 1) * 100) + '% attack damage' : LS('+' + Math.round((st.dmgMulF - 1) * 100) + '% štete udarcima'));
   add('🫧', EN ? 'Barrier' : LS('Barijera'), h.barrierT, true, EN ? 'shield that blocks ' + Math.round(h.barrierHp || 0) + ' damage' : LS('štit od ' + Math.round(h.barrierHp || 0) + ' štete'));
   add('👑', EN ? 'Unstoppable' : LS('Nepokolebljiv'), st.immuneT, true, EN ? 'nothing can stun or slow you' : LS('ništa te ne može omamiti ni usporiti'));
   add('🏃', EN ? 'Haste' : LS('Ubrzanje'), st.hasteT, true, EN ? 'faster movement' : LS('brže kretanje'));

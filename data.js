@@ -85,6 +85,8 @@ const CFG = {
   courierSpeed: 520,        // 🫏 kurir leti brže od junaka
   courierBaseR: 900,        // kupljeno dalje od ovoga od fontane čeka kurira
   creepScaleEvery: 450,     // vojnici jačaju svakih 7.5 min (kao u DotA)
+  intSpellAmp: 0.0025,      // ⚖️ v0.45: svaki bod inteligencije +0.25% štete moćima (čarobnjaci jačaju s levelima)
+  agiAtkSpd: 0.0052,        // ⚖️ v0.45: brzina napada po bodu okretnosti (bilo 0.006 — nosači su bili prejaki)
   creepGoldMul: 1, creepXpMul: 1,   // ⚡ brza igra množi zlato i iskustvo od vojnika i čudovišta
   creepScalePct: 0.12,
   shrineCd: 240,            // svetište: liječi 5 s, puni se 4 min
@@ -326,18 +328,18 @@ const HEROES = [
         }},
       { key:'R', name:L('Sokolovo oko', 'Falcon\'s Eye'), emoji:'🌠', cd:65, mana:110, ult:true, color:'#fde047',
         desc:L('ULTI: Čarobna strijela sama pronađe najslabijeg neprijateljskog junaka!', 'ULT: A magic arrow finds the weakest enemy hero by itself!'),
-        tip:rk => L('⚔️ ' + (180 + 120*rk) + ' štete najslabijem junaku (ne može promašiti)', '⚔️ ' + (180 + 120*rk) + ' damage to the weakest hero (can\'t miss)'),
+        tip:rk => L('⚔️ ' + (160 + 100*rk) + ' štete najslabijem junaku (ne može promašiti)', '⚔️ ' + (160 + 100*rk) + ' damage to the weakest hero (can\'t miss)'),
         bot:{type:'snipe', range:2000},
         cast(u, aim, rk){
           const t = weakestEnemyHero(u, 2200);
           if(!t) return false;
-          spawnHoming(u, t, {speed:950, dmg:180 + 120*rk, r:12,
+          spawnHoming(u, t, {speed:950, dmg:160 + 100*rk, r:12,
             color:'#fde047', emoji:'🌠',
             onHit(e){ burst(e.x, e.y, '#fde047', 26, 300, 7); }});
           if(hasTal(u, 'strijela_r2')){   // 🎓 talent: druga strijela u drugog najslabijeg junaka
             let t2 = null, bh = 1e9;
             for(const e of units) if(e !== t && e.kind === 'hero' && e.team !== u.team && !e.dead && dist(u, e) < 2200 && isVisibleTo(u.team, e) && e.hp < bh){ bh = e.hp; t2 = e; }
-            if(t2) spawnHoming(u, t2, {speed:950, dmg:180 + 120*rk, r:12, color:'#fde047', emoji:'🌠', onHit(e){ burst(e.x, e.y, '#fde047', 26, 300, 7); }});
+            if(t2) spawnHoming(u, t2, {speed:950, dmg:160 + 100*rk, r:12, color:'#fde047', emoji:'🌠', onHit(e){ burst(e.x, e.y, '#fde047', 26, 300, 7); }});
           }
           return true;
         }},
@@ -565,7 +567,7 @@ const HEROES = [
       { key:'R', name:L('Kralj neba', 'Sky King'), emoji:'🌪️', cd:70, mana:125, ult:true, color:'#fde047',
         desc:L('ULTI: Pošalji sokole na SVE neprijateljske junake u blizini!', 'ULT: Send falcons at ALL nearby enemy heroes!'),
         selfAoe:1400,
-        tip:rk => L('⚔️ ' + (130 + 70*rk) + ' štete SVAKOM vidljivom neprijateljskom junaku', '⚔️ ' + (130 + 70*rk) + ' damage to EVERY visible enemy hero'),
+        tip:rk => L('⚔️ ' + (110 + 60*rk) + ' štete SVAKOM vidljivom neprijateljskom junaku', '⚔️ ' + (110 + 60*rk) + ' damage to EVERY visible enemy hero'),
         bot:{type:'chain', range:900},
         cast(u, aim, rk){
           let n = 0;
@@ -574,7 +576,7 @@ const HEROES = [
             if(dist(u, e) > 1400) continue;
             if(!isVisibleTo(u.team, e)) continue;
             if(e.status.invisT > 0 && e.status.trackT <= 0) continue;
-            spawnHoming(u, e, {speed:800, dmg:130 + 70*rk, r:10,
+            spawnHoming(u, e, {speed:800, dmg:110 + 60*rk, r:10,
               color:'#fde047', emoji:'🦅',
               onHit(t){ burst(t.x, t.y, '#fde047', 18, 240, 6); }});
             n++;
@@ -909,15 +911,15 @@ const HEROES = [
     abilities:[
       { key:'Q', name:L('Huk', 'Hoot'), emoji:'📣', cd:10, mana:55, color:'#e9d5ff',
         desc:L('Glasni huk — neprijatelji oko tebe su ušutkani i ne mogu bacati moći', 'A loud hoot — enemies around you are silenced and can\'t use abilities'),
-        selfAoe:260,
-        tip:rk => L('⚔️ ' + (45 + 35*rk) + ' štete + 🤐 ušutkani ' + (2 + 0.5*rk).toFixed(1) + ' s', '⚔️ ' + (45 + 35*rk) + ' damage + 🤐 silenced ' + (2 + 0.5*rk).toFixed(1) + ' s'),
-        bot:{type:'aoe-self', range:260},
+        selfAoe:300,
+        tip:rk => L('⚔️ ' + (60 + 45*rk) + ' štete + 🤐 ušutkani ' + (2 + 0.5*rk).toFixed(1) + ' s', '⚔️ ' + (60 + 45*rk) + ' damage + 🤐 silenced ' + (2 + 0.5*rk).toFixed(1) + ' s'),
+        bot:{type:'aoe-self', range:300},
         cast(u, aim, rk){
-          damageCircle(u, u.x, u.y, 260, 45 + 35*rk, {silence:2 + 0.5*rk, color:'#e9d5ff'});
-          ring(u.x, u.y, 160, '#e9d5ff'); ring(u.x, u.y, 260, '#e9d5ff');
+          damageCircle(u, u.x, u.y, 300, 60 + 45*rk, {silence:2 + 0.5*rk, color:'#e9d5ff'});
+          ring(u.x, u.y, 180, '#e9d5ff'); ring(u.x, u.y, 300, '#e9d5ff');
           return true;
         }},
-      { key:'W', name:L('Sovino oko', 'Owl Eye'), emoji:'👁️', cd:25, mana:50, color:'#c4b5fd',
+      { key:'W', name:L('Sovino oko', 'Owl Eye'), emoji:'👁️', cd:18, mana:50, color:'#c4b5fd',
         desc:L('Pogledaj daleko — vidiš odabrano mjesto 10 sekundi (i kroz maglu rata!)', 'Look far away — see the chosen spot for 10 seconds (even through the fog of war!)'),
         target:'point', castRange:1400, aoe:420,
         tip:rk => L('👁️ vid u krugu 420 na ' + (8 + 3*rk) + ' s', '👁️ vision in a 420 circle for ' + (8 + 3*rk) + ' s'),
@@ -940,13 +942,16 @@ const HEROES = [
           return true;
         }},
       { key:'R', name:L('Vječna noć', 'Endless Night'), emoji:'🌑', cd:90, mana:120, ult:true, color:'#6d28d9',
-        desc:L('ULTI: Pozovi noć usred dana! Neprijatelji vide kraće, a tvoj tim je brži', 'ULT: Call the night in the middle of the day! Enemies see less, and your team is faster'),
-        tip:rk => L('🌑 noć ' + (18 + 6*rk) + ' s • tim +20% brzine 6 s', '🌑 night for ' + (18 + 6*rk) + ' s • team +20% speed for 6 s'),
+        desc:L('ULTI: Pozovi noć usred dana! Neprijatelji vide kraće, a tvoj tim je brži i jače udara', 'ULT: Call the night in the middle of the day! Enemies see less, and your team is faster and hits harder'),
+        tip:rk => L('🌑 noć ' + (18 + 6*rk) + ' s • tim +20% brzine i ⚔️ +' + (15 + 5*rk) + '% štete 8 s', '🌑 night for ' + (18 + 6*rk) + ' s • team +20% speed and ⚔️ +' + (15 + 5*rk) + '% damage for 8 s'),
         bot:{type:'night', range:700},
         cast(u, aim, rk){
           nightForceT = Math.max(nightForceT, 18 + 6*rk);
           for(const e of units){
-            if(e.kind === 'hero' && e.team === u.team && !e.dead) applyHaste(e, 1.2, 6);
+            if(e.kind === 'hero' && e.team === u.team && !e.dead){
+              applyHaste(e, 1.2, 6);
+              e.status.dmgMulF = Math.max(e.status.dmgMulT > 0 ? e.status.dmgMulF : 1, 1.15 + 0.05*rk); e.status.dmgMulT = Math.max(e.status.dmgMulT, 8);   // ⚔️ noćni lov
+            }
           }
           announce(L('🌑 Vječna noć!', '🌑 Endless Night!'), L(u.emoji + ' ' + u.name + ' je pozvala noć!', u.emoji + ' ' + u.name + ' called the night!'));
           burst(u.x, u.y, '#6d28d9', 30, 300, 7);
@@ -1543,10 +1548,10 @@ const HEROES = [
           burst(u.x, u.y, '#7dd3fc', 14, 160, 5);
           return true;
         }},
-      { key:'R', name:L('Savršen hitac', 'Perfect Shot'), emoji:'🔫', cd:50, mana:150, ult:true, color:'#ef4444',
+      { key:'R', name:L('Savršen hitac', 'Perfect Shot'), emoji:'🔫', cd:60, mana:150, ult:true, color:'#ef4444',
         desc:L('ULTI: Nanišani neprijateljskog junaka izdaleka — nakon kratkog nišanjenja hitac ga uvijek pogodi', 'ULT: Aim at an enemy hero from far away — after a short aim, the shot always hits'),
         target:'point', castRange:2000, aoe:170,
-        tip:rk => L('🎯 nišani 1.6 s, pa ⚔️ ' + (320 + 160*rk) + ' štete + omama 0.4 s (domet 2000)', '🎯 aims for 1.6 s, then ⚔️ ' + (320 + 160*rk) + ' damage + 0.4 s stun (range 2000)'),
+        tip:rk => L('🎯 nišani 1.6 s, pa ⚔️ ' + (280 + 130*rk) + ' štete + omama 0.4 s (domet 2000)', '🎯 aims for 1.6 s, then ⚔️ ' + (280 + 130*rk) + ' damage + 0.4 s stun (range 2000)'),
         bot:{type:'snipe', range:1900},
         cast(u, aim, rk){
           const p = clampRange(u, aim, 2000);
@@ -1557,7 +1562,7 @@ const HEROES = [
             const d = distXY(p.x, p.y, e.x, e.y); if(d < bd){ bd = d; best = e; }
           }
           if(!best) return false;
-          const dmg = 320 + 160*rk + abBonus(u, 'R', 'dmg');
+          const dmg = 280 + 130*rk + abBonus(u, 'R', 'dmg');
           startChannel(u, hasTal(u, 'nisan_r_fast') ? 0.8 : 1.6, best, t => {
             spawnHoming(u, t, { speed:2600, dmg, r:10, color:'#fde047', shot:'pellet', big:true,
               onHit(e){ applyStun(e, 0.4); burst(e.x, e.y, '#fde047', 30, 320, 8); addFloat(e.x, e.y, L('🎯 POGODAK!', '🎯 BULLSEYE!'), '#fde047', 20); } });
