@@ -88,7 +88,7 @@ const CFG = {
   timeScale: 1,             // ⏱️ brza igra: 0.6 — botovi ranije guraju, kule ranije gube bonus protiv junaka
   meleeResist: 0.08,        // ⚖️ v0.45: junaci izbliza primaju 8% manje štete
   intSpellAmp: 0.0025,      // ⚖️ v0.45: svaki bod inteligencije +0.25% štete moćima (čarobnjaci jačaju s levelima)
-  agiAtkSpd: 0.0042,        // ⚖️ v0.45: brzina napada po bodu okretnosti (bilo 0.006 — nosači su bili prejaki)
+  agiAtkSpd: 0.004,        // ⚖️ v0.45: brzina napada po bodu okretnosti (bilo 0.006 — nosači su bili prejaki)
   agiArmorDiv: 12,          // ⚖️ v0.45: oklop = okretnost / 12 (bilo / 10)
   agiSpeed: 0.22,           // ⚖️ v0.45: brzina kretanja po bodu okretnosti (bilo 0.3)
   strHp: 21,                // ⚖️ v0.45: život po bodu snage (bilo 18) — snažni junaci izbliza bili su preslabi
@@ -185,7 +185,7 @@ const HEROES = [
   {
     id:'zarko', name:L('Žarko', 'Zharko'), emoji:'🐉',
     role:L('🔥 Vatreni zmaj — čarobnjak', '🔥 Fire dragon — mage'),
-    hp:550, mp:300, dmg:52,
+    hp:580, mp:300, dmg:52,
     attrs:{ str:18, agi:16, int:24, strG:3.6, agiG:2.4, intG:5.4, primary:'int' },
     range:330, speed:165, atkCd:1.15, projSpeed:600, shot:'fire',
     passive:{ name:L('Vatrena krv', 'Fire Blood'), emoji:'🔥', color:'#fb923c', pid:'zar',
@@ -237,7 +237,7 @@ const HEROES = [
   {
     id:'ledena', name:LS('Ledena'), emoji:'🐧',
     role:L('❄️ Snježna čarobnica', '❄️ Snow witch'),
-    hp:570, mp:310, dmg:54,
+    hp:600, mp:310, dmg:54,
     attrs:{ str:18, agi:16, int:24, strG:3.6, agiG:2.4, intG:5.2, primary:'int' },
     range:330, speed:165, atkCd:1.15, projSpeed:600, shot:'ice',
     passive:{ name:L('Ledeni dodir', 'Icy Touch'), emoji:'❄️', color:'#7dd3fc', pid:'dodir',
@@ -967,7 +967,7 @@ const HEROES = [
   {
     id:'majmun', name:L('Skakač', 'Skakach'), emoji:'🐵',
     role:L('🥢 Majmun — brzi borac sa štapom', '🥢 Monkey — fast fighter with a staff'),
-    hp:580, mp:260, dmg:56,
+    hp:580, mp:260, dmg:54,
     attrs:{ str:19, agi:26, int:15, strG:4.0, agiG:5.6, intG:2.2, primary:'agi' },
     range:90, speed:180, atkCd:1.0, projSpeed:0,
     passive:{ name:L('Kombo', 'Combo'), emoji:'👊', color:'#fde047', pid:'kombo',
@@ -1151,11 +1151,11 @@ const HEROES = [
       { key:'R', name:L('Jato gavranova', 'Raven Flock'), emoji:'🐦‍⬛', cd:80, mana:140, ult:true, color:'#4c1d95',
         desc:L('ULTI: Pozovi jato gavranova — kljucaju i ušutkavaju sve u krugu', 'ULT: Call a flock of ravens — they peck and silence everyone in the circle'),
         target:'point', castRange:650, aoe:300,
-        tip:rk => L('⚔️ 6 × ' + (30 + 22*rk) + ' štete + 🤐 ušutkani', '⚔️ 6 × ' + (30 + 22*rk) + ' damage + 🤐 silenced'),
+        tip:rk => L('⚔️ 6 × ' + (27 + 20*rk) + ' štete + 🤐 ušutkani', '⚔️ 6 × ' + (27 + 20*rk) + ' damage + 🤐 silenced'),
         bot:{type:'zone', range:600},
         cast(u, aim, rk){
           return spawnZone(u, aim, {r:300, delay:0.3, ticks:6, interval:0.7,
-            dmg:30 + 22*rk, silence:1.0, castRange:650,
+            dmg:27 + 20*rk, silence:1.0, castRange:650,
             color:'#4c1d95', emoji:'🐦‍⬛'});
         }},
     ],
@@ -1438,7 +1438,7 @@ const HEROES = [
   {
     id:'morskipas', name:L('Zubo', 'Zoobo'), emoji:'🦈',
     role:L('🦷 Morski pas — gladni lovac', '🦷 Shark — hungry hunter'),
-    hp:600, mp:260, dmg:58,
+    hp:600, mp:260, dmg:56,
     attrs:{ str:20, agi:24, int:12, strG:3.8, agiG:5.8, intG:1.8, primary:'agi' },
     range:90, speed:178, atkCd:1.0, projSpeed:0,
     passive:{ name:L('Miris krvi', 'Scent of Blood'), emoji:'🩸', color:'#f87171', pid:'krv',
@@ -2026,7 +2026,7 @@ const HERO_BUILDS = {
   listko: BUILD_SUPPORT, jednorog: BUILD_SUPPORT,
   strijela: BUILD_RANGED, orlina: BUILD_RANGED, luna: ['wraith', 'treads', 'deso', 'mkb', 'butterfly', 'satanic'],
   munja: BUILD_MELEE, majmun: ['wraith', 'phase', 'bfury', 'deso', 'basher', 'butterfly'],
-  vuk: ['bracer', 'phase', 'mom', 'basher', 'bkb', 'satanic'],
+  vuk: ['bracer', 'phase', 'bfury', 'mom', 'basher', 'satanic'],   // ⚖️ v0.45: Bojna sjekira — brže skuplja zlato (prije je zaostajao)
   tragac: ['wraith', 'phase', 'shadowblade', 'deso', 'daedalus', 'butterfly'],
   skokica: ['bracer', 'phase', 'blink', 'bkb', 'abyssal', 'satanic'],
   morskipas: ['wraith', 'phase', 'mom', 'bfury', 'abyssal', 'satanic'],
