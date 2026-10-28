@@ -259,6 +259,7 @@ function buildSnapshot(){
     if(u.chan && u.chan.target) b.cz = [u.chan.target.id, +(1 - u.chan.t / u.chan.dur).toFixed(2)];   // 🎯 nišanjenje
     if(u.hungerT > 0) b.hg = 1;            // 🍖 ratna glad
     if(u.travel) b.tv = u.travel;          // 💨 putovanje
+    if(u.streak >= 3) b.sk = u.streak;     // 🔥 niz pobjeda
     if(u.killFxN){ b.kf = u.killFxN % 1000; b.ka = [u.killAt.x, u.killAt.y]; }   // 🪙 zlatnici od pobijeđenog junaka
     if(u.helixN) b.hx = u.helixN % 1000;   // 🌀 bikovski vrtlog
     if(u.talN) b.tn = u.talN % 100;        // 🎓 talent
@@ -418,7 +419,7 @@ function applySnapshot(d){
     u.danceN = b.dz || 0; u.danceT = b.dc ? 1 : 0;   // 💃
     u.tpDest = b.td ? { x: b.td[0], y: b.td[1] } : null; u.tpFrac = b.td ? b.td[2] : 0;
     u.chanFx = b.cz ? { id: b.cz[0], f: b.cz[1] } : null;
-    u.hungerT = b.hg ? 1 : 0; u.helixN = b.hx || 0; u.talN = b.tn || 0; u.travel = b.tv || 0;
+    u.hungerT = b.hg ? 1 : 0; u.helixN = b.hx || 0; u.talN = b.tn || 0; u.travel = b.tv || 0; u.streak = b.sk || 0;
     u.killFxN = b.kf || 0; u.killAt = b.ka ? { x: b.ka[0], y: b.ka[1] } : null;
     if(u.kind === 'hero'){
       u.level = b.l; u.dead = !!b.dd;

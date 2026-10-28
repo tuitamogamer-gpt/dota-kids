@@ -68,6 +68,8 @@
   .chipM{ background:#ea580c; }
   .chipR{ background:#0d9488; }
   .chipP{ background:#7c3aed; }
+  .chipD0{ background:#15803d; } .chipD1{ background:#a16207; } .chipD2{ background:#b91c1c; }
+  .c-easy{ position:absolute; top:8px; left:8px; font-size:11px; line-height:1; filter:drop-shadow(0 1px 1px rgba(0,0,0,.4)); }
   .d-abils{ display:flex; gap:6px; }
   .ab{ position:relative; flex:1; font-family:inherit; font-size:24px; background:#fef3c7; border:2px solid #fcd34d;
     border-radius:12px; padding:6px 0 4px; cursor:pointer; transition:transform .1s; }
@@ -345,6 +347,9 @@
   .endT tr.etMe td{ background:rgba(253,224,71,.12); }
   .etHero{ display:flex; align-items:center; gap:8px; text-align:left !important; }
   .etHero img{ width:30px; height:30px; border-radius:6px; object-fit:cover; border:1px solid rgba(255,255,255,.2); }
+  .etAw{ font-style:normal; margin-left:4px; cursor:help; }
+  .etMine{ color:#fde68a; }
+  .etMine small{ color:#cbd5e1; font-weight:normal; }
   .etK{ color:#4ade80; } .etD{ color:#f87171; } .etA{ color:#93c5fd; }
   .etNw{ color:#fde047; font-weight:bold; }
   .etItems{ text-align:left !important; }
@@ -409,7 +414,7 @@
   <button id="fsBtn" class="fsBtn" title="Cijeli zaslon (miš ne može pobjeći iz igre)">⛶</button>
   <header>
     <h1>🏰 DOTA Kids 3D ⚔️</h1>
-    <p class="sub">Odaberi junaka i sruši protivnički prijestol! Ti + 4 bota 🔵 protiv 5 botova 🔴 (5 na 5) <span class="ver">v0.39</span></p>
+    <p class="sub">Odaberi junaka i sruši protivnički prijestol! Ti + 4 bota 🔵 protiv 5 botova 🔴 (5 na 5) <span class="ver">v0.40</span></p>
   </header>
   <div id="loadBar">⏳ Učitavam 3D modele…</div>
   <div class="selWrap">
@@ -452,6 +457,7 @@
 <div id="help" class="overlay hidden">
   <div class="helpBox">
     <h2>❓ Kako se igra</h2>
+    🆕 <b>v0.40</b>: 🪙 zlatnik iznad vojnika = udari ga sada i dobiješ zlato • 💡 savjeti za početnike • 🏅 medalje na kraju • 🔥 junak u nizu pobjeda gori • ⚙️ vještine se mogu učiti same<br>
     🆕 <b>v0.39</b>: 💨 izvan borbe si brži (od fontane još brži) • 🔢 brojevi štete samo za tvoje udarce • 🪙 zlatnici polete do tebe kad pobijediš junaka<br>
     🆕 <b>v0.38</b>: ⛶ <b>cijeli zaslon</b> (gumb gore desno — miš ne može pobjeći iz igre, Esc ga otpusti) • 🐿️ <b>Nišan</b> (snajperist) i 🐂 <b>Bikoš</b> (bik sa sjekirom) • 🎓 <b>svaki junak ima svoje talente</b> • 💥 kritični udarci se vide i čuju • 🛒 jasniji dućan s karticama i „Kupi sljedeće”<br>
     🖱️ <b>Lijevi ili desni klik</b> — kreći se / napadni neprijatelja (klikni bilo gdje na njegovo tijelo — pod mišem zasvijetli crveni krug i pokazivač postane ⚔️ mač) • <b>drži tipku miša</b> — junak stalno ide za mišem<br>
@@ -529,6 +535,9 @@
     <div class="optRow" id="optEdgeRow"><span>🖱️ Kamera uz rub ekrana</span><button class="optTog" id="optEdge"></button></div>
     <div class="optRow" id="optQuickRow"><span>⚡ Brzo bacanje moći<br><small>drži tipku = vidiš domet, pusti = baci prema mišu</small></span><button class="optTog" id="optQuick"></button></div>
     <div class="optRow"><span>💥 Brojevi štete</span><button class="optTog" id="optDmg"></button></div>
+    <div class="optRow"><span>🪙 Pomoć za zadnji udarac<br><small>zlatnik iznad vojnika kojeg tvoj udarac pobjeđuje</small></span><button class="optTog" id="optLh"></button></div>
+    <div class="optRow"><span>💡 Savjeti za početnike<br><small>kratke upute u pravom trenutku</small></span><button class="optTog" id="optTips"></button></div>
+    <div class="optRow"><span>⬆️ Vještine se uče same<br><small>poen koji ne potrošiš za 2–3 s potroši se sam</small></span><button class="optTog" id="optAuto"></button></div>
     <p class="optHint">Igra trza? Stavi kvalitetu na <b>Niska</b> i isključi efekte.<br>👆 Tablet: dodir = hodaj/napadni, povuci prstom = kamera, dva prsta = zum.</p>
     <div class="optBtns"><button id="optResume">▶️ Nastavi</button><button id="optQuit">🏠 Izlaz u izbornik</button></div>
   </div>

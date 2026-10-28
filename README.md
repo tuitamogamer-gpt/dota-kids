@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.39: čišći ekran (brojevi štete samo kad si ti uključen, manje poruka), 💨 brže putovanje izvan borbe i 🪙 zlatnici koji polete do tebe kad pobijediš junaka.** v0.38: veliko poliranje — ⛶ cijeli zaslon, 🐿️ Nišan i 🐂 Bikoš, 🎓 svaki junak ima svoje talente, 💥 kritični udarci, 🛒 jasniji dućan, 🗺️ veća mapa, 🗼 aggro kao u Doti, 🌫️ prava magla rata, 🌿 tango jede drvo i 🤖 pametniji botovi (gankovi, guranje, obrana).** (v0.37: 👥 pravih 5 na 5, v0.36: peglanje za mobitel i opisi gumba, v0.35: u mrežnoj igri svatko vidi svoje, v0.34: 📣 najavljivač, 🤖 težina botova, 💀 pregled pogibije, 💃 ples)
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.40: 🪙 pomoć za zadnji udarac, 💡 savjeti za početnike, 🏅 medalje na kraju igre, 🗺️ portreti na minimapi i 🔥 junaci „u vatri”.** v0.39: čišći ekran (brojevi štete samo kad si ti uključen, manje poruka), 💨 brže putovanje izvan borbe i 🪙 zlatnici koji polete do tebe kad pobijediš junaka.** v0.38: veliko poliranje — ⛶ cijeli zaslon, 🐿️ Nišan i 🐂 Bikoš, 🎓 svaki junak ima svoje talente, 💥 kritični udarci, 🛒 jasniji dućan, 🗺️ veća mapa, 🗼 aggro kao u Doti, 🌫️ prava magla rata, 🌿 tango jede drvo i 🤖 pametniji botovi (gankovi, guranje, obrana).** (v0.37: 👥 pravih 5 na 5, v0.36: peglanje za mobitel i opisi gumba, v0.35: u mrežnoj igri svatko vidi svoje, v0.34: 📣 najavljivač, 🤖 težina botova, 💀 pregled pogibije, 💃 ples)
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -18,6 +18,16 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- 🏅 **Za početnike i za zabavu** (v0.40):
+  - 🪙 **pomoć za zadnji udarac**: iznad neprijateljskog vojnika kojeg tvoj SLJEDEĆI udarac pobjeđuje pojavi se zlatnik (i zlatni okvir trake života) — udari ga baš tada i dobiješ zlato; tvoj vojnik kojeg možeš uskratiti dobije ❗. Djeca tako lako nauče farmati (isključuje se u ⚙️ postavkama)
+  - 💡 **savjeti za početnike** — kratka poruka iznad ploče junaka u pravom trenutku: malo života („teleport kući”), imaš zlata za sljedeći predmet, pojedi drvo tangom, otključaj ulti na levelu 6, kula gađa tebe, kupuj dok čekaš oživljavanje, teleport do kule… Svaki savjet najviše 2 puta (pamti se), jedan po jedan; isključuju se u ⚙️ postavkama, a ponovno uključivanje vrati sve savjete
+  - ⬆️ **vještine se mogu učiti same** (⚙️ postavka, isključena): poen koji ne potrošiš za 2–3 s potroši se sam — prvo ulti, pa ravnomjerno
+  - 🏅 **medalje na kraju igre**: 🥇 Lovac (najviše pobjeda), 🤝 Pomagač (asistencije), 🪙 Zlatar (zadnji udarci), 💥 Razbijač (šteta junacima), 🏰 Rušitelj (šteta kulama), 🛡️ Neuništiv (najmanje padova) — prikazuju se uz imena, a ispod tablice piše koje si ti osvojio
+  - 🗺️ **minimapa s portretima**: junaci su okrugli portreti u boji tima (ti u zlatnom prstenu), iznad magle — odmah vidiš tko je gdje
+  - 🔥 **junak „u vatri”**: tko pobijedi 3+ junaka zaredom, dobije plamičke nad glavom i 🔥 uz ime — zaustavi ga i dobiješ puno zlata
+  - 🟢🟡🔴 **težina junaka** na ekranu odabira (zelena točkica = lako za početnike: Lavko, Žarko, Strijela, Listko, Tutnjo, Rogo, Bambus, Duga, Bikoš)
+  - ❤️ crveni rub kad imaš malo života više ne pulsira u bazi (tamo si siguran)
 
 - 🧹 **Čišće i zabavnije** (v0.39):
   - 🔢 **brojevi štete samo kad si TI uključen** — tvoji udarci, tvoji prizvani pomoćnici i udarci u tebe (crveni); u tučnjavi 5 na 5 ekran više nije zatrpan brojevima, a brzi udarci (otrov, glad, plamen) spoje se u jedan broj. Isto vrijedi za „Promašaj!” i kritične brojeve (crveni rez preko mete i dalje vide svi)

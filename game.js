@@ -630,7 +630,7 @@ let scoreOpen = false;      // 📋 tablica otvorena gumbom (na tabletu nema tip
 let mouseIn = false;        // miš je iznad igre (za rubno pomicanje kamere)
 /* ⚙️ postavke (pamte se u pregledniku) */
 const SETTINGS = { vol: 0.8, quality: touchMode ? 'med' : 'high', edgePan: true, dmgNums: true, quickCast: false, voices: true, announcer: true, diff: 'normal',
-  fullscreen: true, lockMouse: true };   // 🖥️ cijeli zaslon pri početku igre, 🔒 miš ne može izaći iz igre
+  fullscreen: true, lockMouse: true, lastHit: true, tips: true, autoSkill: false };   // ⬆️ vještine se mogu učiti same   // 🪙 pomoć za zadnji udarac, 💡 savjeti   // 🖥️ cijeli zaslon pri početku igre, 🔒 miš ne može izaći iz igre
 try {
   const s = JSON.parse(localStorage.getItem('dk_settings') || '{}');
   if(typeof s.vol === 'number') SETTINGS.vol = clamp(s.vol, 0, 1);
@@ -643,6 +643,9 @@ try {
   if(['easy', 'normal', 'hard'].includes(s.diff)) SETTINGS.diff = s.diff;
   if(typeof s.fullscreen === 'boolean') SETTINGS.fullscreen = s.fullscreen;
   if(typeof s.lockMouse === 'boolean') SETTINGS.lockMouse = s.lockMouse;
+  if(typeof s.lastHit === 'boolean') SETTINGS.lastHit = s.lastHit;
+  if(typeof s.tips === 'boolean') SETTINGS.tips = s.tips;
+  if(typeof s.autoSkill === 'boolean') SETTINGS.autoSkill = s.autoSkill;
 } catch(e){}
 function saveSettings(){ try { localStorage.setItem('dk_settings', JSON.stringify(SETTINGS)); } catch(e){} }
 let ancients = [null, null];
@@ -1177,6 +1180,10 @@ function applyDamage(t, amount, src, kind){
     }
   }
   if(isStructure(t) && src && src.team !== t.team) t.lastDmgT = gameTime;   // 🤖 obrana: koga upravo ruše
+  if(src && src.kind === 'hero' && src.team !== t.team){   // 🏅 za medalje na kraju igre
+    if(t.kind === 'hero') src.heroDmg = (src.heroDmg || 0) + Math.min(hp0, amount);
+    else if(isStructure(t)) src.bldDmg = (src.bldDmg || 0) + Math.min(hp0, amount);
+  }
   if(src && src.team !== t.team){   // 💨 borba prekida putovanje (udarci između junaka, kula i građevina)
     if(src.kind === 'hero' && (t.kind === 'hero' || isStructure(t))) noteCombat(src);
     if(t.kind === 'hero' && (src.kind === 'hero' || src.kind === 'tower')) noteCombat(t);
@@ -4050,6 +4057,7 @@ function startGame(heroIdx){
   neutralDrops = [{ 1: 0, 2: 0, 3: 0 }, { 1: 0, 2: 0, 3: 0 }]; neutralFx = [];
   resetExtraRunes(); pings = []; chatOpen = false;
   pendingCast = null; resetTeamAI();
+  tip.cur = null; tip.done = {}; tip.next = 8; slowMo = 0;
   gameTime = 0; waveTimer = CFG.firstWave; waveCount = 0;
   firstBlood = false; gameOver = false; paused = false;
   quickBuy = null; shopSel = null; invDrag = null; hideItemTip();   // nova igra: bez stare brze kupnje i opisa
@@ -4147,9 +4155,28 @@ function teamNetWorth(team){ return units.reduce((a, h) => a + (h.kind === 'hero
 function netWorth(h){
   return Math.floor(h.gold + h.items.concat(h.backpack || []).reduce((a, it) => a + (it.cost != null ? itemFullCost(ITEM_BY_ID[it.id] || it) : 0), 0));
 }
+/* 🏅 medalje na kraju igre: svaka ide junaku koji je u nečemu najbolji (djeci je zabavno vidjeti svoju) */
+const AWARDS = [
+  { k: 'kills',   e: '🥇', n: 'Lovac',      d: 'najviše pobjeda nad junacima', v: h => h.kills },
+  { k: 'assists', e: '🤝', n: 'Pomagač',    d: 'najviše asistencija',           v: h => h.assists },
+  { k: 'lh',      e: '🪙', n: 'Zlatar',     d: 'najviše zadnjih udaraca',       v: h => h.lastHits || 0 },
+  { k: 'hdmg',    e: '💥', n: 'Razbijač',   d: 'najviše štete junacima',        v: h => h.heroDmg },
+  { k: 'bdmg',    e: '🏰', n: 'Rušitelj',   d: 'najviše štete kulama',          v: h => h.bldDmg },
+  { k: 'alive',   e: '🛡️', n: 'Neuništiv',  d: 'najmanje padova (najviše 2)',   v: h => h.deaths <= 2 ? 100 - h.deaths * 10 + h.kills + h.assists * 0.5 : 0 },
+];
+function computeAwards(heroes){
+  const out = new Map();   // junak → [medalje]
+  for(const a of AWARDS){
+    let best = null, bv = 0;
+    for(const h of heroes){ const v = a.v(h); if(v != null && v > bv){ bv = v; best = h; } }
+    if(best){ if(!out.has(best)) out.set(best, []); out.get(best).push(a); }
+  }
+  return out;
+}
 /* završna tablica (kao u DotA): po timovima, K/D/A, zadnji udarci, neto vrijednost, predmeti, 👑 najbolji igrač */
 function endTableHtml(winTeam){
   const heroesAll = units.filter(u => u.kind === 'hero');
+  const awards = computeAwards(heroesAll);
   const score = h => h.kills * 3 + h.assists * 1.5 - h.deaths + (h.lastHits || 0) / 15 + netWorth(h) / 1500;
   const mvp = heroesAll.slice().sort((a, b) => score(b) - score(a))[0];
   const icon = it => it && ITEM_BY_ID[it.id] ? `<img class="etItem" src="${itemIconUrl(ITEM_BY_ID[it.id])}" title="${it.name}" alt="${it.emoji}">` : '<span class="etItem etEmpty"></span>';
@@ -4163,7 +4190,7 @@ function endTableHtml(winTeam){
       const items = [];
       for(let i = 0; i < CFG.inventorySlots; i++) items.push(icon(h.items[i]));
       html += `<tr class="${h.isPlayer ? 'etMe' : ''}"><td class="etHero"><img src="assets/hero_${h.hero.id}.jpg" alt="${h.emoji}" onerror="this.replaceWith(document.createTextNode('${h.emoji}'))">` +
-        `<span>${h === mvp ? '👑 ' : ''}${h.name}${h.isPlayer ? ' <b>(TI)</b>' : ''}</span></td>` +
+        `<span>${h === mvp ? '👑 ' : ''}${h.name}${h.isPlayer ? ' <b>(TI)</b>' : ''}${(awards.get(h) || []).map(a => `<i class="etAw" title="${a.n} — ${a.d}">${a.e}</i>`).join('')}</span></td>` +
         `<td>${h.level}</td><td><b class="etK">${h.kills}</b> / <b class="etD">${h.deaths}</b> / <b class="etA">${h.assists}</b></td>` +
         `<td>${h.lastHits || 0} / ${h.denies || 0}</td><td class="etNw">${netWorth(h)}</td>` +
         `<td class="etItems">${items.join('')}${h.neutral ? `<img class="etItem etNeut" src="${itemIconUrl(h.neutral)}" title="${h.neutral.name}">` : ''}</td></tr>`;
@@ -4171,6 +4198,8 @@ function endTableHtml(winTeam){
   }
   html += '</table>';
   if(mvp) html += `<div class="etMvp">👑 Najbolji igrač: <b>${mvp.emoji} ${mvp.name}</b> — ${mvp.kills} / ${mvp.deaths} / ${mvp.assists}</div>`;
+  const mine = player && awards.get(player);
+  if(mine) html += `<div class="etMvp etMine">🏅 Tvoje medalje: ${mine.map(a => `<b>${a.e} ${a.n}</b> <small>(${a.d})</small>`).join(' · ')}</div>`;
   if(net.mode !== 'host' && net.mode !== 'guest')
     html += `<div class="etMvp">🤖 Botovi: <b>${{ easy: '🐣 Lako', normal: '⚔️ Normalno', hard: '🔥 Teško' }[SETTINGS.diff]}</b></div>`;
   return html;
@@ -4926,6 +4955,7 @@ function syncOptionsDom(){
   tog('optEdge', SETTINGS.edgePan);
   tog('optQuick', SETTINGS.quickCast);
   tog('optDmg', SETTINGS.dmgNums);
+  if($('optLh')){ tog('optLh', SETTINGS.lastHit); tog('optTips', SETTINGS.tips); tog('optAuto', SETTINGS.autoSkill); }
   tog('optMute', !muted);
   tog('optVoices', SETTINGS.voices);
   tog('optAnn', SETTINGS.announcer);
@@ -4960,6 +4990,14 @@ function buildOptionsDom(){
   }
   $('optQuick').addEventListener('click', () => { SETTINGS.quickCast = !SETTINGS.quickCast; saveSettings(); syncOptionsDom(); sfx('click'); });
   $('optDmg').addEventListener('click', () => { SETTINGS.dmgNums = !SETTINGS.dmgNums; saveSettings(); syncOptionsDom(); sfx('click'); });
+  if($('optLh')){
+    $('optLh').addEventListener('click', () => { SETTINGS.lastHit = !SETTINGS.lastHit; saveSettings(); syncOptionsDom(); sfx('click'); });
+    $('optAuto').addEventListener('click', () => { SETTINGS.autoSkill = !SETTINGS.autoSkill; saveSettings(); syncOptionsDom(); sfx('click'); });
+    $('optTips').addEventListener('click', () => {   // ponovno uključivanje vraća sve savjete
+      SETTINGS.tips = !SETTINGS.tips; if(SETTINGS.tips){ tipCounts = {}; tip.done = {}; try { localStorage.removeItem('dk_tips'); } catch(e){} }
+      saveSettings(); syncOptionsDom(); sfx('click');
+    });
+  }
   $('optMute').addEventListener('click', () => { muted = !muted; syncOptionsDom(); sfx('click'); });
   $('optVoices').addEventListener('click', () => {
     SETTINGS.voices = !SETTINGS.voices; saveSettings(); syncOptionsDom(); sfx('click');
@@ -4984,7 +5022,7 @@ function buildSelectScreen(){
       <img class="c-img" src="assets/hero_${h.id}.jpg" alt="${h.emoji}"
         onerror="this.outerHTML='<div class=&quot;c-emoji&quot;>${h.emoji}</div>'">
       <div class="c-name">${h.name}</div>
-      <div class="c-type">${h.projSpeed > 0 ? '🏹' : '⚔️'}</div>
+      <div class="c-type">${h.projSpeed > 0 ? '🏹' : '⚔️'}</div>${heroDifficulty(h.id) === 0 ? '<div class="c-easy" title="Lako za početnike">🟢</div>' : ''}
     </div>`;
   });
   cards.innerHTML = html;
@@ -5029,6 +5067,10 @@ function buildSelectScreen(){
   selectHero(0);   // odmah je netko odabran — dovoljno je pritisnuti ZAIGRAJ
 }
 /* desna ploča: 3D model, uloga i 5 pločica (urođena pasiva + Q W E R); opis jedne po jednoj */
+/* 🟢🟡🔴 težina junaka na ekranu odabira (za početnike: lako = jednostavne moći, puno života) */
+const HERO_EASY = ['vitez', 'slon', 'nosorog', 'panda', 'bikos', 'jednorog', 'listko', 'zarko', 'strijela'];
+const HERO_HARD = ['tragac', 'hobotnica', 'luna', 'gavran', 'sova', 'majmun'];
+function heroDifficulty(id){ return HERO_EASY.includes(id) ? 0 : (HERO_HARD.includes(id) ? 2 : 1); }
 function selectHero(i){
   const h = HEROES[i];
   selectedHero = i;
@@ -5036,8 +5078,10 @@ function selectHero(i){
   document.querySelectorAll('.card').forEach(c => c.classList.remove('sel'));
   document.getElementById('card-' + i).classList.add('sel');
   const primNames = { str: '💪 Snaga', agi: '🤸 Okretnost', int: '🧠 Pamet' };
+  const dif = heroDifficulty(h.id);
   const chips = (h.projSpeed > 0 ? '<span class="chip chipR">🏹 Daljina</span>' : '<span class="chip chipM">⚔️ Blizina</span>') +
-    '<span class="chip chipP">' + primNames[h.attrs.primary] + '</span>';
+    '<span class="chip chipP">' + primNames[h.attrs.primary] + '</span>' +
+    '<span class="chip chipD' + dif + '" title="Koliko je junak težak za igranje">' + ['🟢 Lako', '🟡 Srednje', '🔴 Teško'][dif] + '</span>';
   const tiles = [];
   if(h.passive) tiles.push({ k: '✨', cls: 'pas', e: h.passive.emoji, name: h.passive.name, tag: '<span class="pasTag">✨ UROĐENO</span>',
     desc: h.passive.desc.replace(/^PASIVNO:\s*/, '') + ' (uvijek radi)' });
@@ -5156,6 +5200,98 @@ function barHeight(u){
   return 185;
 }
 
+/* 💡 savjeti za početnike: kratka poruka u pravom trenutku (iznad ploče junaka). Svaki savjet najviše
+   2 puta ukupno (pamti se u pregledniku), jedan po jedan, najviše jedan u 25 s; isključuju se u ⚙️ postavkama */
+let tipCounts = {};
+try { tipCounts = JSON.parse(localStorage.getItem('dk_tips') || '{}') || {}; } catch(e){}
+const tip = { cur: null, t: 0, next: 8, done: {}, chk: 0, combatT: -99 };
+const TIPS = [
+  { k: 'lowhp', txt: '❤️ Malo života! Makni se od neprijatelja ili pritisni T dvaput — teleport kući 🏠',
+    test: p => p.hp < p.maxhp * 0.3 && !nearBase(p) },
+  { k: 'lasthit', txt: '🪙 Kad vojnik ima zlatnik iznad glave, udari ga baš tada — dobit ćeš zlato!',
+    test: p => gameTime > 50 && (p.lastHits || 0) < 3 && units.some(c => c.kind === 'creep' && lastHitMark(c) === 'gold') },
+  { k: 'buy', txt: null,
+    test: p => { const it = tipNextBuy(p); if(!it) return false; tip.buyName = it.emoji + ' ' + it.name; return true; } },
+  { k: 'tango', txt: '🌿 Klikni Tango pa DRVO — junak pojede drvo i polako se liječi',
+    test: p => itemCharges(p, 'tango') > 0 && p.items.some(i => i.id === 'tango') && p.hp < p.maxhp * 0.65 && gameTime - tip.combatT > 3 },
+  { k: 'ult', txt: '🌟 Level 6 — otključaj ULTI! Klikni + iznad tipke R',
+    test: p => p.level >= 6 && p.skillPoints > 0 && p.abilities[3] && p.abilities[3].rank === 0 },
+  { k: 'tower', txt: '🗼 Kula gađa TEBE! Pusti svoje vojnike naprijed pa onda napadaj kulu',
+    test: p => units.some(t => t.kind === 'tower' && t.team !== p.team && !t.dead && t.attackTarget === p) },
+  { k: 'dead', txt: '⏳ Dok čekaš oživljavanje, otvori dućan (B) i kupi nešto novo 🛒',
+    test: p => p.dead && p.gold >= 250 },
+  { k: 'tp', txt: '🌀 Jedna staza je daleko? T pa klik na svoju kulu — teleport do nje!',
+    test: p => gameTime > 300 && !p.dead && p.tpCd <= 0 && nearBase(p) },
+];
+function tipNextBuy(p){   // sljedeći korak iz vodiča koji si možeš priuštiti
+  if(typeof quickBuyList !== 'function' || p.dead || shopOpen) return null;
+  const build = (p.hero && p.hero.build) || BOT_BUILD;
+  const nextId = build.find(id => !ownsOrUsed(p, id));
+  if(!nextId) return null;
+  const step = quickBuyList(p, nextId).find(x => !x.instant && p.gold >= planPurchase(p, x).cost && planPurchase(p, x).ok);
+  return step && nearBase(p) ? step : null;
+}
+/* ⬆️ same uče vještine (postavka): neiskorišteni poen nakon 2.5 s potroši se kao kod botova (ulti prvi, pa ravnomjerno) */
+let autoSkillAt = 0;   // stvarno vrijeme (i na sporom tabletu jednako brzo)
+function updateAutoSkill(){
+  if(!SETTINGS.autoSkill || !player || player.dead || player.skillPoints <= 0 || gameOver){ autoSkillAt = 0; return; }
+  const now = performance.now();
+  if(!autoSkillAt){ autoSkillAt = now; return; }
+  if(now - autoSkillAt < 2500) return;
+  autoSkillAt = 0;
+  if(net.mode !== 'guest'){ botSpendPoints(player); return; }
+  const i = canLearn(player, 3) ? 3 : [0, 1, 2].filter(k => canLearn(player, k)).sort((a, b) => player.abilities[a].rank - player.abilities[b].rank)[0];
+  if(i != null) netLearn(i);
+}
+function updateTips(dt){
+  if(!player || !SETTINGS.tips || gameOver || gameTime < 0) return;
+  if(gameTime - (player.combatT == null ? -99 : player.combatT) < 0.5) tip.combatT = gameTime;
+  if(tip.cur){ tip.t += dt; if(tip.t > 7) { tip.cur = null; tip.next = gameTime + 25; } return; }
+  if(gameTime < tip.next || (tip.chk -= dt) > 0) return;
+  tip.chk = 1;
+  for(const t of TIPS){
+    if(tip.done[t.k] || (tipCounts[t.k] || 0) >= 2) continue;
+    let ok = false;
+    try { ok = t.test(player); } catch(e){ ok = false; }
+    if(!ok) continue;
+    tip.cur = t.k === 'buy' ? { k: 'buy', txt: '🛒 Imaš dovoljno zlata za ' + tip.buyName + '! Pritisni B — dućan' } : t;
+    tip.t = 0; tip.done[t.k] = true;
+    tipCounts[t.k] = (tipCounts[t.k] || 0) + 1;
+    try { localStorage.setItem('dk_tips', JSON.stringify(tipCounts)); } catch(e){}
+    sfx('tick');
+    break;
+  }
+}
+function drawTip(){
+  if(!tip.cur || !SETTINGS.tips || gameOver) return;
+  const HL = hudLayout();
+  const a = tip.t < 0.25 ? tip.t / 0.25 : (tip.t > 6.4 ? Math.max(0, (7 - tip.t) / 0.6) : 1);
+  ctx.save();
+  ctx.globalAlpha = a;
+  ctx.font = fontTxt(15, true);
+  const txt = '💡 ' + tip.cur.txt, w = Math.min(VW - 40, ctx.measureText(txt).width + 34), h = 36;
+  const x = clamp(HL.px + HL.pw / 2 - w / 2, 10, VW - w - 10), y = HL.py - h - 44 - (1 - a) * 8;
+  ctx.fillStyle = 'rgba(15,23,42,0.88)';
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, 18); ctx.fill();
+  ctx.strokeStyle = '#fde047'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, 18); ctx.stroke();
+  ctx.fillStyle = '#fef9c3'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(txt, x + w / 2, y + h / 2 + 1, w - 24);
+  ctx.restore();
+}
+/* 🪙 zadnji udarac (kao u DotA): neprijateljski vojnik kojeg tvoj sljedeći udarac pobjeđuje dobije zlatnik iznad trake života,
+   a tvoj vojnik kojeg možeš uskratiti ❗ — djeca tako uče farmati zlato */
+function lastHitMark(c){
+  if(!player || player.dead || !SETTINGS.lastHit || c.summonOf) return null;
+  const range = (player.atkRange || 150) + 380;
+  if(dist(player, c) > range) return null;
+  const ranged = player.projSpeed > 0;
+  const raw = (player.dmg || 0) + (c.team !== player.team && player.ifx && player.ifx.creepDmg ? player.ifx.creepDmg * (ranged ? 0.5 : 1) : 0);
+  const hit = raw * armorMul(unitArmor(c));
+  if(c.hp > hit) return null;
+  if(c.team !== player.team) return seenByPlayer(c) ? 'gold' : null;
+  return c.hp < c.maxhp * CFG.denyHp ? 'deny' : null;
+}
 function drawWorldOverlay(){
   for(const u of units){
     if(u.dead || u.removeMe) continue;
@@ -5168,7 +5304,7 @@ function drawWorldOverlay(){
       ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
       ctx.strokeStyle = 'rgba(0,0,0,0.6)';
       ctx.lineWidth = 3;
-      const nm = u.name + (u.isPlayer ? ' ⭐' : '');
+      const nm = (u.streak >= 3 ? '🔥 ' : '') + u.name + (u.isPlayer ? ' ⭐' : '');   // 🔥 niz pobjeda (3+)
       ctx.strokeText(nm, s.x + 8, s.y - 13);
       ctx.fillStyle = '#fff';
       ctx.fillText(nm, s.x + 8, s.y - 13);
@@ -5181,6 +5317,14 @@ function drawWorldOverlay(){
     }
     else if(u.kind === 'creep'){
       drawBar(s.x - 16, s.y, 32, 5, u.hp / u.maxhp, TEAM_COLOR[u.team]);
+      const lh = lastHitMark(u);   // 🪙 pomoć za "zadnji udarac": tvoj sljedeći udarac ga pobjeđuje
+      if(lh){
+        const bob = Math.sin(performance.now() / 120) * 2;
+        ctx.font = fontEmoji(lh === 'deny' ? 12 : 15);
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText(lh === 'deny' ? '❗' : '🪙', s.x, s.y - 2 + bob);
+        if(lh === 'gold'){ ctx.strokeStyle = 'rgba(253,224,71,0.9)'; ctx.lineWidth = 1.5; ctx.strokeRect(s.x - 17, s.y - 1, 34, 7); }
+      }
     }
     else if(u.kind === 'neutral'){
       const big = u.boss || u.drake, w = u.boss ? 80 : (u.drake ? 64 : 40);
@@ -5260,7 +5404,7 @@ function drawScreenFx(dt){
   if(scrFx.pid !== player.id){ scrFx.pid = player.id; scrFx.hp = player.hp; }
   if(!player.dead && player.hp < scrFx.hp - player.maxhp * 0.04) scrFx.hurt = Math.min(1, scrFx.hurt + (scrFx.hp - player.hp) / player.maxhp * 3);
   scrFx.hp = player.hp;
-  const low = !player.dead && player.hp < player.maxhp * 0.25 ? 0.35 + 0.25 * Math.sin(performance.now() / 180) : 0;
+  const low = !player.dead && player.hp < player.maxhp * 0.25 && !nearBase(player) ? 0.3 + 0.2 * Math.sin(performance.now() / 180) : 0;   // u bazi si siguran
   const red = Math.max(scrFx.hurt * 0.75, low);
   if(red > 0.01){
     const g = ctx.createRadialGradient(VW / 2, VH / 2, Math.min(VW, VH) * 0.35, VW / 2, VH / 2, Math.max(VW, VH) * 0.75);
@@ -6247,11 +6391,6 @@ function drawMinimap(ms, mx, my){
         ctx.fillStyle = '#facc15';
         ctx.beginPath(); ctx.arc(ux, uy, 2.2, 0, TAU); ctx.fill();
       }
-    } else {
-      ctx.fillStyle = TEAM_COLOR[u.team];
-      ctx.strokeStyle = u.isPlayer ? '#fde047' : '#fff';
-      ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(ux, uy, 5.5, 0, TAU); ctx.fill(); ctx.stroke();
     }
   }
   // magla rata preko minimape
@@ -6267,6 +6406,27 @@ function drawMinimap(ms, mx, my){
     ctx.font = fontEmoji(13);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('⭐', mx + runes[0].x * sc, my + runes[0].y * sc);
+  }
+  // 🦁 junaci: okrugli portreti u prstenu boje tima (ti: zlatni prsten, uvijek na vrhu), iznad magle
+  const heroDots = units.filter(u => u.kind === 'hero' && !u.dead && !u.removeMe && seenByPlayer(u)).sort((a, b) => (a.isPlayer ? 1 : 0) - (b.isPlayer ? 1 : 0));
+  const pr = Math.max(6, Math.round(ms * 0.045));
+  for(const u of heroDots){
+    const ux = mx + u.x * sc, uy = my + u.y * sc, r = u.isPlayer ? pr + 1.5 : pr;
+    ctx.fillStyle = TEAM_COLOR[u.team];
+    ctx.beginPath(); ctx.arc(ux, uy, r + 2, 0, TAU); ctx.fill();
+    const pim = GFX.heroes[u.hero.id];
+    if(imgReady(pim)){
+      ctx.save();
+      ctx.beginPath(); ctx.arc(ux, uy, r, 0, TAU); ctx.clip();
+      ctx.drawImage(pim, ux - r, uy - r, r * 2, r * 2);
+      ctx.restore();
+    } else {
+      ctx.font = fontEmoji(r * 1.4); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(u.emoji, ux, uy + 1);
+    }
+    ctx.strokeStyle = u.isPlayer ? '#fde047' : (u.team === myTeam ? '#e0f2fe' : '#fecaca');
+    ctx.lineWidth = u.isPlayer ? 2.5 : 1.5;
+    ctx.beginPath(); ctx.arc(ux, uy, r + 1.5, 0, TAU); ctx.stroke();
   }
   for(const w of wards){
     if(w.team !== myTeam) continue;
@@ -6456,9 +6616,11 @@ function frame(now){
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.clearRect(0, 0, VW, VH);
   if(running){
+    if(!paused){ updateTips(dt); updateAutoSkill(); }
     drawWorldOverlay();
     drawScreenFx(dt);
     drawHud();
+    drawTip();
     drawChatWheel();
   }
   watchMouseLock();

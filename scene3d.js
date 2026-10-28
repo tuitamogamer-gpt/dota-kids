@@ -3818,6 +3818,11 @@ function syncHeroExtras(u, g, gh, tAnim, dt, seen){
     fxSpawn(u.x + Math.cos(a) * 20, u.y + Math.sin(a) * 20, gh + 8 + Math.random() * 40, u.travel === 2 ? '#bae6fd' : '#f8fafc', { spd: 0, up: 6, grav: 0, life: 0.35, size: u.travel === 2 ? 18 : 14 });
     if(fx.list.length > n){ fx.list[n].vx = Math.cos(a) * 90; fx.list[n].vy = Math.sin(a) * 90; }
   }
+  // 🔥 niz pobjeda (3+): plamičci nad glavom — "u vatri" (vrijedi puno zlata tko ga zaustavi)
+  if(u.streak >= 3 && Math.random() < dt * (6 + Math.min(10, u.streak) * 2)){
+    const a = Math.random() * TAU, r = 10 + Math.random() * 16;
+    fxSpawn(u.x + Math.cos(a) * r, u.y + Math.sin(a) * r, gh + 92 + Math.random() * 10, Math.random() < 0.5 ? '#ff7a1a' : '#ffd166', { spd: 6, up: 55, grav: 0, life: 0.45, size: 16 });
+  }
   // 🍖 ratna glad: narančaste kapi i para nad metom
   if(u.hungerT > 0 && Math.random() < dt * 9)
     fxSpawn(u.x + (Math.random() - 0.5) * 36, u.y + (Math.random() - 0.5) * 36, gh + 60 + Math.random() * 30, Math.random() < 0.5 ? '#fb923c' : '#fdba74', { spd: 10, up: -40, grav: -60, life: 0.6, size: 14 });
