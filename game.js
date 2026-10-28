@@ -1534,7 +1534,7 @@ function recomputeAttrStats(h){
     hpRegen: dStr * 0.07,
     mp: Math.round(dInt * 13),
     mpRegen: dInt * 0.06,
-    speed: dAgi * 0.3,
+    speed: dAgi * CFG.agiSpeed,
     dmg: Math.round(prim * 1.2),
   };
   const ob = h.attrBonus;

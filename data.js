@@ -88,9 +88,10 @@ const CFG = {
   timeScale: 1,             // ⏱️ brza igra: 0.6 — botovi ranije guraju, kule ranije gube bonus protiv junaka
   meleeResist: 0.08,        // ⚖️ v0.45: junaci izbliza primaju 8% manje štete
   intSpellAmp: 0.0025,      // ⚖️ v0.45: svaki bod inteligencije +0.25% štete moćima (čarobnjaci jačaju s levelima)
-  agiAtkSpd: 0.0046,        // ⚖️ v0.45: brzina napada po bodu okretnosti (bilo 0.006 — nosači su bili prejaki)
+  agiAtkSpd: 0.0042,        // ⚖️ v0.45: brzina napada po bodu okretnosti (bilo 0.006 — nosači su bili prejaki)
   agiArmorDiv: 12,          // ⚖️ v0.45: oklop = okretnost / 12 (bilo / 10)
-  strHp: 20,                // ⚖️ v0.45: život po bodu snage (bilo 18) — snažni junaci izbliza bili su preslabi
+  agiSpeed: 0.22,           // ⚖️ v0.45: brzina kretanja po bodu okretnosti (bilo 0.3)
+  strHp: 21,                // ⚖️ v0.45: život po bodu snage (bilo 18) — snažni junaci izbliza bili su preslabi
   creepGoldMul: 1, creepXpMul: 1,   // ⚡ brza igra množi zlato i iskustvo od vojnika i čudovišta
   creepScalePct: 0.12,
   shrineCd: 240,            // svetište: liječi 5 s, puni se 4 min
@@ -122,7 +123,7 @@ const HEROES = [
   {
     id:'vitez', name:LS('Lavko'), emoji:'🦁',
     role:L('🛡️ Vitez — hrabri tenk', '🛡️ Knight — brave tank'),
-    hp:680, mp:240, dmg:60,
+    hp:700, mp:240, dmg:60,
     attrs:{ str:25, agi:16, int:13, strG:5.6, agiG:2.2, intG:2.0, primary:'str' },
     range:78, speed:168, atkCd:1.1, projSpeed:0,
     passive:{ name:L('Lavlja koža', 'Lion Hide'), emoji:'🦺', color:'#fde047', pid:'koza',
@@ -184,7 +185,7 @@ const HEROES = [
   {
     id:'zarko', name:L('Žarko', 'Zharko'), emoji:'🐉',
     role:L('🔥 Vatreni zmaj — čarobnjak', '🔥 Fire dragon — mage'),
-    hp:530, mp:300, dmg:52,
+    hp:550, mp:300, dmg:52,
     attrs:{ str:18, agi:16, int:24, strG:3.6, agiG:2.4, intG:5.4, primary:'int' },
     range:330, speed:165, atkCd:1.15, projSpeed:600, shot:'fire',
     passive:{ name:L('Vatrena krv', 'Fire Blood'), emoji:'🔥', color:'#fb923c', pid:'zar',
@@ -352,7 +353,7 @@ const HEROES = [
   {
     id:'listko', name:LS('Listko'), emoji:'🐢',
     role:L('🌿 Šumski iscjelitelj', '🌿 Forest healer'),
-    hp:670, mp:300, dmg:54,
+    hp:690, mp:300, dmg:54,
     attrs:{ str:23, agi:14, int:20, strG:4.8, agiG:2.0, intG:3.4, primary:'str' },
     range:300, speed:163, atkCd:1.15, projSpeed:560, shot:'leaf',
     passive:{ name:L('Korijeni', 'Roots'), emoji:'🌱', color:'#4ade80', pid:'korijen',
@@ -465,7 +466,7 @@ const HEROES = [
   {
     id:'skokica', name:L('Skokica', 'Skokitsa'), emoji:'🐸',
     role:L('👅 Žabac — vuče neprijatelje k sebi', '👅 Frog — pulls enemies in'),
-    hp:700, mp:260, dmg:63,
+    hp:720, mp:260, dmg:63,
     attrs:{ str:24, agi:18, int:14, strG:5.2, agiG:3.0, intG:2.2, primary:'str' },
     range:85, speed:172, atkCd:1.05, projSpeed:0,
     passive:{ name:L('Vodozemac', 'Amphibian'), emoji:'💧', color:'#38bdf8', pid:'voda',
@@ -853,7 +854,7 @@ const HEROES = [
   {
     id:'pcela', name:L('Zuja', 'Zooya'), emoji:'🐝',
     role:L('🍯 Pčela — otrovna čarobnica', '🍯 Bee — poison witch'),
-    hp:520, mp:320, dmg:48,
+    hp:550, mp:320, dmg:50,
     attrs:{ str:17, agi:18, int:25, strG:3.4, agiG:2.6, intG:5.6, primary:'int' },
     range:340, speed:168, atkCd:1.1, projSpeed:650, shot:'bolt',
     passive:{ name:L('Med', 'Honey'), emoji:'🧈', color:'#fde68a', pid:'med',
@@ -873,11 +874,11 @@ const HEROES = [
       { key:'W', name:L('Roj', 'Swarm'), emoji:'🍯', cd:14, mana:70, color:'#fbbf24',
         desc:L('Pozovi roj pčela na mjesto — bodu i usporavaju sve u krugu', 'Call a bee swarm to a spot — they sting and slow everyone in the circle'),
         target:'point', castRange:600, aoe:200,
-        tip:rk => L('⚔️ 5 × ' + (18 + 14*rk) + ' štete + usporenje', '⚔️ 5 × ' + (18 + 14*rk) + ' damage + slow'),
+        tip:rk => L('⚔️ 5 × ' + (22 + 17*rk) + ' štete + usporenje', '⚔️ 5 × ' + (22 + 17*rk) + ' damage + slow'),
         bot:{type:'zone', range:540},
         cast(u, aim, rk){
           return spawnZone(u, aim, {r:200, delay:0.4, ticks:5, interval:0.8,
-            dmg:18 + 14*rk, slow:{f:0.3, t:1}, castRange:600,
+            dmg:22 + 17*rk, slow:{f:0.3, t:1}, castRange:600,
             color:'#fbbf24', emoji:'🍯'});
         }},
       { key:'E', name:L('Zuj-bijeg', 'Buzz Off'), emoji:'🌬️', cd:13, mana:45, color:'#fde047',
@@ -966,7 +967,7 @@ const HEROES = [
   {
     id:'majmun', name:L('Skakač', 'Skakach'), emoji:'🐵',
     role:L('🥢 Majmun — brzi borac sa štapom', '🥢 Monkey — fast fighter with a staff'),
-    hp:580, mp:260, dmg:58,
+    hp:580, mp:260, dmg:56,
     attrs:{ str:19, agi:26, int:15, strG:4.0, agiG:6.0, intG:2.2, primary:'agi' },
     range:90, speed:180, atkCd:1.0, projSpeed:0,
     passive:{ name:L('Kombo', 'Combo'), emoji:'👊', color:'#fde047', pid:'kombo',
@@ -1032,7 +1033,7 @@ const HEROES = [
   {
     id:'vuk', name:LS('Sivko'), emoji:'🐺',
     role:L('🌕 Vuk — vođa čopora', '🌕 Wolf — pack leader'),
-    hp:700, mp:230, dmg:67,
+    hp:730, mp:230, dmg:70,
     attrs:{ str:24, agi:20, int:12, strG:5.4, agiG:3.2, intG:1.6, primary:'str' },
     range:82, speed:176, atkCd:1.05, projSpeed:0,
     passive:{ name:L('Čopor', 'Pack'), emoji:'🐾', color:'#cbd5e1', pid:'copor',
@@ -1162,7 +1163,7 @@ const HEROES = [
   {
     id:'hobotnica', name:LS('Pipko'), emoji:'🐙',
     role:L('🌊 Hobotnica — vladar dubina', '🌊 Octopus — ruler of the deep'),
-    hp:730, mp:250, dmg:58,
+    hp:740, mp:250, dmg:62,
     attrs:{ str:26, agi:14, int:14, strG:5.6, agiG:1.8, intG:2.0, primary:'str' },
     range:92, speed:160, atkCd:1.15, projSpeed:0,
     passive:{ name:L('Sluzava koža', 'Slimy Skin'), emoji:'💧', color:'#a5b4fc', pid:'sluz',
@@ -1182,7 +1183,7 @@ const HEROES = [
       { key:'W', name:L('Pipci', 'Tentacles'), emoji:'🐙', cd:10, mana:50, color:'#818cf8',
         desc:L('Ispruži pipke u pravcu — zgrabi neprijatelje i povuci ih k sebi', 'Stretch your tentacles in a line — grab enemies and pull them to you'),
         target:'point', castRange:380, line:true, lineW:160,
-        tip:rk => L('⚔️ ' + (40 + 30*rk) + ' štete + povlačenje ' + (140 + 20*rk) + ' + 🐌 usporenje', '⚔️ ' + (40 + 30*rk) + ' damage + pull ' + (140 + 20*rk) + ' + 🐌 slow'),
+        tip:rk => L('⚔️ ' + (55 + 35*rk) + ' štete + povlačenje ' + (140 + 20*rk) + ' + 🐌 usporenje', '⚔️ ' + (55 + 35*rk) + ' damage + pull ' + (140 + 20*rk) + ' + 🐌 slow'),
         bot:{type:'shot', range:350},
         cast(u, aim, rk){
           const p = clampRange(u, aim, 380);
@@ -1191,7 +1192,7 @@ const HEROES = [
           for(const e of units){
             if(e.team === u.team || e.dead || e.removeMe || e.invuln || !isSpellTarget(e)) continue;
             if(distToSeg(e.x, e.y, u.x, u.y, p.x, p.y) <= 80 + e.r){
-              applyDamage(e, 40 + 30*rk, u);
+              applyDamage(e, 55 + 35*rk, u);
               pullToward(e, u.x, u.y, 140 + 20*rk);
               applySlow(e, 0.3, 2);
               n++;

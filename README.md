@@ -29,10 +29,10 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
     - novo postignuće na kraju igre javlja i 🎁 novu nagradu
   - 🎶 **glazba** stvorena u pregledniku (bez datoteka): mirna melodija na izborniku, živahnija u bitci, bubanj svira kad si u borbi; isključuje se u ⚙️ postavkama
   - 📊 **statistika s junakom** na ekranu odabira: broj igara i pobjeda, prosječni K/D/A i rekord
-  - ⚖️ **ravnoteža junaka** — 4 kruga po 40–80 simuliranih igara 5 na 5 (botovi vode oba tima; `tools/sim/sim.js --json`, procjena snage junaka iz sastava timova):
+  - ⚖️ **ravnoteža junaka** — 6 krugova po 40–80 simuliranih igara 5 na 5 (oko 450 igara) (botovi vode oba tima; `tools/sim/sim.js --json`, procjena snage junaka iz sastava timova):
     - na početku su daljinski nosači s okretnošću pobjeđivali ~69% igara (Nišan 81%), a čarobnjaci s inteligencijom ~41%
-    - 🧠 **inteligencija jača moći** (+0.25% štete moći po bodu) • 🤸 okretnost daje manje brzine napada (0.46% po bodu) i oklopa (1 po 12 bodova) • 💪 snaga daje 20 života po bodu • ⚔️ **junaci izbliza primaju 8% manje štete**
-    - slabiji ulti Nišana, Strijele, Orline i Gavrana; jači Skokica, Bambus, Sivko, Pipko, Žarko, Mudra (i noć koja timu daje jače udarce), Rogo, Duga, Munja, Listko, Ledena
+    - 🧠 **inteligencija jača moći** (+0.25% štete moći po bodu) • 🤸 okretnost daje manje brzine napada (0.42% po bodu), kretanja (0.22 po bodu) i oklopa (1 po 12 bodova) • 💪 snaga daje 21 život po bodu • ⚔️ **junaci izbliza primaju 8% manje štete**
+    - slabiji ulti Nišana, Strijele, Orline i Gavrana, slabiji Skakač; jači Skokica, Bambus, Sivko, Pipko, Pčela, Žarko, Mudra (i noć koja timu daje jače udarce), Rogo, Duga, Munja, Listko, Ledena, Lavko
     - botovi: Bikoš sad koristi ulti i na ranjenom junaku, Mudra baca noć i u timskoj borbi
     - ⚡ u brzoj igri i odluke botova (kada guraju, Veliki Zmaj) i jačina kula idu po bržem satu — igra traje ~12 min (prije ~17)
   - 🐛 postavke „zadaci za početnike” (i nove: glazba, brza igra) sada se pamte i nakon ponovnog učitavanja
