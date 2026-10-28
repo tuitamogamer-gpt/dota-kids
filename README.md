@@ -2,7 +2,7 @@
 
 > 🇬🇧 **English:** a kids' DOTA-style MOBA in 3D that runs in the browser — 24 heroes, 5 vs 5 against bots or with a friend online, talking heroes, achievements, works on tablets. **The whole game is available in English** (and in Croatian/Bosnian and Serbian, Latin and Cyrillic) — pick the language on the start screen (or open the game with `?lang=en`). Play: [dota-kids-brown.vercel.app](https://dota-kids-brown.vercel.app/?lang=en)
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.44: 🎯 zadaci za početnike sa zlatom, 📈 graf „Tko je vodio” na kraju igre i 🌐 poruke na svom jeziku u igri s prijateljem.** v0.43: 🌍 cijela igra i na srpskom (latinica i ćirilica) i engleskom — biraš na početku — i 🎬 novi početni ekran.** v0.42: 🏆 postignuća i profil — 15 postignuća, pobjede sa svakim junakom i 🎖️ „Novo postignuće!” na kraju igre.** v0.41: 🔊 novi zvuk — bogatiji efekti, prostorni zvuk (lijevo/desno, tiše izdaleka) i 🌲 zvukovi prirode.** v0.40: 🪙 pomoć za zadnji udarac, 💡 savjeti za početnike, 🏅 medalje na kraju igre, 🗺️ portreti na minimapi i 🔥 junaci „u vatri”.** v0.39: čišći ekran (brojevi štete samo kad si ti uključen, manje poruka), 💨 brže putovanje izvan borbe i 🪙 zlatnici koji polete do tebe kad pobijediš junaka.** v0.38: veliko poliranje — ⛶ cijeli zaslon, 🐿️ Nišan i 🐂 Bikoš, 🎓 svaki junak ima svoje talente, 💥 kritični udarci, 🛒 jasniji dućan, 🗺️ veća mapa, 🗼 aggro kao u Doti, 🌫️ prava magla rata, 🌿 tango jede drvo i 🤖 pametniji botovi (gankovi, guranje, obrana).** (v0.37: 👥 pravih 5 na 5, v0.36: peglanje za mobitel i opisi gumba, v0.35: u mrežnoj igri svatko vidi svoje, v0.34: 📣 najavljivač, 🤖 težina botova, 💀 pregled pogibije, 💃 ples)
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.45: ⚡ brza igra (~10 min), 🎁 nagrade za postignuća (trag i kruna/ljubimac), 🎶 glazba, 📊 statistika po junaku i ⚖️ ujednačeniji junaci.** v0.44: 🎯 zadaci za početnike sa zlatom, 📈 graf „Tko je vodio” na kraju igre i 🌐 poruke na svom jeziku u igri s prijateljem.** v0.43: 🌍 cijela igra i na srpskom (latinica i ćirilica) i engleskom — biraš na početku — i 🎬 novi početni ekran.** v0.42: 🏆 postignuća i profil — 15 postignuća, pobjede sa svakim junakom i 🎖️ „Novo postignuće!” na kraju igre.** v0.41: 🔊 novi zvuk — bogatiji efekti, prostorni zvuk (lijevo/desno, tiše izdaleka) i 🌲 zvukovi prirode.** v0.40: 🪙 pomoć za zadnji udarac, 💡 savjeti za početnike, 🏅 medalje na kraju igre, 🗺️ portreti na minimapi i 🔥 junaci „u vatri”.** v0.39: čišći ekran (brojevi štete samo kad si ti uključen, manje poruka), 💨 brže putovanje izvan borbe i 🪙 zlatnici koji polete do tebe kad pobijediš junaka.** v0.38: veliko poliranje — ⛶ cijeli zaslon, 🐿️ Nišan i 🐂 Bikoš, 🎓 svaki junak ima svoje talente, 💥 kritični udarci, 🛒 jasniji dućan, 🗺️ veća mapa, 🗼 aggro kao u Doti, 🌫️ prava magla rata, 🌿 tango jede drvo i 🤖 pametniji botovi (gankovi, guranje, obrana).** (v0.37: 👥 pravih 5 na 5, v0.36: peglanje za mobitel i opisi gumba, v0.35: u mrežnoj igri svatko vidi svoje, v0.34: 📣 najavljivač, 🤖 težina botova, 💀 pregled pogibije, 💃 ples)
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -20,6 +20,17 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- ⚡🎁🎶 **Brza igra, nagrade, glazba i ravnoteža** (v0.45):
+  - ⚡ **brza igra** (ekran junaka: ⏱️ Igra: 🏰 Normalna / ⚡ Brza) — kao Turbo u DotA: ×1.8 zlata i iskustva od vojnika, dvostruko pasivno zlato, više zlata za junake i kule, brže oživljavanje, kule s 80% života, priprema 15 s, vojnici jačaju češće; igra traje oko 10–12 minuta (samo protiv botova)
+  - 🎁 **nagrade za postignuća** — na ploči 🏆 Postignuća biraš izgled svog junaka:
+    - ✨ **trag dok hodaš**: ⭐ zvjezdice, 💖 srca (prva pobjeda), 🎵 note (timski igrač), 🪙 zlatnici (zlatar), 🔥 plamen (u vatri), ❄️ pahulje (neuništiv), 🌈 duga (svestran)
+    - 🎩 **iznad glave**: 🐥 pile (3 igre), 🎩 cilindar (lovac), 🦋 leptir (proždrljivac), 🐲 zmajić (zmajoubojica), 👑 kruna (najbolji igrač), 🌟 zvijezda (legenda), 🏆 pehar (prvak) — ljubimci lete u krug oko junaka
+    - novo postignuće na kraju igre javlja i 🎁 novu nagradu
+  - 🎶 **glazba** stvorena u pregledniku (bez datoteka): mirna melodija na izborniku, živahnija u bitci, bubanj svira kad si u borbi; isključuje se u ⚙️ postavkama
+  - 📊 **statistika s junakom** na ekranu odabira: broj igara i pobjeda, prosječni K/D/A i rekord
+  - ⚖️ **ravnoteža junaka** iz 75 simuliranih igara 5 na 5: daljinski nosači Nišan, Orlina i Strijela (pobjeđivali 70–80%) i Tutnjo malo slabiji; Rogo, Mudra, Duga, Bambus, Munja, Listko i Ledena jači
+  - 🐛 postavke „zadaci za početnike” (i nove: glazba, brza igra) sada se pamte i nakon ponovnog učitavanja
 
 - 🎯 **Zadaci, graf i jezik u mrežnoj igri** (v0.44):
   - 🎯 **zadaci za početnike** — kartica iznad minimape vodi kroz igru korak po korak: kupi predmet → nauči moć → 5 zadnjih udaraca → baci moć 3 puta → pobijedi junaka (ili pomozi) → otključaj ulti → budi blizu kad tim sruši kulu; svaki riješen zadatak daje 40–150 🪙 uz zvuk i zlatnike (samo protiv botova; isključuje se u ⚙️ postavkama)

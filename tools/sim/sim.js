@@ -4,7 +4,7 @@
    prazni stubovi), pa pusti da botovi vode OBA tima — i tvog junaka.
    Koristi se za provjeru ravnoteže, veličine mape i umjetne inteligencije.
 
-     node tools/sim/sim.js [broj igara] [--max=sekunde] [--diff=normal] [--quiet]
+     node tools/sim/sim.js [broj igara] [--max=sekunde] [--diff=normal] [--quiet] [--json=datoteka.jsonl]
 
    Ispis po igri: trajanje, pobjednik, ubojstva, srušene kule, statistike
    razmaka među junacima (koliko je mapa "gužva"), gankovi i guranja.
@@ -20,6 +20,7 @@ const QUIET = args.includes('--quiet');
 const HERO = (args.find(a => a.startsWith('--hero=')) || '').slice(7);   // tvoj junak (id), npr. --hero=nisan
 const VS = (args.find(a => a.startsWith('--vs=')) || '').slice(5);       // junaci koji su sigurno u igri, npr. --vs=bikos,nisan
 const CHECK = args.includes('--check');                                   // ispiši stanje svakog junaka na kraju
+const JSON_OUT = (args.find(a => a.startsWith('--json=')) || '').slice(7);  // ⚖️ svaka igra kao red JSON-a (junaci, timovi, pobjednik) — za ravnotežu junaka
 
 function stubEl(){
   const el = {
@@ -85,6 +86,7 @@ function runGame(gi){
   vm.runInContext(SRC, ctx, { filename: 'game-bundle.js' });
   const G = ctx.__G;
   G.SETTINGS.diff = DIFF;
+  if(args.includes('--turbo')) G.SETTINGS.mode = 'turbo';   // ⚡ brza igra
   const hi = HERO ? G.HEROES.findIndex(h => h.id === HERO) : Math.floor(Math.random() * G.HEROES.length);
   if(VS){   // zadani junaci prvi u ostatku (crveni tim kreće od 5. mjesta: prvo popuni crvene)
     const want = VS.split(',').map(id => G.HEROES.findIndex(h => h.id === id)).filter(i => i >= 0 && i !== hi);
@@ -136,6 +138,7 @@ function runGame(gi){
     ai: G.teamAI ? G.teamAI.map(a => a.stats) : null,
     deaths: heroes.reduce((a, h) => a + h.deaths, 0),
   };
+  if(JSON_OUT) fs.appendFileSync(JSON_OUT, JSON.stringify({ min: res.min, win: res.win, heroes: heroes.map(h => ({ id: h.hero.id, t: h.team, k: h.kills, d: h.deaths, a: h.assists, nw: G.netWorth(h), lv: h.level, hd: Math.round(h.heroDmg || 0) })) }) + '\n');
   if(CHECK) for(const h of heroes){
     const tl = Object.keys(h.talents).map(l => l + (h.talents[l])).join(' ');
     console.log(`   ${h.team ? '🔴' : '🔵'} ${h.hero.id.padEnd(10)} lvl ${String(h.level).padStart(2)} K/D/A ${h.kills}/${h.deaths}/${h.assists}  talenti [${tl}]` +

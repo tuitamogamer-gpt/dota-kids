@@ -46,6 +46,11 @@
   #diffTabs button.on[data-d="normal"]{ background:#fde047; color:#431407; }
   #diffTabs button.on[data-d="hard"]{ background:#f87171; color:#450a0a; }
   #diffTabs.mpOff{ opacity:.45; pointer-events:none; }
+  #modeTabs{ display:flex; flex-wrap:wrap; gap:5px; justify-content:center; align-items:center; color:#a7f3d0; font-size:13px; font-weight:bold; }
+  #modeTabs button{ font-family:inherit; font-size:13px; font-weight:bold; border:none; border-radius:10px; padding:5px 11px; background:rgba(255,255,255,.12); color:#e2e8f0; cursor:pointer; }
+  #modeTabs button.on[data-m="normal"]{ background:#93c5fd; color:#172554; }
+  #modeTabs button.on[data-m="turbo"]{ background:#fbbf24; color:#451a03; box-shadow:0 0 10px rgba(251,191,36,.6); }
+  #modeTabs.mpOff{ opacity:.45; pointer-events:none; }
   #diffTabs.mpOff::after{ content:"(s prijateljem su botovi normalni)"; font-size:11px; font-weight:normal; margin-left:4px; }
   #cards{ display:grid; grid-template-columns:repeat(5, 92px); gap:8px; align-content:start;
     max-height:min(54vh, 520px); overflow-y:auto; padding:4px 6px 4px 4px; }
@@ -126,6 +131,22 @@
   .achBox h2{ text-align:center; color:#b45309; margin-bottom:6px; }
   .achSum{ text-align:center; font-size:14px; margin-bottom:12px; color:#78350f; }
   .achGrid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:8px; }
+  /* 🎁 nagrade (v0.45) */
+  .cosBox{ background:linear-gradient(180deg, #fef3c7, #fde68a55); border:2px solid #f59e0b; border-radius:16px; padding:10px 12px; margin:0 0 12px; }
+  .cosBox h3{ text-align:center; color:#92400e; font-size:17px; margin-bottom:6px; }
+  .cosRow{ margin-top:6px; }
+  .cosT{ font-size:13px; font-weight:bold; color:#78350f; margin-bottom:4px; text-align:left; }
+  .cosGrid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(84px, 1fr)); gap:6px; }
+  .cosItem{ font-family:inherit; display:flex; flex-direction:column; align-items:center; gap:1px; padding:6px 4px; border-radius:12px; cursor:pointer;
+    background:#fffbeb; border:2px solid #e7d3a1; color:#422006; transition:transform .1s; }
+  .cosItem b{ font-size:24px; line-height:1.1; }
+  .cosItem span{ font-size:11.5px; font-weight:bold; }
+  .cosItem small{ font-size:9.5px; color:#78716c; line-height:1.15; }
+  .cosItem:hover:not(.lock){ transform:scale(1.06); border-color:#f59e0b; }
+  .cosItem.on{ background:linear-gradient(#fde047, #f59e0b); border-color:#b45309; box-shadow:0 0 0 2px #fde047, 0 3px 8px rgba(180,83,9,.4); }
+  .cosItem.lock{ opacity:.55; cursor:default; background:#f5f5f4; }
+  .achGift{ border-color:#f472b6; color:#fbcfe8; background:linear-gradient(180deg, #831843, #500724); box-shadow:0 0 14px rgba(244,114,182,.55); }
+  .d-stats{ margin-top:8px; font-size:12px; color:#78350f; background:rgba(245,158,11,.12); border-radius:10px; padding:5px 8px; line-height:1.35; }
   .achItem{ display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:12px; background:#f5f5f4; border:2px solid #e7e5e4; opacity:.65; }
   .achItem.on{ background:#fef3c7; border-color:#f59e0b; opacity:1; }
   .achItem b{ font-size:26px; }
@@ -651,7 +672,7 @@
       <div class="lgFeat"><b>🏆</b><span><strong data-en="Achievements">Postignuća</strong><small data-en="medals, wins and records">medalje, pobjede i rekordi</small></span></div>
       <div class="lgFeat"><b>📱</b><span><strong data-en="Tablet too">I na tabletu</strong><small data-en="tap, drag and pinch to zoom">dodir, povlačenje i zum prstima</small></span></div>
     </div>
-    <div class="lgFoot"><span data-en="free · no ads · plays in the browser">besplatno · bez reklama · igra se u pregledniku</span> · <span class="ver">v0.44</span></div>
+    <div class="lgFoot"><span data-en="free · no ads · plays in the browser">besplatno · bez reklama · igra se u pregledniku</span> · <span class="ver">v0.45</span></div>
   </div>
   <div id="lgPick" class="hidden notr">
     <div class="lgPickBox">
@@ -673,7 +694,7 @@
   <button id="fsBtn" class="fsBtn" title="Cijeli zaslon (miš ne može pobjeći iz igre)" data-en-title="Fullscreen (the mouse can't escape the game)">⛶</button>
   <header>
     <h1>🏰 DOTA Kids 3D ⚔️</h1>
-    <p class="sub"><span data-en="Pick a hero and knock down the enemy throne! You + 4 bots 🔵 vs 5 bots 🔴 (5 vs 5)">Odaberi junaka i sruši protivnički prijestol! Ti + 4 bota 🔵 protiv 5 botova 🔴 (5 na 5)</span> <span class="ver">v0.44</span></p>
+    <p class="sub"><span data-en="Pick a hero and knock down the enemy throne! You + 4 bots 🔵 vs 5 bots 🔴 (5 vs 5)">Odaberi junaka i sruši protivnički prijestol! Ti + 4 bota 🔵 protiv 5 botova 🔴 (5 na 5)</span> <span class="ver">v0.45</span></p>
   </header>
   <div id="loadBar" data-en="⏳ Loading 3D models…">⏳ Učitavam 3D modele…</div>
   <div class="selWrap">
@@ -689,6 +710,11 @@
         <button data-d="easy" data-en="🐣 Easy">🐣 Lako</button>
         <button data-d="normal" data-en="⚔️ Normal">⚔️ Normalno</button>
         <button data-d="hard" data-en="🔥 Hard">🔥 Teško</button>
+      </div>
+      <div id="modeTabs" title="Normalna igra traje ~20 min, brza ~10 min (više zlata i iskustva, brže oživljavanje)" data-en-title="A normal game lasts ~20 min, a quick one ~10 min (more gold and XP, faster respawn)">
+        <span>⏱️ <span data-en="Game:">Igra:</span></span>
+        <button data-m="normal" data-en="🏰 Normal">🏰 Normalna</button>
+        <button data-m="turbo" data-en="⚡ Quick (~10 min)">⚡ Brza (~10 min)</button>
       </div>
     </div>
     <div id="heroDetail" class="detail"></div>
@@ -717,6 +743,7 @@
 <div id="help" class="overlay hidden">
   <div class="helpBox" data-lang="hr">
     <h2>❓ Kako se igra</h2>
+    🆕 <b>v0.45</b>: ⚡ <b>brza igra</b> (~10 min, biraš na ekranu junaka) • 🎁 <b>nagrade</b> za postignuća — trag dok hodaš (srca, plamen, duga…) i kruna, šešir ili ljubimac iznad glave (🏆 Postignuća) • 🎶 <b>glazba</b> • 📊 tvoja statistika sa svakim junakom • ⚖️ junaci su ujednačeniji<br>
     🆕 <b>v0.44</b>: 🎯 <b>zadaci za početnike</b> uz minimapu (svaki daje zlato) • 📈 graf „Tko je vodio” na kraju igre • 🌐 u igri s prijateljem svatko vidi poruke na svom jeziku<br>
     🆕 <b>v0.43</b>: 🌍 <b>igra na srpskom</b> (latinica i ćirilica) <b>i engleskom</b> — biraš na početnom ekranu, gore desno • 🎬 novi početni ekran s junacima<br>
     🆕 <b>v0.42</b>: 🏆 postignuća i profil — gumb „Postignuća” na ekranu odabira, nova postignuća na kraju igre, pobjede sa svakim junakom<br>
@@ -763,6 +790,7 @@
   </div>
   <div class="helpBox" data-lang="en">
     <h2>❓ How to play</h2>
+    🆕 <b>v0.45</b>: ⚡ <b>quick game</b> (~10 min, pick it on the hero screen) • 🎁 <b>rewards</b> for achievements — a trail while you walk (hearts, flames, rainbow…) and a crown, hat or pet above your head (🏆 Achievements) • 🎶 <b>music</b> • 📊 your stats with every hero • ⚖️ heroes are more even<br>
     🆕 <b>v0.44</b>: 🎯 <b>beginner quests</b> next to the minimap (each one gives gold) • 📈 “Who was ahead” graph at the end of a game • 🌐 with a friend, everyone sees messages in their own language<br>
     🆕 <b>v0.43</b>: 🌍 <b>English and Serbian</b> (Latin and Cyrillic) versions — pick on the start screen, top right • 🎬 new start screen with all the heroes<br>
     🆕 <b>v0.42</b>: 🏆 achievements and profile — “Achievements” button on the hero screen, new achievements at the end of a game, wins with every hero<br>
@@ -837,6 +865,7 @@
     <div class="optRow"><span>🌍 <span data-en="Language">Jezik</span><br><small data-en="the game restarts in the new language">igra se ponovo pokrene na novom jeziku</small></span><span class="optSeg notr" id="optLang"><button data-l="hr" title="Hrvatski / Bosanski">HR/BS</button><button data-l="sr" title="Srpski (latinica)">SR</button><button data-l="cy" title="Српски (ћирилица)">СР</button><button data-l="en" title="English">EN</button></span></div>
     <div class="optRow"><span data-en="🔊 Volume">🔊 Glasnoća</span><span class="optCtl"><input id="optVol" type="range" min="0" max="100" step="5"><b id="optVolV"></b></span></div>
     <div class="optRow"><span data-en="🎵 Sound">🎵 Zvuk</span><button class="optTog" id="optMute"></button></div>
+    <div class="optRow"><span data-en="🎶 Music<br><small>cheerful tune in the menu and in battle</small>">🎶 Glazba<br><small>vesela melodija u izborniku i u bitci</small></span><button class="optTog" id="optMusic"></button></div>
     <div class="optRow"><span data-en="🗣️ Hero voices">🗣️ Glasovi junaka</span><button class="optTog" id="optVoices"></button></div>
     <div class="optRow"><span data-en="🌲 Nature sounds<br><small>wind, birds, crickets at night, river</small>">🌲 Zvukovi prirode<br><small>vjetar, ptice, cvrčci noću, žubor rijeke</small></span><button class="optTog" id="optNature"></button></div>
     <div class="optRow"><span data-en="📣 Announcer">📣 Najavljivač</span><button class="optTog" id="optAnn"></button></div>

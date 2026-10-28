@@ -85,6 +85,7 @@ const CFG = {
   courierSpeed: 520,        // 🫏 kurir leti brže od junaka
   courierBaseR: 900,        // kupljeno dalje od ovoga od fontane čeka kurira
   creepScaleEvery: 450,     // vojnici jačaju svakih 7.5 min (kao u DotA)
+  creepGoldMul: 1, creepXpMul: 1,   // ⚡ brza igra množi zlato i iskustvo od vojnika i čudovišta
   creepScalePct: 0.12,
   shrineCd: 240,            // svetište: liječi 5 s, puni se 4 min
   shrineDur: 5,
@@ -229,7 +230,7 @@ const HEROES = [
   {
     id:'ledena', name:LS('Ledena'), emoji:'🐧',
     role:L('❄️ Snježna čarobnica', '❄️ Snow witch'),
-    hp:530, mp:310, dmg:50,
+    hp:570, mp:310, dmg:54,
     attrs:{ str:18, agi:16, int:24, strG:3.6, agiG:2.4, intG:5.2, primary:'int' },
     range:330, speed:165, atkCd:1.15, projSpeed:600, shot:'ice',
     passive:{ name:L('Ledeni dodir', 'Icy Touch'), emoji:'❄️', color:'#7dd3fc', pid:'dodir',
@@ -288,8 +289,8 @@ const HEROES = [
   {
     id:'strijela', name:LS('Strijela'), emoji:'🦊',
     role:L('🏹 Lukava lisica — strijelac', '🏹 Sly fox — archer'),
-    hp:550, mp:250, dmg:58,
-    attrs:{ str:18, agi:24, int:15, strG:3.4, agiG:6.0, intG:2.2, primary:'agi' },
+    hp:550, mp:250, dmg:53,
+    attrs:{ str:18, agi:24, int:15, strG:3.4, agiG:5.5, intG:2.2, primary:'agi' },
     range:360, speed:170, atkCd:1.0, projSpeed:680, shot:'arrow',
     passive:{ name:L('Oštro oko', 'Sharp Eye'), emoji:'👁️', color:'#fb923c', pid:'oko',
       desc:L('PASIVNO: šansa za KRITIČNI pogodak', 'PASSIVE: chance for a CRITICAL hit'),
@@ -345,7 +346,7 @@ const HEROES = [
   {
     id:'listko', name:LS('Listko'), emoji:'🐢',
     role:L('🌿 Šumski iscjelitelj', '🌿 Forest healer'),
-    hp:600, mp:300, dmg:52,
+    hp:640, mp:300, dmg:52,
     attrs:{ str:23, agi:14, int:20, strG:4.8, agiG:2.0, intG:3.4, primary:'str' },
     range:300, speed:163, atkCd:1.15, projSpeed:560, shot:'leaf',
     passive:{ name:L('Korijeni', 'Roots'), emoji:'🌱', color:'#4ade80', pid:'korijen',
@@ -404,8 +405,8 @@ const HEROES = [
   {
     id:'munja', name:L('Munja', 'Munya'), emoji:'🐯',
     role:L('⚡ Brzi tigar — ubojica', '⚡ Fast tiger — assassin'),
-    hp:580, mp:260, dmg:62,
-    attrs:{ str:19, agi:25, int:14, strG:4.0, agiG:6.2, intG:2.2, primary:'agi' },
+    hp:630, mp:260, dmg:62,
+    attrs:{ str:19, agi:25, int:14, strG:4.6, agiG:6.2, intG:2.2, primary:'agi' },
     range:95, speed:188, atkCd:1.0, projSpeed:0,
     passive:{ name:L('Statički naboj', 'Static Charge'), emoji:'🔋', color:'#fde047', pid:'naboj',
       desc:L('PASIVNO: tvoji napadi imaju šansu okinuti dodatnu munju', 'PASSIVE: your attacks have a chance to fire an extra lightning bolt'),
@@ -523,8 +524,8 @@ const HEROES = [
   {
     id:'orlina', name:LS('Orlina'), emoji:'🦅',
     role:L('🪶 Orao — zračni snajper', '🪶 Eagle — sky sniper'),
-    hp:520, mp:270, dmg:60,
-    attrs:{ str:16, agi:25, int:16, strG:3.0, agiG:6.4, intG:2.4, primary:'agi' },
+    hp:520, mp:270, dmg:54,
+    attrs:{ str:16, agi:25, int:16, strG:3.0, agiG:5.8, intG:2.4, primary:'agi' },
     range:380, speed:175, atkCd:1.0, projSpeed:700, shot:'feather',
     passive:{ name:L('Orlovski vid', 'Eagle Sight'), emoji:'🔭', color:'#fbbf24', pid:'vid',
       desc:L('PASIVNO: orlovske oči — gađaš s veće daljine', 'PASSIVE: eagle eyes — you shoot from farther away'),
@@ -783,8 +784,8 @@ const HEROES = [
   {
     id:'slon', name:L('Tutnjo', 'Tootnyo'), emoji:'🐘',
     role:L('🐘 Slon — golemi branič', '🐘 Elephant — giant defender'),
-    hp:740, mp:220, dmg:62,
-    attrs:{ str:27, agi:13, int:12, strG:5.8, agiG:1.8, intG:1.8, primary:'str' },
+    hp:700, mp:220, dmg:62,
+    attrs:{ str:27, agi:13, int:12, strG:5.4, agiG:1.8, intG:1.8, primary:'str' },
     range:88, speed:160, atkCd:1.15, projSpeed:0,
     passive:{ name:L('Debela koža', 'Thick Skin'), emoji:'🛡️', color:'#c7d2fe', pid:'debela',
       desc:L('PASIVNO: tko te udari izbliza, i sam se ozlijedi', 'PASSIVE: whoever hits you up close gets hurt too'),
@@ -899,8 +900,8 @@ const HEROES = [
   {
     id:'sova', name:LS('Mudra'), emoji:'🦉',
     role:L('🌙 Sova — gospodarica noći', '🌙 Owl — queen of the night'),
-    hp:540, mp:300, dmg:52,
-    attrs:{ str:18, agi:19, int:23, strG:3.6, agiG:2.8, intG:5.0, primary:'int' },
+    hp:590, mp:300, dmg:60,
+    attrs:{ str:18, agi:19, int:23, strG:3.6, agiG:3.2, intG:5.6, primary:'int' },
     range:350, speed:170, atkCd:1.1, projSpeed:650, shot:'feather',
     passive:{ name:L('Noćna ptica', 'Night Bird'), emoji:'🌙', color:'#a78bfa', pid:'noc',
       desc:L('PASIVNO: noću si brža i jača!', 'PASSIVE: at night you are faster and stronger!'),
@@ -956,7 +957,7 @@ const HEROES = [
   {
     id:'majmun', name:L('Skakač', 'Skakach'), emoji:'🐵',
     role:L('🥢 Majmun — brzi borac sa štapom', '🥢 Monkey — fast fighter with a staff'),
-    hp:580, mp:260, dmg:64,
+    hp:580, mp:260, dmg:61,
     attrs:{ str:19, agi:26, int:15, strG:4.0, agiG:6.4, intG:2.2, primary:'agi' },
     range:90, speed:180, atkCd:1.0, projSpeed:0,
     passive:{ name:L('Kombo', 'Combo'), emoji:'👊', color:'#fde047', pid:'kombo',
@@ -1231,9 +1232,9 @@ const HEROES = [
   {
     id:'nosorog', name:LS('Rogo'), emoji:'🦏',
     role:L('💥 Nosorog — nezaustavljivi jurišnik', '💥 Rhino — unstoppable charger'),
-    hp:720, mp:220, dmg:64,
-    attrs:{ str:27, agi:15, int:11, strG:5.8, agiG:2.0, intG:1.5, primary:'str' },
-    range:86, speed:166, atkCd:1.15, projSpeed:0,
+    hp:760, mp:220, dmg:72,
+    attrs:{ str:27, agi:15, int:11, strG:6.4, agiG:2.0, intG:1.5, primary:'str' },
+    range:86, speed:172, atkCd:1.15, projSpeed:0,
     passive:{ name:L('Debeli oklop', 'Thick Armor'), emoji:'🛡️', color:'#fde68a', pid:'tvrd',
       desc:L('PASIVNO: debela koža skida dio štete sa svakog udarca', 'PASSIVE: thick skin blocks some damage from every hit'),
       tip:rk => L('🛡️ −' + (4 + 4*rk) + ' štete na svaki udarac', '🛡️ −' + (4 + 4*rk) + ' damage from every hit') },
@@ -1294,8 +1295,8 @@ const HEROES = [
   {
     id:'panda', name:LS('Bambus'), emoji:'🐼',
     role:L('🎋 Panda — mirni majstor', '🎋 Panda — calm master'),
-    hp:640, mp:300, dmg:56,
-    attrs:{ str:23, agi:15, int:21, strG:4.8, agiG:2.0, intG:4.2, primary:'str' },
+    hp:640, mp:300, dmg:63,
+    attrs:{ str:23, agi:15, int:21, strG:5.2, agiG:2.0, intG:4.2, primary:'str' },
     range:88, speed:168, atkCd:1.1, projSpeed:0,
     passive:{ name:L('Bambus', 'Bamboo'), emoji:'🎋', color:'#86efac', pid:'bambus',
       desc:L('PASIVNO: žvakanje bambusa stalno obnavlja život i manu', 'PASSIVE: chewing bamboo keeps restoring health and mana'),
@@ -1360,8 +1361,8 @@ const HEROES = [
   {
     id:'jednorog', name:LS('Duga'), emoji:'🦄',
     role:L('🌈 Jednorog — čarobna pomagačica', '🌈 Unicorn — magical helper'),
-    hp:520, mp:400, dmg:44,
-    attrs:{ str:17, agi:15, int:26, strG:3.2, agiG:2.0, intG:5.6, primary:'int' },
+    hp:575, mp:400, dmg:52,
+    attrs:{ str:17, agi:15, int:26, strG:3.8, agiG:2.0, intG:5.6, primary:'int' },
     range:340, speed:170, atkCd:1.1, projSpeed:640, shot:'rainbow',
     passive:{ name:L('Čarobna griva', 'Magic Mane'), emoji:'✨', color:'#c4b5fd', pid:'griva',
       desc:L('PASIVNO: svi prijatelji oko tebe brže obnavljaju manu', 'PASSIVE: all friends around you regain mana faster'),
@@ -1427,7 +1428,7 @@ const HEROES = [
   {
     id:'morskipas', name:L('Zubo', 'Zoobo'), emoji:'🦈',
     role:L('🦷 Morski pas — gladni lovac', '🦷 Shark — hungry hunter'),
-    hp:600, mp:260, dmg:60,
+    hp:600, mp:260, dmg:58,
     attrs:{ str:20, agi:24, int:12, strG:3.8, agiG:5.8, intG:1.8, primary:'agi' },
     range:90, speed:178, atkCd:1.0, projSpeed:0,
     passive:{ name:L('Miris krvi', 'Scent of Blood'), emoji:'🩸', color:'#f87171', pid:'krv',
@@ -1498,9 +1499,9 @@ const HEROES = [
   {
     id:'nisan', name:L('Nišan', 'Nishan'), emoji:'🐿️',
     role:L('🎯 Vjeverica — snajperist (gađa izdaleka)', '🎯 Squirrel — sniper (shoots from far away)'),
-    hp:500, mp:260, dmg:54,
-    attrs:{ str:16, agi:24, int:15, strG:2.2, agiG:6.0, intG:2.4, primary:'agi' },
-    range:430, speed:166, atkCd:1.15, projSpeed:1100, shot:'pellet',
+    hp:500, mp:260, dmg:47,
+    attrs:{ str:16, agi:24, int:15, strG:2.2, agiG:5.3, intG:2.4, primary:'agi' },
+    range:410, speed:166, atkCd:1.15, projSpeed:1100, shot:'pellet',
     passive:{ name:L('Pogodak u glavu', 'Headshot'), emoji:'🎯', color:'#fbbf24', pid:'headshot',
       desc:L('PASIVNO: hitac ponekad pogodi "u glavu" — dodatna šteta, kratka omama i meta odleti malo unatrag', 'PASSIVE: a shot sometimes lands a "headshot" — extra damage, a short stun, and the target gets knocked back a bit'),
       tip:rk => L('🎯 ' + (24 + 5*rk) + '% šanse: +' + (20 + 20*rk) + ' štete, omama 0.15 s i odbačaj', '🎯 ' + (24 + 5*rk) + '% chance: +' + (20 + 20*rk) + ' damage, 0.15 s stun and knockback') },

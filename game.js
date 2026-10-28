@@ -630,7 +630,7 @@ let scoreOpen = false;      // 📋 tablica otvorena gumbom (na tabletu nema tip
 let mouseIn = false;        // miš je iznad igre (za rubno pomicanje kamere)
 /* ⚙️ postavke (pamte se u pregledniku) */
 const SETTINGS = { vol: 0.8, quality: touchMode ? 'med' : 'high', edgePan: true, dmgNums: true, quickCast: false, voices: true, announcer: true, diff: 'normal',
-  fullscreen: true, lockMouse: true, lastHit: true, tips: true, autoSkill: false, nature: true, quests: true };   // 🎯 zadaci za početnike   // 🌲 zvukovi prirode   // ⬆️ vještine se mogu učiti same   // 🪙 pomoć za zadnji udarac, 💡 savjeti   // 🖥️ cijeli zaslon pri početku igre, 🔒 miš ne može izaći iz igre
+  fullscreen: true, lockMouse: true, lastHit: true, tips: true, autoSkill: false, nature: true, quests: true, mode: 'normal', music: true };   // 🎶 glazba   // ⚡ mode: 'normal' / 'turbo'   // 🎯 zadaci za početnike   // 🌲 zvukovi prirode   // ⬆️ vještine se mogu učiti same   // 🪙 pomoć za zadnji udarac, 💡 savjeti   // 🖥️ cijeli zaslon pri početku igre, 🔒 miš ne može izaći iz igre
 try {
   const s = JSON.parse(localStorage.getItem('dk_settings') || '{}');
   if(typeof s.vol === 'number') SETTINGS.vol = clamp(s.vol, 0, 1);
@@ -647,6 +647,9 @@ try {
   if(typeof s.tips === 'boolean') SETTINGS.tips = s.tips;
   if(typeof s.autoSkill === 'boolean') SETTINGS.autoSkill = s.autoSkill;
   if(typeof s.nature === 'boolean') SETTINGS.nature = s.nature;
+  if(typeof s.quests === 'boolean') SETTINGS.quests = s.quests;   // 🎯
+  if(typeof s.music === 'boolean') SETTINGS.music = s.music;      // 🎶
+  if(['normal', 'turbo'].includes(s.mode)) SETTINGS.mode = s.mode; // ⚡
 } catch(e){}
 function saveSettings(){ try { localStorage.setItem('dk_settings', JSON.stringify(SETTINGS)); } catch(e){} }
 let ancients = [null, null];
@@ -745,8 +748,8 @@ function makeCreep(team, lane, ranged, siege){
     projSpeed: ranged ? 520 : 0,
     speed: siege ? 122 : 132,
     path, wpIndex: 1,
-    goldValue: siege ? 75 : (ranged ? 46 : 38),
-    xpValue: siege ? 85 : (ranged ? 52 : 46),
+    goldValue: Math.round((siege ? 75 : (ranged ? 46 : 38)) * CFG.creepGoldMul),
+    xpValue: Math.round((siege ? 85 : (ranged ? 52 : 46)) * CFG.creepXpMul),
     rangedCreep: !!ranged, siege: !!siege,
   });
 }
@@ -829,7 +832,7 @@ function spawnCamp(c){
       x: c.x + Math.cos(ang) * 42, y: c.y + Math.sin(ang) * 42,
       r: t.r, hp: t.hp, maxhp: t.hp, hpRegen: t.hpRegen || 0.5,
       dmg: t.dmg, atkRange: t.range, atkCd: t.atkCd, projSpeed: 0, speed: t.speed,
-      goldValue: t.gold, xpValue: t.xp,
+      goldValue: Math.round(t.gold * CFG.creepGoldMul), xpValue: Math.round(t.xp * CFG.creepXpMul),
       emoji: t.emoji, name: t.name, boss: !!t.boss, camp: c, campType: c.type, buff: t.buff || null,
       stunHit: !!t.stunHit, scanT: rand(0, 0.4),
     });
@@ -4056,7 +4059,21 @@ function makeWorld(){
 }
 
 /* ================= Početak / kraj igre ================= */
+/* ⚡ BRZA IGRA (v0.45, kao Turbo u DotA): više zlata i iskustva, brže oživljavanje, slabije kule — igra traje ~10–12 min.
+   Svaka igra kreće od izvornih vrijednosti (CFG_BASE), pa brza igra pomnoži samo ekonomiju i tempo. */
+const CFG_BASE = Object.assign({}, CFG);
+const TURBO = { passiveGold: 2, heroKillGold: 1.5, heroKillGoldPerLvl: 1.5, heroKillXp: 1.6, assistGold: 1.6, creepGoldMul: 1.8, creepXpMul: 1.8,
+  creepXp: 1.8, towerGoldTeam: 1.5, towerXp: 1.5, barracksGoldTeam: 1.5, respawnBase: 0.6, respawnPerLvl: 0.5, towerHp: 0.8,
+  campRespawn: 0.7, bossRespawn: 0.6, drakeRespawn: 0.6, barracksRespawn: 0.7, buybackCd: 0.5, startGold: 1.3, prepTime: 0.5, creepScaleEvery: 0.6 };
+function gameMode(){ return net.mode === 'host' || net.mode === 'guest' ? 'normal' : (SETTINGS.mode === 'turbo' ? 'turbo' : 'normal'); }
+function applyMode(){
+  Object.assign(CFG, CFG_BASE);
+  if(gameMode() !== 'turbo') return;
+  for(const k in TURBO) CFG[k] = Math.round(CFG_BASE[k] * TURBO[k] * 100) / 100;
+}
 function startGame(heroIdx){
+  applyMode();   // ⚡
+  loadCos();     // 🎁
   units = []; projectiles = []; zones = []; particles = []; lines = [];
   floats = []; markers = []; feed = [];
   ancients = [null, null];
@@ -4260,7 +4277,8 @@ function endTableHtml(winTeam){
   const mine = player && awards.get(player);
   if(mine) html += `<div class="etMvp etMine">🏅 ${L('Tvoje medalje', 'Your medals')}: ${mine.map(a => `<b>${a.e} ${a.n}</b> <small>(${a.d})</small>`).join(' · ')}</div>`;
   if(net.mode !== 'host' && net.mode !== 'guest')
-    html += `<div class="etMvp">🤖 ${L('Botovi', 'Bots')}: <b>${{ easy: L('🐣 Lako', '🐣 Easy'), normal: L('⚔️ Normalno', '⚔️ Normal'), hard: L('🔥 Teško', '🔥 Hard') }[SETTINGS.diff]}</b></div>`;
+    html += `<div class="etMvp">🤖 ${L('Botovi', 'Bots')}: <b>${{ easy: L('🐣 Lako', '🐣 Easy'), normal: L('⚔️ Normalno', '⚔️ Normal'), hard: L('🔥 Teško', '🔥 Hard') }[SETTINGS.diff]}</b>` +
+      (gameMode() === 'turbo' ? ` · <b>${L('⚡ Brza igra', '⚡ Quick game')}</b>` : '') + `</div>`;
   return html;
 }
 function showEndScreen(winTeam, won){
@@ -4309,7 +4327,7 @@ function loadProfile(){
   let p = null;
   try { p = JSON.parse(localStorage.getItem('dk_profile') || 'null'); } catch(e){}
   if(!p || typeof p !== 'object') p = {};
-  return Object.assign({ games: 0, wins: 0, heroWins: {}, heroGames: {}, ach: {} }, p);
+  return Object.assign({ games: 0, wins: 0, heroWins: {}, heroGames: {}, heroStats: {}, ach: {}, cos: { trail: 'stars', hat: 'none' } }, p);
 }
 function saveProfile(p){ try { localStorage.setItem('dk_profile', JSON.stringify(p)); } catch(e){} }
 let gameRecorded = false;
@@ -4319,6 +4337,10 @@ function recordGame(won){
   gameRecorded = true;
   const p = loadProfile(), id = player.hero.id, h = player;
   p.games++; p.heroGames[id] = (p.heroGames[id] || 0) + 1;
+  {   // 📊 statistika s ovim junakom (ekran odabira)
+    const hs = p.heroStats[id] = Object.assign({ k: 0, d: 0, a: 0, bestK: 0, lh: 0 }, p.heroStats[id]);
+    hs.k += h.kills; hs.d += h.deaths; hs.a += h.assists; hs.bestK = Math.max(hs.bestK, h.kills); hs.lh = Math.max(hs.lh, h.lastHits || 0);
+  }
   if(won){ p.wins++; p.heroWins[id] = (p.heroWins[id] || 0) + 1; }
   const heroesAll = units.filter(u => u.kind === 'hero');
   const score = x => x.kills * 3 + x.assists * 1.5 - x.deaths + (x.lastHits || 0) / 15 + netWorth(x) / 1500;
@@ -4335,10 +4357,69 @@ function recordGame(won){
   saveProfile(p);
   return fresh;
 }
+/* 🎁 NAGRADE (v0.45): postignuća otključavaju izgled tvog junaka — trag dok hodaš i nešto iznad glave.
+   Biraju se na ploči postignuća; vidiš ih ti (u igri s prijateljem svatko vidi svoje). */
+const COSMETICS = {
+  trail: [
+    { id: 'none',    e: '🚫', n: L('Bez traga', 'No trail') },
+    { id: 'stars',   e: '⭐', n: L('Zvjezdice', 'Stars') },
+    { id: 'hearts',  e: '💖', n: L('Srca', 'Hearts'),          need: 'first_win' },
+    { id: 'notes',   e: '🎵', n: L('Note', 'Music notes'),     need: 'helper' },
+    { id: 'coins',   e: '🪙', n: L('Zlatnici', 'Coins'),       need: 'farmer' },
+    { id: 'fire',    e: '🔥', n: L('Plamen', 'Flames'),        need: 'spree' },
+    { id: 'snow',    e: '❄️', n: L('Pahulje', 'Snowflakes'),   need: 'survivor' },
+    { id: 'rainbow', e: '🌈', n: L('Duga', 'Rainbow'),         need: 'five' },
+  ],
+  hat: [
+    { id: 'none',   e: '🚫', n: L('Ništa', 'Nothing') },
+    { id: 'chick',  e: '🐥', n: L('Pile', 'Chick'),            games: 3 },
+    { id: 'tophat', e: '🎩', n: L('Cilindar', 'Top hat'),      need: 'hunter' },
+    { id: 'fly',    e: '🦋', n: L('Leptir', 'Butterfly'),      need: 'tango' },
+    { id: 'dragon', e: '🐲', n: L('Zmajić', 'Little dragon'),  need: 'dragon' },
+    { id: 'crown',  e: '👑', n: L('Kruna', 'Crown'),           need: 'mvp' },
+    { id: 'star',   e: '🌟', n: L('Zvijezda', 'Star'),          need: 'legend' },
+    { id: 'cup',    e: '🏆', n: L('Pehar', 'Trophy'),          need: 'ten_wins' },
+  ],
+};
+const COS_PET = { chick: 1, fly: 1, dragon: 1 };   // ljubimci lete uz junaka, ostalo stoji na glavi
+function cosUnlocked(p, c){ return c.need ? !!p.ach[c.need] : (c.games ? p.games >= c.games : true); }
+function cosNeedTxt(c){
+  if(c.games) return L('odigraj ' + c.games + ' igre', 'play ' + c.games + ' games');
+  const a = ACHIEVEMENTS.find(x => x.k === c.need);
+  return a ? a.e + ' ' + a.n + ' — ' + a.d : '';
+}
+let playerCos = { trail: 'stars', hat: 'none' };   // čita ga scene3d.js
+function loadCos(){
+  const p = loadProfile(), out = {};
+  for(const slot of ['trail', 'hat']){
+    const c = COSMETICS[slot].find(x => x.id === (p.cos || {})[slot]);
+    out[slot] = c && cosUnlocked(p, c) ? c.id : (slot === 'trail' ? 'stars' : 'none');
+  }
+  playerCos = out;
+  return out;
+}
+/* nove nagrade koje su otključala upravo dobivena postignuća */
+function cosFromAch(fresh){
+  const keys = fresh.map(a => a.k), out = [];
+  for(const slot of ['trail', 'hat']) for(const c of COSMETICS[slot]) if(c.need && keys.includes(c.need)) out.push(c);
+  return out;
+}
+function cosmeticsHtml(p){
+  const row = (slot, title) => `<div class="cosRow"><div class="cosT">${title}</div><div class="cosGrid">` +
+    COSMETICS[slot].map(c => {
+      const ok = cosUnlocked(p, c), on = playerCos[slot] === c.id;
+      return `<button class="cosItem${on ? ' on' : ''}${ok ? '' : ' lock'}" data-slot="${slot}" data-id="${c.id}" title="${ok ? c.n : L('🔒 Otključaj: ', '🔒 Unlock: ') + cosNeedTxt(c)}">` +
+        `<b>${ok ? c.e : '🔒'}</b><span>${c.n}</span>${ok ? '' : `<small>${cosNeedTxt(c)}</small>`}</button>`;
+    }).join('') + '</div></div>';
+  return `<div class="cosBox"><h3>🎁 ${L('Nagrade — izgled tvog junaka', 'Rewards — your hero’s look')}</h3>` +
+    row('trail', L('✨ Trag dok hodaš', '✨ Trail while you walk')) + row('hat', L('🎩 Iznad glave', '🎩 Above your head')) + '</div>';
+}
 function achievementsNewHtml(fresh){
   if(!fresh.length) return '';
+  const gifts = cosFromAch(fresh);
   return `<div class="achNew"><span class="achNewT">${L('🎖️ Novo postignuće', '🎖️ New achievement')}${fresh.length > 1 ? ' ×' + fresh.length : ''}!</span>` +
-    fresh.map((a, i) => `<span class="achBadge" style="animation-delay:${0.4 + i * 0.2}s" title="${a.d}"><b>${a.e}</b>${a.n}</span>`).join('') + '</div>';
+    fresh.map((a, i) => `<span class="achBadge" style="animation-delay:${0.4 + i * 0.2}s" title="${a.d}"><b>${a.e}</b>${a.n}</span>`).join('') +
+    (gifts.length ? `<span class="achBadge achGift" style="animation-delay:${0.5 + fresh.length * 0.2}s" title="${L('Odaberi je na ploči postignuća', 'Pick it on the achievements panel')}"><b>🎁</b>${L('Nova nagrada', 'New reward')}: ${gifts.map(c => c.e + ' ' + c.n).join(', ')}</span>` : '') + '</div>';
 }
 function profileLineHtml(){
   const p = loadProfile();
@@ -4348,15 +4429,24 @@ function profileLineHtml(){
 /* 🏆 ploča postignuća na ekranu odabira */
 function showAchievements(){
   const p = loadProfile();
+  loadCos();   // 🎁 označi spremljeni izbor
   let el = document.getElementById('achPanel');
   if(!el){ el = document.createElement('div'); el.id = 'achPanel'; el.className = 'overlay'; document.body.appendChild(el); el.addEventListener('click', e => { if(e.target === el) el.classList.add('hidden'); }); }
   const best = Object.entries(p.heroWins).sort((a, b) => b[1] - a[1]).slice(0, 3)
     .map(([id, n]) => { const hh = HEROES.find(x => x.id === id); return hh ? hh.emoji + ' ' + hh.name + ' ×' + n : ''; }).filter(Boolean).join(' · ');
   el.innerHTML = `<div class="achBox"><h2>🏆 ${L('Postignuća', 'Achievements')}</h2>
     <div class="achSum">${L(`🎮 ${p.games} igara · 🏆 ${p.wins} pobjeda${best ? ' · najčešće pobjeđuješ s: ' + best : ''}`, `🎮 ${p.games} games · 🏆 ${p.wins} wins${best ? ' · you win most with: ' + best : ''}`)}</div>
+    ${cosmeticsHtml(p)}
     <div class="achGrid">${ACHIEVEMENTS.map(a => `<div class="achItem${p.ach[a.k] ? ' on' : ''}"><b>${p.ach[a.k] ? a.e : '🔒'}</b><span><strong>${a.n}</strong><small>${a.d}</small></span></div>`).join('')}</div>
     <button class="achClose">${L('Zatvori ✖', 'Close ✖')}</button></div>`;
   el.querySelector('.achClose').addEventListener('click', () => el.classList.add('hidden'));
+  for(const b of el.querySelectorAll('.cosItem')) b.addEventListener('click', () => {   // 🎁 odaberi nagradu
+    if(b.classList.contains('lock')){ sfx('click'); return; }
+    const pr = loadProfile();
+    pr.cos = Object.assign({}, pr.cos, { [b.dataset.slot]: b.dataset.id }); saveProfile(pr); loadCos();
+    for(const x of el.querySelectorAll('.cosItem[data-slot="' + b.dataset.slot + '"]')) x.classList.toggle('on', x === b);
+    sfx('coin');
+  });
   el.classList.remove('hidden');
   sfx('click');
 }
@@ -4502,6 +4592,114 @@ function sfxAt(name, x, y, k){
 
 /* 🌲 zvukovi prirode (postavka): blagi vjetar, danju ptice, noću cvrčci, kraj rijeke žubor */
 const AMB = { on: false, wind: null, water: null, next: 0 };
+/* 🎶 GLAZBA (v0.45): vesela pozadinska glazba stvorena u pregledniku (bez datoteka) — mirna na izborniku,
+   živahnija u igri; bubanj svira samo kad si u borbi. Melodija su fraze A A B A iz pentatonike nad
+   akordima (C Am F G / C G Am F). Tiha, ide kroz isti kompresor kao efekti; gasi se u ⚙️ postavkama. */
+const MUS = { g: null, song: null, next: 0, step: 0, phrases: null, fade: 0 };
+const midiHz = n => 440 * Math.pow(2, (n - 69) / 12);
+const SONGS = {
+  menu:   { bpm: 88,  chords: [[60, 64, 67], [57, 60, 64], [53, 57, 60], [55, 59, 62]], scale: [69, 72, 74, 76, 79, 81, 84], seed: 7 },
+  battle: { bpm: 108, chords: [[60, 64, 67], [55, 59, 62], [57, 60, 64], [53, 57, 60]], scale: [72, 74, 76, 79, 81, 84, 86], seed: 21, drums: true },
+};
+function musRng(seed){ let x = seed >>> 0 || 1; return () => { x ^= x << 13; x ^= x >>> 17; x ^= x << 5; return (x >>> 0) / 4294967296; }; }
+/* fraza = 4 takta × 8 osminki; -1 = stanka */
+function musPhrase(song, seed){
+  const r = musRng(seed), out = [];
+  let idx = 2;
+  for(let bar = 0; bar < 4; bar++){
+    const ch = song.chords[bar];
+    for(let st = 0; st < 8; st++){
+      if(st === 0){   // na prvu dobu ton akorda
+        const want = ch[Math.floor(r() * 3)] + 12;
+        idx = song.scale.reduce((bi, n, i) => Math.abs(n - want) < Math.abs(song.scale[bi] - want) ? i : bi, 0);
+        out.push(idx); continue;
+      }
+      if(r() < (st % 2 ? 0.55 : 0.3)){ out.push(-1); continue; }
+      idx = clamp(idx + Math.round((r() - 0.5) * 3.2), 0, song.scale.length - 1);
+      out.push(idx);
+    }
+  }
+  if(out[31] >= 0) out[31] = -1;   // kraj fraze diše
+  return out;
+}
+function musVoice(freq, t, dur, type, vol, filt){
+  const a = AC;
+  const o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + Math.min(0.25, dur * 0.3));
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  if(filt){ const f = a.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = filt; o.connect(f); f.connect(g); } else o.connect(g);
+  g.connect(MUS.g);
+  o.start(t); o.stop(t + dur + 0.05);
+}
+function musPluck(freq, t, dur, type, vol){
+  const a = AC;
+  const o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.008);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(MUS.g);
+  o.start(t); o.stop(t + dur + 0.05);
+}
+function musDrum(kind, t, vol){
+  const a = AC;
+  if(kind === 'kick'){
+    const o = a.createOscillator(), g = a.createGain();
+    o.frequency.setValueAtTime(130, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.14);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+    o.connect(g); g.connect(MUS.g); o.start(t); o.stop(t + 0.25);
+    return;
+  }
+  if(!SND.noise) return;
+  const src = a.createBufferSource(); src.buffer = SND.noise;
+  const f = a.createBiquadFilter(), g = a.createGain();
+  f.type = kind === 'hat' ? 'highpass' : 'bandpass'; f.frequency.value = kind === 'hat' ? 7000 : 1700; f.Q.value = kind === 'hat' ? 0.7 : 0.9;
+  const d = kind === 'hat' ? 0.035 : 0.13;
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  src.connect(f); f.connect(g); g.connect(MUS.g);
+  src.start(t, Math.random() * 0.5); src.stop(t + d + 0.02);
+}
+function updateMusic(){
+  const a = AC;
+  if(!a || a.state !== 'running' || !SND.bus) return;
+  const want = !SETTINGS.music || muted || SETTINGS.vol <= 0 ? null : (running && !gameOver ? 'battle' : (gameOver ? null : 'menu'));
+  if(!MUS.g){ MUS.g = a.createGain(); MUS.g.gain.value = 0; MUS.g.connect(SND.bus.dry); }
+  const vol = 0.55 * SETTINGS.vol;
+  if(want !== MUS.song){   // promjena pjesme: kratko utišaj pa kreni ispočetka
+    MUS.g.gain.setTargetAtTime(0, a.currentTime, 0.25);
+    if(a.currentTime < MUS.fade) return;
+    if(!MUS.fade){ MUS.fade = a.currentTime + 0.9; return; }
+    MUS.fade = 0;
+    MUS.song = want; MUS.step = 0; MUS.next = a.currentTime + 0.1;
+    if(want){ const sg = SONGS[want]; MUS.phrases = [musPhrase(sg, sg.seed), musPhrase(sg, sg.seed * 3 + 1)]; }
+    return;
+  }
+  if(!want) return;
+  MUS.g.gain.setTargetAtTime(vol, a.currentTime, 0.6);
+  const sg = SONGS[want], st8 = 60 / sg.bpm / 2;   // trajanje osminke
+  const fight = want === 'battle' && gameTime >= 0 && player && !player.dead && gameTime - (player.combatT == null ? -99 : player.combatT) < 5;
+  while(MUS.next < a.currentTime + 0.3){
+    const t = MUS.next, s = MUS.step, inBar = s % 8, bar = Math.floor(s / 8) % 4, part = Math.floor(s / 32) % 4;   // fraze A A B A
+    const ch = sg.chords[bar];
+    if(inBar === 0){
+      for(const n of ch) musVoice(midiHz(n), t, st8 * 8.4, 'triangle', 0.016, 1400);   // jastuk akorda
+      musPluck(midiHz(ch[0] - 24), t, st8 * 3, 'triangle', 0.075);                     // bas
+    }
+    if(inBar === 4) musPluck(midiHz(ch[0] - 24 + (bar % 2 ? 7 : 0)), t, st8 * 3, 'triangle', 0.06);
+    const ph = MUS.phrases[part === 2 ? 1 : 0], ni = ph[s % 32];
+    if(ni >= 0){ const f = midiHz(sg.scale[ni]); musPluck(f, t, st8 * 2.2, 'sine', 0.05); musPluck(f * 2, t, st8 * 1.2, 'sine', 0.012); }   // zvončić
+    if(sg.drums){
+      if(fight){
+        if(inBar === 0 || inBar === 4) musDrum('kick', t, 0.16);
+        if(inBar === 2 || inBar === 6) musDrum('snare', t, 0.05);
+      }
+      if(inBar % 2 === 1) musDrum('hat', t, fight ? 0.03 : 0.014);
+    }
+    MUS.next += st8; MUS.step++;
+  }
+}
 function updateAmbience(){
   const a = AC;
   if(!a || !SND.bus) return;
@@ -5210,7 +5408,7 @@ function syncOptionsDom(){
   tog('optEdge', SETTINGS.edgePan);
   tog('optQuick', SETTINGS.quickCast);
   tog('optDmg', SETTINGS.dmgNums);
-  if($('optLh')){ tog('optLh', SETTINGS.lastHit); tog('optTips', SETTINGS.tips); tog('optAuto', SETTINGS.autoSkill); tog('optNature', SETTINGS.nature); if($('optQuests')) tog('optQuests', SETTINGS.quests); }
+  if($('optLh')){ tog('optLh', SETTINGS.lastHit); tog('optTips', SETTINGS.tips); tog('optAuto', SETTINGS.autoSkill); tog('optNature', SETTINGS.nature); if($('optQuests')) tog('optQuests', SETTINGS.quests); if($('optMusic')) tog('optMusic', SETTINGS.music); }
   tog('optMute', !muted);
   tog('optVoices', SETTINGS.voices);
   tog('optAnn', SETTINGS.announcer);
@@ -5245,6 +5443,7 @@ function buildOptionsDom(){
   }
   $('optQuick').addEventListener('click', () => { SETTINGS.quickCast = !SETTINGS.quickCast; saveSettings(); syncOptionsDom(); sfx('click'); });
   $('optDmg').addEventListener('click', () => { SETTINGS.dmgNums = !SETTINGS.dmgNums; saveSettings(); syncOptionsDom(); sfx('click'); });
+  if($('optMusic')) $('optMusic').addEventListener('click', () => { SETTINGS.music = !SETTINGS.music; saveSettings(); syncOptionsDom(); sfx('click'); });
   if($('optQuests')) $('optQuests').addEventListener('click', () => { SETTINGS.quests = !SETTINGS.quests; saveSettings(); syncOptionsDom(); sfx('click'); });
   if($('optLh')){
     $('optLh').addEventListener('click', () => { SETTINGS.lastHit = !SETTINGS.lastHit; saveSettings(); syncOptionsDom(); sfx('click'); });
@@ -5272,6 +5471,7 @@ function buildOptionsDom(){
 }
 /* dućan, ikone i opisi predmeta: shop.js */
 function buildSelectScreen(){
+  loadCos();   // 🎁 izgled junaka (i u 3D pregledu)
   const cards = document.getElementById('cards');
   let html = '';
   HEROES.forEach((h, i) => {
@@ -5302,6 +5502,11 @@ function buildSelectScreen(){
     SETTINGS.diff = b.dataset.d; saveSettings(); syncDiff(); sfx('click');
   }));
   syncDiff();
+  const syncMode = () => document.querySelectorAll('#modeTabs button').forEach(x => x.classList.toggle('on', x.dataset.m === SETTINGS.mode));
+  document.querySelectorAll('#modeTabs button').forEach(b => b.addEventListener('click', () => {   // ⚡ brza ili normalna igra
+    SETTINGS.mode = b.dataset.m; saveSettings(); syncMode(); sfx('click');
+  }));
+  syncMode();
   document.getElementById('startBtn').addEventListener('click', () => {
     if(SETTINGS.fullscreen) enterFullscreen();   // 🖥️ igra preko cijelog ekrana (klik je korisnikova radnja — preglednik to dopušta)
     if(net.conn){ netReady(); return; }   // multiplayer: čekaj oba igrača
@@ -5320,6 +5525,7 @@ function buildSelectScreen(){
     box.classList.toggle('hidden');
     e.currentTarget.classList.toggle('on', !box.classList.contains('hidden'));
     document.getElementById('diffTabs').classList.toggle('mpOff', !box.classList.contains('hidden'));   // 🤖 u igri s prijateljem ne vrijedi
+    document.getElementById('modeTabs').classList.toggle('mpOff', !box.classList.contains('hidden'));   // ⚡ ni brza igra
   });
   document.getElementById('helpClose').addEventListener('click', toggleHelp);
   document.getElementById('againBtn').addEventListener('click', () => location.reload());
@@ -5330,6 +5536,15 @@ function buildSelectScreen(){
 const HERO_EASY = ['vitez', 'slon', 'nosorog', 'panda', 'bikos', 'jednorog', 'listko', 'zarko', 'strijela'];
 const HERO_HARD = ['tragac', 'hobotnica', 'luna', 'gavran', 'sova', 'majmun'];
 function heroDifficulty(id){ return HERO_EASY.includes(id) ? 0 : (HERO_HARD.includes(id) ? 2 : 1); }
+/* 📊 tvoja statistika s junakom (ekran odabira) */
+function heroStatsHtml(id){
+  const p = loadProfile(), g = p.heroGames[id] || 0;
+  if(!g) return `<div class="d-stats">${L('📊 Još nisi igrao s ovim junakom — probaj!', '📊 You haven’t played this hero yet — try it!')}</div>`;
+  const w = p.heroWins[id] || 0, hs = p.heroStats[id] || { k: 0, d: 0, a: 0, bestK: 0 };
+  const hrN = n => n % 10 === 1 && n % 100 !== 11 ? 'igra' : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'igre' : 'igara');
+  return `<div class="d-stats">📊 ${L(`S ovim junakom: <b>${g}</b> ${hrN(g)} · <b>${w}</b> 🏆 · K/D/A <b>${(hs.k / g).toFixed(1)}/${(hs.d / g).toFixed(1)}/${(hs.a / g).toFixed(1)}</b> · rekord <b>${hs.bestK}</b> ⚔️`,
+    `With this hero: <b>${g}</b> ${g === 1 ? 'game' : 'games'} · <b>${w}</b> 🏆 · K/D/A <b>${(hs.k / g).toFixed(1)}/${(hs.d / g).toFixed(1)}/${(hs.a / g).toFixed(1)}</b> · best <b>${hs.bestK}</b> ⚔️`)}</div>`;
+}
 function selectHero(i){
   const h = HEROES[i];
   selectedHero = i;
@@ -5359,7 +5574,7 @@ function selectHero(i){
     </div>
     <div class="d-abils">${tiles.map((t, j) => `<button class="ab ${t.cls}" data-j="${j}" title="${t.name}"><span class="ab-k">${t.k}</span>${t.e}</button>`).join('')}</div>
     <div class="d-desc"></div>
-    <div class="d-sum"><span class="d-sumL">${L('✨ Čarolije', '✨ Spells')} <b>D</b> <b>F</b></span>${SUMMONERS.map(sp => `<button class="sumb" data-id="${sp.id}" title="${sp.name}">${sp.emoji}<i></i></button>`).join('')}</div>`;
+    <div class="d-sum"><span class="d-sumL">${L('✨ Čarolije', '✨ Spells')} <b>D</b> <b>F</b></span>${SUMMONERS.map(sp => `<button class="sumb" data-id="${sp.id}" title="${sp.name}">${sp.emoji}<i></i></button>`).join('')}</div>` + heroStatsHtml(h.id);
   const show = j => {
     const t = tiles[j];
     det.querySelectorAll('.ab').forEach(b => b.classList.toggle('on', +b.dataset.j === j));
@@ -6085,6 +6300,15 @@ function drawHud(){
   ctx.font = fontEmoji(11);
   ctx.fillText('👑', tx + 8, 60);
   ctx.fillText('👑', tx + tw - 6, 60);
+  if(gameMode() === 'turbo'){   // ⚡ brza igra: mala oznaka ispod sata
+    const lbl = L('⚡ BRZA IGRA', '⚡ QUICK GAME');
+    ctx.font = fontTxt(11, true);
+    const lw = ctx.measureText(lbl).width + 16;
+    ctx.fillStyle = 'rgba(15,23,42,0.85)';
+    ctx.beginPath(); ctx.roundRect(tx + tw / 2 - lw / 2, 73, lw, 17, 8); ctx.fill();
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillText(lbl, tx + tw / 2, 82);
+  }
 
   // ----- kill feed -----
   ctx.textAlign = 'left';
@@ -6960,7 +7184,8 @@ function frame(now){
   }
   watchMouseLock();
   drawLockedCursor();
-  if(now - (frame.ambT || 0) > 250){ frame.ambT = now; updateAmbience(); }   // 🌲 4× u sekundi je dovoljno
+  if(now - (frame.ambT || 0) > 250){ frame.ambT = now; updateAmbience(); }
+  if(now - (frame.musT || 0) > 90){ frame.musT = now; updateMusic(); }   // 🎶   // 🌲 4× u sekundi je dovoljno
 }
 
 function resize(){

@@ -3767,6 +3767,7 @@ function crosshairTexture(){
 /* 🌀 TP stup na odredištu, 🎯 laser nišanjenja, 🍖 glad, 🌀 vrtlog, 🎓 talent */
 function syncHeroExtras(u, g, gh, tAnim, dt, seen){
   const ud = g.userData;
+  if(u === player) syncCosmetics(u, ud, gh, tAnim, dt);   // 🎁 trag i nešto iznad glave
   // 🌀 teleport: stup svjetla raste na odredištu (vidi ga i protivnik ako vidi to mjesto — kao u Doti)
   let tpF = -1, dest = null;
   if(u.tpChannel > 0 && u.tpDur){ tpF = 1 - u.tpChannel / u.tpDur; dest = u.tpDest; }
@@ -4373,6 +4374,7 @@ function syncScene(tAnim){
   updateFxObjs(dt);
   updateSpellLights(dt);
   updateFx(dt);
+  updateCosFx(dt);
   syncCastIndicator();
   syncTpIndicator(tAnim);
 }
@@ -4477,9 +4479,76 @@ function worldToScreen(x, h, y){
 }
 
 /* ---------- čišćenje ---------- */
+/* 🎁 NAGRADE (v0.45): trag dok tvoj junak hoda (emoji koji se dižu i blijede, duga u bojama)
+   i nešto iznad glave (šešir/kruna stoji, ljubimac leti u krug). Bira se u ploči postignuća (game.js). */
+const COS_TRAIL = { stars: ['⭐', '✨'], hearts: ['💖', '💕'], notes: ['🎵', '🎶'], coins: ['🪙'], fire: ['🔥'], snow: ['❄️'] };
+const COS_HAT = { chick: '🐥', tophat: '🎩', fly: '🦋', dragon: '🐲', crown: '👑', star: '🌟', cup: '🏆' };
+const RAINBOW = ['#ef4444', '#f97316', '#facc15', '#22c55e', '#3b82f6', '#a855f7'];
+const cosPool = [];
+function cosSpawn(ch, x, y, h){
+  let sp = cosPool.find(p => !p.userData.live);
+  if(!sp){
+    if(cosPool.length >= 48) return;
+    sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeEmojiTexture(ch), transparent: true, depthWrite: false }));
+    scene3.add(sp); cosPool.push(sp);
+  }
+  sp.material.map = makeEmojiTexture(ch);
+  sp.userData = { live: true, t: 0, life: 1 + Math.random() * 0.35, x, y, h, vx: (Math.random() - 0.5) * 30, vy: (Math.random() - 0.5) * 30, sz: 30 + Math.random() * 10 };
+  sp.visible = true;
+}
+function updateCosFx(dt){
+  for(const sp of cosPool){
+    const d = sp.userData;
+    if(!d.live) continue;
+    d.t += dt;
+    if(d.t >= d.life){ d.live = false; sp.visible = false; continue; }
+    const f = d.t / d.life;
+    sp.position.set(d.x + d.vx * d.t, d.h + 38 * f, d.y + d.vy * d.t);
+    sp.material.opacity = f < 0.1 ? f / 0.1 : Math.min(1, 1.6 * (1 - f));
+    const sc = d.sz * (1 - 0.3 * f);
+    sp.scale.set(sc, sc, 1);
+  }
+}
+function syncCosmetics(u, ud, gh, tAnim, dt){
+  const cos = typeof playerCos !== 'undefined' ? playerCos : null;
+  const hidden = !cos || u.dead || !running || (u.status && u.status.invisT > 0);
+  // trag: samo dok se junak kreće
+  const moved = ud.cosPx != null ? Math.hypot(u.x - ud.cosPx, u.y - ud.cosPy) : 0;
+  ud.cosPx = u.x; ud.cosPy = u.y;
+  if(!hidden && cos.trail !== 'none' && moved > 0.6 && moved < 60){
+    ud.cosT = (ud.cosT || 0) - dt;
+    if(ud.cosT <= 0){
+      ud.cosT = 0.09;
+      const bx = u.x + (Math.random() - 0.5) * 30, by = u.y + (Math.random() - 0.5) * 30, bh = gh + 22 + Math.random() * 26;
+      if(cos.trail === 'rainbow'){
+        ud.cosK = ((ud.cosK || 0) + 1) % RAINBOW.length;
+        for(let i = 0; i < 2; i++) fxSpawn(bx, by, bh, RAINBOW[(ud.cosK + i) % RAINBOW.length], { spd: 14, up: 50, grav: 0, life: 0.9, size: 20 });
+      } else {
+        const list = COS_TRAIL[cos.trail];
+        if(list) cosSpawn(list[Math.floor(Math.random() * list.length)], bx, by, bh);
+        if(cos.trail === 'fire' && Math.random() < 0.6) fxSpawn(bx, by, bh, Math.random() < 0.5 ? '#fb923c' : '#fde047', { spd: 10, up: 70, grav: 10, life: 0.7, size: 14 });
+      }
+    }
+  }
+  // iznad glave
+  const hat = hidden ? 'none' : cos.hat;
+  if(ud.topperId !== hat){
+    if(ud.topper){ scene3.remove(ud.topper); ud.topper = null; }
+    ud.topperId = hat;
+    if(COS_HAT[hat]){ ud.topper = emojiSprite(COS_HAT[hat], COS_PET[hat] ? 36 : 38); scene3.add(ud.topper); }
+  }
+  if(ud.topper){
+    const top = gh + (typeof barHeight === 'function' ? barHeight(u) : 120);
+    if(COS_PET[hat]){   // ljubimac leti u krug oko junaka
+      const a = tAnim * 1.6;
+      ud.topper.position.set(u.x + Math.cos(a) * 52, top - 45 + Math.sin(tAnim * 3.1) * 8, u.y + Math.sin(a) * 52);
+    } else ud.topper.position.set(u.x, top + 48 + Math.sin(tAnim * 2.4) * 4, u.y);   // iznad imena i trake života (2D sloj bi ga inače prekrio)
+  }
+}
 function heroSceneExtras(g){   // objekti junaka koji žive izravno u sceni (TP stup, laser, nišan)
   const ud = g.userData;
-  for(const k of ['tpBeam', 'laser', 'cross']) if(ud[k]){ scene3.remove(ud[k]); ud[k] = null; }
+  for(const k of ['tpBeam', 'laser', 'cross', 'topper']) if(ud[k]){ scene3.remove(ud[k]); ud[k] = null; }
+  ud.topperId = null;
 }
 function clearScene3D(){
   for(const [k, g] of meshByUnit){ heroSceneExtras(g); scene3.remove(g); disposeGroup(g); }
@@ -4570,6 +4639,19 @@ function heroPreviewFrame(now){
       }
       animBase(heroPv.anim, 'idle', 1, heroPv.t);
       heroPv.anim.mixer.update(dt);
+    }
+  }
+  {   // 🎁 odabrana nagrada iznad glave i na ekranu odabira
+    const hat = typeof playerCos !== 'undefined' ? playerCos.hat : 'none';
+    if(heroPv.hatId !== hat){
+      if(heroPv.hat){ heroPv.scene.remove(heroPv.hat); heroPv.hat = null; }
+      heroPv.hatId = hat;
+      if(COS_HAT[hat]){ heroPv.hat = emojiSprite(COS_HAT[hat], COS_PET[hat] ? 0.42 : 0.46); heroPv.scene.add(heroPv.hat); }
+    }
+    if(heroPv.hat){
+      const t = heroPv.t;
+      if(COS_PET[hat]) heroPv.hat.position.set(Math.cos(t * 1.5) * 0.75, 1.15 + Math.sin(t * 3) * 0.08, Math.sin(t * 1.5) * 0.75);
+      else heroPv.hat.position.set(0, 1.9 + Math.sin(t * 2.4) * 0.04, 0);
     }
   }
   heroPv.renderer.render(heroPv.scene, heroPv.camera);
