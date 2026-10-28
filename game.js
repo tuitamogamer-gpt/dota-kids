@@ -1530,7 +1530,7 @@ function recomputeAttrStats(h){
   const dStr = h.str + ia.str - a.str, dAgi = h.agi + ia.agi - a.agi, dInt = h.int + ia.int - a.int;
   const prim = a.primary === 'str' ? dStr : (a.primary === 'agi' ? dAgi : dInt);
   const nb = {
-    hp: Math.round(dStr * 18),
+    hp: Math.round(dStr * CFG.strHp),
     hpRegen: dStr * 0.07,
     mp: Math.round(dInt * 13),
     mpRegen: dInt * 0.06,
@@ -1548,7 +1548,7 @@ function recomputeAttrStats(h){
   h.mpRegen += nb.mpRegen - ob.mpRegen;
   h.attrBonus = nb;
   h.atkSpdBonus = dAgi * CFG.agiAtkSpd + (h.itemAspd || 0) / 100;
-  h.armor = (h.agi + ia.agi) / 10 + (h.itemArmor || 0) + 3 * drakeN(h.team, 'forest') + (h.talArmor || 0);   // okretnost daje malo oklopa; 🌿 šumski zmajčići; 🎓 talent
+  h.armor = (h.agi + ia.agi) / CFG.agiArmorDiv + (h.itemArmor || 0) + 3 * drakeN(h.team, 'forest') + (h.talArmor || 0);   // okretnost daje malo oklopa; 🌿 šumski zmajčići; 🎓 talent
 }
 function canLearnStats(h){
   return h.statRanks < CFG.statMaxRanks;
