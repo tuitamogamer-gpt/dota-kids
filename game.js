@@ -1134,6 +1134,7 @@ function applyDamage(t, amount, src, kind){
     if(src.spellAmp) amount *= 1 + src.spellAmp;                                                      // 🎓 jačina magija
     amount *= 1 + (src.int + (src.itemAttr ? src.itemAttr.int : 0)) * CFG.intSpellAmp;              // 🧠 inteligencija jača moći
   }
+  if(t.kind === 'hero' && !(t.projSpeed > 0)) amount *= 1 - CFG.meleeResist;   // ⚖️ junaci izbliza su izdržljiviji (moraju ući u borbu)
   const kz = passiveRank(t, 'koza');                 // Lavlja koža: pasivno smanjenje štete
   if(kz) amount *= 1 - (0.03 + 0.03 * kz);
   if(st.shieldT > 0) amount *= (1 - st.shieldF);

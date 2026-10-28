@@ -86,6 +86,7 @@ const CFG = {
   courierBaseR: 900,        // kupljeno dalje od ovoga od fontane čeka kurira
   creepScaleEvery: 450,     // vojnici jačaju svakih 7.5 min (kao u DotA)
   timeScale: 1,             // ⏱️ brza igra: 0.6 — botovi ranije guraju, kule ranije gube bonus protiv junaka
+  meleeResist: 0.08,        // ⚖️ v0.45: junaci izbliza primaju 8% manje štete
   intSpellAmp: 0.0025,      // ⚖️ v0.45: svaki bod inteligencije +0.25% štete moćima (čarobnjaci jačaju s levelima)
   agiAtkSpd: 0.0052,        // ⚖️ v0.45: brzina napada po bodu okretnosti (bilo 0.006 — nosači su bili prejaki)
   creepGoldMul: 1, creepXpMul: 1,   // ⚡ brza igra množi zlato i iskustvo od vojnika i čudovišta
@@ -292,7 +293,7 @@ const HEROES = [
   {
     id:'strijela', name:LS('Strijela'), emoji:'🦊',
     role:L('🏹 Lukava lisica — strijelac', '🏹 Sly fox — archer'),
-    hp:550, mp:250, dmg:53,
+    hp:550, mp:250, dmg:50,
     attrs:{ str:18, agi:24, int:15, strG:3.4, agiG:5.5, intG:2.2, primary:'agi' },
     range:360, speed:170, atkCd:1.0, projSpeed:680, shot:'arrow',
     passive:{ name:L('Oštro oko', 'Sharp Eye'), emoji:'👁️', color:'#fb923c', pid:'oko',
@@ -349,7 +350,7 @@ const HEROES = [
   {
     id:'listko', name:LS('Listko'), emoji:'🐢',
     role:L('🌿 Šumski iscjelitelj', '🌿 Forest healer'),
-    hp:640, mp:300, dmg:52,
+    hp:670, mp:300, dmg:54,
     attrs:{ str:23, agi:14, int:20, strG:4.8, agiG:2.0, intG:3.4, primary:'str' },
     range:300, speed:163, atkCd:1.15, projSpeed:560, shot:'leaf',
     passive:{ name:L('Korijeni', 'Roots'), emoji:'🌱', color:'#4ade80', pid:'korijen',
@@ -408,7 +409,7 @@ const HEROES = [
   {
     id:'munja', name:L('Munja', 'Munya'), emoji:'🐯',
     role:L('⚡ Brzi tigar — ubojica', '⚡ Fast tiger — assassin'),
-    hp:630, mp:260, dmg:62,
+    hp:660, mp:260, dmg:65,
     attrs:{ str:19, agi:25, int:14, strG:4.6, agiG:6.2, intG:2.2, primary:'agi' },
     range:95, speed:188, atkCd:1.0, projSpeed:0,
     passive:{ name:L('Statički naboj', 'Static Charge'), emoji:'🔋', color:'#fde047', pid:'naboj',
@@ -462,7 +463,7 @@ const HEROES = [
   {
     id:'skokica', name:L('Skokica', 'Skokitsa'), emoji:'🐸',
     role:L('👅 Žabac — vuče neprijatelje k sebi', '👅 Frog — pulls enemies in'),
-    hp:670, mp:260, dmg:60,
+    hp:700, mp:260, dmg:63,
     attrs:{ str:24, agi:18, int:14, strG:5.2, agiG:3.0, intG:2.2, primary:'str' },
     range:85, speed:172, atkCd:1.05, projSpeed:0,
     passive:{ name:L('Vodozemac', 'Amphibian'), emoji:'💧', color:'#38bdf8', pid:'voda',
@@ -591,7 +592,7 @@ const HEROES = [
   {
     id:'luna', name:LS('Luna'), emoji:'🐱',
     role:L('🌙 Mjesečeva mačka — strijela iz sjene', '🌙 Moon cat — arrows from the shadows'),
-    hp:540, mp:280, dmg:56,
+    hp:540, mp:280, dmg:53,
     attrs:{ str:17, agi:24, int:18, strG:3.2, agiG:5.8, intG:2.8, primary:'agi' },
     range:340, speed:172, atkCd:1.05, projSpeed:650, shot:'arrow',
     passive:{ name:L('Mjesečeva oštrica', 'Moon Blade'), emoji:'🌙', color:'#c4b5fd', pid:'mjesec',
@@ -903,7 +904,7 @@ const HEROES = [
   {
     id:'sova', name:LS('Mudra'), emoji:'🦉',
     role:L('🌙 Sova — gospodarica noći', '🌙 Owl — queen of the night'),
-    hp:590, mp:300, dmg:60,
+    hp:620, mp:300, dmg:62,
     attrs:{ str:18, agi:19, int:23, strG:3.6, agiG:3.2, intG:5.6, primary:'int' },
     range:350, speed:170, atkCd:1.1, projSpeed:650, shot:'feather',
     passive:{ name:L('Noćna ptica', 'Night Bird'), emoji:'🌙', color:'#a78bfa', pid:'noc',
@@ -1029,7 +1030,7 @@ const HEROES = [
   {
     id:'vuk', name:LS('Sivko'), emoji:'🐺',
     role:L('🌕 Vuk — vođa čopora', '🌕 Wolf — pack leader'),
-    hp:670, mp:230, dmg:65,
+    hp:680, mp:230, dmg:67,
     attrs:{ str:24, agi:20, int:12, strG:5.0, agiG:3.2, intG:1.6, primary:'str' },
     range:82, speed:176, atkCd:1.05, projSpeed:0,
     passive:{ name:L('Čopor', 'Pack'), emoji:'🐾', color:'#cbd5e1', pid:'copor',
@@ -1301,7 +1302,7 @@ const HEROES = [
   {
     id:'panda', name:LS('Bambus'), emoji:'🐼',
     role:L('🎋 Panda — mirni majstor', '🎋 Panda — calm master'),
-    hp:640, mp:300, dmg:63,
+    hp:660, mp:300, dmg:65,
     attrs:{ str:23, agi:15, int:21, strG:5.2, agiG:2.0, intG:4.2, primary:'str' },
     range:88, speed:168, atkCd:1.1, projSpeed:0,
     passive:{ name:L('Bambus', 'Bamboo'), emoji:'🎋', color:'#86efac', pid:'bambus',
