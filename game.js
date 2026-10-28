@@ -1509,7 +1509,7 @@ function levelUp(h){
   if(isHuman(h)){   // i gost u mrežnoj igri dobiva svoje najave
     if(h.isPlayer) sfx('levelup');
     if(h.level === CFG.ultLevels[0]) announceFor(h, L('🌟 ULTI dostupan!', '🌟 ULTIMATE ready!'), L('Pritisni R ili klikni + da ga naučiš!', 'Press R or click + to learn it!'));
-    if(pendingTalent(h)) announceFor(h, '🎓 Talent!', L('Odaberi jedan od dva bonusa (gumbi gore)', 'Pick one of two bonuses (buttons at the top)'));
+    if(pendingTalent(h)) announceFor(h, LS('🎓 Talent!'), L('Odaberi jedan od dva bonusa (gumbi gore)', 'Pick one of two bonuses (buttons at the top)'));
   }
 }
 
@@ -5290,9 +5290,9 @@ function selectHero(i){
     '<span class="chip chipD' + dif + '" title="' + L('Koliko je junak težak za igranje', 'How hard this hero is to play') + '">' + [L('🟢 Lako', '🟢 Easy'), L('🟡 Srednje', '🟡 Medium'), L('🔴 Teško', '🔴 Hard')][dif] + '</span>';
   const tiles = [];
   if(h.passive) tiles.push({ k: '✨', cls: 'pas', e: h.passive.emoji, name: h.passive.name, tag: L('<span class="pasTag">✨ UROĐENO</span>', '<span class="pasTag">✨ INNATE</span>'),
-    desc: h.passive.desc.replace(/^(PASIVNO|PASSIVE):\s*/, '') + L(' (uvijek radi)', ' (always on)') });
+    desc: h.passive.desc.replace(/^(PASIVNO|PASSIVE|ПАСИВНО):\s*/, '') + L(' (uvijek radi)', ' (always on)') });
   for(const a of h.abilities) tiles.push({ k: a.key, cls: a.ult ? 'ult' : '', e: a.emoji, name: a.name,
-    tag: a.ult ? L('<span class="ultTag">🌟 ULTI</span>', '<span class="ultTag">🌟 ULTIMATE</span>') : '', desc: a.desc.replace(/^(ULTI|ULT):\s*/, '') });
+    tag: a.ult ? L('<span class="ultTag">🌟 ULTI</span>', '<span class="ultTag">🌟 ULTIMATE</span>') : '', desc: a.desc.replace(/^(ULTI|ULT|УЛТИ):\s*/, '') });
   {   // 🎓 stablo talenata: na levelima 10 / 15 / 20 / 25 biraš jedan od dva bonusa (svaki junak ima svoje)
     const tt = HERO_TALENTS[h.id] || DEFAULT_TALENTS;
     tiles.push({ k: '🎓', cls: 'tal', e: '🌳', name: L('Talenti', 'Talents'), tag: '<span class="pasTag">🎓 LEVEL 10 / 15 / 20 / 25</span>',
@@ -5712,29 +5712,29 @@ function buffList(h){
   }
   if(h.jbuff){ add('🔵', JUNGLE_BUFFS.blue.name, h.jbuff.blue, true, JUNGLE_BUFFS.blue.desc); add('🔴', JUNGLE_BUFFS.red.name, h.jbuff.red, true, JUNGLE_BUFFS.red.desc); }
   // (ovdje je L lokalni popis, pa se tekst bira s EN ? 'English' : 'hrvatski')
-  if(h.aegis) add('🛡️', EN ? 'Aegis' : 'Zmajev štit', h.aegisT, true, EN ? 'one free respawn where you fell' : 'jedno besplatno oživljavanje na mjestu smrti');
-  if(st.dmgMulT > 0 && st.dmgMulF > 1) add('🐲', EN ? 'Dragon Blessing' : 'Zmajev blagoslov', st.dmgMulT, true, EN ? 'stronger attacks' : 'jači udarci');
-  add('🫧', EN ? 'Barrier' : 'Barijera', h.barrierT, true, EN ? 'shield that blocks ' + Math.round(h.barrierHp || 0) + ' damage' : 'štit od ' + Math.round(h.barrierHp || 0) + ' štete');
-  add('👑', EN ? 'Unstoppable' : 'Nepokolebljiv', st.immuneT, true, EN ? 'nothing can stun or slow you' : 'ništa te ne može omamiti ni usporiti');
-  add('🏃', EN ? 'Haste' : 'Ubrzanje', st.hasteT, true, EN ? 'faster movement' : 'brže kretanje');
-  add('💨', h.travel === 2 ? (EN ? 'Home Wind' : 'Vjetar doma') : (EN ? 'Traveler' : 'Putnik'), h.travel ? 999 : 0, true,
-    h.travel === 2 ? (EN ? '+40% speed from the fountain — until you fight' : '+40% brzine od fontane — dok ne uđeš u borbu') : (EN ? '+15% speed when not fighting' : '+15% brzine kad nisi u borbi'));
-  add('🛡️', EN ? 'Battle Call' : 'Bojni zov', h.armorBuffT, true, EN ? '+' + (h.armorBuff || 0) + ' armor' : '+' + (h.armorBuff || 0) + ' oklopa');
-  add('🔭', EN ? 'Spyglass' : 'Durbin', h.scopeT, true, EN ? 'you shoot farther and faster' : 'gađaš dalje i brže');
-  add('🍖', EN ? 'War Hunger' : 'Ratna glad', h.hungerT, false, EN ? 'you lose health until you defeat someone' : 'gubiš život dok nekoga ne pobijediš');
-  add('🛡', EN ? 'Shield' : 'Štit', st.shieldT, true, EN ? 'you take less damage' : 'primaš manje štete');
-  add('👻', EN ? 'Invisible' : 'Nevidljiv', st.invisT, true, EN ? "enemies can't see you (attacking ends it)" : 'neprijatelji te ne vide (napad prekida)');
-  add('🦇', EN ? 'Thirst' : 'Žeđ', h.lsBoostT, true, EN ? 'attacks steal lots of health' : 'udarci kradu puno života');
-  add('✨', EN ? 'Regen Rune' : 'Runa obnove', h.runeRegenT, true, EN ? 'fast health and mana regen' : 'brzo obnavljanje života i mane');
-  add('🐌', EN ? 'Exhausted' : 'Iscrpljen', h.weakT, false, EN ? 'weaker attacks' : 'slabiji udarci');
-  add('🔥', EN ? 'Ignited' : 'Zapaljen', h.gwT, false, EN ? 'weaker healing' : 'slabije liječenje');
-  add('❄️', EN ? 'Slowed' : 'Usporen', st.slowT, false, EN ? 'slower movement' : 'sporije kretanje');
-  add('⭐', EN ? 'Stunned' : 'Omamljen', st.stun, false, EN ? "you can't do anything" : 'ne možeš ništa');
-  add('🤐', EN ? 'Silenced' : 'Ušutkan', st.silenceT, false, EN ? "you can't cast abilities" : 'ne možeš bacati moći');
-  add('🤢', EN ? 'Poison' : 'Otrov', st.poisonT, false, EN ? 'you lose health' : 'gubiš život');
-  add('🌀', EN ? 'Curse' : 'Kletva', st.curseT, false, EN ? 'you take more damage' : 'primaš više štete');
-  add('😵', EN ? 'Dizzy' : 'Vrtoglavica', st.blindT, false, EN ? 'your attacks miss' : 'promašuješ udarce');
-  add('🌘', EN ? 'Armor Broken' : 'Skinut oklop', h.corruptT, false, EN ? '−' + (h.corruptA || 0) + ' armor' : '−' + (h.corruptA || 0) + ' oklopa');
+  if(h.aegis) add('🛡️', EN ? 'Aegis' : LS('Zmajev štit'), h.aegisT, true, EN ? 'one free respawn where you fell' : LS('jedno besplatno oživljavanje na mjestu smrti'));
+  if(st.dmgMulT > 0 && st.dmgMulF > 1) add('🐲', EN ? 'Dragon Blessing' : LS('Zmajev blagoslov'), st.dmgMulT, true, EN ? 'stronger attacks' : LS('jači udarci'));
+  add('🫧', EN ? 'Barrier' : LS('Barijera'), h.barrierT, true, EN ? 'shield that blocks ' + Math.round(h.barrierHp || 0) + ' damage' : LS('štit od ' + Math.round(h.barrierHp || 0) + ' štete'));
+  add('👑', EN ? 'Unstoppable' : LS('Nepokolebljiv'), st.immuneT, true, EN ? 'nothing can stun or slow you' : LS('ništa te ne može omamiti ni usporiti'));
+  add('🏃', EN ? 'Haste' : LS('Ubrzanje'), st.hasteT, true, EN ? 'faster movement' : LS('brže kretanje'));
+  add('💨', h.travel === 2 ? (EN ? 'Home Wind' : LS('Vjetar doma')) : (EN ? 'Traveler' : LS('Putnik')), h.travel ? 999 : 0, true,
+    h.travel === 2 ? (EN ? '+40% speed from the fountain — until you fight' : LS('+40% brzine od fontane — dok ne uđeš u borbu')) : (EN ? '+15% speed when not fighting' : LS('+15% brzine kad nisi u borbi')));
+  add('🛡️', EN ? 'Battle Call' : LS('Bojni zov'), h.armorBuffT, true, EN ? '+' + (h.armorBuff || 0) + ' armor' : LS('+' + (h.armorBuff || 0) + ' oklopa'));
+  add('🔭', EN ? 'Spyglass' : LS('Durbin'), h.scopeT, true, EN ? 'you shoot farther and faster' : LS('gađaš dalje i brže'));
+  add('🍖', EN ? 'War Hunger' : LS('Ratna glad'), h.hungerT, false, EN ? 'you lose health until you defeat someone' : LS('gubiš život dok nekoga ne pobijediš'));
+  add('🛡', EN ? 'Shield' : LS('Štit'), st.shieldT, true, EN ? 'you take less damage' : LS('primaš manje štete'));
+  add('👻', EN ? 'Invisible' : LS('Nevidljiv'), st.invisT, true, EN ? "enemies can't see you (attacking ends it)" : LS('neprijatelji te ne vide (napad prekida)'));
+  add('🦇', EN ? 'Thirst' : LS('Žeđ'), h.lsBoostT, true, EN ? 'attacks steal lots of health' : LS('udarci kradu puno života'));
+  add('✨', EN ? 'Regen Rune' : LS('Runa obnove'), h.runeRegenT, true, EN ? 'fast health and mana regen' : LS('brzo obnavljanje života i mane'));
+  add('🐌', EN ? 'Exhausted' : LS('Iscrpljen'), h.weakT, false, EN ? 'weaker attacks' : LS('slabiji udarci'));
+  add('🔥', EN ? 'Ignited' : LS('Zapaljen'), h.gwT, false, EN ? 'weaker healing' : LS('slabije liječenje'));
+  add('❄️', EN ? 'Slowed' : LS('Usporen'), st.slowT, false, EN ? 'slower movement' : LS('sporije kretanje'));
+  add('⭐', EN ? 'Stunned' : LS('Omamljen'), st.stun, false, EN ? "you can't do anything" : LS('ne možeš ništa'));
+  add('🤐', EN ? 'Silenced' : LS('Ušutkan'), st.silenceT, false, EN ? "you can't cast abilities" : LS('ne možeš bacati moći'));
+  add('🤢', EN ? 'Poison' : LS('Otrov'), st.poisonT, false, EN ? 'you lose health' : LS('gubiš život'));
+  add('🌀', EN ? 'Curse' : LS('Kletva'), st.curseT, false, EN ? 'you take more damage' : LS('primaš više štete'));
+  add('😵', EN ? 'Dizzy' : LS('Vrtoglavica'), st.blindT, false, EN ? 'your attacks miss' : LS('promašuješ udarce'));
+  add('🌘', EN ? 'Armor Broken' : LS('Skinut oklop'), h.corruptT, false, EN ? '−' + (h.corruptA || 0) + ' armor' : LS('−' + (h.corruptA || 0) + ' oklopa'));
   return L;
 }
 function drawBuffBar(HL){
@@ -5993,13 +5993,15 @@ function drawHud(){
     ctx.fillText(L('⚔️ Vojnici kreću za ' + left + ' s', '⚔️ Creeps march in ' + left + ' s'), bx + bw / 2, by + 38);
     drawBar(bx + 20, by + bh - 12, bw - 40, 6, clamp(1 + gameTime / CFG.prepTime, 0, 1), '#fde047');
     if(solo){
-      const r = { x: bx + bw + 10, y: by + 12, w: 114, h: 38 };
+      const txt = L('▶️ Kreni odmah', '▶️ Start now');
+      ctx.font = fontTxt(14, true);
+      const r = { x: bx + bw + 10, y: by + 12, w: Math.max(114, ctx.measureText(txt).width + 20), h: 38 };   // širina po tekstu (ćirilica je šira)
       const hov = hoverUi && hoverUi.type === 'prep';
       ctx.fillStyle = hov ? '#16a34a' : '#15803d';
       ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 9); ctx.fill();
       ctx.strokeStyle = '#86efac'; ctx.lineWidth = 2; ctx.stroke();
-      ctx.font = fontTxt(14, true); ctx.fillStyle = '#fff';
-      ctx.fillText(L('▶️ Kreni odmah', '▶️ Start now'), r.x + r.w / 2, r.y + r.h / 2 + 1);
+      ctx.fillStyle = '#fff';
+      ctx.fillText(txt, r.x + r.w / 2, r.y + r.h / 2 + 1);
       uiRects.prepSkip = r;
     }
   }
@@ -6472,9 +6474,9 @@ function drawRecap(rc, y0){
   ctx.save();
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
   ctx.font = fontTxt(15, true); ctx.fillStyle = '#fecaca';
-  ctx.fillText(EN ? '💀 Defeated by: ' + rc.killer : '💀 Ubio te: ' + rc.killer, x + 14, y0 + 17);   // (L je ovdje raspored HUD-a)
+  ctx.fillText(EN ? '💀 Defeated by: ' + rc.killer : LS('💀 Ubio te: ' + rc.killer), x + 14, y0 + 17);   // (L je ovdje raspored HUD-a)
   ctx.font = fontTxt(11.5); ctx.fillStyle = '#cbd5e1';
-  ctx.fillText(EN ? 'Damage in the last 15 seconds — total ' + rc.total : 'Šteta u zadnjih 15 sekundi — ukupno ' + rc.total, x + 14, y0 + 35);
+  ctx.fillText(EN ? 'Damage in the last 15 seconds — total ' + rc.total : LS('Šteta u zadnjih 15 sekundi — ukupno ' + rc.total), x + 14, y0 + 35);
   const max = rc.rows[0].n || 1;
   for(let i = 0; i < n; i++){
     const r = rc.rows[i], ry = y0 + head + i * rowH, s = rowH - 8;

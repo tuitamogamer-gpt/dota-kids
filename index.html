@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#16331f">
-<meta name="description" content="DOTA Kids 3D — MOBA za djecu: 24 junaka, bitka 5 na 5 s botovima ili s prijateljem preko interneta. A MOBA for kids: 24 heroes, 5 vs 5 battles with bots or with a friend online. Hrvatski / Bosanski · English.">
+<meta name="description" content="DOTA Kids 3D — MOBA za djecu: 24 junaka, bitka 5 na 5 s botovima ili s prijateljem preko interneta. A MOBA for kids: 24 heroes, 5 vs 5 battles with bots or with a friend online. Hrvatski / Bosanski · Srpski · Српски · English.">
 <meta property="og:title" content="🏰 DOTA Kids 3D ⚔️">
 <meta property="og:description" content="Prava bitka 5 na 5 za djecu · A real 5 vs 5 battle arena for kids">
 <meta property="og:image" content="assets/splash.jpg">
@@ -531,7 +531,7 @@
   .lgPickBtns button{ display:flex; flex-direction:column; align-items:center; gap:4px; padding:14px 8px; border-radius:18px; color:#431407;
     background:linear-gradient(#fef9c3,#fde68a); border:3px solid #f59e0b; box-shadow:0 5px 0 #b45309; }
   .lgPickBtns button:hover{ transform:scale(1.05); background:linear-gradient(#fef08a,#fbbf24); }
-  .lgPickBtns .flag{ font-size:40px; line-height:1.1; }
+  .lgPickBtns .flag{ font-size:40px; line-height:1.1; white-space:nowrap; }
   .lgPickBtns b{ font-size:18px; }
   .lgPickBtns small{ font-size:12px; color:#78350f; }
   .lgPickS{ margin-top:12px; font-size:12px; color:#78716c; }
@@ -540,8 +540,12 @@
   .selBack:hover{ transform:scale(1.08); border-color:#fde047; }
   #help{ z-index:30; }
   html[lang="en"] #diffTabs.mpOff::after{ content:"(with a friend, bots are Normal)"; }
+  html[lang="sr-Latn"] #diffTabs.mpOff::after{ content:"(sa prijateljem botovi su normalni)"; }
+  html[lang="sr-Cyrl"] #diffTabs.mpOff::after{ content:"(са пријатељем ботови су нормални)"; }
   @media (max-width: 900px){
     .lgFeats{ grid-template-columns:repeat(3, minmax(0, 1fr)); }
+    .lgLang .lgLangTxt{ display:none; }
+    .lgLang .lgLangSh{ display:inline; }
   }
   @media (max-width: 560px){
     .lgLang button{ font-size:12px; padding:5px 8px; }
@@ -562,6 +566,12 @@
     .lgFeat b{ font-size:21px; }
   }
   @media (max-height: 560px){   /* 📱 mobitel položen */
+    .lgPickBox{ padding:12px 14px; }
+    .lgPickT{ font-size:17px; margin-bottom:8px; }
+    .lgPickBtns{ gap:8px; }
+    .lgPickBtns button{ padding:6px 8px; flex-direction:row; justify-content:center; gap:8px; }
+    .lgPickBtns .flag{ font-size:24px; }
+    .lgPickBtns small{ display:none; }
     .lgMain{ padding-top:50px; gap:7px; }
     .lgTop{ top:6px; }
     .lgLang button{ font-size:12px; padding:5px 8px; }
@@ -592,9 +602,11 @@
 <!-- POČETNI EKRAN (landing) -->
 <div id="landing" class="overlay">
   <div class="lgTop">
-    <div class="lgLang" id="lgLang" title="Jezik · Language">
-      <button data-l="hr"><span class="flag">🇭🇷🇧🇦</span><span class="lgLangTxt"> Hrvatski / Bosanski</span><span class="lgLangSh"> HR</span></button>
-      <button data-l="en"><span class="flag">🇬🇧🇺🇸</span><span class="lgLangTxt"> English</span><span class="lgLangSh"> EN</span></button>
+    <div class="lgLang notr" id="lgLang" title="Jezik · Језик · Language">
+      <button data-l="hr" title="Hrvatski / Bosanski"><span class="flag">🇭🇷🇧🇦</span><span class="lgLangTxt"> Hrvatski / Bosanski</span><span class="lgLangSh"> HR</span></button>
+      <button data-l="sr" title="Srpski (latinica)"><span class="flag">🇷🇸</span><span class="lgLangTxt"> Srpski</span><span class="lgLangSh"> SR</span></button>
+      <button data-l="cy" title="Српски (ћирилица)"><span class="flag">🇷🇸</span><span class="lgLangTxt"> Српски</span><span class="lgLangSh"> СР</span></button>
+      <button data-l="en" title="English"><span class="flag">🇬🇧🇺🇸</span><span class="lgLangTxt"> English</span><span class="lgLangSh"> EN</span></button>
     </div>
     <button id="lgFs" class="fsBtn lgFs" title="Cijeli zaslon" data-en-title="Fullscreen">⛶</button>
   </div>
@@ -622,14 +634,16 @@
     </div>
     <div class="lgFoot"><span data-en="free · no ads · plays in the browser">besplatno · bez reklama · igra se u pregledniku</span> · <span class="ver">v0.43</span></div>
   </div>
-  <div id="lgPick" class="hidden">
+  <div id="lgPick" class="hidden notr">
     <div class="lgPickBox">
-      <div class="lgPickT">🌍 Odaberi jezik · Choose your language</div>
+      <div class="lgPickT">🌍 Jezik · Језик · Language</div>
       <div class="lgPickBtns">
         <button data-l="hr"><span class="flag">🇭🇷🇧🇦</span><b>Hrvatski / Bosanski</b><small>Igraj na našem jeziku</small></button>
+        <button data-l="sr"><span class="flag">🇷🇸</span><b>Srpski</b><small>latinica</small></button>
+        <button data-l="cy"><span class="flag">🇷🇸</span><b>Српски</b><small>ћирилица</small></button>
         <button data-l="en"><span class="flag">🇬🇧🇺🇸</span><b>English</b><small>Play in English</small></button>
       </div>
-      <div class="lgPickS">Možeš promijeniti kasnije gore desno · You can change it later at the top right</div>
+      <div class="lgPickS">↗️ kasnije gore desno · касније горе десно · later at the top right</div>
     </div>
   </div>
 </div>
@@ -684,7 +698,7 @@
 <div id="help" class="overlay hidden">
   <div class="helpBox" data-lang="hr">
     <h2>❓ Kako se igra</h2>
-    🆕 <b>v0.43</b>: 🌍 <b>igra na engleskom</b> (biraš na početnom ekranu, gore desno) • 🎬 novi početni ekran s junacima<br>
+    🆕 <b>v0.43</b>: 🌍 <b>igra na srpskom</b> (latinica i ćirilica) <b>i engleskom</b> — biraš na početnom ekranu, gore desno • 🎬 novi početni ekran s junacima<br>
     🆕 <b>v0.42</b>: 🏆 postignuća i profil — gumb „Postignuća” na ekranu odabira, nova postignuća na kraju igre, pobjede sa svakim junakom<br>
     🆕 <b>v0.41</b>: 🔊 novi zvuk (lijevo/desno, tiše izdaleka) • 🌲 vjetar, ptice, cvrčci i žubor rijeke (⚙️ postavke)<br>
     🆕 <b>v0.40</b>: 🪙 zlatnik iznad vojnika = udari ga sada i dobiješ zlato • 💡 savjeti za početnike • 🏅 medalje na kraju • 🔥 junak u nizu pobjeda gori • ⚙️ vještine se mogu učiti same<br>
@@ -729,7 +743,7 @@
   </div>
   <div class="helpBox" data-lang="en">
     <h2>❓ How to play</h2>
-    🆕 <b>v0.43</b>: 🌍 <b>English version</b> (pick it on the start screen, top right) • 🎬 new start screen with all the heroes<br>
+    🆕 <b>v0.43</b>: 🌍 <b>English and Serbian</b> (Latin and Cyrillic) versions — pick on the start screen, top right • 🎬 new start screen with all the heroes<br>
     🆕 <b>v0.42</b>: 🏆 achievements and profile — “Achievements” button on the hero screen, new achievements at the end of a game, wins with every hero<br>
     🆕 <b>v0.41</b>: 🔊 new sound (left/right, quieter from far away) • 🌲 wind, birds, crickets and a babbling river (⚙️ settings)<br>
     🆕 <b>v0.40</b>: 🪙 a coin above a creep = hit it now and you get the gold • 💡 tips for beginners • 🏅 medals at the end • 🔥 a hero on a kill streak is on fire • ⚙️ abilities can level up by themselves<br>
@@ -799,7 +813,7 @@
 <div id="options" class="overlay hidden">
   <div class="optBox">
     <h2 data-en="⚙️ Settings">⚙️ Postavke</h2>
-    <div class="optRow"><span>🌍 <span data-en="Language">Jezik</span><br><small data-en="the game restarts in the new language">igra se ponovo pokrene na novom jeziku</small></span><span class="optSeg" id="optLang"><button data-l="hr">HR / BS</button><button data-l="en">EN</button></span></div>
+    <div class="optRow"><span>🌍 <span data-en="Language">Jezik</span><br><small data-en="the game restarts in the new language">igra se ponovo pokrene na novom jeziku</small></span><span class="optSeg notr" id="optLang"><button data-l="hr" title="Hrvatski / Bosanski">HR/BS</button><button data-l="sr" title="Srpski (latinica)">SR</button><button data-l="cy" title="Српски (ћирилица)">СР</button><button data-l="en" title="English">EN</button></span></div>
     <div class="optRow"><span data-en="🔊 Volume">🔊 Glasnoća</span><span class="optCtl"><input id="optVol" type="range" min="0" max="100" step="5"><b id="optVolV"></b></span></div>
     <div class="optRow"><span data-en="🎵 Sound">🎵 Zvuk</span><button class="optTog" id="optMute"></button></div>
     <div class="optRow"><span data-en="🗣️ Hero voices">🗣️ Glasovi junaka</span><button class="optTog" id="optVoices"></button></div>
@@ -835,6 +849,7 @@
   if(location.protocol === 'file:') document.write('<script src="assets/models.js"><\/script>');
 </script>
 <script src="lib/peerjs.min.js"></script>
+<script src="sr.js"></script>
 <script src="i18n.js"></script>
 <script src="data.js"></script>
 <script src="voices.js"></script>

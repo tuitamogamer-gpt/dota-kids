@@ -121,7 +121,7 @@ function abilityTipHtml(h, i){
   let html = `<div class="tipHead q-abil"><span class="tipAbIcon" style="background:linear-gradient(160deg, ${d.color || '#64748b'}, #10141b)">${d.emoji}</span>` +
     `<div class="tipT"><b>${escHtml(d.name)}${d.ult ? ' 🌟' : ''}</b><span class="tipSub">${keyL} · ${L('rang', 'rank')} ${ab.rank}/${max}${d.ult ? L(' · ULTI', ' · ULTIMATE') : ''}</span>` +
     `<span class="tipDots">${Array.from({ length: max }, (_, k) => `<i class="${k < ab.rank ? 'on' : ''}"></i>`).join('')}</span></div></div>`;
-  html += `<div class="tipDesc">${escHtml(d.desc.replace(/^(ULTI|ULTIMATE|ULT):\s*/, ''))}</div>`;
+  html += `<div class="tipDesc">${escHtml(d.desc.replace(/^(ULTI|ULTIMATE|ULT|УЛТИ):\s*/, ''))}</div>`;
   if(d.tip){
     html += `<div class="tipBox tipAct"><div class="tipActH"><span class="tipLbl">${ab.rank ? L('RANG ', 'RANK ') + ab.rank : L('NA RANGU 1', 'AT RANK 1')}</span>` +
       (d.passive ? '' : `<span class="tipCd">💧 ${d.mana} &nbsp;⏱️ ${d.cd} s</span>`) + `</div>${escHtml(d.tip(rk))}</div>`;
@@ -146,7 +146,7 @@ function innateTipHtml(h){
   return `<div class="tipHead q-common"><span class="tipAbIcon" style="background:linear-gradient(160deg, ${pv.color || '#34d399'}, #10141b)">${pv.emoji}</span>` +
     `<div class="tipT"><b>${escHtml(pv.name)}</b><span class="tipSub">${L('✨ Urođeno · rang', '✨ Innate · rank')} ${ir}/${Math.max(4, ir)}</span>` +
     `<span class="tipDots">${Array.from({ length: Math.max(4, ir) }, (_, k) => `<i class="${k < ir ? 'on' : ''}"></i>`).join('')}</span></div></div>` +
-    `<div class="tipDesc">${escHtml(pv.desc.replace(/^(PASIVNO|PASSIVE|INNATE):\s*/, ''))}</div>` +
+    `<div class="tipDesc">${escHtml(pv.desc.replace(/^(PASIVNO|PASSIVE|INNATE|ПАСИВНО):\s*/, ''))}</div>` +
     (pv.tip ? `<div class="tipBox tipPas"><span class="tipLbl">${L('PASIVNO', 'PASSIVE')}</span>${escHtml(pv.tip(ir))}</div>` : '') +
     '<div class="tipFoot">' + L('✨ Uvijek radi · jača sama na levelima 7 / 13 / 19', '✨ Always on · gets stronger at levels 7 / 13 / 19') + '</div>';
 }
@@ -329,7 +329,7 @@ function toggleShop(){
   if(!shopOpen){ hideItemTip(); document.getElementById('shopSearch').blur(); }
   else { renderShopTabs(); renderShopBody(); }
 }
-function normTxt(t){ return t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd'); }
+function normTxt(t){ return cyrToLat(t.toLowerCase()).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd'); }
 function itemPlan(it){ return it.instant ? { cost: it.cost, ok: true, tagOk: true, slotsOk: true } : planPurchase(player, it); }
 /* kartica predmeta: slika, ime, prvo svojstvo, cijena (ili "fali još") */
 function shopCell(it, extra){

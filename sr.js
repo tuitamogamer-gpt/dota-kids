@@ -1,0 +1,59 @@
+/* 🇷🇸 Srpski jezik (v0.43): hrvatski tekst igre (ijekavica) → srpski (ekavica).
+   SR_PHRASES: izrazi koji ovise o kontekstu (zamijene se prvi, točno kako pišu);
+   SR_WORDS: riječ po riječ (mala slova; Velika početna i VELIKA SLOVA vrate se sama).
+   Ćirilicu radi i18n.js iz ovog (latiničnog) teksta. Novi tekst u igri: ako ima jat (ije/je) ili
+   hrvatsku riječ, dodaj je ovdje. */
+const SR_PHRASES = [
+  ["Oživjet ćeš", "Oživećeš"],
+  ["dobit ćeš", "dobićeš"],
+  ["vidjet ćeš što radi", "videćeš šta radi"],
+  ["Što kupiti", "Šta kupiti"],
+  ["pokazuje što", "pokazuje šta"],
+  ["Kupi što želiš", "Kupi šta želiš"],
+  ["otvori dućan", "otvori prodavnicu"],
+  ["jasniji dućan", "jasnija prodavnica"],
+  ["dućan je otvoren", "prodavnica je otvorena"],
+  ["Doma! 🏠", "Kući! 🏠"],
+  ["kratke upute", "kratka uputstva"]
+];
+const SR_WORDS = {
+  "bijeg":"beg", "bijega":"bega", "bijes":"bes", "blijedi":"bledi", "bljesak":"blesak", "branič":"branilac",
+  "cijela":"cela", "cijeli":"ceo", "cijelog":"celog", "cijelom":"celom", "cijena":"cena", "cijene":"cene",
+  "dijeli":"deli", "dijelovi":"delovi", "dio":"deo", "djecu":"decu", "djeluje":"deluje", "djetelina":"detelina",
+  "dobiva":"dobija", "dobivate":"dobijate", "dobivaš":"dobijaš", "dolje":"dole", "donio":"doneo", "dulja":"duža",
+  "dulje":"duže", "dućan":"prodavnica", "dućana":"prodavnice", "dućanu":"prodavnici", "gdje":"gde", "glasnoća":"jačina zvuka",
+  "gnjev":"gnev", "golema":"ogromna", "golemi":"ogromni", "golemog":"ogromnog", "grije":"greje", "gumb":"dugme",
+  "gumbi":"dugmad", "iscjelitelj":"iscelitelj", "iscjelitelja":"iscelitelja", "iscjeljenje":"isceljenje", "izbjegavanja":"izbegavanja", "izbjegneš":"izbegneš",
+  "izbornik":"meni", "izliječi":"izleči", "kamo":"kuda", "koljena":"kolena", "korijen":"koren", "korijeni":"koreni",
+  "korijenje":"korenje", "korijenjem":"korenjem", "kotačić":"točkić", "kupnja":"kupovina", "kupnje":"kupovine", "kupnju":"kupovinu",
+  "kutovi":"uglovi", "kutovima":"uglovima", "kvaliteta":"kvalitet", "kvalitetu":"kvalitet", "lijevi":"levi", "lijevo":"levo",
+  "liječenja":"lečenja", "liječenje":"lečenje", "liječi":"leči", "liječiš":"lečiš", "ljekoviti":"lekoviti", "ljepljiva":"lepljiva",
+  "ljepljivu":"lepljivu", "lubanjolomac":"lobanjolomac", "micati":"pomerati", "mjehur":"mehur", "mjehurići":"mehurići", "mjesec":"mesec",
+  "mjesečev":"mesečev", "mjesečeva":"mesečeva", "mjesta":"mesta", "mjesto":"mesto", "mjestom":"mestom", "mjestu":"mestu",
+  "najprije":"najpre", "napitci":"napici", "naprijed":"napred", "natrag":"nazad", "netko":"neko", "nevjerojatan":"neverovatan",
+  "niska":"nizak", "nitko":"niko", "obje":"obe", "objema":"obema", "obrana":"odbrana", "onamo":"tamo",
+  "osvježenja":"osveženja", "osvježi":"osveži", "ozlijedi":"ozledi", "oživjet":"oživet", "pjesma":"pesma", "pobijedi":"pobedi",
+  "pobijedio":"pobedio", "pobijediš":"pobediš", "pobjeda":"pobeda", "pobjede":"pobede", "pobjednik":"pobednik", "pobjedu":"pobedu",
+  "pobjesni":"pobesni", "pobjeći":"pobeći", "pobjeđuje":"pobeđuje", "pobjeđuješ":"pobeđuješ", "pobjeđujući":"pobeđujući", "pokraj":"pored",
+  "pomiče":"pomera", "posijeci":"poseci", "postavkama":"podešavanjima", "postavke":"podešavanja", "postignuća":"dostignuća", "postignuće":"dostignuće",
+  "potplata":"đonova", "pregledniku":"pregledaču", "premještanje":"premeštanje", "prijestol":"presto", "prijeđeš":"pređeš", "prodano":"prodato",
+  "promatrač":"posmatrač", "promijeni":"promeni", "promijeniti":"promeniti", "provjeri":"proveri", "prošeći":"prošetaj", "puhni":"duni",
+  "razina":"nivo", "razine":"nivoa", "razmak":"razmaknica", "razumijem":"razumem", "rijeci":"reci", "rijeka":"reka",
+  "rijeke":"reke", "rijetko":"retko", "riječ":"reč", "rušitelj":"rušilac", "sasiječe":"saseče", "sasječen":"sasečen",
+  "savjeti":"saveti", "siječe":"seče", "sjekira":"sekira", "sjekirica":"sekirica", "sjekirom":"sekirom", "sjena":"senka",
+  "sjene":"senke", "sjeni":"senci", "sjenovita":"senovita", "sjenu":"senku", "sjevernih":"severnih", "skupina":"grupa",
+  "sljedeća":"sledeća", "sljedeće":"sledeće", "sljedećem":"sledećem", "sljedeći":"sledeći", "smiješno":"smešno", "smjeru":"smeru",
+  "snajperist":"snajperista", "snježna":"snežna", "srednja":"srednji", "strijela":"strela", "strijelac":"strelac", "strijele":"strele",
+  "strijelu":"strelu", "stup":"stub", "suigrač":"saigrač", "suigrača":"saigrača", "suigrači":"saigrači", "svetište":"svetilište",
+  "svjetla":"svetla", "svjetlo":"svetlo", "svježi":"sveži", "tablica":"tabela", "tijelo":"telo", "tipka":"taster",
+  "tipke":"tastere", "tipku":"taster", "tisuću":"hiljadu", "tko":"ko", "točke":"tačke", "točno":"tačno",
+  "trgovine":"prodavnice", "ubojica":"ubica", "ubojstava":"ubistava", "ubojstva":"ubistva", "ubojstvo":"ubistvo", "ucijenjen":"ucenjen",
+  "ucjena":"ucena", "unatrag":"unazad", "uspije":"uspe", "uvijek":"uvek", "val":"talas", "valova":"talasa",
+  "vidjet":"videt", "visoka":"visok", "vjerni":"verni", "vjetar":"vetar", "vjetrovita":"vetrovita", "vjetru":"vetru",
+  "vjeverica":"veverica", "vječna":"večna", "vještina":"veština", "vještine":"veštine", "vojarna":"kasarna", "vojarne":"kasarne",
+  "vojarnu":"kasarnu", "vrpca":"traka", "zacijele":"zacele", "zacjeljuju":"zaceljuju", "zadnji":"poslednji", "zadnjih":"poslednjih",
+  "zalijepi":"zalepi", "zamijeni":"zameni", "zamjena":"zamena", "zasjede":"zasede", "zaslon":"ekran", "zaslonu":"ekranu",
+  "zasvijetli":"zasvetli", "zauvijek":"zauvek", "zbrajaju":"sabiraju", "zmajoubojica":"zmajoubica", "zrak":"vazduh", "zraku":"vazduhu",
+  "zračni":"vazdušni", "zvijezda":"zvezda", "zvijezde":"zvezde", "zvijezdu":"zvezdu", "zvjezdana":"zvezdana", "zvjezdani":"zvezdani",
+  "zvjezdica":"zvezdica"
+};
