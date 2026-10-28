@@ -22,14 +22,19 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
 ## Što je u igri
 
 - ⚡🎁🎶 **Brza igra, nagrade, glazba i ravnoteža** (v0.45):
-  - ⚡ **brza igra** (ekran junaka: ⏱️ Igra: 🏰 Normalna / ⚡ Brza) — kao Turbo u DotA: ×1.8 zlata i iskustva od vojnika, dvostruko pasivno zlato, više zlata za junake i kule, brže oživljavanje, kule s 80% života, priprema 15 s, vojnici jačaju češće; igra traje oko 10–12 minuta (samo protiv botova)
+  - ⚡ **brza igra** (ekran junaka: ⏱️ Igra: 🏰 Normalna / ⚡ Brza) — kao Turbo u DotA: ×1.8 zlata i iskustva od vojnika, dvostruko pasivno zlato, više zlata za junake i kule, brže oživljavanje, kule s 80% života, priprema 15 s, vojnici jačaju češće; igra traje oko 12 minuta (samo protiv botova)
   - 🎁 **nagrade za postignuća** — na ploči 🏆 Postignuća biraš izgled svog junaka:
     - ✨ **trag dok hodaš**: ⭐ zvjezdice, 💖 srca (prva pobjeda), 🎵 note (timski igrač), 🪙 zlatnici (zlatar), 🔥 plamen (u vatri), ❄️ pahulje (neuništiv), 🌈 duga (svestran)
     - 🎩 **iznad glave**: 🐥 pile (3 igre), 🎩 cilindar (lovac), 🦋 leptir (proždrljivac), 🐲 zmajić (zmajoubojica), 👑 kruna (najbolji igrač), 🌟 zvijezda (legenda), 🏆 pehar (prvak) — ljubimci lete u krug oko junaka
     - novo postignuće na kraju igre javlja i 🎁 novu nagradu
   - 🎶 **glazba** stvorena u pregledniku (bez datoteka): mirna melodija na izborniku, živahnija u bitci, bubanj svira kad si u borbi; isključuje se u ⚙️ postavkama
   - 📊 **statistika s junakom** na ekranu odabira: broj igara i pobjeda, prosječni K/D/A i rekord
-  - ⚖️ **ravnoteža junaka** iz 75 simuliranih igara 5 na 5: daljinski nosači Nišan, Orlina i Strijela (pobjeđivali 70–80%) i Tutnjo malo slabiji; Rogo, Mudra, Duga, Bambus, Munja, Listko i Ledena jači
+  - ⚖️ **ravnoteža junaka** — 4 kruga po 40–80 simuliranih igara 5 na 5 (botovi vode oba tima; `tools/sim/sim.js --json`, procjena snage junaka iz sastava timova):
+    - na početku su daljinski nosači s okretnošću pobjeđivali ~69% igara (Nišan 81%), a čarobnjaci s inteligencijom ~41%
+    - 🧠 **inteligencija jača moći** (+0.25% štete moći po bodu) • 🤸 okretnost daje manje brzine napada (0.46% po bodu) i oklopa (1 po 12 bodova) • 💪 snaga daje 20 života po bodu • ⚔️ **junaci izbliza primaju 8% manje štete**
+    - slabiji ulti Nišana, Strijele, Orline i Gavrana; jači Skokica, Bambus, Sivko, Pipko, Žarko, Mudra (i noć koja timu daje jače udarce), Rogo, Duga, Munja, Listko, Ledena
+    - botovi: Bikoš sad koristi ulti i na ranjenom junaku, Mudra baca noć i u timskoj borbi
+    - ⚡ u brzoj igri i odluke botova (kada guraju, Veliki Zmaj) i jačina kula idu po bržem satu — igra traje ~12 min (prije ~17)
   - 🐛 postavke „zadaci za početnike” (i nove: glazba, brza igra) sada se pamte i nakon ponovnog učitavanja
 
 - 🎯 **Zadaci, graf i jezik u mrežnoj igri** (v0.44):
