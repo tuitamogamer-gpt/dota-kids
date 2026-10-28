@@ -1,6 +1,6 @@
 # 🏰 DOTA Kids 3D ⚔️
 
-Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.40: 🪙 pomoć za zadnji udarac, 💡 savjeti za početnike, 🏅 medalje na kraju igre, 🗺️ portreti na minimapi i 🔥 junaci „u vatri”.** v0.39: čišći ekran (brojevi štete samo kad si ti uključen, manje poruka), 💨 brže putovanje izvan borbe i 🪙 zlatnici koji polete do tebe kad pobijediš junaka.** v0.38: veliko poliranje — ⛶ cijeli zaslon, 🐿️ Nišan i 🐂 Bikoš, 🎓 svaki junak ima svoje talente, 💥 kritični udarci, 🛒 jasniji dućan, 🗺️ veća mapa, 🗼 aggro kao u Doti, 🌫️ prava magla rata, 🌿 tango jede drvo i 🤖 pametniji botovi (gankovi, guranje, obrana).** (v0.37: 👥 pravih 5 na 5, v0.36: peglanje za mobitel i opisi gumba, v0.35: u mrežnoj igri svatko vidi svoje, v0.34: 📣 najavljivač, 🤖 težina botova, 💀 pregled pogibije, 💃 ples)
+Dječji DOTA All-Stars klon u 3D — kompletan mini-MOBA koji radi u pregledniku, bez instalacije. **v0.41: 🔊 novi zvuk — bogatiji efekti, prostorni zvuk (lijevo/desno, tiše izdaleka) i 🌲 zvukovi prirode.** v0.40: 🪙 pomoć za zadnji udarac, 💡 savjeti za početnike, 🏅 medalje na kraju igre, 🗺️ portreti na minimapi i 🔥 junaci „u vatri”.** v0.39: čišći ekran (brojevi štete samo kad si ti uključen, manje poruka), 💨 brže putovanje izvan borbe i 🪙 zlatnici koji polete do tebe kad pobijediš junaka.** v0.38: veliko poliranje — ⛶ cijeli zaslon, 🐿️ Nišan i 🐂 Bikoš, 🎓 svaki junak ima svoje talente, 💥 kritični udarci, 🛒 jasniji dućan, 🗺️ veća mapa, 🗼 aggro kao u Doti, 🌫️ prava magla rata, 🌿 tango jede drvo i 🤖 pametniji botovi (gankovi, guranje, obrana).** (v0.37: 👥 pravih 5 na 5, v0.36: peglanje za mobitel i opisi gumba, v0.35: u mrežnoj igri svatko vidi svoje, v0.34: 📣 najavljivač, 🤖 težina botova, 💀 pregled pogibije, 💃 ples)
 
 ![DOTA Kids 3D u igri](docs/igra.jpg)
 
@@ -18,6 +18,14 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
 ## Što je u igri
+
+- 🔊 **Novi zvuk** (v0.41):
+  - 🎚️ svi zvučni efekti idu kroz zajednički „mikser” (kompresor + malo jeke): kad je puno toga odjednom, zvuk više ne pucketa i ne preglasi se, a bojište zvuči kao prostor
+  - 🎧 **prostorni zvuk**: udarci, strijele, moći i rušenja u svijetu čuju se tiše što su dalje od sredine ekrana i s lijeve ili desne strane — po zvuku znaš gdje se nešto događa
+  - 💥 bogatiji efekti umjesto „bip” tonova: tup udarac mača, fijuk strijele, svjetlucanje magije, gromki ulti, prasak eksplozije, rušenje kule, kritični rez, zvona za level i zlato, fijuk skoka
+  - 🪙 **zvuk zlatnika** kad dobiješ zlato za vojnika i kad zlatnici polete do tebe nakon pobjede nad junakom
+  - 🤫 tuče vojnika su puno tiše od udaraca junaka (prije je stalno lupalo)
+  - 🌲 **zvukovi prirode** (⚙️ postavka, uključeno): blagi vjetar, danju ptice, noću cvrčci, a kad je kamera kraj rijeke — žubor vode
 
 - 🏅 **Za početnike i za zabavu** (v0.40):
   - 🪙 **pomoć za zadnji udarac**: iznad neprijateljskog vojnika kojeg tvoj SLJEDEĆI udarac pobjeđuje pojavi se zlatnik (i zlatni okvir trake života) — udari ga baš tada i dobiješ zlato; tvoj vojnik kojeg možeš uskratiti dobije ❗. Djeca tako lako nauče farmati (isključuje se u ⚙️ postavkama)

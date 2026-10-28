@@ -630,7 +630,7 @@ let scoreOpen = false;      // 📋 tablica otvorena gumbom (na tabletu nema tip
 let mouseIn = false;        // miš je iznad igre (za rubno pomicanje kamere)
 /* ⚙️ postavke (pamte se u pregledniku) */
 const SETTINGS = { vol: 0.8, quality: touchMode ? 'med' : 'high', edgePan: true, dmgNums: true, quickCast: false, voices: true, announcer: true, diff: 'normal',
-  fullscreen: true, lockMouse: true, lastHit: true, tips: true, autoSkill: false };   // ⬆️ vještine se mogu učiti same   // 🪙 pomoć za zadnji udarac, 💡 savjeti   // 🖥️ cijeli zaslon pri početku igre, 🔒 miš ne može izaći iz igre
+  fullscreen: true, lockMouse: true, lastHit: true, tips: true, autoSkill: false, nature: true };   // 🌲 zvukovi prirode   // ⬆️ vještine se mogu učiti same   // 🪙 pomoć za zadnji udarac, 💡 savjeti   // 🖥️ cijeli zaslon pri početku igre, 🔒 miš ne može izaći iz igre
 try {
   const s = JSON.parse(localStorage.getItem('dk_settings') || '{}');
   if(typeof s.vol === 'number') SETTINGS.vol = clamp(s.vol, 0, 1);
@@ -646,6 +646,7 @@ try {
   if(typeof s.lastHit === 'boolean') SETTINGS.lastHit = s.lastHit;
   if(typeof s.tips === 'boolean') SETTINGS.tips = s.tips;
   if(typeof s.autoSkill === 'boolean') SETTINGS.autoSkill = s.autoSkill;
+  if(typeof s.nature === 'boolean') SETTINGS.nature = s.nature;
 } catch(e){}
 function saveSettings(){ try { localStorage.setItem('dk_settings', JSON.stringify(SETTINGS)); } catch(e){} }
 let ancients = [null, null];
@@ -1232,7 +1233,7 @@ function kill(t, src){
     else if(src && src.kind === 'hero' && !src.dead){
       src.gold += t.goldValue;
       src.lastHits++;
-      if(isHuman(src)){ addFloat(t.x, t.y, '+' + t.goldValue + ' 💰', '#fde047', 15, src.team); coinDrops.push({ x: t.x, y: t.y, n: 1 + Math.floor(t.goldValue / 30) }); }
+      if(isHuman(src)){ if(src.isPlayer) sfx('coin'); addFloat(t.x, t.y, '+' + t.goldValue + ' 💰', '#fde047', 15, src.team); coinDrops.push({ x: t.x, y: t.y, n: 1 + Math.floor(t.goldValue / 30) }); }
     }
     for(const h of units){
       if(h.kind === 'hero' && h.team !== t.team && h.team !== TEAM_NEUTRAL && !h.dead && dist(h, t) < CFG.xpRadius)
@@ -1249,7 +1250,7 @@ function kill(t, src){
     if(src && src.kind === 'hero' && !src.dead){
       src.gold += t.goldValue;
       src.lastHits++;
-      if(isHuman(src)){ addFloat(t.x, t.y, '+' + t.goldValue + ' 💰', '#fde047', 15, src.team); coinDrops.push({ x: t.x, y: t.y, n: Math.min(6, 1 + Math.floor(t.goldValue / 40)) }); }
+      if(isHuman(src)){ if(src.isPlayer) sfx('coin'); addFloat(t.x, t.y, '+' + t.goldValue + ' 💰', '#fde047', 15, src.team); coinDrops.push({ x: t.x, y: t.y, n: Math.min(6, 1 + Math.floor(t.goldValue / 40)) }); }
       for(const h of units){
         if(h.kind === 'hero' && h.team === src.team && !h.dead && dist(h, t) < CFG.xpRadius)
           giveXp(h, t.xpValue);
@@ -2298,7 +2299,7 @@ function releaseAttack(u, t, dmg, miss, onHitFx, crit){
       r: u.kind === 'tower' ? 9 : 6,
       shot: u.kind === 'tower' ? 'tower' : (u.kind === 'hero' ? (u.hero.shot || 'bolt') : 'bolt'),
     });
-    sfxAt('pew', u.x, u.y);
+    sfxAt(u.kind === 'hero' ? 'pew' : 'pewc', u.x, u.y, u.kind === 'hero' ? 1 : 0.35);
   } else {
     if(miss){
       if(isHuman(u) || isHuman(t))
@@ -2311,7 +2312,8 @@ function releaseAttack(u, t, dmg, miss, onHitFx, crit){
       const deb = passiveRank(t, 'debela');   // Debela koža (Tutnjo E): vraća štetu izbliza
       if(deb && !u.dead && !u.removeMe && u.kind !== 'tower') applyDamage(u, 14 + 10 * deb, t);
     }
-    sfxAt('hit', u.x, u.y);
+    if(u.kind === 'hero' || t.kind === 'hero') sfxAt('hit', u.x, u.y);
+    else sfxAt('hitc', u.x, u.y, 0.35);   // vojnici se tuku tiše (inače stalno lupa)
   }
 }
 
@@ -4233,11 +4235,45 @@ function ac(){
   }
   return AC;
 }
-function tone(freq, dur, type, vol, slideTo, delay){
+/* 🔊 v0.41 zvuk: svi efekti idu kroz zajednički kompresor (bez pucketanja kad ih je puno odjednom) i malo jeke;
+   efekti u svijetu (sfxAt) su tiši izdaleka i lijevo/desno prema mjestu na ekranu */
+const SND = { bus: null, noise: null };
+function sndBus(){
+  const a = ac();
+  if(!a) return null;
+  if(SND.bus) return SND.bus;
+  const comp = a.createDynamicsCompressor();
+  comp.threshold.value = -16; comp.knee.value = 12; comp.ratio.value = 5; comp.attack.value = 0.004; comp.release.value = 0.18;
+  comp.connect(a.destination);
+  const wet = a.createGain(); wet.gain.value = 0.16;   // mala jeka (prostor bojišta)
+  const conv = a.createConvolver();
+  const len = Math.floor(a.sampleRate * 0.9), ir = a.createBuffer(2, len, a.sampleRate);
+  for(let c = 0; c < 2; c++){ const d = ir.getChannelData(c); for(let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
+  conv.buffer = ir; conv.connect(wet); wet.connect(comp);
+  const nb = a.createBuffer(1, a.sampleRate, a.sampleRate), nd = nb.getChannelData(0);
+  for(let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+  SND.noise = nb;
+  SND.bus = { dry: comp, rev: conv };
+  return SND.bus;
+}
+/* izlaz za jedan zvuk: glasnoća + položaj lijevo/desno, dio ide u jeku */
+function sndOut(o){
+  const a = ac(), bus = sndBus();
+  if(!a || !bus) return null;
+  const g = a.createGain(); g.gain.value = o && o.k != null ? o.k : 1;
+  let node = g;
+  if(o && o.pan && a.createStereoPanner){ const p = a.createStereoPanner(); p.pan.value = clamp(o.pan, -1, 1); g.connect(p); node = p; }
+  node.connect(bus.dry);
+  const send = a.createGain(); send.gain.value = o && o.rev != null ? o.rev : 0.5; node.connect(send); send.connect(bus.rev);
+  return g;
+}
+function tone(freq, dur, type, vol, slideTo, delay, out){
   vol *= SETTINGS.vol;   // ⚙️ glasnoća iz postavki
   if(vol < 0.0005) return;
   const a = ac();
   if(!a) return;
+  const dst = out || sndOut();
+  if(!dst) return;
   const t0 = a.currentTime + (delay || 0);
   const o = a.createOscillator();
   const g = a.createGain();
@@ -4247,37 +4283,107 @@ function tone(freq, dur, type, vol, slideTo, delay){
   g.gain.setValueAtTime(0.0001, t0);
   g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
   g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-  o.connect(g); g.connect(a.destination);
+  o.connect(g); g.connect(dst);
   o.start(t0); o.stop(t0 + dur + 0.05);
 }
-function sfx(name){
+/* šum kroz filtar: udarci, fijuk, prasak, šuškanje (f0 → f1 = pomak filtra) */
+function noise(dur, vol, ftype, f0, f1, q, delay, out){
+  vol *= SETTINGS.vol;
+  if(vol < 0.0005) return;
+  const a = ac(); if(!a || !sndBus()) return;
+  const dst = out || sndOut();
+  if(!dst) return;
+  const t0 = a.currentTime + (delay || 0);
+  const src = a.createBufferSource(); src.buffer = SND.noise;
+  const f = a.createBiquadFilter(); f.type = ftype || 'bandpass'; f.Q.value = q || 1;
+  f.frequency.setValueAtTime(f0, t0);
+  if(f1) f.frequency.exponentialRampToValueAtTime(Math.max(40, f1), t0 + dur);
+  const g = a.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(vol, t0 + Math.min(0.01, dur * 0.2));
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  src.connect(f); f.connect(g); g.connect(dst);
+  src.start(t0, Math.random() * 0.5); src.stop(t0 + dur + 0.05);
+}
+/* zvono (zlatnik, level): osnovni ton + viši alikvoti koji brže nestaju */
+function bell(freq, dur, vol, delay, out){
+  tone(freq, dur, 'sine', vol, 0, delay, out);
+  tone(freq * 2.76, dur * 0.5, 'sine', vol * 0.35, 0, delay, out);
+  tone(freq * 5.4, dur * 0.25, 'sine', vol * 0.15, 0, delay, out);
+}
+function sfx(name, o){
   if(muted) return;
   const now = performance.now();
   if(sfxLast[name] && now - sfxLast[name] < 60) return;
   sfxLast[name] = now;
+  const out = sndOut(o);
+  if(!out) return;
+  const T = (f, d, ty, v, sl, dl) => tone(f, d, ty, v, sl, dl, out), N = (d, v, ty, f0, f1, q, dl) => noise(d, v, ty, f0, f1, q, dl, out);
   switch(name){
-    case 'hit':     tone(190, 0.07, 'square', 0.045, 120); break;
-    case 'crit':    tone(1500, 0.05, 'square', 0.05, 2400); tone(240, 0.16, 'sawtooth', 0.09, 70, 0.03); tone(90, 0.2, 'square', 0.06, 45, 0.04); break;
-    case 'pew':     tone(720, 0.09, 'sine', 0.04, 280); break;
-    case 'cast':    tone(420, 0.13, 'sine', 0.08, 900); break;
-    case 'ult':     tone(300, 0.3, 'sawtooth', 0.1, 900); tone(600, 0.25, 'triangle', 0.1, 1200, 0.12); break;
-    case 'zap':     tone(1200, 0.1, 'sawtooth', 0.05, 300); break;
-    case 'boom':    tone(160, 0.25, 'sawtooth', 0.09, 50); break;
-    case 'heal':    tone(523, 0.1, 'triangle', 0.06); tone(659, 0.1, 'triangle', 0.06, 0, 0.07); tone(784, 0.12, 'triangle', 0.06, 0, 0.14); break;
-    case 'kill':    tone(600, 0.12, 'triangle', 0.1); tone(800, 0.12, 'triangle', 0.1, 0, 0.1); tone(1000, 0.2, 'triangle', 0.1, 0, 0.2); break;
-    case 'tower':   tone(220, 0.4, 'sawtooth', 0.12, 55); tone(110, 0.5, 'square', 0.08, 40, 0.1); break;
-    case 'levelup': tone(523, 0.1, 'triangle', 0.09); tone(659, 0.1, 'triangle', 0.09, 0, 0.09); tone(784, 0.1, 'triangle', 0.09, 0, 0.18); tone(1046, 0.22, 'triangle', 0.1, 0, 0.27); break;
-    case 'buy':     tone(880, 0.07, 'square', 0.06); tone(1320, 0.09, 'square', 0.06, 0, 0.07); break;
-    case 'death':   tone(400, 0.5, 'sawtooth', 0.1, 120); break;
-    case 'win':     tone(523, 0.16, 'triangle', 0.11); tone(659, 0.16, 'triangle', 0.11, 0, 0.14); tone(784, 0.16, 'triangle', 0.11, 0, 0.28); tone(1046, 0.4, 'triangle', 0.12, 0, 0.42); break;
-    case 'lose':    tone(330, 0.22, 'sawtooth', 0.09, 0, 0); tone(277, 0.22, 'sawtooth', 0.09, 0, 0.2); tone(220, 0.45, 'sawtooth', 0.1, 0, 0.4); break;
-    case 'click':   tone(1000, 0.04, 'sine', 0.035); break;
-    case 'tick':    tone(880, 0.06, 'sine', 0.05); break;
-    case 'horn':    tone(147, 1.1, 'sawtooth', 0.07, 165); tone(220, 1.1, 'triangle', 0.07, 247, 0.03); tone(294, 0.9, 'sine', 0.05, 330, 0.06); break;
+    case 'hit':     N(0.06, 0.09, 'bandpass', 1600, 700, 1.2); T(150, 0.09, 'sine', 0.09, 60); break;                 // tup udarac
+    case 'pew':     N(0.14, 0.05, 'highpass', 3200, 900, 0.7); T(700, 0.1, 'triangle', 0.025, 330); break;           // fijuk strijele
+    case 'pewc':    N(0.1, 0.04, 'highpass', 3000, 1200, 0.7); break;
+    case 'hitc':    N(0.05, 0.07, 'bandpass', 1300, 600, 1.2); break;
+    case 'cast':    T(440, 0.18, 'triangle', 0.05, 990); T(445, 0.18, 'sine', 0.04, 1000, 0.02); N(0.25, 0.03, 'bandpass', 5000, 9000, 4, 0.03); break;   // svjetlucanje
+    case 'ult':     T(220, 0.4, 'sawtooth', 0.05, 880); T(330, 0.35, 'triangle', 0.07, 1320, 0.08); N(0.5, 0.07, 'lowpass', 1200, 120, 0.8); T(70, 0.45, 'sine', 0.12, 40); break;
+    case 'zap':     T(1400, 0.08, 'sawtooth', 0.04, 300); N(0.1, 0.06, 'bandpass', 4000, 1500, 3); T(900, 0.06, 'square', 0.02, 2600, 0.04); break;
+    case 'boom':    N(0.55, 0.16, 'lowpass', 1100, 70, 0.9); T(95, 0.5, 'sine', 0.14, 38); break;                     // prasak
+    case 'heal':    bell(784, 0.5, 0.05); bell(988, 0.5, 0.045, 0.07); bell(1318, 0.6, 0.04, 0.14); break;
+    case 'kill':    bell(659, 0.35, 0.08); bell(880, 0.35, 0.08, 0.09); bell(1318, 0.6, 0.09, 0.18); N(0.3, 0.04, 'highpass', 6000, 9000, 1, 0.18); break;
+    case 'tower':   N(0.9, 0.18, 'lowpass', 700, 50, 0.7); T(110, 0.8, 'sine', 0.16, 35); N(0.6, 0.06, 'bandpass', 2500, 400, 1, 0.12); break;   // rušenje
+    case 'levelup': [523, 659, 784, 1046].forEach((f, i) => bell(f, 0.45, 0.07, i * 0.085)); N(0.6, 0.035, 'highpass', 7000, 11000, 1, 0.25); break;
+    case 'buy':     bell(1318, 0.35, 0.07); bell(1976, 0.4, 0.06, 0.07); break;                                        // zveckanje zlatnika
+    case 'death':   T(392, 0.35, 'triangle', 0.08, 300); T(294, 0.5, 'triangle', 0.08, 180, 0.22); N(0.5, 0.04, 'lowpass', 800, 100, 0.7, 0.2); break;
+    case 'win':     [523, 659, 784].forEach((f, i) => bell(f, 0.45, 0.1, i * 0.14)); bell(1046, 0.9, 0.11, 0.42); bell(1318, 0.9, 0.06, 0.42); break;
+    case 'lose':    T(330, 0.25, 'triangle', 0.09); T(277, 0.25, 'triangle', 0.09, 0, 0.22); T(220, 0.6, 'triangle', 0.1, 0, 0.44); break;
+    case 'click':   T(1200, 0.035, 'sine', 0.03, 900); break;
+    case 'tick':    bell(1568, 0.18, 0.035); break;
+    case 'horn':    T(147, 1.1, 'sawtooth', 0.06, 165); T(220, 1.1, 'triangle', 0.07, 247, 0.03); T(294, 0.9, 'sine', 0.05, 330, 0.06); break;
+    case 'crit':    N(0.07, 0.12, 'highpass', 5000, 2000, 1); T(2400, 0.12, 'square', 0.025, 1500); T(140, 0.18, 'sine', 0.13, 50, 0.02); N(0.2, 0.07, 'lowpass', 1500, 120, 0.8, 0.02); break;
+    case 'whoosh':  N(0.25, 0.06, 'bandpass', 600, 2400, 1.5); break;                                                 // skok / juriš
+    case 'coin':    bell(1568 + Math.random() * 200, 0.25, 0.05); break;
   }
 }
-function sfxAt(name, x, y){
-  if(distXY(x, y, cam.x, cam.y) < 1300) sfx(name);
+/* efekt u svijetu: tiši što je dalje od sredine ekrana, lijevo/desno prema položaju */
+function sfxAt(name, x, y, k){
+  const d = distXY(x, y, cam.x, cam.y);
+  if(d > 1500) return;
+  sfx(name, { k: Math.max(0.15, 1 - d / 1500) * (k == null ? 1 : k), pan: (x - cam.x) / 900 });
+}
+
+/* 🌲 zvukovi prirode (postavka): blagi vjetar, danju ptice, noću cvrčci, kraj rijeke žubor */
+const AMB = { on: false, wind: null, water: null, next: 0 };
+function updateAmbience(){
+  const a = AC;
+  if(!a || !SND.bus) return;
+  const want = running && !muted && SETTINGS.nature && SETTINGS.vol > 0 && !gameOver;
+  if(want && !AMB.on){
+    const mk = (type, f, q) => {
+      const src = a.createBufferSource(); src.buffer = SND.noise; src.loop = true;
+      const flt = a.createBiquadFilter(); flt.type = type; flt.frequency.value = f; flt.Q.value = q;
+      const g = a.createGain(); g.gain.value = 0;
+      src.connect(flt); flt.connect(g); g.connect(SND.bus.dry); src.start();
+      return { src, flt, g };
+    };
+    AMB.wind = mk('lowpass', 420, 0.6); AMB.water = mk('bandpass', 1400, 0.8);
+    AMB.on = true;
+  } else if(!want && AMB.on){
+    for(const n of [AMB.wind, AMB.water]) try { n.g.gain.setTargetAtTime(0, a.currentTime, 0.2); n.src.stop(a.currentTime + 1); } catch(e){}
+    AMB.on = false; AMB.wind = AMB.water = null;
+  }
+  if(!AMB.on) return;
+  const t = a.currentTime, v = SETTINGS.vol;
+  AMB.wind.g.gain.setTargetAtTime(v * (0.035 + 0.02 * Math.sin(t * 0.21) + 0.01 * Math.sin(t * 0.73)), t, 0.5);
+  AMB.wind.flt.frequency.setTargetAtTime(380 + 160 * Math.sin(t * 0.17), t, 0.5);
+  const river = Math.max(0, 1 - Math.abs(cam.x - cam.y) / Math.SQRT2 / 700);   // kamera blizu rijeke
+  AMB.water.g.gain.setTargetAtTime(v * 0.05 * river, t, 0.4);
+  if(t > AMB.next){   // ptičji cvrkut danju, cvrčci noću
+    if(!isNight){ const f = 2600 + Math.random() * 1600, n = 2 + Math.floor(Math.random() * 3), pan = Math.random() * 1.6 - 0.8;
+      for(let i = 0; i < n; i++) tone(f * (1 + Math.random() * 0.15), 0.08, 'sine', 0.018, f * 1.35, i * 0.11, sndOut({ pan, rev: 0.8 })); }
+    else { const pan = Math.random() * 1.6 - 0.8, o = sndOut({ pan, k: 0.7 });
+      for(let i = 0; i < 6; i++) tone(4400, 0.025, 'square', 0.006, 0, i * 0.045, o); }
+    AMB.next = t + (isNight ? 1.5 + Math.random() * 2.5 : 3 + Math.random() * 6);
+  }
 }
 
 /* 🗣️ Glasovi junaka i 📣 najavljivač (voices.js, Fish Audio): govori samo jedan glas.
@@ -4955,7 +5061,7 @@ function syncOptionsDom(){
   tog('optEdge', SETTINGS.edgePan);
   tog('optQuick', SETTINGS.quickCast);
   tog('optDmg', SETTINGS.dmgNums);
-  if($('optLh')){ tog('optLh', SETTINGS.lastHit); tog('optTips', SETTINGS.tips); tog('optAuto', SETTINGS.autoSkill); }
+  if($('optLh')){ tog('optLh', SETTINGS.lastHit); tog('optTips', SETTINGS.tips); tog('optAuto', SETTINGS.autoSkill); tog('optNature', SETTINGS.nature); }
   tog('optMute', !muted);
   tog('optVoices', SETTINGS.voices);
   tog('optAnn', SETTINGS.announcer);
@@ -4993,6 +5099,7 @@ function buildOptionsDom(){
   if($('optLh')){
     $('optLh').addEventListener('click', () => { SETTINGS.lastHit = !SETTINGS.lastHit; saveSettings(); syncOptionsDom(); sfx('click'); });
     $('optAuto').addEventListener('click', () => { SETTINGS.autoSkill = !SETTINGS.autoSkill; saveSettings(); syncOptionsDom(); sfx('click'); });
+    $('optNature').addEventListener('click', () => { SETTINGS.nature = !SETTINGS.nature; saveSettings(); syncOptionsDom(); sfx('click'); });
     $('optTips').addEventListener('click', () => {   // ponovno uključivanje vraća sve savjete
       SETTINGS.tips = !SETTINGS.tips; if(SETTINGS.tips){ tipCounts = {}; tip.done = {}; try { localStorage.removeItem('dk_tips'); } catch(e){} }
       saveSettings(); syncOptionsDom(); sfx('click');
@@ -6625,6 +6732,7 @@ function frame(now){
   }
   watchMouseLock();
   drawLockedCursor();
+  if(now - (frame.ambT || 0) > 250){ frame.ambT = now; updateAmbience(); }   // 🌲 4× u sekundi je dovoljno
 }
 
 function resize(){

@@ -3835,7 +3835,7 @@ function syncHeroExtras(u, g, gh, tAnim, dt, seen){
   if((u.killFxN || 0) !== (ud.killFxN || 0)){
     if(ud.killFxN != null && u.killAt){
       goldFlyFx(u.killAt.x, u.killAt.y, u);
-      if(u === player){ screenFlash('#fde047', 0.22); shakeAt(u.x, u.y, 0.45, 0.25); camPunch = 0.14; }
+      if(u === player){ screenFlash('#fde047', 0.22); shakeAt(u.x, u.y, 0.45, 0.25); camPunch = 0.14; for(let i = 0; i < 4; i++) setTimeout(() => sfx('coin'), 380 + i * 90); }
     }
     ud.killFxN = u.killFxN || 0;
   }
@@ -3991,7 +3991,7 @@ function startLeap(u, g, now, maxH){
   const d = distXY(ud.lastX, ud.lastY, u.x, u.y);
   if(d < 40) return;
   ud.leap = { x0: ud.lastX, y0: ud.lastY, t0: now, dur: Math.min(0.5, 0.22 + d / 1400), h: Math.min(maxH || 170, 60 + d * 0.25), knock: !!maxH };
-  if(!maxH && g.visible) for(let i = 0; i < 10; i++) fxSpawn(ud.lastX, ud.lastY, groundHeight(ud.lastX, ud.lastY) + 4, '#c9b48c', { spd: 110, up: 40, grav: -30, life: 0.5, size: 20 });   // odraz
+  if(!maxH && g.visible){ for(let i = 0; i < 10; i++) fxSpawn(ud.lastX, ud.lastY, groundHeight(ud.lastX, ud.lastY) + 4, '#c9b48c', { spd: 110, up: 40, grav: -30, life: 0.5, size: 20 }); sfxAt('whoosh', u.x, u.y); }   // odraz
   if(!maxH && ud.anim && ud.anim.acts.jump) animOnce(ud.anim, 'jump', 14 / 24 / ud.leap.dur, now, 0);
   else if(maxH && ud.anim && ud.anim.acts.hit) animOnce(ud.anim, 'hit', 0.8, now, 0);
 }
