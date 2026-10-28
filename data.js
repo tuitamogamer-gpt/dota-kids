@@ -461,7 +461,7 @@ const HEROES = [
   {
     id:'skokica', name:L('Skokica', 'Skokitsa'), emoji:'🐸',
     role:L('👅 Žabac — vuče neprijatelje k sebi', '👅 Frog — pulls enemies in'),
-    hp:640, mp:260, dmg:58,
+    hp:670, mp:260, dmg:60,
     attrs:{ str:24, agi:18, int:14, strG:5.2, agiG:3.0, intG:2.2, primary:'str' },
     range:85, speed:172, atkCd:1.05, projSpeed:0,
     passive:{ name:L('Vodozemac', 'Amphibian'), emoji:'💧', color:'#38bdf8', pid:'voda',
@@ -1028,7 +1028,7 @@ const HEROES = [
   {
     id:'vuk', name:LS('Sivko'), emoji:'🐺',
     role:L('🌕 Vuk — vođa čopora', '🌕 Wolf — pack leader'),
-    hp:640, mp:230, dmg:60,
+    hp:670, mp:230, dmg:65,
     attrs:{ str:24, agi:20, int:12, strG:5.0, agiG:3.2, intG:1.6, primary:'str' },
     range:82, speed:176, atkCd:1.05, projSpeed:0,
     passive:{ name:L('Čopor', 'Pack'), emoji:'🐾', color:'#cbd5e1', pid:'copor',
