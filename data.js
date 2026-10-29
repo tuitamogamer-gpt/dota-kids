@@ -108,8 +108,17 @@ const CFG = {
   towerHeat: 0.25,
   travelSpeed: 1.15,        // 💨 izvan borbe (6 s bez udaraca u junake/građevine)
   travelCalm: 6,
-  homeGuardSpeed: 1.4,      // 💨 "vjetar doma": od fontane dok ne uđeš u borbu (najviše 10 s nakon izlaska iz baze)
+  homeGuardSpeed: 1.4,      // 💨 "vjetar doma": od fontane dok ne uđeš u borbu (najviše 10 s nakon izlaska iz baze) — v0.46: samo na početku igre
   homeGuardT: 10,
+  // 🐢 v0.46: junaci su 22% sporiji (i čizme, okretnost, bonusi) — kao u DotA 2 junak je otprilike brz kao vojnik,
+  //   pa se mapa ne pretrči za pola minute i gank s druge strane mape traje
+  heroMoveMul: 0.78,
+  // 🐗 v0.46: čudovišta kao u DotA 2 — mirna dok ih ne udariš, pa ganjaju do povodca; vojnici i kule napadaju razljućena čudovišta
+  campLeash: 800,           //   koliko daleko od kampa ganjaju (dosta da ih "povučeš" do vojnika na stazi)
+  campGiveUp: 5,            //   bez ijednog udarca (danog ili primljenog) toliko sekundi — odustanu i vrate se
+  // 🗡️ v0.46: botovi idu u timski gank tek od 4. minute (sat igre) i tek s levelom 4+ (ne odmah na početku)
+  gankFrom: 240,
+  gankLvl: 4,
   towerHeatMax: 1.0,
 };
 
@@ -2092,6 +2101,7 @@ const CAMP_TYPES = {
   golem:  { n:1, emoji:'🗿', name:L('Plavi golem', 'Blue Golem'), hp:1500, dmg:62, range:85, atkCd:1.4, speed:100, r:27, gold:170, xp:170, stunHit:true, hpRegen:2, buff:'blue', look:'c' },
   redbuff:{ n:1, emoji:'🐺', name:L('Vatreni vuk', 'Fire Wolf'), hp:1150, dmg:52, range:70, atkCd:1.15, speed:130, r:25, gold:120, xp:130, hpRegen:2, buff:'red', model:'redwolf', fallback:'wolves', fallbackLook:'r' },
   stones: { n:2, emoji:'🪨', name:L('Kameni golem', 'Stone Golem'), hp:880, dmg:40, range:80, atkCd:1.35, speed:100, r:21, gold:78, xp:82, stunHit:true, hpRegen:1, model:'golem' },   // v0.38
+  bears:  { n:2, emoji:'🐻', name:L('Medvjed', 'Bear'), hp:920, dmg:46, range:72, atkCd:1.3, speed:115, r:23, gold:92, xp:100, hpRegen:1.5, model:'bear' },   // v0.46: veliki kamp
 };
 const CAMP_SPOTS = [
   { x:850,  y:1300, type:'boars'  },
@@ -2107,6 +2117,13 @@ const CAMP_SPOTS = [
   { x:1925, y:1425, type:'wolves' },
   { x:1950, y:2450, type:'stones' },
   { x:1050, y:550,  type:'stones' },
+  // v0.46: još 6 kampova — uz svaku bočnu stazu jedan za "povlačenje" do vojnika i medvjedi u dubini džungle
+  { x:500,  y:1075, type:'boars'  },   // plavi, uz gornju stazu
+  { x:2500, y:1925, type:'boars'  },   // crveni, uz donju stazu
+  { x:1250, y:2425, type:'wolves' },   // plavi, uz donju stazu
+  { x:1750, y:575,  type:'wolves' },   // crveni, uz gornju stazu
+  { x:850,  y:1875, type:'bears'  },
+  { x:2150, y:1125, type:'bears'  },
 ];
 
 /* ---------------- RUNE ZLATA I MUDROSTI (u džungli) ---------------- */

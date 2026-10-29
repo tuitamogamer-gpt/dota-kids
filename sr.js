@@ -17,7 +17,7 @@ const SR_PHRASES = [
   ["kratke upute", "kratka uputstva"]
 ];
 const SR_WORDS = {
-  "svatko":"svako", "zvjezdice":"zvezdice", "glazba":"muzika", "izborniku":"meniju", "bitci":"bici", "riješen":"rešen", "riješeni":"rešeni", "riješeno":"rešeno", "riješi":"reši", "zadnjim":"poslednjim",
+  "svatko":"svako", "medvjed":"medved", "medvjedi":"medvedi", "zvjezdice":"zvezdice", "glazba":"muzika", "izborniku":"meniju", "bitci":"bici", "riješen":"rešen", "riješeni":"rešeni", "riješeno":"rešeno", "riješi":"reši", "zadnjim":"poslednjim",
   "bijeg":"beg", "bijega":"bega", "bijes":"bes", "blijedi":"bledi", "bljesak":"blesak", "branič":"branilac",
   "cijela":"cela", "cijeli":"ceo", "cijelog":"celog", "cijelom":"celom", "cijena":"cena", "cijene":"cene",
   "dijeli":"deli", "dijelovi":"delovi", "dio":"deo", "djecu":"decu", "djeluje":"deluje", "djetelina":"detelina",

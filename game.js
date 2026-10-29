@@ -294,7 +294,7 @@ function loadGameArt(){
     im.src = 'assets/hero_' + h.id + '.jpg';
     GFX.heroes[h.id] = im;
   }
-  const mobFiles = { boars: 'mob_boar', wolves: 'mob_wolf', drake: 'mob_dragon', boss: 'mob_dragon' };
+  const mobFiles = { boars: 'mob_boar', wolves: 'mob_wolf', bears: 'mob_bear', drake: 'mob_dragon', boss: 'mob_dragon' };
   for(const k in mobFiles){
     const im = new Image();
     im.src = 'assets/' + mobFiles[k] + '.jpg';
@@ -816,7 +816,7 @@ function makeAncient(team){
 
 /* ---------- džungla: kampovi ---------- */
 function initCamps(){
-  camps = CAMP_SPOTS.map(s => ({ x: s.x, y: s.y, type: s.type, units: [], respawnT: 0 }));
+  camps = CAMP_SPOTS.map(s => ({ x: s.x, y: s.y, type: s.type, units: [], respawnT: 0, fightT: 0 }));
   for(const c of camps){
     if(CFG.prepTime > 0) c.respawnT = CFG.prepTime;   // ⏳ čudovišta se pojave u 0:00, nakon pripreme
     else spawnCamp(c);
@@ -854,8 +854,8 @@ function nearestEnemyOf(u, range, filter){
   for(const e of units){
     if(e.team === u.team || e.removeMe || e.dead || e.invuln) continue;
     if(e.kind === 'hero' && e.status.invisT > 0 && e.status.trackT <= 0) continue;   // nevidljivi se ne ciljaju (osim ucijenjenih)
+    if(filter && !filter(e)) continue;                                                // (prvo jeftin filter — v0.46: puno čudovišta u džungli)
     if(!isStructure(e) && !isVisibleTo(u.team, e)) continue;                          // v0.38: magla rata vrijedi i za botove, vojnike i kule
-    if(filter && !filter(e)) continue;
     const d = dist(u, e) - (e.r || 0);
     if(d < bd){ bd = d; best = e; }
   }
@@ -1215,10 +1215,17 @@ function applyDamage(t, amount, src, kind){
       applyDamage(e, 60 + 35 * hx, t);
     }
   }
-  if((t.kind === 'creep' || t.kind === 'neutral') && src && !src.dead && !src.removeMe && src.team !== t.team){
+  if(src && src.kind === 'neutral' && src.camp && t.team !== TEAM_NEUTRAL) src.camp.fightT = gameTime;   // 🐗 kamp je u borbi
+  if(t.kind === 'neutral' && src && !src.dead && !src.removeMe && src.team !== t.team && !isStructure(src)){
+    // 🐗 v0.46: uzvrati onome tko te udara ako trenutnu metu samo ganjaš (tako se kamp "povuče" na vojnike na stazi)
+    t.camp.fightT = gameTime;
+    const cur = t.attackTarget;
+    if(!t.returning && dist(t, src) < 700 && (!isTargetable(cur) || cur.team === TEAM_NEUTRAL || dist(t, cur) > t.atkRange + cur.r + 60)) t.attackTarget = src;
+  }
+  else if(t.kind === 'creep' && src && !src.dead && !src.removeMe && src.team !== t.team){
     if(!isTargetable(t.attackTarget) && dist(t, src) < 620){
       t.attackTarget = src;
-      if(t.kind === 'creep' && src.kind === 'hero') t.aggroT = gameTime + CFG.creepAggroChase;
+      if(src.kind === 'hero') t.aggroT = gameTime + CFG.creepAggroChase;
     }
   }
   if(t.hp <= 0) kill(t, src);
@@ -2101,6 +2108,7 @@ function pressAbility(i, aimInstant, quick){
 function unitSpeed(u){
   let s = u.speed;
   const st = u.status;
+  if(u.kind === 'hero') s *= CFG.heroMoveMul;   // 🐢 v0.46: junaci sporiji (kao u DotA 2 — mapa se ne pretrči u tren)
   if(st.slowT > 0) s *= (1 - st.slowF);
   if(st.hasteT > 0) s *= st.hasteF;
   const noc = passiveRank(u, 'noc');
@@ -2113,11 +2121,14 @@ function unitSpeed(u){
   return s;
 }
 /* 💨 putovanje (veća mapa za 5 na 5 — manje dosadnog hodanja):
-   izvan borbe (6 s bez udaraca u junake i građevine) +15 % brzine; od fontane "vjetar doma" +40 % dok ne uđeš u borbu */
+   izvan borbe (6 s bez udaraca u junake i građevine) +15 % brzine; od fontane "vjetar doma" +40 % dok ne uđeš u borbu —
+   v0.46: vjetar doma puše samo na POČETKU igre (prvi izlazak iz baze), poslije oživljavanja i povratka kući više ne */
 function noteCombat(u){ if(u && u.kind === 'hero'){ u.combatT = gameTime; u.homeGuardT = 0; } }
 function updateTravel(u, dt){
-  if(distXY(u.x, u.y, FOUNTAIN[u.team].x, FOUNTAIN[u.team].y) < 650) u.homeGuardT = CFG.homeGuardT;
+  const atHome = distXY(u.x, u.y, FOUNTAIN[u.team].x, FOUNTAIN[u.team].y) < 650;
+  if(atHome && !u.windUsed) u.homeGuardT = CFG.homeGuardT;
   else if(u.homeGuardT > 0) u.homeGuardT -= dt;
+  if(!atHome && gameTime >= 0) u.windUsed = true;   // izašao je iz baze nakon roga — vjetra više nema
   const calm = gameTime - (u.combatT == null ? -99 : u.combatT) > CFG.travelCalm;
   u.travel = u.status.slowT > 0 || u.status.rootT > 0 ? 0 : (u.homeGuardT > 0 ? 2 : (calm ? 1 : 0));
 }
@@ -2336,7 +2347,9 @@ function releaseAttack(u, t, dmg, miss, onHitFx, crit){
    - Prioritet: neprijateljski VOJNICI > kule > junaci (junake samo izbliza).
    - Kad ih junak povuče (aggro), ganjaju ga 2.3 s pa se vraćaju vojnicima. */
 function creepThink(u){
-  if(!isTargetable(u.attackTarget) || dist(u, u.attackTarget) > 700) u.attackTarget = null;
+  if(!isTargetable(u.attackTarget) || dist(u, u.attackTarget) > 700 ||
+     (u.attackTarget.kind === 'neutral' && !neutralActive(u.attackTarget))) u.attackTarget = null;   // čudovište se vratilo u kamp
+  // 🐗 v0.46: razljućena čudovišta (povučeni kamp) napadaju se kao neprijateljski vojnici
   // isteklo prisilno ganjanje junaka? vrati se vojnicima/kulama ako ih ima
   if(u.attackTarget && u.attackTarget.kind === 'hero' && gameTime > (u.aggroT || 0)){
     const c = nearestEnemyOf(u, 470, e => e.kind === 'creep') ||
@@ -2349,11 +2362,11 @@ function creepThink(u){
       // siege vojnici prvo ruše građevine (kao u DotA!)
       u.attackTarget =
         nearestEnemyOf(u, acq, e => isStructure(e)) ||
-        nearestEnemyOf(u, 500, e => e.kind === 'creep') ||
+        nearestEnemyOf(u, 500, e => e.kind === 'creep' || neutralActive(e)) ||
         nearestEnemyOf(u, 260, e => e.kind === 'hero');
     } else {
       u.attackTarget =
-        nearestEnemyOf(u, acq, e => e.kind === 'creep') ||
+        nearestEnemyOf(u, acq, e => e.kind === 'creep' || neutralActive(e)) ||
         nearestEnemyOf(u, 470, e => isStructure(e)) ||
         nearestEnemyOf(u, CFG.creepHeroAcq, e => e.kind === 'hero');   // v0.38: kao u DotA — bez drugih meta i junake do 500
     }
@@ -2438,10 +2451,11 @@ function summonThink(u){
    na njega (drawAggro). Junak koji prođe ispred svojih vojnika do kule — dobiva hitac! */
 function towerThink(u){
   if(!isTargetable(u.attackTarget) || u.attackTarget.team === u.team || dist(u, u.attackTarget) > u.atkRange + u.attackTarget.r + 30 ||
+     (u.attackTarget.kind === 'neutral' && !neutralActive(u.attackTarget)) ||
      (u.attackTarget.kind === 'hero' && u.attackTarget.status.invisT > 0 && u.attackTarget.status.trackT <= 0))
     u.attackTarget = null;
   if(!u.attackTarget){
-    u.attackTarget = nearestEnemyOf(u, u.atkRange, e => e.kind === 'creep' || e.kind === 'hero');
+    u.attackTarget = nearestEnemyOf(u, u.atkRange, e => e.kind === 'creep' || e.kind === 'hero' || neutralActive(e));   // 🐗 i povučena čudovišta
     const t = u.attackTarget;
     if(t && isHuman(t) && u.warnedTgt !== t) addFloat(t.x, t.y, L('⚠️ Toranj te gađa!', '⚠️ The tower is shooting you!'), '#fca5a5', 15, t.team);
     u.warnedTgt = t || u.warnedTgt;
@@ -2450,13 +2464,21 @@ function towerThink(u){
     performAttack(u, u.attackTarget);
 }
 
-/* ================= AI: neutralci ================= */
+/* ================= AI: neutralci =================
+   v0.46 (kao u DotA 2): čudovišta su MIRNA dok ih netko ne udari — tada cijeli kamp napada napadača i ganja ga do
+   povodca (CFG.campLeash od kampa). Usput uzvraćaju onome tko ih udara (vojnici, prizvani, drugi junak), a vojnici na
+   stazi i kule napadaju razljućena čudovišta — tako se kamp može "povući" do svojih vojnika ili pod kulu.
+   Predaleko od kampa ili bez ijednog udarca CFG.campGiveUp sekundi — vrate se kući i brzo se izliječe. */
+function neutralLeash(u){ return u.boss || u.drake ? 620 : CFG.campLeash; }
+/* razljućeno čudovište izvan kampa: njega napadaju vojnici i kule (Veliki Zmaj i zmajčić ne izlaze iz svojih jazbina) */
+function neutralActive(e){ return e.kind === 'neutral' && !e.returning && !e.boss && !e.drake && isTargetable(e.attackTarget); }
 function neutralThink(u){
-  const camp = u.camp;
+  const camp = u.camp, leash = neutralLeash(u);
   const dHome = distXY(u.x, u.y, camp.x, camp.y);
-  const tgtFar = u.attackTarget && !u.attackTarget.removeMe &&
-    distXY(u.attackTarget.x, u.attackTarget.y, camp.x, camp.y) > 650;
-  if(dHome > 620 || tgtFar){
+  const t0 = u.attackTarget;
+  const tgtFar = t0 && !t0.removeMe && distXY(t0.x, t0.y, camp.x, camp.y) > leash + 50;
+  const bored = t0 && gameTime - (camp.fightT || 0) > CFG.campGiveUp;   // ganja, a nitko nikoga ne udara (bježi im)
+  if(dHome > leash || tgtFar || bored){
     u.attackTarget = null;
     u.returning = true;
   }
@@ -2464,21 +2486,22 @@ function neutralThink(u){
     if(dHome < 90){ u.returning = false; u.moveTarget = null; }
     else { u.moveTarget = { x: camp.x + rand(-40, 40), y: camp.y + rand(-40, 40) }; return; }
   }
-  if(!isTargetable(u.attackTarget)) u.attackTarget = null;
-  if(!u.attackTarget){
+  if(!isTargetable(u.attackTarget) || u.attackTarget.team === TEAM_NEUTRAL) u.attackTarget = null;
+  if(!u.attackTarget){   // udarili su nekoga iz kampa: cijeli kamp ide na istog
     for(const m of camp.units){
-      if(m !== u && !m.dead && !m.removeMe && isTargetable(m.attackTarget)){
+      if(m !== u && !m.dead && !m.removeMe && !m.returning && isTargetable(m.attackTarget)){
         u.attackTarget = m.attackTarget;
         break;
       }
     }
   }
-  if(!u.attackTarget){
-    let best = null, bd = 240;
+  if(!u.attackTarget && dHome > 150 && gameTime - (camp.fightT || 0) < CFG.campGiveUp){
+    // izvan kampa i još u borbi (npr. pobijedili su vojnika kojeg su ganjali): napadnu onoga tko je odmah uz njih
+    let best = null, bd = 260;
     for(const e of units){
-      if(e.team === TEAM_NEUTRAL || e.dead || e.removeMe || e.invuln) continue;
-      if(e.kind !== 'hero' && e.kind !== 'creep') continue;
-      const d = distXY(e.x, e.y, camp.x, camp.y);
+      if(e.team === TEAM_NEUTRAL || e.dead || e.removeMe || e.invuln || (e.kind !== 'hero' && e.kind !== 'creep')) continue;
+      if(e.kind === 'hero' && e.status.invisT > 0 && e.status.trackT <= 0) continue;
+      const d = dist(u, e) - e.r;
       if(d < bd){ bd = d; best = e; }
     }
     if(best) u.attackTarget = best;
@@ -2734,7 +2757,7 @@ function planTeam(ai){
     }
   }
   // 🗡️ 4) gank: usamljen / ranjen / preduboko ušao neprijatelj
-  if(!th && !ai.push && ai.gankT <= 0 && seen.length){
+  if(!th && !ai.push && ai.gankT <= 0 && seen.length && gameClock() >= CFG.gankFrom){   // v0.46: ne odmah na početku
     ai.gankT = (11 + Math.random() * 6) / mk;
     let best = null, bs = 0;
     const myLvl = avgLvl(mineAlive);
@@ -2747,11 +2770,12 @@ function planTeam(ai){
     }
     if(best && bs >= 0.5){
       const near = mine.filter(h => !h.dead && dist(h, best) < 1100).length;
-      const gk = bots.filter(u => aiFree(u) && u.level >= 3 && u.hp > u.maxhp * 0.6 && dist(u, best) < 2800 && dist(u, best) > 300)
+      const gk = bots.filter(u => aiFree(u) && u.level >= CFG.gankLvl && u.hp > u.maxhp * 0.6 && dist(u, best) < 2800 && dist(u, best) > 300)
         .sort((a, b) => dist(a, best) - dist(b, best)).slice(0, near >= 1 ? 1 : 2);
       if(gk.length && near + gk.length >= 2){
         for(const u of gk) giveOrder(u, { type: 'gank', target: best, lx: best.x, ly: best.y, lastSeen: gameTime, until: gameTime + 18 });
         ai.stats.gank++; ai.log = 'gank ' + best.name;
+        if(ai.stats.g1 == null) ai.stats.g1 = Math.round(gameClock());   // 🧪 sim: kada je bio prvi gank
         teamSay(team, L('🗡️ ' + gk.map(u => u.emoji + ' ' + u.name).join(' i ') + (gk.length > 1 ? ' idu' : ' ide') + ' u gank na ' + best.emoji + ' ' + best.name + '!',
           '🗡️ ' + gk.map(u => u.emoji + ' ' + u.name).join(' and ') + (gk.length > 1 ? ' go' : ' goes') + ' to gank ' + best.emoji + ' ' + best.name + '!'));
       }
@@ -4063,7 +4087,7 @@ function makeWorld(){
 }
 
 /* ================= Početak / kraj igre ================= */
-/* ⚡ BRZA IGRA (v0.45, kao Turbo u DotA): više zlata i iskustva, brže oživljavanje, slabije kule — igra traje ~10–12 min.
+/* ⚡ BRZA IGRA (v0.45, kao Turbo u DotA): više zlata i iskustva, brže oživljavanje, slabije kule — igra traje ~12–15 min (v0.46: sporiji junaci).
    Svaka igra kreće od izvornih vrijednosti (CFG_BASE), pa brza igra pomnoži samo ekonomiju i tempo. */
 const CFG_BASE = Object.assign({}, CFG);
 const TURBO = { passiveGold: 2.5, heroKillGold: 1.5, heroKillGoldPerLvl: 1.5, heroKillXp: 1.7, assistGold: 1.6, creepGoldMul: 2, creepXpMul: 2,
@@ -6062,7 +6086,7 @@ function buffList(h){
   add('👑', EN ? 'Unstoppable' : LS('Nepokolebljiv'), st.immuneT, true, EN ? 'nothing can stun or slow you' : LS('ništa te ne može omamiti ni usporiti'));
   add('🏃', EN ? 'Haste' : LS('Ubrzanje'), st.hasteT, true, EN ? 'faster movement' : LS('brže kretanje'));
   add('💨', h.travel === 2 ? (EN ? 'Home Wind' : LS('Vjetar doma')) : (EN ? 'Traveler' : LS('Putnik')), h.travel ? 999 : 0, true,
-    h.travel === 2 ? (EN ? '+40% speed from the fountain — until you fight' : LS('+40% brzine od fontane — dok ne uđeš u borbu')) : (EN ? '+15% speed when not fighting' : LS('+15% brzine kad nisi u borbi')));
+    h.travel === 2 ? (EN ? '+40% speed from the fountain at the start of the game — until you fight' : LS('+40% brzine od fontane na početku igre — dok ne uđeš u borbu')) : (EN ? '+15% speed when not fighting' : LS('+15% brzine kad nisi u borbi')));
   add('🛡️', EN ? 'Battle Call' : LS('Bojni zov'), h.armorBuffT, true, EN ? '+' + (h.armorBuff || 0) + ' armor' : LS('+' + (h.armorBuff || 0) + ' oklopa'));
   add('🔭', EN ? 'Spyglass' : LS('Durbin'), h.scopeT, true, EN ? 'you shoot farther and faster' : LS('gađaš dalje i brže'));
   add('🍖', EN ? 'War Hunger' : LS('Ratna glad'), h.hungerT, false, EN ? 'you lose health until you defeat someone' : LS('gubiš život dok nekoga ne pobijediš'));
