@@ -630,7 +630,7 @@ let scoreOpen = false;      // 📋 tablica otvorena gumbom (na tabletu nema tip
 let mouseIn = false;        // miš je iznad igre (za rubno pomicanje kamere)
 /* ⚙️ postavke (pamte se u pregledniku) */
 const SETTINGS = { vol: 0.8, quality: touchMode ? 'med' : 'high', edgePan: true, dmgNums: true, quickCast: false, voices: true, announcer: true, diff: 'normal',
-  fullscreen: true, lockMouse: true, lastHit: true, tips: true, autoSkill: false, nature: true, quests: true, mode: 'normal', music: true };   // 🎶 glazba   // ⚡ mode: 'normal' / 'turbo'   // 🎯 zadaci za početnike   // 🌲 zvukovi prirode   // ⬆️ vještine se mogu učiti same   // 🪙 pomoć za zadnji udarac, 💡 savjeti   // 🖥️ cijeli zaslon pri početku igre, 🔒 miš ne može izaći iz igre
+  fullscreen: true, lockMouse: true, lastHit: true, tips: true, autoSkill: false, nature: true, quests: true, mode: 'normal', music: true, lane: 'mid' };   // 🛣️ lane: tvoja staza (top / mid / bot)   // 🎶 glazba   // ⚡ mode: 'normal' / 'turbo'   // 🎯 zadaci za početnike   // 🌲 zvukovi prirode   // ⬆️ vještine se mogu učiti same   // 🪙 pomoć za zadnji udarac, 💡 savjeti   // 🖥️ cijeli zaslon pri početku igre, 🔒 miš ne može izaći iz igre
 try {
   const s = JSON.parse(localStorage.getItem('dk_settings') || '{}');
   if(typeof s.vol === 'number') SETTINGS.vol = clamp(s.vol, 0, 1);
@@ -650,6 +650,7 @@ try {
   if(typeof s.quests === 'boolean') SETTINGS.quests = s.quests;   // 🎯
   if(typeof s.music === 'boolean') SETTINGS.music = s.music;      // 🎶
   if(['normal', 'turbo'].includes(s.mode)) SETTINGS.mode = s.mode; // ⚡
+  if(LANES.includes(s.lane)) SETTINGS.lane = s.lane;               // 🛣️
 } catch(e){}
 function saveSettings(){ try { localStorage.setItem('dk_settings', JSON.stringify(SETTINGS)); } catch(e){} }
 let ancients = [null, null];
@@ -2820,7 +2821,7 @@ function planTeam(ai){
     }
   }
   // 🔁 5) promjena staze: staza bez naših junaka, a neprijateljski vojnici guraju našu kulu
-  if(ai.rotT <= 0){
+  if(ai.rotT <= 0 && gameClock() >= CFG.laningPhase){   // 🛣️ v0.50: u fazi na stazama botovi ostaju na svojim stazama
     ai.rotT = 25;
     for(const lane of LANE_LIST){
       let tw = null;
@@ -4215,6 +4216,16 @@ function applyMode(){
   if(gameMode() !== 'turbo') return;
   for(const k in TURBO) CFG[k] = Math.round(CFG_BASE[k] * TURBO[k] * 100) / 100;
 }
+/* 🛣️ na početku: poruka na koju stazu ideš (i s kim) + oznaka na tvojoj prvoj kuli te staze (vidi se i na minimapi) */
+function laneIntro(h){
+  if(!h) return;
+  const mate = units.find(o => o.kind === 'hero' && o.team === h.team && o !== h && o.lane === h.lane);
+  const ln = laneLabel(h.lane).toUpperCase();
+  feedMsg(mate ? L('🛣️ Tvoja staza: ' + ln + ' — s tobom je ' + mate.emoji + ' ' + mate.name + ' (2 na 2)', '🛣️ Your lane: ' + ln + ' — with ' + mate.emoji + ' ' + mate.name + ' (2 vs 2)')
+               : L('🛣️ Tvoja staza: ' + ln + ' — sam si (1 na 1)', '🛣️ Your lane: ' + ln + ' — you are alone (1 vs 1)'), TEAM_COLOR[h.team], h.team);
+  const t1 = units.find(t => t.kind === 'tower' && t.team === h.team && t.lane === h.lane && t.tier === 1);
+  if(t1) pings.push({ x: t1.x, y: t1.y, team: h.team, t: 0 });
+}
 function startGame(heroIdx){
   applyMode();   // ⚡
   loadCos();     // 🎁
@@ -4250,10 +4261,11 @@ function startGame(heroIdx){
   makeWorld();
 
   const rest = shuffle(HEROES.map((h, i) => i).filter(i => i !== heroIdx));
-  makeHero(HEROES[heroIdx], TEAM_BLUE, true, 'mid');
+  const lanes = lanesFor(SETTINGS.lane);   // 🛣️ tvoja staza prva, botovi popune ostatak
+  makeHero(HEROES[heroIdx], TEAM_BLUE, true, lanes[0]);
   player.summoners = pickedSummoners.slice();   // ✨ odabrane na ekranu junaka
   let ri = 0;   // 👥 ostatak oba tima (CFG.teamSize po timu, staze po LANE_PLAN)
-  for(let i = 1; i < CFG.teamSize; i++) makeHero(HEROES[rest[ri++]], TEAM_BLUE, false, LANE_PLAN[i]);
+  for(let i = 1; i < CFG.teamSize; i++) makeHero(HEROES[rest[ri++]], TEAM_BLUE, false, lanes[i]);
   for(let i = 0; i < CFG.teamSize; i++) makeHero(HEROES[rest[ri++]], TEAM_RED, false, LANE_PLAN[i]);
 
   for(const h of units){
@@ -4267,6 +4279,7 @@ function startGame(heroIdx){
   running = true;
   document.getElementById('select').classList.add('hidden');
   announce(L('🏰 Sruši crveni prijestol! 👑', '🏰 Destroy the red throne! 👑'), L('Pritisni Q, W ili E da naučiš prvu moć!', 'Press Q, W or E to learn your first ability!'));
+  laneIntro(player);
   refreshShop();
   beginPrep();
   sfx('levelup');
@@ -4295,6 +4308,7 @@ function beginPrep(){
 }
 function prepOver(){   // 📯 rog: bitka počinje (najavu daje prvi val vojnika)
   sfx('horn');
+  if(net.mode !== 'guest'){ laneIntro(player); if(remoteHero) laneIntro(remoteHero); }   // 🛣️ podsjetnik: kreni na svoju stazu
   if(prepShop && shopOpen) toggleShop();
   prepShop = false;
 }
@@ -5646,6 +5660,11 @@ function buildSelectScreen(){
     SETTINGS.diff = b.dataset.d; saveSettings(); syncDiff(); sfx('click');
   }));
   syncDiff();
+  const syncLane = () => document.querySelectorAll('#laneTabs button').forEach(x => x.classList.toggle('on', x.dataset.l === SETTINGS.lane));
+  document.querySelectorAll('#laneTabs button').forEach(b => b.addEventListener('click', () => {   // 🛣️ tvoja staza (uloga)
+    SETTINGS.lane = b.dataset.l; saveSettings(); syncLane(); sfx('click');
+  }));
+  syncLane();
   const syncMode = () => document.querySelectorAll('#modeTabs button').forEach(x => x.classList.toggle('on', x.dataset.m === SETTINGS.mode));
   document.querySelectorAll('#modeTabs button').forEach(b => b.addEventListener('click', () => {   // ⚡ brza ili normalna igra
     SETTINGS.mode = b.dataset.m; saveSettings(); syncMode(); sfx('click');

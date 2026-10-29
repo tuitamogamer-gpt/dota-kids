@@ -10,7 +10,7 @@ const net = {
   mode: 'local',          // 'local' | 'host' | 'guest'
   peer: null, conn: null,
   code: '',
-  myPick: -1, otherPick: -1, myReady: false, otherReady: false,
+  myPick: -1, otherPick: -1, myReady: false, otherReady: false, otherLane: 'mid',
   snapT: 0,
   guestUnits: new Map(),  // id -> jedinica (gost)
   ringBuilt: false,
@@ -129,7 +129,7 @@ function netPick(i){
 function netReady(){
   if(net.myPick < 0){ netStatus(L('Prvo klikni junaka!', 'Click a hero first!')); return; }
   net.myReady = true;
-  sendNet({ c: 'ready', sm: pickedSummoners });
+  sendNet({ c: 'ready', sm: pickedSummoners, ln: SETTINGS.lane });   // 🛣️ i staza koju je odabrao
   syncLobbyText();
   tryStartMatch();
 }
@@ -148,7 +148,7 @@ function tryStartMatch(){
   genTrees();
   for(const t of trees){ t.x = Math.round(t.x); t.y = Math.round(t.y); t.size = Math.round(t.size); }   // manja poruka (v0.38: ~900 stabala)
   sendNet({ c: 'start', host: net.myPick, guest: net.otherPick, bots, trees: trees.map(t => ({ x: t.x, y: t.y, r: t.r, size: t.size, kind: t.kind })) });
-  startMatchHost(net.myPick, net.otherPick, bots);
+  startMatchHost(net.myPick, net.otherPick, bots, SETTINGS.lane, net.otherLane || 'mid');
 }
 
 /* ---------- poruke ---------- */
@@ -160,6 +160,7 @@ function onNetData(d){
     case 'ready':
       net.otherReady = true;
       if(Array.isArray(d.sm) && d.sm.length === 2 && d.sm.every(id => SUMMONER_BY_ID[id])) net.otherSum = d.sm;
+      net.otherLane = LANES.includes(d.ln) ? d.ln : 'mid';
       syncLobbyText();
       if(net.mode === 'host') tryStartMatch();
       break;
@@ -616,7 +617,7 @@ function resetMatchState(){
   net.guestUnits.clear();
   net.ringBuilt = false;
 }
-function startMatchHost(hostIdx, guestIdx, botIdcs){
+function startMatchHost(hostIdx, guestIdx, botIdcs, hostLane, guestLane){
   resetMatchState();
   myTeam = TEAM_BLUE;
   clearScene3D();
@@ -626,18 +627,20 @@ function startMatchHost(hostIdx, guestIdx, botIdcs){
   buildTrees3D();
   buildStatic3D();
   makeWorld();
-  makeHero(HEROES[hostIdx], TEAM_BLUE, true, 'mid');
+  const bl = lanesFor(hostLane), rl = lanesFor(guestLane);   // 🛣️ svaki igrač na svojoj stazi, botovi popune ostatak
+  makeHero(HEROES[hostIdx], TEAM_BLUE, true, bl[0]);
   player.summoners = pickedSummoners.slice();
-  remoteHero = makeHero(HEROES[guestIdx], TEAM_RED, false, 'mid');
+  remoteHero = makeHero(HEROES[guestIdx], TEAM_RED, false, rl[0]);
   if(net.otherSum) remoteHero.summoners = net.otherSum.slice();
   remoteHero.human = true;
   remoteHero.bot = null;
   const nb = CFG.teamSize - 1;   // 👥 botovi: prvo plavi, pa crveni (staze po LANE_PLAN)
-  for(let i = 0; i < nb; i++) makeHero(HEROES[botIdcs[i]], TEAM_BLUE, false, LANE_PLAN[i + 1]);
-  for(let i = 0; i < nb; i++) makeHero(HEROES[botIdcs[nb + i]], TEAM_RED, false, LANE_PLAN[i + 1]);
+  for(let i = 0; i < nb; i++) makeHero(HEROES[botIdcs[i]], TEAM_BLUE, false, bl[i + 1]);
+  for(let i = 0; i < nb; i++) makeHero(HEROES[botIdcs[nb + i]], TEAM_RED, false, rl[i + 1]);
   for(const h of units){
     if(h.kind === 'hero' && h.bot) botSpendPoints(h);
   }
+  laneIntro(player); laneIntro(remoteHero);   // 🛣️ svaki igrač vidi svoju stazu
   buildPlayerRing();
   updateVision();
   cam.x = player.x; cam.y = player.y; cam.zoom = 0.9; cam.follow = true;

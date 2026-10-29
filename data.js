@@ -123,6 +123,7 @@ const CFG = {
   // 🗡️ v0.46: botovi idu u timski gank tek od 4. minute (sat igre) i tek s levelom 4+ (ne odmah na početku)
   gankFrom: 240,
   gankLvl: 4,
+  laningPhase: 600,         // 🛣️ v0.50: prvih 10 min (sat igre) botovi ne mijenjaju staze — prava faza na stazama
   // 🐲 v0.47: čudovišta iz džungle i zmajevi JAČAJU kako igra teče (po satu igre — u brzoj igri brže): svake 2 minute
   //   +1 level = +18% života, +12% štete, +4% zlata i +6% iskustva; Veliki Zmaj i zmajčići +24% života i +16% štete
   //   (junaci u 20. minuti imaju ~7× veću štetu nego na početku — prije su čudovišta tada padala u sekundi)
@@ -136,6 +137,13 @@ const CFG = {
 
 // staze junaka u timu (prvi je igrač / čovjek): sredina sama, na bočnim stazama po dvoje (kao u DotA)
 const LANE_PLAN = ['mid', 'top', 'bot', 'top', 'bot'];
+/* 🛣️ v0.50: stazu biraš na ekranu junaka (kao ulogu u LoL-u) — tvoja ide prva, a botovi popune ostatak rasporeda
+   (1 sredina, 2 gore, 2 dolje): na sredini si sam (1 na 1), gore i dolje ideš s botom suigračem (2 na 2) */
+const LANES = ['top', 'mid', 'bot'];
+function lanesFor(first){
+  const rest = LANE_PLAN.slice();
+  return rest.splice(rest.indexOf(LANES.includes(first) ? first : 'mid'), 1).concat(rest);
+}
 /* ⭐ v0.48: iskustvo po levelu kao u DotA 2 — level 2 dolazi brzo (140, tri vojnika), a svaki sljedeći traži sve
    više: 400, 520, 600 … 3000 za level 25 (Dotina tablica, samo je prvi level jeftiniji; ukupno 34 300 — prije 19 320
    uz ravnomjeran rast +60). U simulaciji je prije najbolji junak bio level 25 već u 20. minuti; sada je prosječni
