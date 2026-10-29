@@ -132,7 +132,12 @@ const CFG = {
 
 // staze junaka u timu (prvi je igrač / čovjek): sredina sama, na bočnim stazama po dvoje (kao u DotA)
 const LANE_PLAN = ['mid', 'top', 'bot', 'top', 'bot'];
-function xpNeed(level){ return 55 + level * 60; }
+/* ⭐ v0.48: iskustvo po levelu kao u DotA 2 — level 2 dolazi brzo (140, tri vojnika), a svaki sljedeći traži sve
+   više: 400, 520, 600 … 3000 za level 25 (Dotina tablica, samo je prvi level jeftiniji; ukupno 34 300 — prije 19 320
+   uz ravnomjeran rast +60). U simulaciji je prije najbolji junak bio level 25 već u 20. minuti; sada je prosječni
+   junak u 10. min ~level 7, u 20. min ~level 12–13, a level 25 stiže tek u dugoj igri */
+const XP_TABLE = [140, 400, 520, 600, 680, 760, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000, 2200, 2400, 2600, 2800, 3000];
+function xpNeed(level){ return XP_TABLE[Math.max(1, Math.min(XP_TABLE.length, level)) - 1]; }
 
 /* ---------------- JUNACI ---------------- */
 
