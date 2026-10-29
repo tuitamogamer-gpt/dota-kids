@@ -84,7 +84,12 @@ const CFG = {
   wisdomEvery: 420,         // 📘 rune mudrosti svakih 7 min
   courierSpeed: 520,        // 🫏 kurir leti brže od junaka
   courierBaseR: 900,        // kupljeno dalje od ovoga od fontane čeka kurira
-  creepScaleEvery: 450,     // vojnici jačaju svakih 7.5 min (kao u DotA)
+  creepScaleEvery: 450,     // svakih 7.5 min najava "Vojnici su ojačali!" i +2 zlata po vojniku (kao u DotA)
+  // 🪖 v0.49: vojnici kao u DotA 2 — izdržljiviji od početka (melee 550 života i 2 oklopa, daljinski 300, opsadni 935;
+  //   prije 330 / 230 / 850, pa su na početku padali u 5–6 udaraca) i rastu glatko sa satom igre:
+  //   +4% života i +3% štete svake minute (10. min ×1.4 / ×1.3, 20. min ×1.8 / ×1.6, 30. min ×2.2 / ×1.9)
+  creepHpGrow: 0.04,
+  creepDmgGrow: 0.03,
   timeScale: 1,             // ⏱️ brza igra: 0.6 — botovi ranije guraju, kule ranije gube bonus protiv junaka
   meleeResist: 0.08,        // ⚖️ v0.45: junaci izbliza primaju 8% manje štete
   intSpellAmp: 0.0025,      // ⚖️ v0.45: svaki bod inteligencije +0.25% štete moćima (čarobnjaci jačaju s levelima)
@@ -93,7 +98,6 @@ const CFG = {
   agiSpeed: 0.22,           // ⚖️ v0.45: brzina kretanja po bodu okretnosti (bilo 0.3)
   strHp: 21,                // ⚖️ v0.45: život po bodu snage (bilo 18) — snažni junaci izbliza bili su preslabi
   creepGoldMul: 1, creepXpMul: 1,   // ⚡ brza igra množi zlato i iskustvo od vojnika i čudovišta
-  creepScalePct: 0.12,
   shrineCd: 240,            // svetište: liječi 5 s, puni se 4 min
   shrineDur: 5,
   shrineR: 320,

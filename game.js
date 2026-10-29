@@ -735,14 +735,15 @@ function makeHero(def, team, isPlayer, lane){
 function makeCreep(team, lane, ranged, siege){
   const path = lanePath(team, lane);
   const sx = path[0][0], sy = path[0][1];
-  const grow = waveCount;
+  const min = Math.max(0, gameClock()) / 60;   // 🪖 v0.49: rastu glatko sa satom igre (u brzoj igri brže)
+  const hp = Math.round((siege ? 935 : (ranged ? 300 : 550)) * (1 + CFG.creepHpGrow * min));
   return makeUnit({
     kind: 'creep', team, lane,
     x: sx + rand(-45, 45), y: sy + rand(-45, 45),
     r: siege ? 19 : (ranged ? 14 : 16),
-    hp: siege ? 850 + grow * 14 : (ranged ? 230 + grow * 6 : 330 + grow * 8),
-    maxhp: siege ? 850 + grow * 14 : (ranged ? 230 + grow * 6 : 330 + grow * 8),
-    dmg: siege ? 34 + grow : (ranged ? 27 : 22) + grow * 0.6,
+    hp, maxhp: hp,
+    dmg: (siege ? 34 : (ranged ? 27 : 22)) * (1 + CFG.creepDmgGrow * min),
+    armor: siege || ranged ? 0 : 2,   // kao u DotA: vojnici izbliza imaju malo oklopa
     atkRange: ranged ? 290 : 62,
     atkCd: siege ? 1.2 : (ranged ? 1.4 : 1.1),
     projSpeed: ranged ? 520 : 0,
@@ -756,13 +757,8 @@ function makeCreep(team, lane, ranged, siege){
 // vojarna srušena → protivnički vojnici na toj stazi postaju SUPER (kao u DotA)
 function makeCreepOnLane(team, lane, ranged, siege){
   const u = makeCreep(team, lane, ranged, siege);
-  const tier = Math.max(0, Math.floor(gameTime / CFG.creepScaleEvery));   // vojnici s vremenom jačaju
-  if(tier > 0){
-    const k = 1 + CFG.creepScalePct * tier;
-    u.maxhp = u.hp = Math.round(u.maxhp * k);
-    u.dmg *= k;
-    u.goldValue += 2 * tier;
-  }
+  const tier = Math.max(0, Math.floor(gameTime / CFG.creepScaleEvery));   // svakih 7.5 min malo više zlata (život i šteta rastu u makeCreep)
+  if(tier > 0) u.goldValue += 2 * tier;
   if(superCreeps[team][lane]){
     u.maxhp = u.hp = Math.round(u.maxhp * CFG.superCreepHp);
     u.dmg *= CFG.superCreepDmg;
@@ -2573,7 +2569,7 @@ function allyHeroLow(u, range, frac){
   return null;
 }
 
-function botUseAbilities(u, eh){
+function botUseAbilities(u, eh, plan){
   for(let i = 0; i < u.abilities.length; i++){
     const ab = u.abilities[i];
     if(ab.rank <= 0 || ab.cd > 0 || u.mp < abMana(u, ab)) continue;
@@ -2605,8 +2601,8 @@ function botUseAbilities(u, eh){
       case 'ult-aoe':
         if(eh && dEh < hint.range) castAbility(u, i, { x: u.x, y: u.y });
         break;
-      case 'gap':
-        if(eh && dEh < hint.range && dEh > 120 && u.hp > u.maxhp * 0.55)
+      case 'gap':   // skok / juriš u neprijatelja — v0.49: samo kad se bot odlučio boriti (ne sam na jačeg)
+        if(eh && plan && plan.engage && dEh < hint.range && dEh > 120 && u.hp > u.maxhp * 0.55)
           castAbility(u, i, { x: eh.x, y: eh.y });
         break;
       case 'chain':
@@ -2651,7 +2647,7 @@ function botUseAbilities(u, eh){
         break;
       }
       case 'swap':   // Zamjena: povuci ranjenog neprijatelja k sebi kad je dalje
-        if(eh && dEh < hint.range && dEh > 220 && eh.hp < eh.maxhp * 0.6) castAbility(u, i, { x: eh.x, y: eh.y });
+        if(eh && plan && plan.engage && dEh < hint.range && dEh > 220 && eh.hp < eh.maxhp * 0.6) castAbility(u, i, { x: eh.x, y: eh.y });
         break;
     }
   }
@@ -2749,13 +2745,16 @@ function planTeam(ai){
   if(th){
     const need = th.s.kind === 'ancient' || th.s.isGuard ? 5 : Math.min(4, Math.max(1, th.nh + 1));
     let have = mine.filter(h => !h.dead && dist(h, th.s) < 1100).length;
+    // ⚖️ v0.49: dovoljno branitelja i po SNAZI (jak protivnik traži više junaka — da ne dolaze jedan po jedan)
+    const thScore = theirsAlive.filter(e => dist(e, th.s) < 950 && isVisibleTo(team, e)).reduce((a, e) => a + botFightScore(e), 0);
+    let haveScore = mine.filter(h => !h.dead && dist(h, th.s) < 1100).reduce((a, h) => a + botFightScore(h), 0);
     const cand = bots.filter(u => (aiFree(u) || (u.bot.order && u.bot.order.type !== 'defend')) && u.hp > u.maxhp * 0.45 && dist(u, th.s) > 1100)
       .sort((a, b) => dist(a, th.s) - dist(b, th.s));
     for(const u of cand){
-      if(have >= need) break;
+      if((have >= need && haveScore >= thScore * 1.15) || have >= 5) break;
       if(u.bot.order) endOrder(u);
       giveOrder(u, { type: 'defend', s: th.s, until: gameTime + 25 });
-      have++; ai.stats.defend++;
+      have++; haveScore += botFightScore(u); ai.stats.defend++;
       if(dist(u, th.s) > 2400 && u.tpCd <= 0){ startTeleport(u, th.s); ai.stats.tp++; }
       teamSay(team, L('🛡️ ' + u.emoji + ' ' + u.name + ' brani ' + (th.s.kind === 'ancient' ? 'prijestol' : (th.s.kind === 'barracks' ? 'vojarnu' : 'kulu')) + (th.s.lane ? ' (' + laneLabel(th.s.lane) + ')' : '') + '!',
         '🛡️ ' + u.emoji + ' ' + u.name + ' defends the ' + (th.s.kind === 'ancient' ? 'throne' : (th.s.kind === 'barracks' ? 'barracks' : 'tower')) + (th.s.lane ? ' (' + laneLabel(th.s.lane) + ')' : '') + '!'));
@@ -2802,9 +2801,16 @@ function planTeam(ai){
     }
     if(best && bs >= 0.5){
       const near = mine.filter(h => !h.dead && dist(h, best) < 1100).length;
-      const gk = bots.filter(u => aiFree(u) && u.level >= CFG.gankLvl && u.hp > u.maxhp * 0.6 && dist(u, best) < 2800 && dist(u, best) > 300)
-        .sort((a, b) => dist(a, best) - dist(b, best)).slice(0, near >= 1 ? 1 : 2);
-      if(gk.length && near + gk.length >= 2){
+      // ⚖️ v0.49: u gank ide onoliko botova (najviše 3) koliko treba da budemo jasno jači od mete i onih uz nju
+      const tScore = theirsAlive.filter(o => dist(o, best) < 1000 && isVisibleTo(team, o)).reduce((a, o) => a + botFightScore(o), 0);
+      let gScore = mine.filter(h => !h.dead && dist(h, best) < 1100).reduce((a, h) => a + botFightScore(h), 0);
+      const gk = [];
+      for(const u of bots.filter(u => aiFree(u) && u.level >= CFG.gankLvl && u.hp > u.maxhp * 0.6 && dist(u, best) < 2800 && dist(u, best) > 300)
+        .sort((a, b) => dist(a, best) - dist(b, best))){
+        if(gk.length >= 3 || (gk.length >= (near >= 1 ? 1 : 2) && gScore >= tScore * 1.3)) break;
+        gk.push(u); gScore += botFightScore(u);
+      }
+      if(gk.length && near + gk.length >= 2 && gScore >= tScore * 1.3){
         for(const u of gk) giveOrder(u, { type: 'gank', target: best, lx: best.x, ly: best.y, lastSeen: gameTime, until: gameTime + 18 });
         ai.stats.gank++; ai.log = 'gank ' + best.name;
         if(ai.stats.g1 == null) ai.stats.g1 = Math.round(gameClock());   // 🧪 sim: kada je bio prvi gank
@@ -2846,6 +2852,15 @@ function followOrder(u, eh){
       else if(gameTime - o.lastSeen > 4){ endOrder(u); return false; }
       const tw = enemyTowerAt(u.team, o.lx, o.ly, 40);
       if(tw && !(t.hp < t.maxhp * 0.25 && tw.attackTarget && tw.attackTarget.kind === 'creep')){ endOrder(u); return false; }
+      if(vis && dist(u, t) < 1000){   // ⚖️ v0.49: ne ulijeći sam — pričekaj suigrače iz ganka (najviše 6 s), inače odustani
+        const fs = fightSides(u, t);
+        if(fs.mine < fs.theirs * 1.1){
+          if(o.waitT == null) o.waitT = gameTime + 6;
+          if(gameTime > o.waitT){ endOrder(u); return false; }
+          u.attackTarget = null; u.moveTarget = stepToward(t, u, 820);
+          return true;
+        }
+      }
       if(vis && dist(u, t) < u.atkRange + t.r + 260){ u.attackTarget = t; u.moveTarget = null; return true; }
       u.attackTarget = null; u.moveTarget = { x: o.lx, y: o.ly };
       return true;
@@ -2853,6 +2868,7 @@ function followOrder(u, eh){
     case 'defend': {
       const sd = o.s;
       if(!sd || sd.removeMe){ endOrder(u); return false; }
+      if(eh && dist(u, eh) < 700) return false;   // ⚖️ v0.49: uz neprijatelja odlučuje procjena borbe (slabiji čeka suigrače)
       if(gameTime - (sd.lastDmgT || -99) > 8 && dist(u, sd) < 1000){ endOrder(u); return false; }
       if(dist(u, sd) > 2400 && u.tpCd <= 0 && !eh){ startTeleport(u, sd); return true; }
       if(dist(u, sd) > 700){ u.attackTarget = null; u.moveTarget = stepToward(sd, FOUNTAIN[u.team], 120); return true; }
@@ -2861,6 +2877,7 @@ function followOrder(u, eh){
     case 'push': {
       const ai = teamAI[u.team];
       if(!ai || !ai.push || ai.push.lane !== o.lane){ endOrder(u); return false; }
+      if(eh && dist(u, eh) < 700) return false;   // ⚖️ v0.49: uz neprijatelja odlučuje procjena borbe
       const fp = laneFront(u.team, o.lane);
       if(dist(u, fp) > 750){ u.attackTarget = null; u.moveTarget = stepToward(fp, FOUNTAIN[u.team], 140); return true; }
       return false;   // uz val: ruši s vojnicima
@@ -2868,6 +2885,7 @@ function followOrder(u, eh){
     case 'boss': {
       const bc = camps.find(c => c.type === 'boss'), bs = bc && bc.units[0];
       if(!bs || bs.dead || bs.removeMe || u.hp < u.maxhp * 0.3){ endOrder(u); return false; }
+      if(eh && dist(u, eh) < 700) return false;   // ⚖️ v0.49: protivnik stiže — prvo procjena borbe
       const allies = units.filter(h => h.kind === 'hero' && h.team === u.team && !h.dead && dist(h, bs) < 750).length;
       if(allies < 3 && bs.hp > bs.maxhp * 0.5){ u.attackTarget = null; u.moveTarget = stepToward(bs, FOUNTAIN[u.team], 380); return true; }
       u.attackTarget = bs; u.moveTarget = null;
@@ -2902,14 +2920,58 @@ function botsAnswer(h, x, y){
    Saveznici i botovi u mrežnoj igri su uvijek normalni. */
 const BOT_DIFF = {
   easy:   { think: [0.9, 1.3], abil: 0.35, items: 0.5, sum: 0.4, brave: 1.35, back: 1.05, chase: 0.12, flee: 0.42, deny: 0.1, gold: 0.75, buyback: false },
-  normal: { think: [0.4, 0.6], abil: 1, items: 1, sum: 1, brave: 0.8, back: 1.25, chase: 0.25, flee: 0.3, deny: 0.35, gold: 1, buyback: true },
-  hard:   { think: [0.3, 0.42], abil: 1, items: 1, sum: 1, brave: 0.65, back: 1.45, chase: 0.32, flee: 0.25, deny: 0.5, gold: 1.25, buyback: true },
+  normal: { think: [0.4, 0.6], abil: 1, items: 1, sum: 1, brave: 1.0, back: 1.15, chase: 0.25, flee: 0.3, deny: 0.35, gold: 1, buyback: true },   // v0.49: brave 0.8 → 1.0
+  hard:   { think: [0.3, 0.42], abil: 1, items: 1, sum: 1, brave: 0.85, back: 1.3, chase: 0.32, flee: 0.25, deny: 0.5, gold: 1.25, buyback: true },  // v0.49: brave 0.65 → 0.85
 };
 function botDiff(u){ return (u.team !== myTeam && net.mode !== 'host' && BOT_DIFF[SETTINGS.diff]) || BOT_DIFF.normal; }
 /* snaga junaka za procjenu borbe: level + vrijednost predmeta, puta koliko mu je ostalo života */
 function botFightScore(h){ return (h.level + netWorth(h) / 800) * (0.35 + 0.65 * h.hp / h.maxhp); }
+/* ⚖️ v0.49 procjena borbe: snaga NAŠIH junaka uz bota i PROTIVNIČKIH (vidljivih) uz metu. Prije se brojalo samo oko
+   bota, a ranjena meta, gank i skok (Junački skok, juriš, treptaj) napadali su bez obzira na snagu — botovi su jedan po
+   jedan uletali na jakog junaka i padali. Sada:
+     engage — napadni: naša strana je dovoljno jaka (ili meta pada od nekoliko udaraca, a nismo puno slabiji)
+     weaker — jasno slabiji: povuci se do suigrača ili iza svoje kule i pričekaj (4 s pamti koga se treba čuvati)
+     risky  — otprilike izjednačeno: ne stoj u dometu njegovih udaraca */
+function fightSides(u, t){
+  let mine = 0, theirs = 0, allies = 0;
+  for(const h of units){
+    if(h.kind !== 'hero' || h.dead || h.removeMe) continue;
+    if(h.team === u.team){ if(dist(h, u) < 900){ mine += botFightScore(h); allies++; } }
+    else if(dist(h, t) < 900 && isVisibleTo(u.team, h) && !(h.status.invisT > 0 && h.status.trackT <= 0)) theirs += botFightScore(h);
+  }
+  return { mine, theirs, allies };
+}
+function botFightPlan(u, eh, bd){
+  const fs = fightSides(u, eh);
+  // ne ulazi pod neprijateljsku kulu za junakom (osim ako je skoro mrtav, a kula je zauzeta vojnicima)
+  const ehTower = enemyTowerAt(u.team, eh.x, eh.y, 30);
+  const dive = !ehTower || (eh.hp < eh.maxhp * 0.2 && u.hp > u.maxhp * 0.6 && ehTower.attackTarget && ehTower.attackTarget.kind === 'creep');
+  const burst = (u.dmg * 3 + 40 * u.level) * fs.allies;   // otprilike što mi (i suigrači uz mene) napravimo u par sekundi
+  const killable = eh.hp < eh.maxhp * bd.chase && eh.hp < burst && fs.mine >= fs.theirs * 0.6;
+  const engage = dive && (killable || (u.hp > u.maxhp * 0.45 && fs.mine >= fs.theirs * bd.brave));
+  return { engage, weaker: !engage && fs.theirs > fs.mine * bd.back, risky: !engage && fs.theirs > fs.mine * 0.9, fs };
+}
+/* kamo se povući kad smo slabiji: do najbližeg suigrača koji je dalje od opasnosti, inače iza svoje kule, inače kući */
+function regroupPoint(u, eh){
+  const f = FOUNTAIN[u.team];
+  let best = null, bd = 1800;
+  for(const h of units){
+    if(h.kind !== 'hero' || h.team !== u.team || h === u || h.dead || h.removeMe) continue;
+    const d = dist(u, h);
+    if(d < bd && dist(h, eh) > dist(u, eh) + 100){ bd = d; best = h; }
+  }
+  if(best) return stepToward(best, f, 140);
+  let tw = null, td = 2600;
+  for(const t of units){
+    if(t.kind !== 'tower' || t.team !== u.team || t.removeMe) continue;
+    const d = dist(u, t);
+    if(d < td && dist(t, eh) > dist(u, eh) - 200){ td = d; tw = t; }
+  }
+  if(tw) return stepToward(tw, f, 240);
+  return stepToward(u, f, 450);
+}
 /* botovi koriste aktivne predmete (jednostavna pravila) */
-function botUseItems(u, eh){
+function botUseItems(u, eh, plan){
   const dEh = eh ? dist(u, eh) : 1e9, hpF = u.hp / u.maxhp, mpF = u.maxmp ? u.mp / u.maxmp : 1;
   u.items.forEach((it, i) => {
     if(!it.active || it.pending || (u.itemCd[it.id] || 0) > 0 || u.mp < (it.active.mana || 0)) return;
@@ -2935,9 +2997,9 @@ function botUseItems(u, eh){
         if(c && !fight){ go = true; aim = { x: c.x, y: c.y }; }
         break;
       }
-      case 'shadowblade': go = eh && dEh < 900 && dEh > 350 && hpF > 0.5; break;
+      case 'shadowblade': go = eh && dEh < 900 && dEh > 350 && hpF > 0.5 && !!plan && (plan.engage || plan.weaker); break;   // ulazak u borbu ili bijeg
       case 'blink':   // ⚡ inicijatori (Bikoš, Rogo, Tutnjo…) treptajem uskoče u borbu, pa odmah bace moć oko sebe
-        if(eh && dEh > 320 && dEh < 1000 && hpF > 0.6 && u.abilities.some(a => a.rank > 0 && a.cd <= 0 && a.def.selfAoe && a.def.bot && /aoe/.test(a.def.bot.type))){ go = true; aim = { x: eh.x, y: eh.y }; }
+        if(eh && plan && plan.engage && dEh > 320 && dEh < 1000 && hpF > 0.6 && u.abilities.some(a => a.rank > 0 && a.cd <= 0 && a.def.selfAoe && a.def.bot && /aoe/.test(a.def.bot.type))){ go = true; aim = { x: eh.x, y: eh.y }; }   // v0.49: samo kad tim ide u borbu
         break;
     }
     if(go) useItem(u, i, aim || { x: u.x + Math.cos(u.dir || 0) * 100, y: u.y + Math.sin(u.dir || 0) * 100 });
@@ -2977,8 +3039,9 @@ function botThink(u){
   }
   botShopping(u);
   const eh = nearestEnemyOf(u, 620, e => e.kind === 'hero');
-  if(Math.random() < bd.abil) botUseAbilities(u, eh);
-  if(Math.random() < bd.items) botUseItems(u, eh);
+  const plan = eh ? botFightPlan(u, eh, bd) : null;   // ⚖️ v0.49: borimo li se uopće?
+  if(Math.random() < bd.abil) botUseAbilities(u, eh, plan);
+  if(Math.random() < bd.items) botUseItems(u, eh, plan);
   if(Math.random() < bd.sum) botUseSummoners(u, eh);
 
   const tw = nearestEnemyOf(u, 430, e => e.kind === 'tower');
@@ -2999,23 +3062,22 @@ function botThink(u){
     b.goTo = null;
   }
   if(followOrder(u, eh)) return;   // 🤖 zadatak tima: gank, obrana, guranje, zmaj
-  if(eh && dist(u, eh) < 520){
-    // ⚖️ procjena borbe: napadaj samo kad tvoja strana nije puno slabija (inače se povuci k svojoj kuli)
-    const side = team => units.reduce((a, h) => a + (h.kind === 'hero' && h.team === team && !h.dead && dist(h, u) < 800 ? botFightScore(h) : 0), 0);
-    const mine = side(u.team), theirs = side(eh.team);
-    // ne ulazi pod neprijateljsku kulu za junakom (osim ako je skoro mrtav, a kula je zauzeta vojnicima)
-    const ehTower = enemyTowerAt(u.team, eh.x, eh.y, 30);
-    const dive = !ehTower || (eh.hp < eh.maxhp * 0.2 && u.hp > u.maxhp * 0.6 && ehTower.attackTarget && ehTower.attackTarget.kind === 'creep');
-    if(dive && (eh.hp < eh.maxhp * bd.chase || (u.hp / u.maxhp > 0.45 && mine >= theirs * bd.brave))){
-      u.attackTarget = eh;
+  if(eh){
+    // ⚖️ v0.49: napadni samo kad je naša strana dovoljno jaka; slabiji se ne zalijeće sam nego se povuče do suigrača ili kule
+    if(plan.engage){ u.attackTarget = eh; return; }
+    if(plan.weaker){
+      b.fear = { h: eh, until: gameTime + 4 };
+      u.attackTarget = null;
+      u.moveTarget = regroupPoint(u, eh);
       return;
     }
-    if(theirs > mine * bd.back){
+    if(plan.risky && dist(u, eh) < eh.atkRange + eh.r + 160){   // izjednačeno: izvan dometa njegovih udaraca
       u.attackTarget = null;
-      u.moveTarget = stepToward(u, fountain, 320);
+      u.moveTarget = stepToward(u, fountain, 240);
       return;
     }
   }
+  const fear = b.fear && gameTime < b.fear.until && !b.fear.h.dead && !b.fear.h.removeMe ? b.fear.h : null;   // jači junak kojeg izbjegavam
   if(!eh){   // 💰📘 uzmi runu u blizini
     let rn = null, bd = 650;
     for(const r of extraRunes){ const d = distXY(u.x, u.y, r.x, r.y); if(d < bd){ bd = d; rn = r; } }
@@ -3038,9 +3100,9 @@ function botThink(u){
     if(dn){ u.attackTarget = dn; return; }
   }
   const lh = lowestHpEnemyCreep(u, 500);
-  if(lh){ u.attackTarget = lh; return; }
+  if(lh && !(fear && dist(lh, fear) < fear.atkRange + 260)){ u.attackTarget = lh; return; }
   const et = nearestEnemyOf(u, 520, e => e.kind === 'tower' || e.kind === 'barracks');
-  if(et && countOwnCreepsNear(u.team, et, 350) > 0){
+  if(et && countOwnCreepsNear(u.team, et, 350) > 0 && !(fear && dist(et, fear) < 700)){
     u.attackTarget = et;
     return;
   }
@@ -3056,7 +3118,8 @@ function botThink(u){
   u.attackTarget = null;
   // stani IZA svojih vojnika (kao pravi DotA igrač), ne ispred njih
   const fp = laneFront(u.team, u.lane);
-  const dest = stepToward(fp, FOUNTAIN[u.team], 90 + u.atkRange * 0.45);
+  let dest = stepToward(fp, FOUNTAIN[u.team], 90 + u.atkRange * 0.45);
+  if(fear && dist(dest, fear) < fear.atkRange + 420) dest = regroupPoint(u, fear);   // ne vraćaj se sam pred jačeg
   if(dist(u, dest) > 130) u.moveTarget = dest;
   else u.moveTarget = null;
 }
@@ -3737,7 +3800,11 @@ function update(dt){
   updatePings(dt);
   {   // 💪 vojnici jačaju svakih 7.5 min
     const tier = Math.max(0, Math.floor(gameTime / CFG.creepScaleEvery));
-    if(tier > creepTier){ creepTier = tier; announce(L('💪 Vojnici su ojačali!', '💪 Creeps got stronger!'), L('+' + Math.round(CFG.creepScalePct * 100 * tier) + '% života i štete na obje strane', '+' + Math.round(CFG.creepScalePct * 100 * tier) + '% health and damage on both sides')); }
+    if(tier > creepTier){
+      creepTier = tier;
+      const min = gameClock() / 60, hpP = Math.round(CFG.creepHpGrow * min * 100), dmgP = Math.round(CFG.creepDmgGrow * min * 100);
+      announce(L('💪 Vojnici su ojačali!', '💪 Creeps got stronger!'), L('+' + hpP + '% života i +' + dmgP + '% štete na obje strane', '+' + hpP + '% health and +' + dmgP + '% damage on both sides'));
+    }
   }
   // 🛡️ Glif utvrde: odbrojavanje; tim bez čovjeka ga sam koristi kad mu kula pada
   for(let tm = 0; tm < 2; tm++){
