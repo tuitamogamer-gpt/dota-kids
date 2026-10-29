@@ -2541,7 +2541,7 @@ function neutralThink(u){
 }
 
 /* ================= AI: junaci botovi ================= */
-function laneFront(team, lane){
+function laneFrontCreep(team, lane){   // naš vojnik koji je najdalje odmakao na stazi
   let best = null, bp = -1;
   for(const u of units){
     if(u.kind !== 'creep' || u.team !== team || u.lane !== lane || u.dead || u.removeMe) continue;
@@ -2550,6 +2550,10 @@ function laneFront(team, lane){
     const prog = wi * 10000 - distXY(u.x, u.y, wps[wi][0], wps[wi][1]);
     if(prog > bp){ bp = prog; best = u; }
   }
+  return best;
+}
+function laneFront(team, lane){
+  const best = laneFrontCreep(team, lane);
   if(best) return { x: best.x, y: best.y };
   let tw = null;
   for(const u of units){
@@ -2570,6 +2574,14 @@ function allyHeroLow(u, range, frac){
   return null;
 }
 
+/* 🌲 v0.51: sredina kampa koji bot čisti (barem 2 čudovišta u dometu) — za moći po području, samo kad ima dosta mane */
+function jungleAim(u, range){
+  const c = u.bot && u.bot.camp;
+  if(!c || u.mp < u.maxmp * 0.55) return null;
+  const ms = c.units.filter(m => !m.dead && !m.removeMe && dist(u, m) < range);
+  if(ms.length < 2) return null;
+  return { x: ms.reduce((a, m) => a + m.x, 0) / ms.length, y: ms.reduce((a, m) => a + m.y, 0) / ms.length };
+}
 function botUseAbilities(u, eh, plan){
   for(let i = 0; i < u.abilities.length; i++){
     const ab = u.abilities[i];
@@ -2596,7 +2608,7 @@ function botUseAbilities(u, eh, plan){
         for(const e of units){
           if((e.kind === 'creep' || e.kind === 'neutral') && e.team !== u.team && !e.dead && !e.removeMe && dist(u, e) < hint.range) creepN++;
         }
-        if((eh && dEh < hint.range) || creepN >= 3) castAbility(u, i, { x: u.x, y: u.y });
+        if((eh && dEh < hint.range) || creepN >= 3 || (creepN >= 2 && jungleAim(u, hint.range))) castAbility(u, i, { x: u.x, y: u.y });
         break;
       }
       case 'ult-aoe':
@@ -2626,9 +2638,12 @@ function botUseAbilities(u, eh, plan){
           castAbility(u, i, { x: eh.x, y: eh.y });
         break;
       case 'shot':
-      case 'zone':
+      case 'zone': {
+        const ja = !eh && hint.type === 'zone' && jungleAim(u, hint.range);   // 🌲 v0.51: moć po području i na kamp (kad ima dosta mane)
         if(eh && dEh < hint.range) castAbility(u, i, { x: eh.x, y: eh.y });
+        else if(ja) castAbility(u, i, ja);
         break;
+      }
       case 'ward': {   // Sovino oko: pogledaj najbliže mjesto rune kad nema neprijatelja
         if(eh) break;
         let rs = null, bd = hint.range;
@@ -2658,9 +2673,10 @@ function botUseAbilities(u, eh, plan){
 /* ================= 🤖 AI: TIMSKA STRATEGIJA (v0.38) =================
    Svaki tim ima "zapovjednika" koji svakih ~2 s pogleda mapu (samo ono što TIM vidi) i botovima daje zadatke:
    🛡️ OBRANA  — neprijatelji ruše našu građevinu: najbliži botovi dolaze, a daleki se teleportiraju do kule
-   🗡️ GANK    — usamljen ili ranjen neprijateljski junak: 1–2 bota ga zaskoče (iz džungle, kroz maglu)
+   🤝 POMOĆ   — (v0.51) suigrač je u borbi s jačima: dolazi bot u blizini kojemu se isplati
+   🗡️ GANK    — ranjiv neprijateljski junak (ranjen, sam, predaleko od kule): botovi kojima se isplati ga zaskoče (v0.51: procjena)
    🏰 GURANJE — kad smo jači (više živih, veći level ili zlato) ili kasno u igri: tim se skupi na jednoj stazi
-   🐲 ZMAJ    — kad protivnici leže mrtvi, tim zajedno ubije Velikog Zmaja
+   🐲 ZMAJ    — kad protivnici leže mrtvi ili (v0.51) kad ga botovi u blizini brzo sruše, a protivnici ga ne mogu oteti
    🔁 STAZE   — staza bez naših junaka kojoj prijete neprijateljski vojnici dobiva bota s gušće staze
    Saveznici slušaju i tebe: 📍 ping (V) na neprijatelja / kulu ili "⚔️ Napadamo!" (G pa 3) pozove pomoć. */
 let teamAI = [];
@@ -2674,6 +2690,7 @@ function aiMacro(team){ return team !== myTeam && net.mode !== 'host' ? ({ easy:
 function laneLabel(l){ return { top: L('gore', 'top'), mid: L('sredina', 'mid'), bot: L('dolje', 'bottom') }[l] || l; }
 function giveOrder(u, o){
   u.bot.order = Object.assign({ t0: gameTime }, o);
+  u.bot.camp = null;   // 🌲 zadatak tima je važniji od kampa u džungli
   if(o.lane) u.lane = o.lane;
 }
 function endOrder(u){
@@ -2682,7 +2699,7 @@ function endOrder(u){
   u.bot.order = null;
   if(o.type === 'push' && u.homeLane) u.lane = u.homeLane;
 }
-const TEAM_SAY_CD = { '🛡️': 25, '🗡️': 12, '🏰': 30, '🔁': 20, '🐲': 30 };   // 🤫 ista vrsta poruke najviše jednom u N s
+const TEAM_SAY_CD = { '🛡️': 25, '🗡️': 12, '🏰': 30, '🔁': 20, '🐲': 30, '🤝': 15, '🌲': 45 };   // 🤫 ista vrsta poruke najviše jednom u N s
 const teamSayT = [{}, {}];
 function teamSay(team, txt){
   const k = [...txt][0], cd = TEAM_SAY_CD[k] || 10;
@@ -2722,6 +2739,155 @@ function pushLane(team){
   }
   return best;
 }
+/* ================= 🧠 v0.51: PROCJENA — kad u džunglu, u gank, po runu i u pomoć =================
+   Botovi ne idu u gank i džunglu po satu, nego kad PROCIJENE da se isplati (kao pravi igrači):
+   🌲 DŽUNGLA — na stazi nema posla (oba vala su mrtva ili je naš val stigao pod tuđu kulu) ili je staza izgubljena (jači
+               protivnik ne da prići vojnicima): bot očisti kamp na svojoj strani koji SAM može pobijediti (vrijeme čišćenja ×
+               šteta čudovišta) i vrati se po sljedeći val; kamp odmah uz sebe uzme usput (kad nema vojnika u blizini)
+   🗡️ GANK    — meta je ranjena, sama ili predaleko od svoje kule; gankerima se isplati otići (na stazi nemaju posla, imaju
+               runu ili spreman ulti, ne ostavljaju suigrača samog protiv dvojice) i zajedno je mogu srušiti
+   🤝 POMOĆ   — suigrač je u borbi s jačima: bot koji stigne na vrijeme (pješice ili teleportom do kule uz borbu) i kojemu
+               se isplati dođe pomoći
+   ✨ RUNA    — bot najbliži čarobnoj runi (obično onaj sa sredine) uzme je kad je sigurno; s brzinom ili dvostrukom štetom
+               odmah traži gank
+   U fazi na stazama (CFG.laningPhase) procjene su opreznije: na stazi se više isplati ostati. */
+/* ima li posla na stazi: neprijateljski vojnici uz naš val (ili uz bota) koji nisu pod njihovom kulom — ili naš val još
+   putuje prema njihovom, pa sudar valova tek dolazi. Nema posla: oba vala su mrtva ili je naš val pod njihovom kulom. */
+function laneWork(u){
+  const fc = laneFrontCreep(u.team, u.lane), fp = fc || laneFront(u.team, u.lane);
+  let n = 0;
+  for(const e of units){
+    if(e.kind !== 'creep' || e.team === u.team || e.lane !== u.lane || e.dead || e.removeMe) continue;
+    if((dist(e, fp) < 1000 || dist(e, u) < 800) && !enemyTowerAt(u.team, e.x, e.y, 60)) n++;
+  }
+  if(!n && fc && !enemyTowerAt(u.team, fc.x, fc.y, 250)) n = 1;
+  return n;
+}
+function heroDps(h){ return h.dmg * (1 + (h.atkSpdBonus || 0) + (h.talAspd || 0)) / h.atkCd; }
+function ultReady(h){ return h.abilities.some(a => a.def.ult && a.rank > 0 && a.cd <= 0 && h.mp >= abMana(h, a)); }
+function spellsReady(h){
+  return h.abilities.filter(a => a.rank > 0 && a.cd <= 0 && h.mp >= abMana(h, a) && a.def.bot && /shot|zone|gap|aoe|chain|snipe|execute|swap|track/.test(a.def.bot.type)).length;
+}
+function powerRune(h){ return (h.runeRoamT || 0) > gameTime; }   // ✨ upravo uzeta runa brzine ili dvostruke štete
+/* koliko bota "košta" otići sa staze: 0 = slobodan; više = gubi zlato i iskustvo ili ostavlja suigrača samog */
+function roamCost(u){
+  const lp = gameClock() < CFG.laningPhase;
+  const mates = units.filter(h => h.kind === 'hero' && h.team === u.team && h !== u && !h.dead && h.lane === u.lane && dist(h, u) < 1500);
+  let c = laneWork(u) > 0 ? (lp ? (mates.length ? 0.2 : (u.lane === 'mid' ? 0.45 : 0.3)) : 0.15) : 0;   // na stazi u dvoje farmu drži suigrač
+  if(mates.length){
+    let foes = 0;
+    for(const e of units) if(e.kind === 'hero' && e.team !== u.team && !e.dead && isVisibleTo(u.team, e) && mates.some(m => dist(m, e) < 1300)) foes++;
+    if(foes > mates.length) c += 0.6;   // suigrač bi ostao sam protiv dvojice
+  }
+  if(powerRune(u)) c -= 0.4;   // ✨ s runom je sad pravi trenutak
+  if(ultReady(u)) c -= 0.15;
+  return c;
+}
+/* 🗡️ koliko je neprijateljski junak ranjiv za gank — i zašto (ranjen, predaleko od svoje kule, sam) */
+function gankVuln(team, t, seen){
+  let v = 0;
+  const why = [], hpF = t.hp / t.maxhp;
+  if(hpF < 0.7){ v += (1 - hpF) * 1.3; if(hpF < 0.55) why.push('hurt'); }
+  let dOwn = 1e9, dOurs = 1e9;
+  for(const s of units){
+    if(s.kind !== 'tower' || s.removeMe) continue;
+    if(s.team === t.team) dOwn = Math.min(dOwn, dist(s, t));
+    else if(s.team === team) dOurs = Math.min(dOurs, dist(s, t));
+  }
+  const ext = dOwn / (dOwn + dOurs);   // 0,5 = na pola puta između kula; više = ušao je na našu stranu
+  if(ext > 0.5){ v += Math.min(1, (ext - 0.5) * 3) * 0.8; if(ext > 0.6) why.push('far'); }
+  const buddies = seen.filter(o => o !== t && dist(o, t) < 1100).length;
+  if(buddies) v -= 0.35 * buddies;
+  else { v += 0.25; why.push('alone'); }
+  return { v, why };
+}
+/* otprilike koliko štete junak napravi meti u ~5 s (udarci + spremne moći) */
+function gankBurst(h, t){ return heroDps(h) * 5 * armorMul(unitArmor(t)) + spellsReady(h) * (45 + 25 * h.level); }
+const GANK_WHY = { hurt: ['ima malo života', 'low on health'], far: ['predaleko od svoje kule', 'far from their tower'], alone: ['nema nikoga uz sebe', 'nobody nearby'],
+  rune: ['imamo runu', 'we have a rune'], ult: ['ulti je spreman', 'ult is ready'] };
+/* 🌲 kamp: može li ga bot SAM očistiti i ostati na nogama (vrijeme čišćenja × šteta čudovišta) i koliko vrijedi */
+function campPlan(u, c){
+  let hp = 0, dps = 0, gold = 0, xp = 0, n = 0;
+  for(const m of c.units){
+    if(m.dead || m.removeMe) continue;
+    hp += m.hp; dps += m.dmg / m.atkCd; gold += m.goldValue; xp += m.xpValue; n++;
+  }
+  if(!n) return null;
+  const aoe = n > 1 && u.mp > u.maxmp * 0.55 && u.abilities.some(a => a.rank > 0 && a.cd <= 0 && a.def.bot && /aoe-self|zone/.test(a.def.bot.type));
+  const myDps = heroDps(u) * (aoe ? 1.3 : 1), t = hp / Math.max(1, myDps);
+  // čudovišta padaju jedno po jedno: u prosjeku napada (n + 1) / 2n kampa
+  const taken = (dps * armorMul(unitArmor(u)) * (n + 1) / (2 * n) - (u.hpRegen || 0) - myDps * (u.lifesteal || 0)) * t;
+  return { t, ok: u.hp - taken > u.maxhp * 0.45, value: gold + xp * 0.6 };
+}
+function pickCamp(u, maxD){
+  const lp = gameClock() < CFG.laningPhase, foe = 1 - u.team, spd = Math.max(60, unitSpeed(u));
+  let best = null, bv = 0;
+  for(const c of camps){
+    if(!c.units.length || c.type === 'boss' || c.type === 'drake') continue;
+    const d = distXY(u.x, u.y, c.x, c.y);
+    if(d > (maxD || (lp ? 1700 : 2100))) continue;
+    const ours = distXY(c.x, c.y, FOUNTAIN[u.team].x, FOUNTAIN[u.team].y) < distXY(c.x, c.y, FOUNTAIN[foe].x, FOUNTAIN[foe].y);
+    if(!ours && (lp || u.level < 10)) continue;   // tuđa džungla: tek poslije faze na stazama i kad je jak
+    if(gameTime - (c.fightT || -99) < 3) continue;   // netko ga već tuče (ili su ga povukli vojnici)
+    if(units.some(h => h.kind === 'hero' && !h.dead && h !== u && ((h.team === u.team && h.bot && h.bot.camp === c) ||
+      (h.team === foe && isVisibleTo(u.team, h) && distXY(h.x, h.y, c.x, c.y) < 1200)))) continue;   // suigrač već ide / protivnik je tamo
+    const p = campPlan(u, c);
+    if(!p || !p.ok) continue;
+    const v = p.value / (d / spd + p.t + 3);
+    if(v > bv){ bv = v; best = c; }
+  }
+  return best;
+}
+/* 🌲 bot u džungli: kad na stazi nema posla (ili je izgubljena) očisti isplativ kamp, pa se vrati po sljedeći val */
+function botJungle(u, fear){
+  const b = u.bot;
+  let c = b.camp;
+  if(c){
+    const engaged = c.units.some(n => n.attackTarget === u);
+    const back = !engaged && !fear && laneWork(u) >= 3 && dist(u, laneFront(u.team, u.lane)) < distXY(u.x, u.y, c.x, c.y);   // stigao je val — bliže je stazi
+    if(!c.units.length || gameTime > b.campUntil || u.hp < u.maxhp * 0.35 || back){ b.camp = c = null; b.campT = gameTime + 3; }
+  }
+  if(!c){   // čudovište koje već napada bota (npr. povučeni kamp): uzvrati ako taj kamp može pobijediti — inače se vrati u kamp sam
+    const agg = nearestEnemyOf(u, 450, e => e.kind === 'neutral' && e.attackTarget === u && !e.boss && !e.drake);
+    const ap = agg && agg.camp && campPlan(u, agg.camp);
+    if(ap && ap.ok){ b.camp = c = agg.camp; b.campUntil = gameTime + 8 + ap.t * 1.5; }
+  }
+  if(!c){
+    if(gameTime < (b.campT || 0) || u.hp < u.maxhp * 0.6 || u.level < 3) return false;
+    b.campT = gameTime + 2;
+    const lost = !!fear && dist(u, fear) < 1400;   // jači protivnik ne da prići vojnicima
+    const busy = laneWork(u) > 0 && !lost;          // val se bije ili gura prema njihovoj kuli — bot ide s njim (pritisak na kule)
+    if(roamCost(u) >= 0.6) return false;   // suigrač bi ostao sam protiv dvojice
+    c = pickCamp(u, busy ? 650 : 0);       // 🌲 ima posla na stazi: samo kamp odmah uz bota (usput, bez vojnika u blizini)
+    if(!c || (busy && nearestEnemyOf(u, 900, e => e.kind === 'creep'))) return false;
+    b.camp = c;
+    b.campUntil = gameTime + 12 + distXY(u.x, u.y, c.x, c.y) / Math.max(60, unitSpeed(u)) + campPlan(u, c).t * 1.5;
+    const ai = teamAI[u.team];
+    if(ai) ai.stats.jungle = (ai.stats.jungle || 0) + 1;
+    if(lost) teamSay(u.team, L('🌲 ' + u.emoji + ' ' + u.name + ' ide u džunglu — na stazi su jači', '🌲 ' + u.emoji + ' ' + u.name + ' goes to the jungle — the enemies in lane are stronger'));
+    else if(!busy) teamSay(u.team, L('🌲 ' + u.emoji + ' ' + u.name + ' farma džunglu — na stazi nema vojnika', '🌲 ' + u.emoji + ' ' + u.name + ' farms the jungle — no creeps in lane'));
+  }
+  let tg = null, bd = 1e9;
+  for(const n of c.units){ if(n.dead || n.removeMe) continue; const d = dist(u, n); if(d < bd){ bd = d; tg = n; } }
+  if(!tg){ b.camp = null; return false; }
+  if(distXY(u.x, u.y, c.x, c.y) > 450 && !c.units.some(n => n.attackTarget === u)){ u.attackTarget = null; u.moveTarget = { x: c.x, y: c.y }; return true; }
+  u.attackTarget = tg; u.moveTarget = null;
+  return true;
+}
+/* ✨ čarobna runa na rijeci: ide po nju bot kojemu je najbliža (obično onaj sa sredine), ako tamo nije jači protivnik */
+function botRune(u){
+  if(!runes.length || u.hp < u.maxhp * 0.5) return false;
+  const rn = runes[0], d = distXY(u.x, u.y, rn.x, rn.y);
+  if(d > (gameClock() < CFG.laningPhase ? 1500 : 2200) || (d > 900 && laneWork(u) >= 4)) return false;
+  for(const h of units){
+    if(h.kind !== 'hero' || h.dead || h === u) continue;
+    const dh = distXY(h.x, h.y, rn.x, rn.y);
+    if(h.team === u.team && dh < d && (h.bot || dh < 700)) return false;   // suigrač je bliže
+    if(h.team !== u.team && dh < 900 && isVisibleTo(u.team, h) && botFightScore(h) > botFightScore(u) * 1.1) return false;   // jači protivnik čuva runu
+  }
+  u.attackTarget = null; u.moveTarget = { x: rn.x, y: rn.y };
+  return true;
+}
 function updateTeamAI(dt){
   if(!teamAI.length) resetTeamAI();
   for(const ai of teamAI){
@@ -2741,40 +2907,60 @@ function planTeam(ai){
   const mineAlive = mine.filter(h => !h.dead), theirsAlive = theirs.filter(h => !h.dead);
   const seen = theirsAlive.filter(h => isVisibleTo(team, h) && !(h.status.invisT > 0 && h.status.trackT <= 0));
   const avgLvl = arr => arr.reduce((a, h) => a + h.level, 0) / Math.max(1, arr.length);
+  const lp = gameClock() < CFG.laningPhase;   // 🛣️ faza na stazama
   // 🛡️ 1) obrana
   const th = findThreat(team);
+  const creepsOnly = !!th && th.nh === 0 && th.s.kind !== 'ancient' && !th.s.isGuard;
+  const block = !!th && !creepsOnly;   // 🧠 v0.51: ostale planove prekida samo napad junaka (ili na prijestol), ne val vojnika
   if(th){
     const need = th.s.kind === 'ancient' || th.s.isGuard ? 5 : Math.min(4, Math.max(1, th.nh + 1));
     let have = mine.filter(h => !h.dead && dist(h, th.s) < 1100).length;
     // ⚖️ v0.49: dovoljno branitelja i po SNAZI (jak protivnik traži više junaka — da ne dolaze jedan po jedan)
     const thScore = theirsAlive.filter(e => dist(e, th.s) < 950 && isVisibleTo(team, e)).reduce((a, e) => a + botFightScore(e), 0);
     let haveScore = mine.filter(h => !h.dead && dist(h, th.s) < 1100).reduce((a, h) => a + botFightScore(h), 0);
-    const cand = bots.filter(u => (aiFree(u) || (u.bot.order && u.bot.order.type !== 'defend')) && u.hp > u.maxhp * 0.45 && dist(u, th.s) > 1100)
+    // 🧠 v0.51: u fazi na stazama, dok prva kula ima više od pola života, brane je junaci te staze — botovi s drugih staza
+    //   dolaze samo kad je napadaju i junaci, a njima se isplati otići (na svojoj stazi nemaju posla); nitko se ne teleportira
+    const t1Safe = lp && th.s.kind === 'tower' && th.s.tier === 1 && th.s.hp > th.s.maxhp * 0.5, minor = t1Safe && th.nh === 0;
+    // samo vojnici (bez junaka) na kuli ili vojarni: dovoljan je jedan branitelj — ne prekida guranje ni gank drugih botova
+    const cand = bots.filter(u => (aiFree(u) || (!creepsOnly && u.bot.order && u.bot.order.type !== 'defend')) && u.hp > u.maxhp * 0.45 && dist(u, th.s) > 1100 &&
+      (!t1Safe || u.lane === th.s.lane || (!minor && roamCost(u) < 0.35)))
       .sort((a, b) => dist(a, th.s) - dist(b, th.s));
     for(const u of cand){
       if((have >= need && haveScore >= thScore * 1.15) || have >= 5) break;
       if(u.bot.order) endOrder(u);
       giveOrder(u, { type: 'defend', s: th.s, until: gameTime + 25 });
       have++; haveScore += botFightScore(u); ai.stats.defend++;
-      if(dist(u, th.s) > 2400 && u.tpCd <= 0){ startTeleport(u, th.s); ai.stats.tp++; }
+      if(!t1Safe && dist(u, th.s) > 2400 && u.tpCd <= 0){ startTeleport(u, th.s); ai.stats.tp++; }
       teamSay(team, L('🛡️ ' + u.emoji + ' ' + u.name + ' brani ' + (th.s.kind === 'ancient' ? 'prijestol' : (th.s.kind === 'barracks' ? 'vojarnu' : 'kulu')) + (th.s.lane ? ' (' + laneLabel(th.s.lane) + ')' : '') + '!',
         '🛡️ ' + u.emoji + ' ' + u.name + ' defends the ' + (th.s.kind === 'ancient' ? 'throne' : (th.s.kind === 'barracks' ? 'barracks' : 'tower')) + (th.s.lane ? ' (' + laneLabel(th.s.lane) + ')' : '') + '!'));
     }
     ai.log = 'obrana';
   }
-  // 🐲 2) Veliki Zmaj kad protivnici leže
+  // 🐲 2) Veliki Zmaj — kad protivnici leže, ili 🧠 v0.51 po procjeni: barem trojica botova (level 9+) u blizini zajedno ga
+  //   sruše za manje od ~16 s, a zmaj im pritom odnese manje od 40 % zajedničkog života, i protivnici ga ne mogu oteti
+  //   (onih koji su blizu ili u magli ima manje nego nas). Zmaj daje štit, zlato i jače udarce — s njim tim lakše ruši kule.
   const bc = camps.find(c => c.type === 'boss'), boss = bc && bc.units[0];
-  if(!th && boss && !boss.dead && gameClock() > 900 && theirsAlive.length <= 2 && mineAlive.length >= 3 && avgLvl(mineAlive) >= 11){
-    let n = 0;
-    for(const u of bots) if(aiFree(u) && dist(u, boss) < 3200){ giveOrder(u, { type: 'boss', until: gameTime + 35 }); n++; }
-    if(n){ ai.stats.boss++; teamSay(team, L('🐲 Tim ide na Velikog Zmaja!', '🐲 The team goes for the Great Dragon!')); ai.log = 'zmaj'; }
+  if(!block && boss && !boss.dead && !boss.removeMe && !bots.some(u => u.bot.order && u.bot.order.type === 'boss')){
+    let grp = [];
+    if(gameClock() > 900 && theirsAlive.length <= 2 && mineAlive.length >= 3 && avgLvl(mineAlive) >= 11) grp = bots.filter(u => aiFree(u) && dist(u, boss) < 3200);
+    else {
+      const g = bots.filter(u => aiFree(u) && u.level >= 9 && u.hp > u.maxhp * 0.7 && dist(u, boss) < 2600);
+      const t = boss.hp / Math.max(1, g.reduce((a, u) => a + heroDps(u), 0));
+      const taken = boss.dmg / boss.atkCd * t, tank = g.reduce((a, u) => a + u.hp, 0);
+      const unknown = theirsAlive.filter(e => !isVisibleTo(team, e) || dist(e, boss) < 3000).length;
+      if(g.length >= 3 && t < 16 && taken < tank * 0.4 && unknown < g.length) grp = g;
+    }
+    if(grp.length){
+      for(const u of grp) giveOrder(u, { type: 'boss', until: gameTime + 35, need: Math.min(3, grp.length) });
+      ai.stats.boss++; teamSay(team, L('🐲 Tim ide na Velikog Zmaja!', '🐲 The team goes for the Great Dragon!')); ai.log = 'zmaj';
+    }
   }
   // 🏰 3) guranje kad smo jači
   const deadFoes = theirs.filter(h => h.dead && h.deadT > 10).length;
   const nwLead = teamNetWorth(team) / Math.max(1, teamNetWorth(foe));
   const strong = (deadFoes >= 2 && mineAlive.length >= 3) || (gameClock() > 840 && nwLead > 1.2 && mineAlive.length >= theirsAlive.length) ||
     (gameClock() > 1260 && mineAlive.length >= theirsAlive.length && mineAlive.length >= 4);
-  if(!th && !ai.push && ai.pushCd <= 0 && strong && Math.random() < mk){
+  if(!block && !ai.push && ai.pushCd <= 0 && strong && Math.random() < mk){
     const lane = pushLane(team);
     if(lane){
       ai.push = { lane, until: gameTime + (deadFoes >= 2 ? 30 : 45) };
@@ -2788,39 +2974,69 @@ function planTeam(ai){
       else ai.push = null;
     }
   }
-  // 🗡️ 4) gank: usamljen / ranjen / preduboko ušao neprijatelj
-  if(!th && !ai.push && ai.gankT <= 0 && seen.length && gameClock() >= CFG.gankFrom){   // v0.46: ne odmah na početku
-    ai.gankT = (11 + Math.random() * 6) / mk;
-    let best = null, bs = 0;
-    const myLvl = avgLvl(mineAlive);
-    for(const t of seen){
-      if(enemyTowerAt(team, t.x, t.y, 80)) continue;   // pod njegovom kulom — ne
-      if(theirsAlive.some(o => o !== t && dist(o, t) < 950 && isVisibleTo(team, o))) continue;   // nije sam
-      const deep = distXY(t.x, t.y, FOUNTAIN[team].x, FOUNTAIN[team].y) < distXY(t.x, t.y, FOUNTAIN[foe].x, FOUNTAIN[foe].y) ? 0.4 : 0;
-      const sc = (1 - t.hp / t.maxhp) + deep + (t.level <= myLvl ? 0.3 : 0) + 0.2;
-      if(sc > bs){ bs = sc; best = t; }
-    }
-    if(best && bs >= 0.5){
-      const near = mine.filter(h => !h.dead && dist(h, best) < 1100).length;
-      // ⚖️ v0.49: u gank ide onoliko botova (najviše 3) koliko treba da budemo jasno jači od mete i onih uz nju
-      const tScore = theirsAlive.filter(o => dist(o, best) < 1000 && isVisibleTo(team, o)).reduce((a, o) => a + botFightScore(o), 0);
-      let gScore = mine.filter(h => !h.dead && dist(h, best) < 1100).reduce((a, h) => a + botFightScore(h), 0);
-      const gk = [];
-      for(const u of bots.filter(u => aiFree(u) && u.level >= CFG.gankLvl && u.hp > u.maxhp * 0.6 && dist(u, best) < 2800 && dist(u, best) > 300)
-        .sort((a, b) => dist(a, best) - dist(b, best))){
-        if(gk.length >= 3 || (gk.length >= (near >= 1 ? 1 : 2) && gScore >= tScore * 1.3)) break;
-        gk.push(u); gScore += botFightScore(u);
+  // 🤝 4) 🧠 v0.51 pomoć: suigrač je u borbi s jačima — dolazi bot u blizini kojemu se isplati
+  if(!block){
+    for(const a of mineAlive){
+      if(gameTime - (a.combatT == null ? -99 : a.combatT) > 2) continue;
+      const e1 = seen.filter(e => dist(e, a) < 750).sort((p, q) => dist(p, a) - dist(q, a))[0];
+      if(!e1) continue;
+      const fs = fightSides(a, e1);
+      if(fs.mine >= fs.theirs * 1.2 || a.hp < a.maxhp * 0.35 || enemyTowerAt(team, e1.x, e1.y, 60)) continue;   // snalaze se sami / prekasno / pod njihovom kulom
+      // pomažu samo oni koji stignu na vrijeme: pješice (~10 s) ili — poslije faze na stazama — teleportom do naše kule uz borbu
+      const tw = !lp && units.find(s => s.kind === 'tower' && s.team === team && !s.removeMe && dist(s, a) < 900);
+      const hl = bots.filter(u => u !== a && aiFree(u) && u.hp > u.maxhp * 0.6 && dist(u, a) > 900 && roamCost(u) < (lp ? 0.35 : 0.55) &&
+        (dist(u, a) < 1400 || (tw && u.tpCd <= 0 && dist(u, a) > 2400)))
+        .sort((p, q) => dist(p, a) - dist(q, a)).slice(0, lp ? 1 : 2);
+      if(!hl.length || fs.mine + hl.reduce((s, u) => s + botFightScore(u), 0) < fs.theirs) continue;   // ni s pomoći nismo jači
+      for(const u of hl){
+        giveOrder(u, { type: 'gank', target: e1, lx: e1.x, ly: e1.y, lastSeen: gameTime, until: gameTime + 12, help: true });
+        if(dist(u, a) > 2400){ startTeleport(u, tw); ai.stats.tp++; }
       }
-      if(gk.length && near + gk.length >= 2 && gScore >= tScore * 1.3){
-        for(const u of gk) giveOrder(u, { type: 'gank', target: best, lx: best.x, ly: best.y, lastSeen: gameTime, until: gameTime + 18 });
-        ai.stats.gank++; ai.log = 'gank ' + best.name;
-        if(ai.stats.g1 == null) ai.stats.g1 = Math.round(gameClock());   // 🧪 sim: kada je bio prvi gank
-        teamSay(team, L('🗡️ ' + gk.map(u => u.emoji + ' ' + u.name).join(' i ') + (gk.length > 1 ? ' idu' : ' ide') + ' u gank na ' + best.emoji + ' ' + best.name + '!',
-          '🗡️ ' + gk.map(u => u.emoji + ' ' + u.name).join(' and ') + (gk.length > 1 ? ' go' : ' goes') + ' to gank ' + best.emoji + ' ' + best.name + '!'));
-      }
+      ai.stats.help = (ai.stats.help || 0) + 1;
+      teamSay(team, L('🤝 ' + hl.map(u => u.emoji + ' ' + u.name).join(' i ') + (hl.length > 1 ? ' idu' : ' ide') + ' pomoći ' + a.emoji + ' ' + a.name + '!',
+        '🤝 ' + hl.map(u => u.emoji + ' ' + u.name).join(' and ') + (hl.length > 1 ? ' go' : ' goes') + ' to help ' + a.emoji + ' ' + a.name + '!'));
+      break;
     }
   }
-  // 🔁 5) promjena staze: staza bez naših junaka, a neprijateljski vojnici guraju našu kulu
+  // 🗡️ 5) gank — 🧠 v0.51: procjena umjesto sata. Meta: ranjena, sama ili predaleko od svoje kule. Gankeri: spremni, a otići
+  //   im se isplati (na stazi nemaju posla, imaju runu ili ulti, suigrač ne ostaje sam protiv dvojice). Ide se kad je meta
+  //   zaista ranjiva, kad smo jasno jači i kad je možemo srušiti — u fazi na stazama najviše dvojica i uz strožu procjenu.
+  if(!block && !ai.push && seen.length && (ai.gankT <= 0 || bots.some(u => powerRune(u) && aiFree(u)))){
+    ai.gankT = (6 + Math.random() * 4) / mk;
+    let plan = null;
+    for(const t of seen){
+      if(enemyTowerAt(team, t.x, t.y, 80)) continue;   // pod svojom kulom — ne
+      const vul = gankVuln(team, t, seen);
+      if(vul.v < 0.3) continue;
+      const near = mine.filter(h => !h.dead && dist(h, t) < 1100);
+      const tScore = seen.filter(o => dist(o, t) < 1000).reduce((a, o) => a + botFightScore(o), 0);
+      let gScore = near.reduce((a, h) => a + botFightScore(h), 0), burst = near.reduce((a, h) => a + gankBurst(h, t), 0), cost = 0;
+      const cand = bots.filter(u => aiFree(u) && u.level >= CFG.gankLvl && u.hp > u.maxhp * 0.6 && !near.includes(u) && dist(u, t) < (lp ? 2600 : 3000) &&
+          (u.mp > u.maxmp * 0.3 || spellsReady(u) > 0))
+        .map(u => ({ u, c: roamCost(u) + dist(u, t) / Math.max(60, unitSpeed(u)) / 60 }))   // svaka minuta hoda = +1
+        .filter(x => x.c < (lp ? 0.55 : 0.75)).sort((a, b) => a.c - b.c);
+      const gk = [];
+      for(const x of cand){
+        if(gk.length >= (lp ? 2 : 3) || (near.length + gk.length >= 2 && gScore >= tScore * 1.3 && burst >= t.hp)) break;
+        gk.push(x.u); gScore += botFightScore(x.u); burst += gankBurst(x.u, t); cost += x.c;
+      }
+      if(!gk.length || near.length + gk.length < 2 || gScore < tScore * 1.3) continue;   // ⚖️ v0.49: jasno jači od mete i onih uz nju
+      const val = vul.v + 0.6 * Math.min(1.2, burst / t.hp) - cost / gk.length;
+      if(val >= (lp ? 1.0 : 0.85) / mk && (!plan || val > plan.val))
+        plan = { t, gk, val, why: vul.why.concat(gk.some(powerRune) ? ['rune'] : [], gk.some(ultReady) ? ['ult'] : []) };
+    }
+    if(plan){
+      const t = plan.t, gk = plan.gk, why = plan.why.slice(0, 2);
+      for(const u of gk) giveOrder(u, { type: 'gank', target: t, lx: t.x, ly: t.y, lastSeen: gameTime, until: gameTime + 18 });
+      ai.stats.gank++; ai.log = 'gank ' + t.name;
+      if(ai.stats.g1 == null) ai.stats.g1 = Math.round(gameClock());   // 🧪 sim: kada je bio prvi gank
+      teamSay(team, L('🗡️ ' + gk.map(u => u.emoji + ' ' + u.name).join(' i ') + (gk.length > 1 ? ' idu' : ' ide') + ' u gank na ' + t.emoji + ' ' + t.name +
+          (why.length ? ' — ' + why.map(k => GANK_WHY[k][0]).join(', ') : '') + '!',
+        '🗡️ ' + gk.map(u => u.emoji + ' ' + u.name).join(' and ') + (gk.length > 1 ? ' go' : ' goes') + ' to gank ' + t.emoji + ' ' + t.name +
+          (why.length ? ' — ' + why.map(k => GANK_WHY[k][1]).join(', ') : '') + '!'));
+    }
+  }
+  // 🔁 6) promjena staze: staza bez naših junaka, a neprijateljski vojnici guraju našu kulu
   if(ai.rotT <= 0 && gameClock() >= CFG.laningPhase){   // 🛣️ v0.50: u fazi na stazama botovi ostaju na svojim stazama
     ai.rotT = 25;
     for(const lane of LANE_LIST){
@@ -2838,6 +3054,18 @@ function planTeam(ai){
       break;
     }
   }
+}
+/* 🧠 v0.51: izdaleka ganker ne ide ravno na metu, nego malo iza nje (prema njenoj kuli) — da joj presiječe put za bijeg */
+function gankApproach(u, o){
+  const p = { x: o.lx, y: o.ly };
+  if(o.help || distXY(u.x, u.y, p.x, p.y) < 900) return p;
+  let tw = null, td = 1e9;
+  for(const s of units){
+    if(s.kind !== 'tower' || s.team === u.team || s.removeMe) continue;
+    const d = distXY(s.x, s.y, p.x, p.y);
+    if(d < td){ td = d; tw = s; }
+  }
+  return tw && td > 800 ? stepToward(p, tw, Math.min(350, (td - 700) * 0.5)) : p;
 }
 /* bot slijedi zadatak tima; vraća true ako je zadatak odlučio što bot radi ovaj put */
 function followOrder(u, eh){
@@ -2863,7 +3091,7 @@ function followOrder(u, eh){
         }
       }
       if(vis && dist(u, t) < u.atkRange + t.r + 260){ u.attackTarget = t; u.moveTarget = null; return true; }
-      u.attackTarget = null; u.moveTarget = { x: o.lx, y: o.ly };
+      u.attackTarget = null; u.moveTarget = gankApproach(u, o);
       return true;
     }
     case 'defend': {
@@ -2888,7 +3116,7 @@ function followOrder(u, eh){
       if(!bs || bs.dead || bs.removeMe || u.hp < u.maxhp * 0.3){ endOrder(u); return false; }
       if(eh && dist(u, eh) < 700) return false;   // ⚖️ v0.49: protivnik stiže — prvo procjena borbe
       const allies = units.filter(h => h.kind === 'hero' && h.team === u.team && !h.dead && dist(h, bs) < 750).length;
-      if(allies < 3 && bs.hp > bs.maxhp * 0.5){ u.attackTarget = null; u.moveTarget = stepToward(bs, FOUNTAIN[u.team], 380); return true; }
+      if(allies < (o.need || 3) && bs.hp > bs.maxhp * 0.5){ u.attackTarget = null; u.moveTarget = stepToward(bs, FOUNTAIN[u.team], 380); return true; }
       u.attackTarget = bs; u.moveTarget = null;
       return true;
     }
@@ -3083,6 +3311,7 @@ function botThink(u){
     let rn = null, bd = 650;
     for(const r of extraRunes){ const d = distXY(u.x, u.y, r.x, r.y); if(d < bd){ bd = d; rn = r; } }
     if(rn){ u.attackTarget = null; u.moveTarget = { x: rn.x, y: rn.y }; return; }
+    if(!b.order && botRune(u)) return;   // ✨ v0.51: čarobna runa na rijeci (ne usred zadatka tima)
   }
   if(!eh && gameClock() > 300 && u.level >= 6){   // 🐉 zmajčić: botovi ga love u paru (ili sami kad su jaki)
     const dc = camps.find(c => c.type === 'drake'), dr = dc && dc.units[0];
@@ -3107,15 +3336,9 @@ function botThink(u){
     u.attackTarget = et;
     return;
   }
-  // džungla tek od levela 3 i s dosta života (da ne dolaze polumrtvi na stazu!)
-  if(!eh && u.level >= 3 && u.hp > u.maxhp * 0.65){
-    const ec = nearestEnemyOf(u, 750, e => e.kind === 'creep');
-    if(!ec){
-      const nb = nearestEnemyOf(u, 700, e => e.kind === 'neutral' &&
-        (e.drake ? u.level >= 9 && u.hp > u.maxhp * 0.8 : (!e.boss || (u.level >= 8 && u.hp > u.maxhp * 0.8))));
-      if(nb){ u.attackTarget = nb; return; }
-    }
-  }
+  // 🌲 v0.51: džungla po procjeni — kad na stazi nema posla (ili je izgubljena), kamp koji bot sam može očistiti;
+  //   ne usred zadatka tima (guranje, obrana) — tada ostaje uz val ili kulu
+  if(!eh && !b.order && botJungle(u, fear)) return;
   u.attackTarget = null;
   // stani IZA svojih vojnika (kao pravi DotA igrač), ne ispred njih
   const fp = laneFront(u.team, u.lane);
@@ -3782,6 +4005,7 @@ function update(dt){
       if(h.kind !== 'hero' || h.dead) continue;
       if(distXY(h.x, h.y, rn.x, rn.y) < 70){
         rn.def.apply(h);
+        if(rn.def.id === 'haste' || rn.def.id === 'double') h.runeRoamT = gameTime + 15;   // 🧠 v0.51: bot s runom traži gank
         addFloat(h.x, h.y, rn.def.emoji + ' ' + rn.def.name + '!', '#fde047', 16);
         if(h.isPlayer) sfx('levelup');
         burst(rn.x, rn.y, '#fde047', 16, 200, 5);

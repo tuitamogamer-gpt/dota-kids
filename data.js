@@ -120,10 +120,10 @@ const CFG = {
   // 🐗 v0.46: čudovišta kao u DotA 2 — mirna dok ih ne udariš, pa ganjaju do povodca; vojnici i kule napadaju razljućena čudovišta
   campLeash: 800,           //   koliko daleko od kampa ganjaju (dosta da ih "povučeš" do vojnika na stazi)
   campGiveUp: 5,            //   bez ijednog udarca (danog ili primljenog) toliko sekundi — odustanu i vrate se
-  // 🗡️ v0.46: botovi idu u timski gank tek od 4. minute (sat igre) i tek s levelom 4+ (ne odmah na početku)
-  gankFrom: 240,
-  gankLvl: 4,
-  laningPhase: 600,         // 🛣️ v0.50: prvih 10 min (sat igre) botovi ne mijenjaju staze — prava faza na stazama
+  // 🧠 v0.51: u gank, džunglu i po runu botovi idu kad PROCIJENE da se isplati (prije: gank tek od 4. minute) —
+  //   u gank tek s levelom 3+ (ne odmah na početku)
+  gankLvl: 3,
+  laningPhase: 600,         // 🛣️ v0.50: prvih 10 min (sat igre) botovi ne mijenjaju staze — prava faza na stazama (i opreznije procjene)
   // 🐲 v0.47: čudovišta iz džungle i zmajevi JAČAJU kako igra teče (po satu igre — u brzoj igri brže): svake 2 minute
   //   +1 level = +18% života, +12% štete, +4% zlata i +6% iskustva; Veliki Zmaj i zmajčići +24% života i +16% štete
   //   (junaci u 20. minuti imaju ~7× veću štetu nego na početku — prije su čudovišta tada padala u sekundi)
