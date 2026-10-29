@@ -132,7 +132,7 @@ function groundHeightRaw(x, y){
   return h + 40 * (cliff + (wide - cliff) * ramp);
 }
 /* visine se jednom izračunaju u mrežu (brzo čitanje za tisuće poziva po sličici) */
-const HGRID_N = 360;
+const HGRID_N = Math.round(360 * MAP_S / 1.85);   // v0.47: mreža visina raste s mapom (litice ostaju oštre)
 let hGrid = null;
 function buildHeightGrid(){
   const n = HGRID_N + 1, cs = WORLD / HGRID_N;
@@ -154,7 +154,7 @@ function groundHeight(x, y){
    se ne vidi gore na plato baze (uzbrdo); kule, oka i Sovino oko vide "odozgo" (bez prepreka).
    Noću je vid kraći. visGrid = vid po timu (mreža 128×128); magla na ekranu računa se iz iste mreže,
    pa se ono što vidiš točno poklapa s onim što igra smatra vidljivim. */
-const VIS_N = 128;
+const VIS_N = Math.round(128 * MAP_S / 1.85);   // v0.47: mreža vida raste s mapom (polje ~43 jedinice kao prije)
 const visGrid = [new Uint8Array(VIS_N * VIS_N), new Uint8Array(VIS_N * VIS_N)];
 const visBlock = new Uint8Array(VIS_N * VIS_N);   // 1 = stablo (zaklanja pogled)
 const visLvl = new Uint8Array(VIS_N * VIS_N);     // 0 = polje i rijeka, 1 = plato baze
@@ -822,6 +822,27 @@ function initCamps(){
     else spawnCamp(c);
   }
 }
+/* 🐲 v0.47: level čudovišta raste sa satom igre (svake CFG.neutralLvlEvery s) — s njim rastu život, šteta i nagrada */
+let neutralLvl = 1;
+function neutralLevelNow(){ return 1 + Math.floor(Math.max(0, gameClock()) / CFG.neutralLvlEvery); }
+function applyNeutralLevel(u, lvl){
+  const b = u.nBase;
+  if(!b || u.nlvl === lvl) return;
+  const big = u.boss || u.drake, k = lvl - 1;
+  const maxhp = Math.round(b.hp * (1 + k * (big ? CFG.bossLvlHp : CFG.neutralLvlHp)));
+  u.hp = Math.max(1, u.hp * maxhp / u.maxhp); u.maxhp = maxhp;   // isti udio života
+  u.dmg = Math.round(b.dmg * (1 + k * (big ? CFG.bossLvlDmg : CFG.neutralLvlDmg)));
+  u.goldValue = Math.round(b.gold * (1 + k * CFG.neutralLvlGold));
+  u.xpValue = Math.round(b.xp * (1 + k * CFG.neutralLvlXp));
+  u.nlvl = lvl;
+}
+function updateNeutralLevel(){
+  const lvl = neutralLevelNow();
+  if(lvl === neutralLvl) return;
+  neutralLvl = lvl;
+  for(const c of camps) for(const n of c.units) if(!n.dead && !n.removeMe) applyNeutralLevel(n, lvl);
+  if(lvl % 3 === 1) feedMsg(L('🐲 Čudovišta i zmajevi su jači — sada su level ' + lvl + '!', '🐲 Monsters and dragons are stronger — now level ' + lvl + '!'), '#fbbf24');
+}
 function spawnCamp(c){
   const t = CAMP_TYPES[c.type];
   c.units = [];
@@ -836,6 +857,8 @@ function spawnCamp(c){
       emoji: t.emoji, name: t.name, boss: !!t.boss, camp: c, campType: c.type, buff: t.buff || null,
       stunHit: !!t.stunHit, scanT: rand(0, 0.4),
     });
+    u.nBase = { hp: t.hp, dmg: t.dmg, gold: u.goldValue, xp: u.xpValue };
+    applyNeutralLevel(u, neutralLevelNow());
     if(t.drake){   // 🐉 zmajčić: element se mijenja (nikad dvaput isti zaredom)
       const el = nextDrake || choice(DRAKE_KEYS);
       nextDrake = choice(DRAKE_KEYS.filter(k => k !== el));
@@ -2470,6 +2493,13 @@ function towerThink(u){
    stazi i kule napadaju razljućena čudovišta — tako se kamp može "povući" do svojih vojnika ili pod kulu.
    Predaleko od kampa ili bez ijednog udarca CFG.campGiveUp sekundi — vrate se kući i brzo se izliječe. */
 function neutralLeash(u){ return u.boss || u.drake ? 620 : CFG.campLeash; }
+/* 🗼 v0.47: kula (bilo koja) čiji domet + pad pokriva točku — čudovišta se tu okreću natrag */
+function towerZoneAt(x, y, pad){
+  for(const tw of units){
+    if(tw.kind === 'tower' && !tw.removeMe && !tw.dead && distXY(tw.x, tw.y, x, y) <= tw.atkRange + pad) return tw;
+  }
+  return null;
+}
 /* razljućeno čudovište izvan kampa: njega napadaju vojnici i kule (Veliki Zmaj i zmajčić ne izlaze iz svojih jazbina) */
 function neutralActive(e){ return e.kind === 'neutral' && !e.returning && !e.boss && !e.drake && isTargetable(e.attackTarget); }
 function neutralThink(u){
@@ -2478,7 +2508,9 @@ function neutralThink(u){
   const t0 = u.attackTarget;
   const tgtFar = t0 && !t0.removeMe && distXY(t0.x, t0.y, camp.x, camp.y) > leash + 50;
   const bored = t0 && gameTime - (camp.fightT || 0) > CFG.campGiveUp;   // ganja, a nitko nikoga ne udara (bježi im)
-  if(dHome > leash || tgtFar || bored){
+  // 🗼 v0.47: ne idu pod kulu — ni za metom koja je pobjegla pod kulu
+  const tower = (t0 || dHome > 150) && (towerZoneAt(u.x, u.y, u.r + CFG.campTowerPad) || (t0 && towerZoneAt(t0.x, t0.y, 30)));
+  if(dHome > leash || tgtFar || bored || tower){
     u.attackTarget = null;
     u.returning = true;
   }
@@ -3659,6 +3691,7 @@ function update(dt){
     feedMsg(L('🏚️ Obnovljena vojarna tima ' + TEAM_NAME[br.team] + ' (' + LANE_NAME[br.lane] + ')', '🏚️ Team ' + TEAM_NAME[br.team] + "'s barracks rebuilt (" + LANE_NAME[br.lane] + ')'), TEAM_COLOR[br.team]);
   }
 
+  updateNeutralLevel();   // 🐲 čudovišta jačaju s vremenom
   for(const c of camps){
     if(c.units.length === 0 && c.respawnT > 0){
       c.respawnT -= dt;
@@ -3899,7 +3932,12 @@ function buildTerrain(){
     if(pat.setTransform) pat.setTransform(new DOMMatrix().scale(0.55));
     t.fillStyle = pat;
     t.fillRect(0, 0, WORLD, WORLD);
-    t.fillStyle = 'rgba(126,200,80,0.22)';   // blagi ton preko teksture
+    t.save();   // v0.47: manje "neonska" trava — malo manje zasićena i toplija (kao oslikana livada)
+    t.globalCompositeOperation = 'saturation';
+    t.fillStyle = 'rgba(128,128,128,0.24)';
+    t.fillRect(0, 0, WORLD, WORLD);
+    t.restore();
+    t.fillStyle = 'rgba(150,196,92,0.2)';   // blagi ton preko teksture
     t.fillRect(0, 0, WORLD, WORLD);
   } else {
     t.fillStyle = '#7ec850';
@@ -3910,6 +3948,15 @@ function buildTerrain(){
     t.beginPath();
     t.arc(rand(0, WORLD), rand(0, WORLD), rand(30, 130), 0, TAU);
     t.fill();
+  }
+  // 🌼 v0.47: velike sunčane livade i tamnije udoline — trava više nije jednolično zelena
+  for(let i = 0; i < Math.round(60 * MAP_S * MAP_S); i++){
+    const x = rand(0, WORLD), y = rand(0, WORLD), r = rand(220, 520), warm = Math.random() < 0.55;
+    const c0 = warm ? '214,210,118' : '34,90,72';
+    const g = t.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, 'rgba(' + c0 + ',' + (warm ? 0.17 : 0.15) + ')'); g.addColorStop(1, 'rgba(' + c0 + ',0)');
+    t.fillStyle = g;
+    t.beginPath(); t.arc(x, y, r, 0, TAU); t.fill();
   }
   // 🌲 šumsko tlo: ispod stabala tamnija, gušća trava — šume se odvajaju od svijetlih livada
   for(const tr of trees){
@@ -4108,7 +4155,7 @@ function startGame(heroIdx){
   floats = []; markers = []; feed = [];
   ancients = [null, null];
   kills = [0, 0];
-  camps = []; runes = [];
+  camps = []; runes = []; neutralLvl = 1;
   runeTimer = CFG.runeEvery; runeSpotI = 0; isNight = false;
   wards = []; nightForceT = 0; superCreeps = [{}, {}]; winnerTeam = null; barracksRespawn = [];
   glyph = [{ t: 0, cd: 0 }, { t: 0, cd: 0 }];
@@ -5902,8 +5949,14 @@ function drawWorldOverlay(){
       }
     }
     else if(u.kind === 'neutral'){
-      const big = u.boss || u.drake, w = u.boss ? 80 : (u.drake ? 64 : 40);
-      drawBar(s.x - w / 2, s.y, w, big ? 8 : 5, u.hp / u.maxhp, u.drake ? DRAKES[u.drake].color : '#f59e0b');
+      const big = u.boss || u.drake, w = u.boss ? 80 : (u.drake ? 64 : 40), bh = big ? 8 : 5;
+      drawBar(s.x - w / 2, s.y, w, bh, u.hp / u.maxhp, u.drake ? DRAKES[u.drake].color : '#f59e0b');
+      if(u.nlvl > 1){   // 🐲 level čudovišta (raste s vremenom)
+        const lx = s.x - w / 2 - 15, ly = s.y - 2, lh = Math.max(9, bh + 4);
+        ctx.fillStyle = 'rgba(5,8,12,0.85)'; ctx.fillRect(lx, ly, 13, lh);
+        ctx.fillStyle = '#fde047'; ctx.font = fontTxt(9, true); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(u.nlvl, lx + 6.5, ly + lh / 2 + 0.5);
+      }
       if(big){
         const nm = u.boss ? L('🐲 Veliki Zmaj', '🐲 Great Dragon') : DRAKES[u.drake].emoji + ' ' + DRAKES[u.drake].name;
         ctx.font = fontTxt(u.boss ? 13 : 12, true);

@@ -283,7 +283,7 @@ function buildSnapshot(){
     else if(u.kind === 'creep'){ if(u.rangedCreep) b.rc = 1; if(u.siege) b.sg = 1; if(u.summonModel) b.sm = u.summonModel; if(u.superCreep) b.su = 1; }
     else if(u.kind === 'barracks'){ b.iv = u.invuln ? 1 : 0; b.ln = u.lane; }
     if(u.bdT != null && gameTime - u.bdT < 0.5) b.bd = 1;   // 🛡️ backdoor zaštita upravo radi
-    else if(u.kind === 'neutral'){ b.ct = CAMP_KEYS.indexOf(u.camp.type); if(u.drake) b.dk = DRAKE_KEYS.indexOf(u.drake); }
+    if(u.kind === 'neutral'){ b.ct = CAMP_KEYS.indexOf(u.camp.type); if(u.drake) b.dk = DRAKE_KEYS.indexOf(u.drake); if(u.nlvl > 1) b.nl = u.nlvl; }   // 🐲 level čudovišta
     else if(u.kind === 'tower'){ if(u.isGuard) b.gd = 1; }
     else if(u.kind === 'ancient'){ b.iv = u.invuln ? 1 : 0; }
     us.push(b);
@@ -411,7 +411,7 @@ function applySnapshot(d){
     }
     u.tx2 = b.x; u.ty2 = b.y; u.tDir = b.d || 0;
     if(Math.abs(b.x - u.x) > 260 || Math.abs(b.y - u.y) > 260){ u.x = b.x; u.y = b.y; }
-    u.hp = b.h; u.maxhp = b.m;
+    u.hp = b.h; u.maxhp = b.m; if(b.nl) u.nlvl = b.nl;
     u.atkN = b.an || 0; u.castN = b.cn || 0; if(b.cf) u.castFx = b.cf; u.castAim = b.ca ? { x: b.ca[0], y: b.ca[1] } : null; u.cycloneT = b.cy ? 1 : 0;
       u.sumN = b.sn || 0; if(b.sf) u.sumFx = b.sf; u.sumAim = b.sa ? { x: b.sa[0], y: b.sa[1] } : null; u.smiteAt = b.sm2 ? { x: b.sm2[0], y: b.sm2[1] } : null;
       u.barrierHp = b.br || 0; u.barrierT = b.br ? 1 : 0;

@@ -9,7 +9,7 @@
    - Atributi: str/agi/int + rast po levelu; primary daje štetu.
    ============================================================ */
 
-const MAP_S = 1.85;                        // mjerilo mape (1 = stara mapa 3000×3000); v0.38: 1.45 → 1.85 (5 na 5 treba više prostora)
+const MAP_S = 2.22;                        // mjerilo mape (1 = stara mapa 3000×3000); v0.38: 1.45 → 1.85 (5 na 5 treba više prostora); v0.47: → 2.22 (+20%)
 const WORLD = Math.round(3000 * MAP_S);
 const TEAM_BLUE = 0, TEAM_RED = 1, TEAM_NEUTRAL = 2;
 const TEAM_COLOR = ['#3b82f6', '#ef4444', '#f59e0b'];
@@ -119,6 +119,14 @@ const CFG = {
   // 🗡️ v0.46: botovi idu u timski gank tek od 4. minute (sat igre) i tek s levelom 4+ (ne odmah na početku)
   gankFrom: 240,
   gankLvl: 4,
+  // 🐲 v0.47: čudovišta iz džungle i zmajevi JAČAJU kako igra teče (po satu igre — u brzoj igri brže): svake 2 minute
+  //   +1 level = +18% života, +12% štete, +4% zlata i +6% iskustva; Veliki Zmaj i zmajčići +24% života i +16% štete
+  //   (junaci u 20. minuti imaju ~7× veću štetu nego na početku — prije su čudovišta tada padala u sekundi)
+  neutralLvlEvery: 120,
+  neutralLvlHp: 0.18, neutralLvlDmg: 0.12, neutralLvlGold: 0.04, neutralLvlXp: 0.06,
+  bossLvlHp: 0.24, bossLvlDmg: 0.16,
+  // 🗼 v0.47: čudovišta nikad ne ulaze u domet kule — kad meta ili oni dođu do ruba dometa, odustanu i vrate se
+  campTowerPad: 70,
   towerHeatMax: 1.0,
 };
 
@@ -2104,26 +2112,26 @@ const CAMP_TYPES = {
   bears:  { n:2, emoji:'🐻', name:L('Medvjed', 'Bear'), hp:920, dmg:46, range:72, atkCd:1.3, speed:115, r:23, gold:92, xp:100, hpRegen:1.5, model:'bear' },   // v0.46: veliki kamp
 };
 const CAMP_SPOTS = [
-  { x:850,  y:1300, type:'boars'  },
-  { x:1300, y:850,  type:'redbuff' },
-  { x:2120, y:1700, type:'boars'  },
-  { x:1700, y:2120, type:'redbuff' },
-  { x:2100, y:2100, type:'drake'  },
   { x:800,  y:800,  type:'boss'   },
-  { x:500,  y:1800, type:'golem'  },
-  { x:2500, y:1200, type:'golem'  },
-  // v0.38: više džungle za 5 na 5 (simetrično: crveni = 180° okret plavog)
-  { x:1075, y:1575, type:'wolves' },
-  { x:1925, y:1425, type:'wolves' },
-  { x:1950, y:2450, type:'stones' },
-  { x:1050, y:550,  type:'stones' },
-  // v0.46: još 6 kampova — uz svaku bočnu stazu jedan za "povlačenje" do vojnika i medvjedi u dubini džungle
-  { x:500,  y:1075, type:'boars'  },   // plavi, uz gornju stazu
-  { x:2500, y:1925, type:'boars'  },   // crveni, uz donju stazu
-  { x:1250, y:2425, type:'wolves' },   // plavi, uz donju stazu
-  { x:1750, y:575,  type:'wolves' },   // crveni, uz gornju stazu
-  { x:850,  y:1875, type:'bears'  },
-  { x:2150, y:1125, type:'bears'  },
+  { x:2100, y:2100, type:'drake'  },
+  // v0.47: kampovi su DALEKO od kula (najmanje ~630 izvan dometa kule na mapi 2.22), da se čudovišta ne mogu navući
+  //   pod kulu; po jedan kamp uz svaku bočnu stazu (P) i dalje se može povući do vojnika. Crveni = 180° okret plavih.
+  { x:525,  y:1375, type:'boars'  },   // plavi, uz gornju stazu (P)
+  { x:825,  y:1350, type:'wolves' },
+  { x:700,  y:1075, type:'stones' },
+  { x:750,  y:1700, type:'golem'  },   // 🔵 plavi buff
+  { x:1675, y:2450, type:'wolves' },   // plavi, uz donju stazu (P)
+  { x:1300, y:2250, type:'bears'  },
+  { x:1550, y:2100, type:'redbuff' },  // 🔴 crveni buff
+  { x:1900, y:2275, type:'boars'  },
+  { x:2475, y:1625, type:'boars'  },   // crveni, uz donju stazu (P)
+  { x:2175, y:1650, type:'wolves' },
+  { x:2300, y:1925, type:'stones' },
+  { x:2250, y:1300, type:'golem'  },
+  { x:1325, y:550,  type:'wolves' },   // crveni, uz gornju stazu (P)
+  { x:1700, y:750,  type:'bears'  },
+  { x:1450, y:900,  type:'redbuff' },
+  { x:1100, y:725,  type:'boars'  },
 ];
 
 /* ---------------- RUNE ZLATA I MUDROSTI (u džungli) ---------------- */

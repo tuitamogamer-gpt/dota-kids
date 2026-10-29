@@ -3309,6 +3309,34 @@ def build_env():
     p.sphere((0, 0, 1.3), (0.09, 0.09, 0.14), '#ff7a1a', mat='glow', seg=(8, 6))
     p.sphere((0, 0, 1.4), (0.05, 0.05, 0.09), '#ffe26b', mat='glow', seg=(6, 4))
     m.finish()
+    # v0.47: fenjer uz staze — drveni stup s krakom i obješenom lampom koja svijetli (igra noću baca svjetlo na put)
+    m = Model('lantern0')
+    p = m.part('mesh')
+    p.ico((0, 0, 0.05), (0.16, 0.15, 0.07), '#8b8f97', sub=1, jitter=0.15, seed=171)          # kamen u podnožju
+    p.cyl((0, 0, 0.04), (0, 0, 1.45), 0.045, 0.036, '#5b3a1e', seg=8)                         # stup
+    p.cyl((0, 0, 1.45), (0, 0, 1.5), 0.05, 0.0, '#4a2f17', seg=8)                             # vrh stupa
+    p.cyl((-0.02, 0, 1.38), (0.34, 0, 1.38), 0.026, 0.022, '#5b3a1e', seg=6)                   # krak
+    p.cyl((0.02, 0, 1.17), (0.2, 0, 1.37), 0.017, 0.017, '#4a2f17', seg=5)                    # potporanj
+    p.cyl((0.3, 0, 1.38), (0.3, 0, 1.31), 0.009, 0.009, '#374151', seg=5)                     # kukica
+    p.cyl((0.3, 0, 1.23), (0.3, 0, 1.31), 0.085, 0.018, '#374151', seg=8)                     # krović lampe
+    p.box((0.3, 0, 1.15), (0.1, 0.1, 0.14), '#ffcf5a', mat='glow')                             # staklo (svijetli)
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            p.cyl((0.3 + sx * 0.053, sy * 0.053, 1.07), (0.3 + sx * 0.053, sy * 0.053, 1.23), 0.009, 0.009, '#1f2937', seg=4)
+    p.box((0.3, 0, 1.07), (0.13, 0.13, 0.022), '#1f2937')                                     # dno lampe
+    p.sphere((0.3, 0, 1.15), 0.034, '#fff6cc', mat='glow', seg=(6, 4))                        # plamičak
+    m.finish()
+    # v0.47: svjetleće gljive — noću džungla svjetluca (plave na strani Sentinela, ljubičaste kod Scourgea)
+    for v, (cap, dots) in enumerate((('#5eead4', '#f0fdfa'), ('#c084fc', '#fae8ff'))):
+        m = Model('mushglow%d' % v)
+        p = m.part('mesh')
+        for (x, y, s_) in ((0, 0, 1.0), (0.2, 0.1, 0.7), (-0.14, 0.17, 0.55), (0.09, -0.19, 0.45)):
+            p.cyl((x, y, 0), (x, y, 0.3 * s_), 0.05 * s_, 0.038 * s_, '#e0f2fe', seg=7)
+            p.sphere((x, y, 0.32 * s_), (0.17 * s_, 0.17 * s_, 0.1 * s_), cap, mat='glow', seg=(10, 6))
+            for k in range(3):
+                a = k * 2.1 + v
+                p.sphere((x + math.cos(a) * 0.08 * s_, y + math.sin(a) * 0.08 * s_, 0.4 * s_), 0.025 * s_, dots, mat='glow', seg=(5, 3))
+        m.finish()
     # gaz: plosnato kamenje preko rijeke (redak od 5 kamena duž +X)
     m = Model('ford0')
     p = m.part('mesh')
@@ -4149,6 +4177,10 @@ def main():
         build_projectiles()
         build_runes_v15()
         preview(os.path.join(HERE, 'preview_v15.png'), only=['hero_', 'proj_rainbow', 'rune_', 'fx_nchest'], cols=3, zoom=2.0)
+        return
+    if '--dev-v47' in argv:   # brza provjera fenjera i svjetlećih gljiva (bez izvoza)
+        build_env()
+        preview(os.path.join(HERE, 'preview_v47.png'), only=['lantern', 'mushglow', 'torch', 'campfire'], cols=5, zoom=2.4)
         return
     if '--dev-v14' in argv:   # brza provjera novih modela (bez izvoza)
         build_courier()

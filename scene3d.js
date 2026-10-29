@@ -29,24 +29,54 @@ function setFogCanvas(cv){
 }
 /* 🌫️ v0.38 magla rata u shaderu: tlo, drveće, ukrasi i građevine u magli potamne (prije je magla bila samo
    prozirni pokrov preko tla, pa su krošnje i kule u magli ostajale jarke) */
-const FOW = { tex: { value: null }, on: { value: 0 }, world: { value: WORLD }, col: { value: new THREE.Color(0.018, 0.03, 0.075) } };
+const FOW = { tex: { value: null }, on: { value: 0 }, world: { value: WORLD }, col: { value: new THREE.Color(0.012, 0.02, 0.05) }, night: { value: 0 } };
+/* v0.47: u magli se boje ugase (sivkasto-plavo) i potamne, ali teren se i dalje raspoznaje; preko nje polako plove
+   pramenovi (tekstura oblaka) — prije je magla bila skoro crna mrlja, a noću je pokrila pola ekrana */
+const FOW_GLSL = `
+  float fowA(vec2 uv){
+    float fa = fowOn * texture2D(fowTex, clamp(uv, 0.001, 0.999)).a * 1.6;
+    if(uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) fa = 0.0;
+    float n = texture2D(fowNoise, uv * 5.0 + fowNoiseOff * 3.0).r;
+    return clamp(fa * (0.8 + 0.32 * n), 0.0, 1.0);
+  }
+  vec3 fowApply(vec3 c, float fa){
+    float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+    vec3 g = mix(vec3(l), c, 0.3) * mix(0.44, 0.36, fowNight) + fowCol * (1.0 + 1.5 * fowNight);   // noću tamnija i plavlja
+    return mix(c, g, fa);
+  }
+`;
 function patchShader(mat, key, fn){   // nadoveži onBeforeCompile (oblaci, rubno svjetlo, magla…)
   const prev = mat.onBeforeCompile, prevKey = mat.customProgramCacheKey ? mat.customProgramCacheKey() : '';
   mat.onBeforeCompile = (sh, r) => { if(prev) prev(sh, r); fn(sh); };
   mat.customProgramCacheKey = () => prevKey + '|' + key;
   mat.needsUpdate = true;
 }
-function addFogOfWar(mat){
-  patchShader(mat, 'fow', sh => {
-    sh.uniforms.fowTex = FOW.tex; sh.uniforms.fowOn = FOW.on; sh.uniforms.fowWorld = FOW.world; sh.uniforms.fowCol = FOW.col;
+function fowUniforms(u){
+  cloudTexture();
+  return Object.assign(u, { fowTex: FOW.tex, fowOn: FOW.on, fowWorld: FOW.world, fowCol: FOW.col, fowNight: FOW.night,
+    fowNoise: CLOUD.uniforms.cloudTex, fowNoiseOff: CLOUD.uniforms.cloudOff });
+}
+/* svjetla na tlu u magli rata skoro nestanu (ne smiju svijetliti kao reflektori kroz maglu) */
+function addFogDim(mat){
+  patchShader(mat, 'fowDim', sh => {
+    fowUniforms(sh.uniforms);
     sh.vertexShader = 'uniform float fowWorld;\nvarying vec2 vFowUv;\n' + sh.vertexShader.replace('#include <project_vertex>',
       '#include <project_vertex>\n  vec4 fowP = vec4(transformed, 1.0);\n#ifdef USE_INSTANCING\n  fowP = instanceMatrix * fowP;\n#endif\n' +
       '  fowP = modelMatrix * fowP;\n  vFowUv = vec2(fowP.x / fowWorld, 1.0 - fowP.z / fowWorld);');
-    sh.fragmentShader = 'uniform sampler2D fowTex; uniform float fowOn; uniform vec3 fowCol; varying vec2 vFowUv;\n' +
-      sh.fragmentShader.replace('#include <dithering_fragment>',
-      '  { float fa = fowOn * texture2D(fowTex, clamp(vFowUv, 0.001, 0.999)).a * 1.3;\n' +
-      '    if(vFowUv.x < 0.0 || vFowUv.y < 0.0 || vFowUv.x > 1.0 || vFowUv.y > 1.0) fa = 0.0;\n' +
-      '    gl_FragColor.rgb = mix(gl_FragColor.rgb, fowCol, clamp(fa, 0.0, 0.85)); }\n#include <dithering_fragment>');
+    sh.fragmentShader = 'uniform sampler2D fowTex; uniform sampler2D fowNoise; uniform vec2 fowNoiseOff; uniform float fowOn; uniform float fowNight; uniform vec3 fowCol; varying vec2 vFowUv;\n' +
+      FOW_GLSL + sh.fragmentShader.replace('#include <dithering_fragment>',
+      '  gl_FragColor.rgb *= 1.0 - 0.8 * fowA(vFowUv);\n#include <dithering_fragment>');
+  });
+}
+function addFogOfWar(mat){
+  patchShader(mat, 'fow2', sh => {
+    fowUniforms(sh.uniforms);
+    sh.vertexShader = 'uniform float fowWorld;\nvarying vec2 vFowUv;\n' + sh.vertexShader.replace('#include <project_vertex>',
+      '#include <project_vertex>\n  vec4 fowP = vec4(transformed, 1.0);\n#ifdef USE_INSTANCING\n  fowP = instanceMatrix * fowP;\n#endif\n' +
+      '  fowP = modelMatrix * fowP;\n  vFowUv = vec2(fowP.x / fowWorld, 1.0 - fowP.z / fowWorld);');
+    sh.fragmentShader = 'uniform sampler2D fowTex; uniform sampler2D fowNoise; uniform vec2 fowNoiseOff; uniform float fowOn; uniform float fowNight; uniform vec3 fowCol; varying vec2 vFowUv;\n' +
+      FOW_GLSL + sh.fragmentShader.replace('#include <dithering_fragment>',
+      '  gl_FragColor.rgb = fowApply(gl_FragColor.rgb, fowA(vFowUv));\n#include <dithering_fragment>');
   });
 }
 function markFogDirty(){
@@ -81,8 +111,10 @@ const MODEL_SCALE = {
   hero: 50, creep_melee: 34, creep_ranged: 32, creep_siege: 40,
   tower: 35, ancient: 48, fountain: 42,
 };
-/* ☀️ osvjetljenje dana: umjerenije nebo i ekspozicija — vrhovi krošnji i svijetli kamen se više ne "isperu" u bijelo */
-const LIGHT = { exposure: 1.0, sunK: 0.98, hemi0: 0.28, hemiK: 0.32 };
+/* ☀️🌙 osvjetljenje: umjerenije nebo i ekspozicija — vrhovi krošnji i svijetli kamen se više ne "isperu" u bijelo.
+   v0.47: noć je MJESEČINA — plavkasto svjetlo (~55% dana), svjetlije nebo i malo jača ekspozicija; prije je noću sunce
+   padalo na 15%, a nebo na četvrtinu, pa je slika bila skoro crna */
+const LIGHT = { exposure: 1.0, sunDay: 1.06, sunNight: 0.6, hemiDay: 0.62, hemiNight: 0.5, nightExp: 0.16 };
 const TOWER_CRYSTAL_Z = 3.75;   // visina kristala na kuli (u jedinicama modela; tools/blender: TOWER_CRYSTAL_Z)
 
 /* ================= Blender modeli (GLB) ================= */
@@ -479,13 +511,15 @@ function initScene3D(glCanvas){
   scene3.fog = new THREE.Fog(0x9fdcff, 3200, 6500);
 
   DAY_SKY.day = new THREE.Color(0x9fdcff);
-  DAY_SKY.night = new THREE.Color(0x1c2750);
-  DAY_SKY.sunDay = new THREE.Color(0xfff2d0);
-  DAY_SKY.sunNight = new THREE.Color(0x9db8ff);
+  DAY_SKY.night = new THREE.Color(0x2a3768);
+  DAY_SKY.sunDay = new THREE.Color(0xfff0cc);
+  DAY_SKY.sunNight = new THREE.Color(0xa9c1ff);
+  DAY_SKY.hemiSkyDay = new THREE.Color(0xcfe5ff); DAY_SKY.hemiSkyNight = new THREE.Color(0x8ea6e6);
+  DAY_SKY.hemiGndDay = new THREE.Color(0x63843f); DAY_SKY.hemiGndNight = new THREE.Color(0x2f4836);
 
   camera3 = new THREE.PerspectiveCamera(50, 1, 10, 14000);
 
-  hemiLight = new THREE.HemisphereLight(0xc9e2ff, 0x5a7d3c, LIGHT.hemi0 + LIGHT.hemiK);
+  hemiLight = new THREE.HemisphereLight(0xcfe5ff, 0x63843f, LIGHT.hemiDay);
   scene3.add(hemiLight);
 
   sunLight = new THREE.DirectionalLight(0xfff2d0, 1.1);
@@ -565,8 +599,8 @@ function resize3D(){
    Na sporim uređajima se samo isključi; tipka K ih pali/gasi. */
 const POST = { on: true, composer: null, bloom: null, grade: null, auto: true, frames: 0, acc: 0, last: 0 };
 const GRADE_SHADER = {
-  uniforms: { tDiffuse: { value: null }, exposure: { value: LIGHT.exposure }, sat: { value: 1.02 }, contrast: { value: 1.06 },
-    vig: { value: 0.28 }, night: { value: 0 } },
+  uniforms: { tDiffuse: { value: null }, exposure: { value: LIGHT.exposure }, sat: { value: 1.0 }, contrast: { value: 1.07 },
+    vig: { value: 0.26 }, night: { value: 0 } },
   vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: `
     uniform sampler2D tDiffuse; uniform float exposure, sat, contrast, vig, night; varying vec2 vUv;
@@ -578,11 +612,12 @@ const GRADE_SHADER = {
     }
     vec3 toSRGB(vec3 c){ return mix(c * 12.92, pow(c, vec3(1.0 / 2.4)) * 1.055 - 0.055, step(0.0031308, c)); }
     void main(){
-      vec3 c = aces(texture2D(tDiffuse, vUv).rgb);
+      vec3 c = aces(texture2D(tDiffuse, vUv).rgb * (1.0 + 0.16 * night));   // 🌙 noću malo svjetlije (mjesečina)
       float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
-      c = mix(vec3(l), c, sat);                                 // živahnije boje
+      c = mix(vec3(l), c, sat * (1.0 - 0.18 * night));          // noću boje blijede (kao pod mjesecom), danju normalne
       c = (c - 0.5) * contrast + 0.5;                            // malo više kontrasta
-      c = mix(c, c * vec3(0.86, 0.92, 1.08), night * 0.35);      // noću hladniji ton
+      c = mix(c, c * vec3(0.84, 0.93, 1.12), night * 0.55 * (1.0 - smoothstep(0.25, 0.8, l)));   // noću plave sjene, vatre ostaju tople
+      c = mix(c, c * vec3(1.04, 1.0, 0.95), (1.0 - night) * smoothstep(0.45, 0.95, l) * 0.6);     // danju toplo sunce na svijetlom
       vec2 d = vUv - 0.5;
       c *= 1.0 - vig * smoothstep(0.35, 0.85, length(d * vec2(1.25, 1.0)));   // vinjeta
       gl_FragColor = vec4(toSRGB(clamp(c, 0.0, 1.0)), 1.0);
@@ -595,7 +630,7 @@ function initPost(){
     const rt = new THREE.WebGLRenderTarget(VW * pr, VH * pr, { type: THREE.HalfFloatType, samples: 4 });
     POST.composer = new THREE.EffectComposer(renderer3, rt);
     POST.composer.addPass(new THREE.RenderPass(scene3, camera3));
-    POST.bloom = new THREE.UnrealBloomPass(new THREE.Vector2(VW, VH), 0.55, 0.45, 0.95);
+    POST.bloom = new THREE.UnrealBloomPass(new THREE.Vector2(VW, VH), 0.42, 0.5, 1.05);   // v0.47: sjaje samo vatre, magije i kristali (ne trava i voda)
     POST.composer.addPass(POST.bloom);
     POST.grade = new THREE.ShaderPass(GRADE_SHADER);
     POST.composer.addPass(POST.grade);
@@ -612,6 +647,7 @@ function render3D(){
   cullDeco();
   if(POST.on && POST.composer){
     POST.grade.uniforms.night.value = 1 - dayK;
+    POST.bloom.strength = 0.42 + 0.22 * (1 - dayK);   // noću vatre i kristali jače sjaje
     POST.composer.render();
     // samozaštita: ako je ispod ~28 fps 4 s zaredom, isključi efekte
     const now = performance.now();
@@ -634,11 +670,16 @@ function applyDayNight(gt){
   if(typeof nightForceT !== 'undefined' && nightForceT > 0) target = Math.min(target, 0.04);   // 🌑 Vječna noć
   dayK = lerp(dayK, target, 0.04);
   const k = dayK;
-  sunLight.intensity = 0.16 + LIGHT.sunK * k;
-  hemiLight.intensity = LIGHT.hemi0 + LIGHT.hemiK * k;
+  sunLight.intensity = LIGHT.sunNight + (LIGHT.sunDay - LIGHT.sunNight) * k;   // 🌙 noću mjesečina
+  hemiLight.intensity = LIGHT.hemiNight + (LIGHT.hemiDay - LIGHT.hemiNight) * k;
+  hemiLight.color.copy(DAY_SKY.hemiSkyNight).lerp(DAY_SKY.hemiSkyDay, k);
+  hemiLight.groundColor.copy(DAY_SKY.hemiGndNight).lerp(DAY_SKY.hemiGndDay, k);
   scene3.background.copy(DAY_SKY.night).lerp(DAY_SKY.day, k);
   scene3.fog.color.copy(scene3.background);
   sunLight.color.copy(DAY_SKY.sunNight).lerp(DAY_SKY.sunDay, k);
+  renderer3.toneMappingExposure = LIGHT.exposure * (1 + LIGHT.nightExp * (1 - k));   // bez efekata (K): isto podizanje noću
+  FOW.night.value = 1 - k;
+  updateNightLights(1 - k);
   if(waterMesh) waterMesh.material.uniforms.night.value = 1 - k;
   RIM.strength.value = 0.26 + 0.24 * (1 - k);   // noću obrisi jače svijetle (mjesečina)
   for(const mm of metalMats) mm.envMapIntensity = METAL_ENV.night + (METAL_ENV.day - METAL_ENV.night) * k;
@@ -830,7 +871,9 @@ function updateMist(dt){
       mist.push({ spr, t: 0, life: 0 });
     }
   }
-  const strength = 0.36 + 0.2 * (1 - dayK);
+  const strength = 0.17 + 0.17 * dayK;   // v0.47: noću tanja i plavkasta (s bloomom su bile bijele mrlje)
+  if(!updateMist.col) updateMist.col = [new THREE.Color(0xeef6ff), new THREE.Color(0x6f82b0), new THREE.Color()];
+  const mc = updateMist.col[2].copy(updateMist.col[1]).lerp(updateMist.col[0], dayK);
   for(const m of mist){
     m.t += dt;
     if(m.t >= m.life){   // novi pramen negdje na rijeci u blizini kamere
@@ -845,6 +888,7 @@ function updateMist(dt){
     m.spr.position.set(m.x, groundHeight(m.x, m.y) + 22 + f * 20, m.y);
     m.spr.scale.set(m.size, m.size * 0.45, 1);
     m.spr.material.opacity = strength * a;
+    m.spr.material.color.copy(mc);
   }
 }
 /* ---------- 💨 dim iz dimnjaka (normalno miješanje, ne aditivno — siv dim ne smije svijetliti) ---------- */
@@ -1028,26 +1072,27 @@ function buildWater(){
   if(waterMesh) return;
   const mat = new THREE.ShaderMaterial({
     transparent: true, depthWrite: false,
-    uniforms: { t: { value: 0 }, night: { value: 0 }, fowTex: FOW.tex, fowOn: FOW.on, fowWorld: FOW.world, fowCol: FOW.col },
+    uniforms: fowUniforms({ t: { value: 0 }, night: { value: 0 } }),
     vertexShader: `
       varying vec2 vUv; varying vec2 vFowUv; uniform float fowWorld;
       void main(){ vUv = uv; vec4 wp = modelMatrix * vec4(position, 1.0); vFowUv = vec2(wp.x / fowWorld, 1.0 - wp.z / fowWorld);
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
     fragmentShader: `
       varying vec2 vUv; varying vec2 vFowUv;
-      uniform sampler2D fowTex; uniform float fowOn; uniform vec3 fowCol;
+      uniform sampler2D fowTex; uniform sampler2D fowNoise; uniform vec2 fowNoiseOff; uniform float fowOn; uniform float fowNight; uniform vec3 fowCol;
       uniform float t; uniform float night;
+      ${FOW_GLSL}
       void main(){
         float edge = smoothstep(0.0, 0.28, vUv.y) * smoothstep(1.0, 0.72, vUv.y);
         float x = vUv.x * 160.0;
         float w1 = sin(x * 0.9 + t * 1.6 + sin(vUv.y * 18.0 + t) * 1.5);
         float w2 = sin(x * 0.37 - t * 1.1 + vUv.y * 23.0);
         float ripple = smoothstep(0.82, 1.0, w1 * 0.6 + w2 * 0.5);
-        vec3 deep = mix(vec3(0.16, 0.55, 0.85), vec3(0.08, 0.16, 0.38), night);
-        vec3 col = mix(deep, vec3(0.92, 0.98, 1.0), ripple * 0.75);
+        vec3 deep = mix(vec3(0.16, 0.55, 0.85), vec3(0.1, 0.2, 0.42), night);
+        vec3 foam = mix(vec3(0.92, 0.98, 1.0), vec3(0.5, 0.62, 0.85), night);   // noću pjena ne bliješti
+        vec3 col = mix(deep, foam, ripple * 0.75);
         float a = edge * (0.42 + ripple * 0.4);
-        float fa = fowOn * texture2D(fowTex, clamp(vFowUv, 0.001, 0.999)).a * 1.3;
-        col = mix(col, fowCol, clamp(fa, 0.0, 0.85));
+        col = fowApply(col, fowA(vFowUv));
         gl_FragColor = vec4(col, a);
       }`,
   });
@@ -1072,16 +1117,107 @@ function hash01(x, y, k){
 function natureMat(){
   if(!matCache.nature){
     matCache.nature = new THREE.MeshLambertMaterial({ vertexColors: true });
+    matCache.nature.color.setRGB(0.93, 0.95, 0.92);   // v0.47: krošnje se na suncu manje "isperu" u bijelo
     matCache.nature.userData.shared = true;
     addFogOfWar(matCache.nature);   // 🌫️ drveće i ukrasi u magli potamne
   }
   return matCache.nature;
 }
+/* ✨🌙 v0.47 noćna svjetla: plamen baklji i logorskih vatri i kristali svijetle sami (ne ovise o suncu ni mjesecu);
+   oko njih lebdi sjaj (jedan Points za sve = jedan draw call), a noću se na tlu upali topla mrlja svjetla */
+const DECO_GLOW = new Set(['torch0', 'campfire0', 'crystal0', 'lantern0', 'mushglow0', 'mushglow1']);
+function decoGlowMat(){
+  if(!matCache.decoGlow){
+    const m = new THREE.MeshBasicMaterial({ vertexColors: true });
+    m.color.setScalar(1.6);   // jače od 1: u HDR-u plamen zasja (bloom)
+    addFogOfWar(m);
+    m.userData.shared = true;
+    matCache.decoGlow = m;
+  }
+  return matCache.decoGlow;
+}
+const NIGHT = { pts: null, pools: null, poolTex: null };
+function poolTexture(){
+  if(NIGHT.poolTex) return NIGHT.poolTex;
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gr.addColorStop(0, 'rgba(255,255,255,0.9)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+  NIGHT.poolTex = new THREE.CanvasTexture(c);
+  return NIGHT.poolTex;
+}
+/* glows: [{ x, y, h, c (boja), s (veličina sjaja, 0 = bez), pool (polumjer svjetla na tlu, 0 = bez) }] */
+function buildNightLights(glows, group){
+  NIGHT.pts = NIGHT.pools = null;
+  const sp = glows.filter(g => g.s > 0), tmp = new THREE.Color();
+  if(sp.length){
+    const geo = new THREE.BufferGeometry(), n = sp.length;
+    const pos = new Float32Array(n * 3), col = new Float32Array(n * 3), size = new Float32Array(n), seed = new Float32Array(n);
+    sp.forEach((g, i) => {
+      pos[i * 3] = g.x; pos[i * 3 + 1] = g.h; pos[i * 3 + 2] = g.y;
+      tmp.set(g.c); col[i * 3] = tmp.r; col[i * 3 + 1] = tmp.g; col[i * 3 + 2] = tmp.b;
+      size[i] = g.s; seed[i] = hash01(g.x, g.y, 5);
+    });
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    geo.setAttribute('size', new THREE.BufferAttribute(size, 1));
+    geo.setAttribute('seed', new THREE.BufferAttribute(seed, 1));
+    const mat = new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, vertexColors: true,
+      uniforms: fowUniforms({ map: { value: makeGlowTexture() }, scale: fx.mat.uniforms.scale, night: { value: 0 }, t: { value: 0 } }),
+      vertexShader: `
+        attribute float size; attribute float seed;
+        varying vec3 vC; varying float vA; varying vec2 vFowUv;
+        uniform float scale, night, t, fowWorld;
+        void main(){
+          vC = color;
+          vFowUv = vec2(position.x / fowWorld, 1.0 - position.z / fowWorld);   // sjaj u magli rata skoro nestane
+          float fl = 0.9 + 0.1 * sin(t * 7.0 + seed * 31.0) * sin(t * 3.1 + seed * 17.0);   // plamen treperi
+          vA = (0.32 + 0.6 * night) * fl;
+          vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          gl_PointSize = size * (0.85 + 0.6 * night) * fl * scale / -mv.z;
+          gl_Position = projectionMatrix * mv;
+        }`,
+      fragmentShader: `
+        uniform sampler2D map; varying vec3 vC; varying float vA; varying vec2 vFowUv;
+        uniform sampler2D fowTex; uniform sampler2D fowNoise; uniform vec2 fowNoiseOff; uniform float fowOn; uniform float fowNight; uniform vec3 fowCol;
+        ${FOW_GLSL}
+        void main(){ vec4 tx = texture2D(map, gl_PointCoord); gl_FragColor = vec4(vC * (0.8 + tx.a), vA * tx.a * (1.0 - 0.7 * fowA(vFowUv))); }`,
+    });
+    const pts = new THREE.Points(geo, mat);
+    pts.frustumCulled = false; pts.renderOrder = 6;
+    group.add(pts);
+    NIGHT.pts = pts;
+  }
+  const pl = glows.filter(g => g.pool > 0);
+  if(pl.length){
+    const geo = new THREE.PlaneGeometry(1, 1); geo.rotateX(-Math.PI / 2);
+    const mat = new THREE.MeshBasicMaterial({ map: poolTexture(), transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
+    addFogDim(mat);
+    const im = new THREE.InstancedMesh(geo, mat, pl.length);
+    pl.forEach((g, i) => {
+      const gx = g.x + (g.px || 0), gy = g.y + (g.py || 0);   // svjetlo na tlu može biti malo pomaknuto (fenjer iznad puta)
+      _dummy.position.set(gx, groundHeight(gx, gy) + 3, gy); _dummy.rotation.set(0, 0, 0); _dummy.scale.set(g.pool * 2, 1, g.pool * 2);
+      _dummy.updateMatrix(); im.setMatrixAt(i, _dummy.matrix);
+      im.setColorAt(i, tmp.set(g.pc || g.c));   // na tlu zasićenija boja (blijeda je izgledala kao reflektor)
+    });
+    im.frustumCulled = false; im.renderOrder = 1;   // odmah iza tla, ispod vode i jedinica
+    group.add(im);
+    NIGHT.pools = im;
+  }
+}
+function updateNightLights(n){
+  if(NIGHT.pts){ NIGHT.pts.material.uniforms.night.value = n; NIGHT.pts.material.uniforms.t.value = performance.now() / 1000; }
+  if(NIGHT.pools){ NIGHT.pools.material.opacity = 0.5 * smoothstep(0.15, 0.85, n); NIGHT.pools.visible = n > 0.05; }
+  if(matCache.decoGlow) matCache.decoGlow.color.setScalar(1.15 + 0.75 * n);   // plamen, lampe i gljive noću jače svijetle
+}
 const treeInst = new Map();   // 🌳 indeks stabla → { im, k, it } (instancirano drvo koje se može pojesti / posjeći)
 function instancedFrom(name, items, color){
-  const geo = mergedModelGeo(name);
+  const mm = DECO_GLOW.has(name) ? mergedModelGeoMulti(name) : null;
+  const glowing = !!(mm && mm.names.includes('GLOW'));   // plamen / kristal svijetli sam
+  const geo = glowing ? mm.geo : mergedModelGeo(name);
   if(!geo || !items.length) return null;
-  const mat = natureMat();
+  const mat = glowing ? mm.names.map(n => n === 'GLOW' ? decoGlowMat() : natureMat()) : natureMat();
   const im = new THREE.InstancedMesh(geo, mat, items.length);
   const dummy = new THREE.Object3D();
   items.forEach((it, i) => {
@@ -1260,6 +1396,25 @@ function buildTrees3D(){
         }
       }
     }
+    // 🏮 v0.47: baklje uz sve staze (svakih ~720, naizmjence s obje strane) — noću osvijetle put
+    const towerSpots = [];
+    for(let tm = 0; tm < 2; tm++) for(const l of LANE_LIST) for(const f of TOWER_FRACS[tm]) towerSpots.push(pointAt(LANE_PTS[l], f));
+    for(const l of LANE_LIST){
+      const pts = LANE_PTS[l], Ltot = pathLength(pts);
+      let side = 1;
+      for(let s = 300; s < Ltot - 300; s += 600){
+        const p = pointAt(pts, s / Ltot), q = pointAt(pts, Math.min(1, (s + 20) / Ltot));
+        const ux = q.x - p.x, uy = q.y - p.y, ul = Math.hypot(ux, uy) || 1;
+        side = -side;
+        const x = p.x - uy / ul * side * 128, y = p.y + ux / ul * side * 128;
+        if(Math.abs(x - y) / Math.SQRT2 < 230) continue;   // ne u rijeci
+        if(Math.min(distXY(x, y, ANCIENT_POS[0].x, ANCIENT_POS[0].y), distXY(x, y, ANCIENT_POS[1].x, ANCIENT_POS[1].y)) < 860 * MAP_S) continue;   // baze već imaju baklje
+        if(towerSpots.some(t => distXY(x, y, t.x, t.y) < 190)) continue;
+        const dx = uy / ul * side, dy = -ux / ul * side;   // smjer od fenjera prema stazi: lampa visi iznad puta
+        if(MODELS.tpl.lantern0) add('lantern0', { x, y, h: groundHeight(x, y) - 1, rot: Math.atan2(-dy, dx), s: 34, dx, dy });
+        else add('torch0', { x, y, h: groundHeight(x, y) - 1, rot: 0, s: 30, lane: true });
+      }
+    }
     // logorske vatre i kristali uz kampove, veliko kamenje oko Zmajeve jazbine
     CAMP_SPOTS.forEach((c, ci) => {
       if(c.type === 'boss'){
@@ -1337,18 +1492,37 @@ function buildTrees3D(){
     else if(side === 2){ x = -depth; y = t; } else { x = WORLD + depth; y = t; }
     add('rock_big' + (i % 2), { x, y, h: borderHeight(x, y) - 12, rot: hash01(i, 73, 5) * 6.28, s: 60 + hash01(i, 74, 6) * 80 });
   }
-  for(const name in buckets) instancedChunks(name, buckets[name], treesGroup);
-  // sjaj plamena baklji, logorskih vatri i kristala (sprite — instancirana geometrija ne svijetli)
-  const glows = [];
-  for(const it of buckets.torch0 || []) glows.push({ x: it.x, y: it.y, h: it.h + 42, c: '#ffb020', s: 56 });
-  for(const it of buckets.campfire0 || []) glows.push({ x: it.x, y: it.y, h: it.h + 16, c: '#ff8a3d', s: 90 });
-  for(const it of buckets.crystal0 || []) glows.push({ x: it.x, y: it.y, h: it.h + 28, c: '#a5f3fc', s: 70 });
-  for(const g of glows){
-    const spr = new THREE.Sprite(glowMat(g.c));
-    spr.scale.set(g.s, g.s, 1);
-    spr.position.set(g.x, g.h, g.y);
-    treesGroup.add(spr);
+  // 🍄 v0.47: svjetleće gljive uz stabla u džungli (plave kod Sentinela, ljubičaste kod Scourgea) — noću svjetlucaju
+  if(MODELS.tpl.mushglow0){
+    let nm = 0;
+    const want = Math.round(45 * MAP_S);
+    for(let i = 0; i < trees.length && nm < want; i++){
+      const t = trees[i];
+      if(hash01(t.x, t.y, 31) > 0.12) continue;
+      const a = hash01(t.x, t.y, 32) * TAU, d = 44 + hash01(t.x, t.y, 33) * 26;
+      const x = t.x + Math.cos(a) * d, y = t.y + Math.sin(a) * d;
+      if(x < 80 || y < 80 || x > WORLD - 80 || y > WORLD - 80 || Math.abs(x - y) / Math.SQRT2 < 180) continue;
+      if(LANE_LIST.some(l => distToPath(LANE_PTS[l], x, y) < 140)) continue;
+      if(Math.min(distXY(x, y, ANCIENT_POS[0].x, ANCIENT_POS[0].y), distXY(x, y, ANCIENT_POS[1].x, ANCIENT_POS[1].y)) < 700 * MAP_S) continue;
+      add(scourgeSide(x, y) > 0 && MODELS.tpl.mushglow1 ? 'mushglow1' : 'mushglow0', { x, y, h: groundHeight(x, y) - 1, rot: a, s: 24 + hash01(t.x, t.y, 34) * 10 });
+      nm++;
+    }
   }
+  for(const name in buckets) instancedChunks(name, buckets[name], treesGroup);
+  // ✨🌙 sjaj plamena baklji, logorskih vatri i kristala + noćna svjetla na tlu (fontane i svetišta u boji tima)
+  const glows = [];
+  for(const it of buckets.torch0 || []) glows.push({ x: it.x, y: it.y, h: it.h + 42, c: '#ffb020', s: 56, pool: it.lane ? 150 : 120, pc: '#ff9a2e' });
+  for(const it of buckets.campfire0 || []) glows.push({ x: it.x, y: it.y, h: it.h + 16, c: '#ff8a3d', s: 90, pool: 165, pc: '#ff6a1f' });
+  for(const it of buckets.crystal0 || []) glows.push({ x: it.x, y: it.y, h: it.h + 28, c: '#a5f3fc', s: 70, pool: 100, pc: '#38bdf8' });
+  for(const it of buckets.lantern0 || []){   // 🏮 lampa visi na kraku iznad puta
+    const ox = it.dx * 0.3 * it.s, oy = it.dy * 0.3 * it.s;
+    glows.push({ x: it.x + ox, y: it.y + oy, h: it.h + 1.15 * it.s, c: '#ffcf5a', s: 52, pool: 150, pc: '#ff9a2e', px: it.dx * 40, py: it.dy * 40 });
+  }
+  for(const it of buckets.mushglow0 || []) glows.push({ x: it.x, y: it.y, h: it.h + 8, c: '#5eead4', s: 22, pool: 45, pc: '#14b8a6' });
+  for(const it of buckets.mushglow1 || []) glows.push({ x: it.x, y: it.y, h: it.h + 8, c: '#c084fc', s: 22, pool: 45, pc: '#9333ea' });
+  for(let tm = 0; tm < 2; tm++) glows.push({ x: FOUNTAIN[tm].x, y: FOUNTAIN[tm].y, h: 0, c: TEAM_LIGHT[tm], s: 0, pool: 300, pc: TEAM_COLOR[tm] });
+  for(const s of SHRINE_SPOTS) glows.push({ x: s.x, y: s.y, h: 0, c: TEAM_LIGHT[s.team], s: 0, pool: 150, pc: TEAM_COLOR[s.team] });
+  buildNightLights(glows, treesGroup);
   scene3.add(treesGroup);
 }
 /* jednostavna šuma (ako modeli nisu dostupni) */
@@ -4224,8 +4398,8 @@ function syncScene(tAnim){
         }
         if(ud.glow){
           const s = 80 + Math.sin(tAnim * 3 + u.id) * 10 + ud.pulse * (18 + Math.sin(tAnim * 9) * 14) + fl * 70;
-          ud.glow.scale.set(s, s, 1);
-          ud.glow.material.opacity = 0.6 + ud.pulse * 0.25 + fl * 0.15;
+          ud.glow.scale.set(s * (1 + 0.15 * (1 - dayK)), s * (1 + 0.15 * (1 - dayK)), 1);   // 🌙 noću kristal kule svijetli malo jače
+          ud.glow.material.opacity = 0.6 + 0.08 * (1 - dayK) + ud.pulse * 0.25 + fl * 0.15;
         }
       } else if(ud.body){
         ud.body.material = u.flash > 0 ? lambMat('#ffffff') : lambMat('#e8e0cf');
