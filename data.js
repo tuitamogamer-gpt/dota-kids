@@ -659,7 +659,7 @@ const HEROES = [
   {
     id:'tragac', name:L('Tragač', 'Tracker'), emoji:'🦝',
     role:L('💰 Lovac na glave — nevidljivi plaćenik', '💰 Bounty hunter — invisible mercenary'),
-    hp:600, mp:250, dmg:62,
+    hp:620, mp:250, dmg:63,
     attrs:{ str:19, agi:25, int:16, strG:3.8, agiG:6.2, intG:2.4, primary:'agi' },
     range:95, speed:175, atkCd:1.0, projSpeed:0,
     passive:{ name:L('Lukavi udarac', 'Sneaky Strike'), emoji:'💢', color:'#fb923c', pid:'jinada',
@@ -914,7 +914,7 @@ const HEROES = [
       desc:L('PASIVNO: noću si brža i jača!', 'PASSIVE: at night you are faster and stronger!'),
       tip:rk => L('🌙 noću +' + Math.round((0.15 + 0.08*rk) * 100) + '% brzine i +' + (12 + 10*rk) + ' štete', '🌙 at night +' + Math.round((0.15 + 0.08*rk) * 100) + '% speed and +' + (12 + 10*rk) + ' damage') },
     abilities:[
-      { key:'Q', name:L('Huk', 'Hoot'), emoji:'📣', cd:10, mana:55, color:'#e9d5ff',
+      { key:'Q', name:L('Huk', 'Hoot'), emoji:'📣', cd:9, mana:55, color:'#e9d5ff',
         desc:L('Glasni huk — neprijatelji oko tebe su ušutkani i ne mogu bacati moći', 'A loud hoot — enemies around you are silenced and can\'t use abilities'),
         selfAoe:300,
         tip:rk => L('⚔️ ' + (70 + 50*rk) + ' štete + 🤐 ušutkani ' + (2 + 0.5*rk).toFixed(1) + ' s', '⚔️ ' + (70 + 50*rk) + ' damage + 🤐 silenced ' + (2 + 0.5*rk).toFixed(1) + ' s'),
@@ -1438,7 +1438,7 @@ const HEROES = [
   {
     id:'morskipas', name:L('Zubo', 'Zoobo'), emoji:'🦈',
     role:L('🦷 Morski pas — gladni lovac', '🦷 Shark — hungry hunter'),
-    hp:600, mp:260, dmg:56,
+    hp:600, mp:260, dmg:54,
     attrs:{ str:20, agi:24, int:12, strG:3.8, agiG:5.8, intG:1.8, primary:'agi' },
     range:90, speed:178, atkCd:1.0, projSpeed:0,
     passive:{ name:L('Miris krvi', 'Scent of Blood'), emoji:'🩸', color:'#f87171', pid:'krv',
