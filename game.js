@@ -715,7 +715,7 @@ function baseStatus(){
   return { slowT: 0, slowF: 0, stun: 0, rootT: 0, shieldT: 0, shieldF: 0,
     hasteT: 0, hasteF: 1, dmgMulT: 0, dmgMulF: 1, invisT: 0, trackT: 0,
     poisonT: 0, poisonDps: 0, poisonAcc: 0, poisonSrc: null, silenceT: 0, immuneT: 0,
-    curseT: 0, curseF: 0, blindT: 0, blindF: 0, formT: 0, rageT: 0, rageStun: 0, disarmT: 0 };
+    curseT: 0, curseF: 0, blindT: 0, blindF: 0, formT: 0, rageT: 0, rageStun: 0, disarmT: 0, stunMax: 0 };
 }
 
 function makeUnit(o){
@@ -996,7 +996,19 @@ function applySlow(t, f, dur){
   if(st.immuneT > 0) return;
   if(st.slowT <= 0 || f >= st.slowF){ st.slowF = f; st.slowT = Math.max(st.slowT, dur); }
 }
-function applyStun(t, dur){ if(t.status.immuneT > 0) return; dur += abDur(); t.status.stun = Math.max(t.status.stun, dur); }
+/* 💫 omama — v0.56: stunMax = koliko je omama trajala na početku (traka omame nad životom se prazni do kraja),
+   a junak iznad glave pokaže koliko dugo (samo nova ili znatno dulja omama, ne svaki otkucaj zone) */
+function applyStun(t, dur){
+  const st = t.status;
+  if(st.immuneT > 0) return;
+  dur += abDur();
+  if(dur <= st.stun) return;
+  if(st.stun <= 0.05 || dur > st.stun + 0.4){
+    st.stunMax = dur;
+    if(t.kind === 'hero' && dur >= 0.8) addFloat(t.x, t.y - 34, '💫 ' + dur.toFixed(1) + ' s', '#fde047', 15);
+  } else st.stunMax = Math.max(st.stunMax || 0, dur);
+  st.stun = dur;
+}
 function applyRoot(t, dur){ if(t.status.immuneT > 0) return; dur += abDur(); t.status.rootT = Math.max(t.status.rootT, dur); }
 function applySilence(t, dur){ if(t.status.immuneT > 0) return; dur += abDur(); t.status.silenceT = Math.max(t.status.silenceT, dur); }
 function applyPoison(t, dps, dur, src, label){
@@ -1808,6 +1820,8 @@ function spawnSkillshot(u, aim, o){
     dmg: o.dmg, src: u, team: u.team,
     color: o.color, emoji: o.emoji || null,
     pierce: !!o.pierce, slow: o.slow || null, hitIds: o.hitIds || {},   // v0.55: zajednički hitIds = val strijela pogodi svakoga samo jednom
+    passCreeps: !!o.passCreeps,   // 🌠 v0.56: prolazi kroz vojnike (rani ih), staje na prvom junaku / čudovištu
+    model: o.model || null, scale: o.scale || 0,   // 3D model projektila mimo emojija (Sveta strijela = velika strijela)
     onHitFn: o.onHit || null,
     abKey: abCtx && abCtx.src === u ? abCtx.key : null,   // 🎓 talenti moći djeluju i kad projektil pogodi kasnije
   });
@@ -2195,6 +2209,7 @@ function doTeleport(aim){
 // izvrši ono što čeka klik na cilj (moć ili predmet)
 function castPending(aim){
   if(!pendingCast) return;
+  aim = assistAim(player, pendingAbDef(), aim);   // 🎯 i klikom (na tlo blizu junaka)
   if(pendingCast.tp){ const a = aim; pendingCast = null; doTeleport(a); return; }
   if(pendingCast.sum != null){
     if(net.mode === 'guest') netSum(pendingCast.sum, aim);
@@ -2253,10 +2268,37 @@ function passiveRank(h, pid){
   return innateRank(h);
 }
 
-/* 🖱️ kamo cilja miš: na jedinicu pod mišem (njeno mjesto na tlu) ili na točku na tlu ispod miša */
+/* 🖱️ kamo cilja miš: na jedinicu pod mišem (njeno mjesto na tlu) ili na točku na tlu ispod miša;
+   v0.56: dok ciljaš strijelom / kuglom, pomoć pri ciljanju (assistAim) */
 function aimPoint(){
-  if(hoverUnit && !hoverUnit.dead && !hoverUnit.removeMe) return { x: hoverUnit.x, y: hoverUnit.y };
-  return { x: mouse.wx, y: mouse.wy };
+  const raw = hoverUnit && !hoverUnit.dead && !hoverUnit.removeMe ? { x: hoverUnit.x, y: hoverUnit.y } : { x: mouse.wx, y: mouse.wy };
+  return assistAim(player, pendingAbDef(), raw);
+}
+function pendingAbDef(){   // moć koja čeka klik na cilj (ne predmet ni čarolija)
+  if(!pendingCast || pendingCast.i == null || pendingCast.i < 0 || !player) return null;
+  const ab = player.abilities[pendingCast.i];
+  return ab ? ab.def : null;
+}
+/* 🎯 v0.56 pomoć pri ciljanju: strijela, kugla ili udica uperena u neprijatelja ili BLIZU neprijateljskog junaka
+   (do 1,5 širine hica) pogodi njega — i gađa malo ispred ako hoda (kao botovi, leadAim). Djeca ne moraju sama
+   pogađati kamo će junak otići; na tlu se meta vidi po krugu u boji moći (scene3d.js syncCastIndicator). */
+function assistTarget(u, def, raw){
+  if(!u || !def || !def.line || !def.lineFull) return null;
+  const hu = hoverUnit;
+  if(hu && hu.team !== u.team && !hu.dead && !hu.removeMe && isSpellTarget(hu) && canAttackTarget(u, hu) && !(def.passCreeps && hu.kind === 'creep')) return hu;
+  let best = null, bd = Math.max(80, (def.lineW || 50) * 1.5);
+  for(const e of units){
+    if(e.kind !== 'hero' || e.team === u.team || e.dead || e.removeMe || !canAttackTarget(u, e)) continue;
+    if(dist(u, e) > (def.castRange || 800) + 80) continue;
+    const d = distXY(raw.x, raw.y, e.x, e.y);
+    if(d < bd){ bd = d; best = e; }
+  }
+  return best;
+}
+function assistAim(u, def, raw){
+  const t = assistTarget(u, def, raw);
+  if(!t) return raw;
+  return def.shotSpeed ? leadAim(u, t, def.shotSpeed) : { x: t.x, y: t.y };
 }
 // igračev tok: moći s ciljem prvo pokažu domet, pa se klikom baca (ili otpuštanjem tipke kod brzog bacanja)
 function pressAbility(i, aimInstant, quick){
@@ -2847,7 +2889,10 @@ function botUseAbilities(u, eh, plan){
       case 'shot':
       case 'zone': {
         const ja = !eh && hint.type === 'zone' && jungleAim(u, hint.range);   // 🌲 v0.51: moć po području i na kamp (kad ima dosta mane)
-        if(eh && dEh < hint.range) castAbility(u, i, { x: eh.x, y: eh.y });
+        // 🌠 v0.56 dalekometna strijela (Sveta strijela): i na ranjenog junaka izvan blizine kojeg tim vidi
+        const far = !eh && hint.type === 'shot' && hint.range > 700 ? weakestEnemyHero(u, hint.range) : null;
+        const tg = eh && dEh < hint.range ? eh : (far && far.hp < far.maxhp * 0.7 ? far : null);
+        if(tg) castAbility(u, i, ab.def.shotSpeed ? leadAim(u, tg, ab.def.shotSpeed) : { x: tg.x, y: tg.y });   // 🎯 strijela ispred mete koja hoda
         else if(ja) castAbility(u, i, ja);
         break;
       }
@@ -4191,7 +4236,7 @@ function updateProjectiles(dt){
           abCtx = prev;
           burst(e.x, e.y, p.color, 6, 120, 4);
           p.hitIds[e.id] = true;
-          if(!p.pierce){ projectiles.splice(i, 1); removed = true; break; }
+          if(!p.pierce && !(p.passCreeps && e.kind === 'creep')){ projectiles.splice(i, 1); removed = true; break; }
         }
       }
       if(removed) continue;
@@ -5300,6 +5345,7 @@ function sfx(name, o){
     case 'tick':    bell(1568, 0.18, 0.035); break;
     case 'horn':    T(147, 1.1, 'sawtooth', 0.06, 165); T(220, 1.1, 'triangle', 0.07, 247, 0.03); T(294, 0.9, 'sine', 0.05, 330, 0.06); break;
     case 'crit':    N(0.07, 0.12, 'highpass', 5000, 2000, 1); T(2400, 0.12, 'square', 0.025, 1500); T(140, 0.18, 'sine', 0.13, 50, 0.02); N(0.2, 0.07, 'lowpass', 1500, 120, 0.8, 0.02); break;
+    case 'stun':    T(620, 0.08, 'square', 0.04, 160); N(0.09, 0.09, 'bandpass', 900, 300, 1.2); bell(1760, 0.16, 0.03, 0.1); bell(2093, 0.16, 0.03, 0.18); bell(1760, 0.16, 0.025, 0.26); break;   // 💫 bonk + ptičice
     case 'whoosh':  N(0.25, 0.06, 'bandpass', 600, 2400, 1.5); break;                                                 // skok / juriš
     case 'coin':    bell(1568 + Math.random() * 200, 0.25, 0.05); break;
   }
@@ -6410,6 +6456,7 @@ function drawHeroBar(u, cx, cy){
   // mana
   ctx.fillStyle = 'rgba(5,8,12,0.85)'; ctx.fillRect(x - 1, y + h + 1, w + 2, 5);
   ctx.fillStyle = '#38bdf8'; ctx.fillRect(x, y + h + 2, w * (u.maxmp ? clamp(u.mp / u.maxmp, 0, 1) : 0), 3);
+  drawStunBar(u, x, y + h + 8, w, true);   // 💫 v0.56
   // level
   const lx = x - 19;
   ctx.fillStyle = 'rgba(5,8,12,0.9)'; ctx.fillRect(lx, y - 1, 17, h + 7);
@@ -6424,6 +6471,21 @@ function drawHeroBar(u, cx, cy){
     ctx.strokeStyle = '#fde047'; ctx.strokeRect(bx + 0.5, y - 0.5, tw - 1, h + 6);
     ctx.fillStyle = '#fde047'; ctx.textAlign = 'left';
     ctx.fillText(tx, bx + 4, y + (h + 5) / 2);
+  }
+}
+/* 💫 v0.56 traka omame (kao u DotA 2): zlatna, prazni se do kraja omame; junaci uz nju i sekunde */
+function drawStunBar(u, x, y, w, secs){
+  const st = u.status;
+  if(!st || !(st.stun > 0)) return;
+  const f = clamp(st.stun / Math.max(st.stunMax || st.stun, 0.1), 0, 1);
+  ctx.fillStyle = 'rgba(5,8,12,0.85)'; ctx.fillRect(x - 1, y - 1, w + 2, 6);
+  ctx.fillStyle = '#facc15'; ctx.fillRect(x, y, w * f, 4);
+  ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillRect(x, y, w * f, 1);
+  if(secs){
+    ctx.font = fontTxt(10.5, true); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.strokeStyle = 'rgba(0,0,0,0.75)'; ctx.lineWidth = 3;
+    const tx = '💫' + st.stun.toFixed(1);
+    ctx.strokeText(tx, x + w + 3, y + 2); ctx.fillStyle = '#fde047'; ctx.fillText(tx, x + w + 3, y + 2);
   }
 }
 function barHeight(u){
@@ -6624,6 +6686,7 @@ function drawWorldOverlay(){
     }
     else if(u.kind === 'creep'){
       drawBar(s.x - 16, s.y, 32, 5, u.hp / u.maxhp, TEAM_COLOR[u.team]);
+      drawStunBar(u, s.x - 16, s.y + 7, 32);
       const lh = lastHitMark(u);   // 🪙 pomoć za "zadnji udarac": tvoj sljedeći udarac ga pobjeđuje
       if(lh){
         const bob = Math.sin(performance.now() / 120) * 2;
@@ -6636,6 +6699,7 @@ function drawWorldOverlay(){
     else if(u.kind === 'neutral'){
       const big = u.boss || u.drake, w = u.boss ? 80 : (u.drake ? 64 : 40), bh = big ? 8 : 5;
       drawBar(s.x - w / 2, s.y, w, bh, u.hp / u.maxhp, u.drake ? DRAKES[u.drake].color : '#f59e0b');
+      drawStunBar(u, s.x - w / 2, s.y + bh + 2, w);
       if(u.nlvl > 1){   // 🐲 level čudovišta (raste s vremenom)
         const lx = s.x - w / 2 - 15, ly = s.y - 2, lh = Math.max(9, bh + 4);
         ctx.fillStyle = 'rgba(5,8,12,0.85)'; ctx.fillRect(lx, ly, 13, lh);
@@ -7439,6 +7503,13 @@ function drawHud(){
         ctx.fillText('+', ax + as / 2, ay + as / 2 + 2);
       }
       else {
+        const stunned = player.status.stun > 0, silenced = player.status.silenceT > 0;
+        if(!ab.def.passive && (stunned || silenced)){   // 💫 v0.56: omamljen / ušutkan — moć se sada ne može baciti
+          ctx.fillStyle = stunned ? 'rgba(113,63,18,0.6)' : 'rgba(30,41,59,0.65)';
+          ctx.beginPath(); ctx.roundRect(ax, ay, as, as, 6); ctx.fill();
+          ctx.font = fontEmoji(ab.cd > 0 ? 14 : 22);
+          ctx.fillText(stunned ? '💫' : '🤐', ax + (ab.cd > 0 ? as - 12 : as / 2), ay + (ab.cd > 0 ? as - 14 : as / 2));
+        }
         if(!ab.def.passive && ab.cd > 0){
           ctx.fillStyle = 'rgba(0,0,0,0.6)';
           ctx.beginPath();

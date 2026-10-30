@@ -302,7 +302,7 @@ function buildSnapshot(){
     u: us,
     p: projectiles.map(p => ({ i: p.id, x: Math.round(p.x), y: Math.round(p.y), r: p.r, cl: p.color, e: p.emoji || 0,
       sh: p.shot || 0, sx: Math.round(p.src ? p.src.x : p.x), sy: Math.round(p.src ? p.src.y : p.y),
-      tx: p.target ? Math.round(p.target.x) : 0, ty: p.target ? Math.round(p.target.y) : 0, cr: p.crit ? 1 : 0, bg: p.big ? 1 : 0 })),
+      tx: p.target ? Math.round(p.target.x) : 0, ty: p.target ? Math.round(p.target.y) : 0, cr: p.crit ? 1 : 0, bg: p.big ? 1 : 0, md: p.model || 0, sc: p.scale || 0 })),
     z: zones.map(z => ({ i: z.id, x: Math.round(z.x), y: Math.round(z.y), r: z.r, t: +z.t.toFixed(2), dl: z.delay, s: z.started ? 1 : 0, cl: z.color, e: z.emoji, tk: z.ticksLeft })),
     rn: runes.length ? [{ x: runes[0].x, y: runes[0].y, di: RUNE_TYPES.indexOf(runes[0].def) }] : [],
     mk: markers.map(m => ({ x: Math.round(m.x), y: Math.round(m.y), t: +m.t.toFixed(2), r: Math.round(m.r), ir: m.isRing ? 1 : 0, cl: m.color })),
@@ -334,7 +334,9 @@ function maybeSendSnapshot(now){
 
 /* ---------- gost: primjena snapshotta ---------- */
 function unpackStatus(st, arr){
-  st.slowT = arr[0] / 10; st.stun = arr[1] / 10; st.rootT = arr[2] / 10;
+  const ns = arr[1] / 10;   // 💫 v0.56: nova (ili znatno dulja) omama → puna traka omame
+  if(ns > 0 && (st.stun <= 0.05 || ns > st.stun + 0.4)) st.stunMax = ns; else if(ns > (st.stunMax || 0)) st.stunMax = ns;
+  st.slowT = arr[0] / 10; st.stun = ns; st.rootT = arr[2] / 10;
   st.shieldT = arr[3] / 10; st.hasteT = arr[4] / 10; st.invisT = arr[5] / 10;
   st.trackT = arr[6] / 10; st.dmgMulT = arr[7] / 10;
   st.silenceT = (arr[8] || 0) / 10; st.immuneT = (arr[9] || 0) / 10; st.poisonT = (arr[10] || 0) / 10;
@@ -488,7 +490,7 @@ function applySnapshot(d){
   // projektili / zone / rune
   projectiles = mergeById(projectiles, d.p,
     o => ({ id: o.i, kind: 'homing', x: o.x, y: o.y, r: o.r, color: o.cl, emoji: o.e || null,
-      shot: o.sh || null, sx: o.sx, sy: o.sy, crit: !!o.cr, big: !!o.bg }),
+      shot: o.sh || null, sx: o.sx, sy: o.sy, crit: !!o.cr, big: !!o.bg, model: o.md || null, scale: o.sc || 0 }),
     (p, o) => { p.x = o.x; p.y = o.y; p.tx = o.tx || null; p.ty = o.ty || null; });
   zones = mergeById(zones, d.z,
     o => ({ id: o.i, x: o.x, y: o.y, r: o.r, t: o.t, delay: o.dl, started: !!o.s,

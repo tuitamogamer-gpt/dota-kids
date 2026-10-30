@@ -1874,6 +1874,7 @@ function ensureCastInd(){
     edgeR: stripMesh(36, 0xffffff, 0.9),
     head: stripMesh(6, 0xfde047, 0.7),            //   i vrh
     hover: annulusMesh(48, 0xef4444, 0.95),       // jedinica pod mišem / meta moći
+    lock: annulusMesh(40, 0xef4444, 0.75),        // 🎯 v0.56: meta koju junak napada
   };
   return castInd;
 }
@@ -1925,6 +1926,19 @@ function syncTpIndicator(tAnim){
   }
   for(let i = n; i < tpMarks.length; i++) tpMarks[i].visible = false;
 }
+/* prvi neprijatelj na putu hica (kao updateProjectiles: dodir širine hica i tijela) — Sveta strijela preskače vojnike */
+function lineFirstHit(u, def, ux, uz, len){
+  let best = null, bt = 1e9;
+  const W = (def.lineW || 50) / 2;
+  for(const e of units){
+    if(e.team === u.team || e.dead || e.removeMe || e.invuln || !isSpellTarget(e) || !seenByPlayer(e)) continue;
+    if(def.passCreeps && e.kind === 'creep') continue;
+    const rx = e.x - u.x, ry = e.y - u.y, t = rx * ux + ry * uz;
+    if(t < 0 || t > len + (e.r || 0)) continue;
+    if(Math.abs(rx * uz - ry * ux) <= W + (e.r || 0) && t < bt){ bt = t; best = e; }
+  }
+  return best;
+}
 function syncCastIndicator(){
   const ci = ensureCastInd();
   hideCastInd();
@@ -1942,6 +1956,12 @@ function syncCastIndicator(){
     const r = player.atkRange + 40;
     setAnnulus(ci.range, px, pz, r - 6, r);
     ci.range.material.color.set('#f87171');
+  }
+  // 🎯 v0.56 meta koju napadaš: crveni krug pod njom pulsira (vidiš koga tučeš, i u gužvi)
+  const at = !player.dead ? player.attackTarget : null;
+  if(at && !at.dead && !at.removeMe && at.team !== player.team && at !== hoverUnit && seenByPlayer(at)){
+    const r = unitHitShape(at).R * 1.3, k = 0.5 + 0.5 * Math.sin(performance.now() / 140);
+    setAnnulus(ci.lock, at.x, at.y, r - 5 - 3 * k, r + 2 * k);
   }
   // ⭕ jedinica pod mišem: crveni krug za neprijatelja, zeleni za prijatelja; pri ciljanju u boji moći
   const hu = hoverUnit;
@@ -1975,6 +1995,15 @@ function syncCastIndicator(){
       setStrip(ci.edgeR, px, pz, ux, uz, len - head, 5, 5, -W / 2);
       setStrip(ci.head, px + ux * (len - head), pz + uz * (len - head), ux, uz, head, W * 1.6, 0, 0);
       ci.body.material.color.copy(col); ci.head.material.color.copy(col);
+      if(def.lineFull){   // 🎯 v0.56: koga će hitac pogoditi — meta pomoći pri ciljanju ili prvi neprijatelj na putu
+        const hu = hoverUnit && !hoverUnit.dead && !hoverUnit.removeMe ? hoverUnit : null;
+        const tg = assistTarget(player, def, hu ? { x: hu.x, y: hu.y } : { x: mouse.wx, y: mouse.wy }) || lineFirstHit(player, def, ux, uz, len);
+        if(tg){
+          const r = unitHitShape(tg).R * 1.6 + 5 * Math.sin(performance.now() / 110);
+          setAnnulus(ci.hover, tg.x, tg.y, r - 9, r);
+          ci.hover.material.color.copy(col);
+        }
+      }
     }
     const R = def.aoe || (def.line ? 0 : (def.unitAim ? 60 : 34));   // bez kruga djelovanja: mala oznaka mjesta (skok, treptaj)
     if(R){
@@ -2803,9 +2832,10 @@ const PROJ_TRAIL = { proj_fireball: ['#ff7a1a', '#ffe26b'], proj_ice: ['#bfe6ff'
   proj_bee: ['#fde68a'], proj_slime: ['#bef264'], proj_quill: [], proj_ink: ['#312e81', '#1e1b4b'],
   proj_rainbow: ['#f87171', '#fbbf24', '#4ade80', '#60a5fa', '#c084fc'], proj_pellet: ['#e5e7eb', '#fde68a'], proj_hook: [], proj_gust: ['#e0f2fe', '#ffffff'] };
 function projModelName(p){
-  return (p.emoji && PROJ_BY_EMOJI[p.emoji]) || (p.shot && PROJ_BY_SHOT[p.shot]) || null;
+  return p.model || (p.emoji && PROJ_BY_EMOJI[p.emoji]) || (p.shot && PROJ_BY_SHOT[p.shot]) || null;
 }
 function projScale(name, p){
+  if(p.scale) return p.scale;
   switch(name){
     case 'proj_fireball': return 26 + (p.r || 6) * 0.95;
     case 'proj_ice': return p.emoji ? 38 : 28;
@@ -2866,7 +2896,7 @@ function buildProjMesh(p){
       basicMat(p.color));
     g.add(ball);
   }
-  const noGlow = name === 'proj_pellet' || name === 'proj_arrow' || name === 'proj_feather' || name === 'proj_acorn' || name === 'proj_hawk' || name === 'proj_tongue' || name === 'proj_bee' || name === 'proj_quill' || name === 'proj_banana' || name === 'proj_net' || name === 'proj_hook';
+  const noGlow = !p.model && (name === 'proj_pellet' || name === 'proj_arrow' || name === 'proj_feather' || name === 'proj_acorn' || name === 'proj_hawk' || name === 'proj_tongue' || name === 'proj_bee' || name === 'proj_quill' || name === 'proj_banana' || name === 'proj_net' || name === 'proj_hook');
   if(p.crit || p.big){   // 💥 kritični / veliki hitac: crveno-zlatni sjaj oko projektila
     const cg = new THREE.Sprite(glowMat(p.crit ? '#ff5a1f' : '#ffd166'));
     cg.scale.set(110, 110, 1);
@@ -2955,7 +2985,7 @@ function syncProj(p, g, tAnim, dt){
       ud.critGlow.scale.set(s, s, 1);
       if(seenProj(p)) fxSpawn(p.x, p.y, h, Math.random() < 0.5 ? '#ff5a1f' : '#ffd166', { spd: 20, up: 10, grav: 0, life: 0.4, size: 24 });
     }
-    const tr = PROJ_TRAIL[ud.name];
+    const tr = p.model ? [p.color || '#ffffff', '#fff7d6'] : PROJ_TRAIL[ud.name];   // 🌠 Sveta strijela: mjesečeve iskre
     if(tr && tr.length && seenProj(p) && Math.random() < 0.9){
       const c = tr[Math.floor(Math.random() * tr.length)];
       fxSpawn(p.x, p.y, h, c, { spd: 14, up: 6, grav: 0, life: 0.35, size: Math.max(14, (p.r || 8) * 1.3) });
@@ -3026,7 +3056,7 @@ function projEndFx(p, g){
   }
   if(n === 'proj_fireball') for(let i = 0; i < 12; i++) fxSpawn(p.x, p.y, h, i % 2 ? '#ff7a1a' : '#ffe26b', { spd: 90, up: 40, grav: -40, life: 0.5, size: 26 });
   else if(n === 'proj_ice') for(let i = 0; i < 10; i++) fxSpawn(p.x, p.y, h, '#dff6ff', { spd: 80, up: 50, grav: -60, life: 0.5, size: 18 });
-  else if(n === 'proj_moon') for(let i = 0; i < 12; i++) fxSpawn(p.x, p.y, h, '#e9d5ff', { spd: 70, up: 60, grav: -20, life: 0.6, size: 20 });
+  else if(n === 'proj_moon' || p.model) for(let i = 0; i < 12; i++) fxSpawn(p.x, p.y, h, i % 3 ? (p.color || '#e9d5ff') : '#fff7d6', { spd: 70, up: 60, grav: -20, life: 0.6, size: 20 });
   else if(n === 'proj_star' || n === 'proj_bolt' || n === 'proj_pellet') for(let i = 0; i < 6; i++) fxSpawn(p.x, p.y, h, '#fff7c2', { spd: 70, up: 30, grav: -40, life: 0.4, size: 16 });
   if((p.big || p.crit) && g.visible){   // 💥 veliki / kritični hitac: prasak na meti
     hitSpark(p.x, p.y, h, p.big ? '#fde047' : '#ff7a3d', p.big ? 260 : 180);
@@ -3315,31 +3345,62 @@ function tombFx(x, y, gh){
 }
 
 /* ---------- statusi u 3D: zvjezdice, korijenje, pahulje, aura ---------- */
-function ensureStars(g, h){
+/* 💫 omama (v0.56): junaci 5 zvjezdica i zlatni kolut oko glave, ostali 3; pred kraj omame se smanje */
+let stunHaloMat = null;
+function ensureStars(g, h, big){
   const ud = g.userData;
   if(ud.stars !== undefined) return ud.stars;
-  const im = instancedFx('fx_star', 3, true);
+  const im = instancedFx('fx_star', big ? 5 : 3, true);
   if(im){ g.add(im); ud.starsH = h; }
   ud.stars = im || null;
+  if(big){
+    if(!stunHaloMat) stunHaloMat = new THREE.MeshBasicMaterial({ color: '#fde047', transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending });
+    ud.halo = new THREE.Mesh(cachedGeo('stunHalo', () => new THREE.TorusGeometry(34, 2.4, 6, 40)), stunHaloMat);
+    ud.halo.visible = false;
+    g.add(ud.halo);
+  }
   return ud.stars;
 }
-function updateStars(g, tAnim){
-  const im = g.userData.stars;
-  for(let i = 0; i < 3; i++){
-    const a = tAnim * 5 + i * TAU / 3;
-    _dummy.position.set(Math.cos(a) * 30, g.userData.starsH + Math.sin(a * 2) * 4, Math.sin(a) * 30);
-    _dummy.rotation.set(0, -g.rotation.y, 0);   // zvijezde uvijek gledaju prema kameri
-    _dummy.scale.setScalar(28);
+function updateStars(g, tAnim, left){
+  const ud = g.userData, im = ud.stars, n = im.count, big = n > 3;
+  const k = 0.35 + 0.65 * Math.min(1, left / 0.4);   // zadnjih 0,4 s zvjezdice se smanje (omama prolazi)
+  for(let i = 0; i < n; i++){
+    const a = tAnim * (big ? 4.2 : 5) + i * TAU / n;
+    _dummy.position.set(Math.cos(a) * (big ? 38 : 30), ud.starsH + Math.sin(a * 2) * 5, Math.sin(a) * (big ? 38 : 30));
+    _dummy.rotation.set(0, -g.rotation.y, Math.sin(tAnim * 6 + i) * 0.4);   // zvijezde gledaju prema kameri i njišu se
+    _dummy.scale.setScalar((big ? 32 : 26) * k);
     _dummy.updateMatrix();
     im.setMatrixAt(i, _dummy.matrix);
   }
   im.instanceMatrix.needsUpdate = true;
+  if(ud.halo){
+    ud.halo.visible = true;
+    ud.halo.position.set(0, ud.starsH - 2, 0);
+    ud.halo.rotation.set(Math.PI / 2 + Math.sin(tAnim * 3) * 0.22, Math.cos(tAnim * 2.4) * 0.22, tAnim * 2);   // kolut se ljulja kao vrtoglavica
+    ud.halo.scale.setScalar(k * (1 + Math.sin(tAnim * 9) * 0.04));
+  }
+}
+/* 💫 početak omame: zlatni udarni val, bljesak i iskre iz glave, "bonk" — junaku kojeg igra igrač malo zadrma kameru */
+function stunImpact(u, headH){
+  if(typeof seenByPlayer === 'function' && !seenByPlayer(u)) return;
+  const gh = groundHeight(u.x, u.y), big = u.kind === 'hero';
+  shockwave(u.x, u.y, big ? 115 : 70, '#fde047');
+  spellLight(u.x, u.y, gh + headH, '#fde047', big ? 2.2 : 1.3, 0.35, 320);
+  for(let i = 0; i < (big ? 14 : 6); i++)
+    fxSpawn(u.x, u.y, gh + headH, i % 3 ? '#fde047' : '#ffffff', { spd: big ? 130 : 90, up: 70, grav: -90, life: 0.5, size: big ? 20 : 15 });
+  if(big){
+    sfxAt('stun', u.x, u.y);
+    if(u === player) shakeAt(u.x, u.y, 0.6, 0.3);
+  }
 }
 function syncStatusFx(u, g, tAnim, dt, headH){
   const ud = g.userData, st = u.status;
-  // omama: zvjezdice kruže oko glave
-  if(st.stun > 0){ if(ensureStars(g, headH)){ ud.stars.visible = true; updateStars(g, tAnim); } }
-  else if(ud.stars) ud.stars.visible = false;
+  // omama: zvjezdice kruže oko glave — v0.56: udar na početku, kolut, traka omame je u HUD-u (game.js drawStunBar)
+  const sv = st.stun || 0;
+  if(sv > 0 && ((ud.stunPrev || 0) <= 0.05 || sv > ud.stunPrev + 0.4)) stunImpact(u, headH);
+  ud.stunPrev = sv;
+  if(sv > 0){ if(ensureStars(g, headH, u.kind === 'hero')){ ud.stars.visible = true; updateStars(g, tAnim, sv); } }
+  else { if(ud.stars) ud.stars.visible = false; if(ud.halo) ud.halo.visible = false; }
   // korijen: korijenje izbije i drži noge
   if(st.rootT > 0){
     if(ud.roots === undefined){ ud.roots = modelInstance('fx_root', 0, 42); if(ud.roots) g.add(ud.roots); }
@@ -4896,10 +4957,15 @@ function pickUnitScreen(sx, sy, pad, filter){
     const a = worldToScreen(u.x, gh, u.y), b = worldToScreen(u.x, gh + hs.H, u.y);
     const m = worldToScreen(u.x, gh + hs.H * 0.5, u.y), c = worldToScreen(u.x + hs.R, gh + hs.H * 0.5, u.y);
     if(!a || !b || !m || !c) continue;
-    const pr = Math.hypot(c.x - m.x, c.y - m.y) + (pad || 0);
-    const dd = distToSeg(sx, sy, a.x, a.y, b.x, b.y);
+    const foeHero = u.kind === 'hero' && u.team !== myTeam;
+    const pr = Math.hypot(c.x - m.x, c.y - m.y) + (pad || 0) + (foeHero ? 6 : 0);   // 🎯 v0.56: neprijateljski junak je malo "deblji" za klik
+    let dd = distToSeg(sx, sy, a.x, a.y, b.x, b.y);
+    if(u.kind === 'hero'){   // klik na ime ili traku života (šire od tijela) gađa junaka
+      const t = worldToScreen(u.x, gh + barHeight(u), u.y);
+      if(t && sx >= t.x - 36 && sx <= t.x + 50 && sy >= t.y - 28 && sy <= t.y + 9) dd = Math.min(dd, pr * 0.4);
+    }
     if(dd > pr) continue;
-    const s = dd / pr - (u.kind === 'hero' ? 0.25 : 0);   // junaci imaju malu prednost pred vojnicima
+    const s = dd / pr - (u.kind === 'hero' ? 0.35 : 0);   // junaci imaju prednost pred vojnicima (gužva u borbi)
     if(s < bs){ bs = s; best = u; }
   }
   return best;
