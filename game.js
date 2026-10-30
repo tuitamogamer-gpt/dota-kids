@@ -1820,7 +1820,6 @@ function spawnSkillshot(u, aim, o){
     dmg: o.dmg, src: u, team: u.team,
     color: o.color, emoji: o.emoji || null,
     pierce: !!o.pierce, slow: o.slow || null, hitIds: o.hitIds || {},   // v0.55: zajednički hitIds = val strijela pogodi svakoga samo jednom
-    passCreeps: !!o.passCreeps,   // 🌠 v0.56: prolazi kroz vojnike (rani ih), staje na prvom junaku / čudovištu
     model: o.model || null, scale: o.scale || 0,   // 3D model projektila mimo emojija (Sveta strijela = velika strijela)
     onHitFn: o.onHit || null,
     abKey: abCtx && abCtx.src === u ? abCtx.key : null,   // 🎓 talenti moći djeluju i kad projektil pogodi kasnije
@@ -2285,13 +2284,26 @@ function pendingAbDef(){   // moć koja čeka klik na cilj (ne predmet ni čarol
 function assistTarget(u, def, raw){
   if(!u || !def || !def.line || !def.lineFull) return null;
   const hu = hoverUnit;
-  if(hu && hu.team !== u.team && !hu.dead && !hu.removeMe && isSpellTarget(hu) && canAttackTarget(u, hu) && !(def.passCreeps && hu.kind === 'creep')) return hu;
+  if(hu && hu.team !== u.team && !hu.dead && !hu.removeMe && isSpellTarget(hu) && canAttackTarget(u, hu)) return hu;
   let best = null, bd = Math.max(80, (def.lineW || 50) * 1.5);
   for(const e of units){
     if(e.kind !== 'hero' || e.team === u.team || e.dead || e.removeMe || !canAttackTarget(u, e)) continue;
     if(dist(u, e) > (def.castRange || 800) + 80) continue;
     const d = distXY(raw.x, raw.y, e.x, e.y);
     if(d < bd){ bd = d; best = e; }
+  }
+  return best;
+}
+/* 🎯 v0.56 prvi neprijatelj na putu hica (kao updateProjectiles: dodir širine hica i tijela) — vojnik na putu zaustavi strijelu;
+   igračev indikator (vis = seenByPlayer) i bot koji ne želi strijelu potrošiti na vojnika (bot.clear) */
+function lineFirstHit(u, def, ux, uz, len, vis){
+  let best = null, bt = 1e9;
+  const W = (def.lineW || 50) / 2;
+  for(const e of units){
+    if(e.team === u.team || e.dead || e.removeMe || e.invuln || !isSpellTarget(e) || (vis && !vis(e))) continue;
+    const rx = e.x - u.x, ry = e.y - u.y, t = rx * ux + ry * uz;
+    if(t < 0 || t > len + (e.r || 0)) continue;
+    if(Math.abs(rx * uz - ry * ux) <= W + (e.r || 0) && t < bt){ bt = t; best = e; }
   }
   return best;
 }
@@ -2892,7 +2904,13 @@ function botUseAbilities(u, eh, plan){
         // 🌠 v0.56 dalekometna strijela (Sveta strijela): i na ranjenog junaka izvan blizine kojeg tim vidi
         const far = !eh && hint.type === 'shot' && hint.range > 700 ? weakestEnemyHero(u, hint.range) : null;
         const tg = eh && dEh < hint.range ? eh : (far && far.hp < far.maxhp * 0.7 ? far : null);
-        if(tg) castAbility(u, i, ab.def.shotSpeed ? leadAim(u, tg, ab.def.shotSpeed) : { x: tg.x, y: tg.y });   // 🎯 strijela ispred mete koja hoda
+        const aim = tg && (ab.def.shotSpeed ? leadAim(u, tg, ab.def.shotSpeed) : { x: tg.x, y: tg.y });   // 🎯 strijela ispred mete koja hoda
+        if(aim && hint.clear){   // 🌠 Sveta strijela: ne troši je na vojnika koji stoji na putu
+          const dx = aim.x - u.x, dy = aim.y - u.y, L = Math.hypot(dx, dy) || 1;
+          const first = lineFirstHit(u, ab.def, dx / L, dy / L, Math.min(L + 60, ab.def.castRange || L + 60));
+          if(first && first !== tg) break;
+        }
+        if(aim) castAbility(u, i, aim);
         else if(ja) castAbility(u, i, ja);
         break;
       }
@@ -4236,7 +4254,7 @@ function updateProjectiles(dt){
           abCtx = prev;
           burst(e.x, e.y, p.color, 6, 120, 4);
           p.hitIds[e.id] = true;
-          if(!p.pierce && !(p.passCreeps && e.kind === 'creep')){ projectiles.splice(i, 1); removed = true; break; }
+          if(!p.pierce){ projectiles.splice(i, 1); removed = true; break; }
         }
       }
       if(removed) continue;

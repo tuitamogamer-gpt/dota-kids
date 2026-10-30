@@ -1926,19 +1926,6 @@ function syncTpIndicator(tAnim){
   }
   for(let i = n; i < tpMarks.length; i++) tpMarks[i].visible = false;
 }
-/* prvi neprijatelj na putu hica (kao updateProjectiles: dodir širine hica i tijela) — Sveta strijela preskače vojnike */
-function lineFirstHit(u, def, ux, uz, len){
-  let best = null, bt = 1e9;
-  const W = (def.lineW || 50) / 2;
-  for(const e of units){
-    if(e.team === u.team || e.dead || e.removeMe || e.invuln || !isSpellTarget(e) || !seenByPlayer(e)) continue;
-    if(def.passCreeps && e.kind === 'creep') continue;
-    const rx = e.x - u.x, ry = e.y - u.y, t = rx * ux + ry * uz;
-    if(t < 0 || t > len + (e.r || 0)) continue;
-    if(Math.abs(rx * uz - ry * ux) <= W + (e.r || 0) && t < bt){ bt = t; best = e; }
-  }
-  return best;
-}
 function syncCastIndicator(){
   const ci = ensureCastInd();
   hideCastInd();
@@ -1995,9 +1982,9 @@ function syncCastIndicator(){
       setStrip(ci.edgeR, px, pz, ux, uz, len - head, 5, 5, -W / 2);
       setStrip(ci.head, px + ux * (len - head), pz + uz * (len - head), ux, uz, head, W * 1.6, 0, 0);
       ci.body.material.color.copy(col); ci.head.material.color.copy(col);
-      if(def.lineFull){   // 🎯 v0.56: koga će hitac pogoditi — meta pomoći pri ciljanju ili prvi neprijatelj na putu
+      if(def.lineFull){   // 🎯 v0.56: koga će hitac pogoditi — prvi neprijatelj na putu (i vojnik koji smeta!) ili meta pomoći pri ciljanju
         const hu = hoverUnit && !hoverUnit.dead && !hoverUnit.removeMe ? hoverUnit : null;
-        const tg = assistTarget(player, def, hu ? { x: hu.x, y: hu.y } : { x: mouse.wx, y: mouse.wy }) || lineFirstHit(player, def, ux, uz, len);
+        const tg = lineFirstHit(player, def, ux, uz, len, seenByPlayer) || assistTarget(player, def, hu ? { x: hu.x, y: hu.y } : { x: mouse.wx, y: mouse.wy });
         if(tg){
           const r = unitHitShape(tg).R * 1.6 + 5 * Math.sin(performance.now() / 110);
           setAnnulus(ci.hover, tg.x, tg.y, r - 9, r);

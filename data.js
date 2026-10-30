@@ -652,21 +652,26 @@ const HEROES = [
       tip:rk => L('🌙 odskok: ' + (25 + 10*rk) + '% štete drugom neprijatelju', '🌙 bounce: ' + (25 + 10*rk) + '% damage to a second enemy') },
     abilities:[
       { key:'Q', name:L('Sveta strijela', 'Sacred Arrow'), emoji:'🌠', cd:11, mana:60, color:'#e9d5ff',
-        desc:L('Mjesečeva strijela leti PREKO CIJELE MAPE, prolazi kroz vojnike i zabije se u prvog junaka ili čudovište — što dulje leti, dulje ga omami (do 4 s) i jače rani!',
-          'A moon arrow that flies ACROSS THE MAP, passes through creeps and sticks into the first hero or monster — the farther it flies, the longer it stuns (up to 4 s) and the more it hurts!'),
-        target:'point', castRange:2000, line:true, lineFull:true, lineW:56, shotSpeed:950, passCreeps:true,
-        tip:rk => L('⚔️ ' + (60 + 30*rk) + '–' + (100 + 55*rk) + ' štete, omama ' + 0.6 + '–' + (2 + 0.5*rk).toFixed(1) + ' s (najjače nakon 1500 puta)',
-          '⚔️ ' + (60 + 30*rk) + '–' + (100 + 55*rk) + ' damage, stun ' + 0.6 + '–' + (2 + 0.5*rk).toFixed(1) + ' s (strongest after 1500 distance)'),
-        bot:{type:'shot', range:1300},
-        cast(u, aim, rk){   // 🌠 v0.56 kao Miranina Sveta strijela (DotA 2): daleko, brzo, omama raste s putem
-          return spawnSkillshot(u, aim, {speed:950, r:22, range:2000, passCreeps:true, model:'proj_arrow', scale:74,
-            dmg:60 + 30*rk, color:'#e9d5ff', emoji:'🌠', sacred:true,
+        desc:L('Mjesečeva strijela leti PREKO POLA MAPE i zabije se u PRVOGA koga pogodi (i vojnik je zaustavi — gađaj pametno!). Što dulje leti, dulje omami (do 4 s) i jače rani. Čudovište iz džungle odmah pobijedi!',
+          'A moon arrow that flies ACROSS HALF THE MAP and sticks into the FIRST unit it hits (a creep stops it too — aim smart!). The farther it flies, the longer it stuns (up to 4 s) and the more it hurts. A jungle monster is defeated instantly!'),
+        target:'point', castRange:2000, line:true, lineFull:true, lineW:56, shotSpeed:950,
+        tip:rk => L('⚔️ ' + (60 + 30*rk) + '–' + (100 + 55*rk) + ' štete, omama ' + 0.6 + '–' + (2 + 0.5*rk).toFixed(1) + ' s (najjače nakon 1500 puta) • čudovište iz džungle: odmah pobijeđeno',
+          '⚔️ ' + (60 + 30*rk) + '–' + (100 + 55*rk) + ' damage, stun ' + 0.6 + '–' + (2 + 0.5*rk).toFixed(1) + ' s (strongest after 1500 distance) • jungle monster: defeated instantly'),
+        bot:{type:'shot', range:1300, clear:true},
+        cast(u, aim, rk){   // 🌠 v0.56 kao Miranina Sveta strijela (DotA 2): daleko, brzo, staje na prvoj jedinici, omama raste s putem
+          return spawnSkillshot(u, aim, {speed:950, r:22, range:2000, model:'proj_arrow', scale:74,
+            dmg:60 + 30*rk, color:'#e9d5ff', emoji:'🌠',
             onHit(e, p){
-              if(e.kind === 'creep') return;   // kroz vojnike samo prolazi (malo ih rani)
+              if(e.kind === 'neutral' && !e.boss && !e.drake){   // čudovište iz džungle (ne Zmaj ni zmajčići): odmah pobijeđeno
+                if(!e.dead) applyDamage(e, e.hp + e.maxhp * 10 + 9999, u);
+                addFloat(e.x, e.y - 30, L('🌠 Jednim pogotkom!', '🌠 One shot!'), '#e9d5ff', 17);
+                burst(e.x, e.y, '#e9d5ff', 22, 260, 6);
+                return;
+              }
               const far = Math.min(1, (p ? p.traveled : 0) / 1500);
               applyStun(e, 0.6 + far * (1.4 + 0.5*rk));
               applyDamage(e, Math.round(far * (40 + 25*rk)), u);
-              if(far > 0.66) addFloat(e.x, e.y - 30, L('🌙 Dalekometni pogodak!', '🌙 Long shot!'), '#e9d5ff', 17);
+              if(far > 0.66 && e.kind === 'hero') addFloat(e.x, e.y - 30, L('🌙 Dalekometni pogodak!', '🌙 Long shot!'), '#e9d5ff', 17);
               burst(e.x, e.y, '#e9d5ff', 18, 240, 6);
               ring(e.x, e.y, 70 + 90 * far, '#e9d5ff');
             }});
