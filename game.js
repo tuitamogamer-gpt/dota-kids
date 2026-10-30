@@ -2383,7 +2383,7 @@ function performAttack(u, t){
   const frost = u.frostT > 0 && !isStructure(t);            // ❄️ Ledene strijele
   if(frost) dmg += u.frostDmg;
   const mk = u.kind === 'hero' && u.hero.id === 'irbis' && u.abilities[3] ? u.abilities[3].rank : 0;   // 🎖️ Majstorica luka
-  const mkProc = !!(mk && !isStructure(t) && Math.random() < 0.25 + 0.05 * mk &&
+  const mkProc = !!(mk && !isStructure(t) && Math.random() < 0.2 + 0.05 * mk &&
     (hasTal(u, 'irbis_r_always') || !units.some(e => e.kind === 'hero' && e.team !== u.team && !e.dead && dist(u, e) < 400)));
   const zalac = passiveRank(u, 'zalac');       // 🧪 Otrovni prasak (Škorpo)
   // pasivne moći napadača
@@ -2429,7 +2429,7 @@ function performAttack(u, t){
     if(jinProc){ applySlow(tt, 0.3, 1.5); addFloat(tt.x, tt.y, '💢', '#fb923c', 15); }
     if(dodir) applySlow(tt, 0.1 + 0.05 * dodir, 1.5);
     if(frost) applySlow(tt, u.frostSlow, 1.5);
-    if(mkProc && !tt.dead){ applyDamage(tt, 40 + 30 * mk, u); addFloat(tt.x, tt.y - 10, '🎖️', '#7dd3fc', 16); }
+    if(mkProc && !tt.dead){ applyDamage(tt, 30 + 25 * mk, u); addFloat(tt.x, tt.y - 10, '🎖️', '#7dd3fc', 16); }
     if(zalac) applyCaustic(tt, u);
     if(u.jbuff && u.jbuff.red > 0 && !isStructure(tt)){ applyDot(tt, 8 + u.level, 3, u); applySlow(tt, 0.15, 1.5); }   // 🔴 crveni buff
     // ---- predmeti ----
@@ -2799,6 +2799,10 @@ function botUseAbilities(u, eh, plan){
         }
         break;
       }
+      case 'burrow':   // 🕳️ Podzemni juriš (v0.55): u borbu kao skok, a ranjen pobjegne pod pijeskom prema fontani
+        if(eh && dEh < 500 && u.hp < u.maxhp * 0.35) castAbility(u, i, stepToward(u, FOUNTAIN[u.team], 600));
+        else if(eh && plan && plan.engage && dEh < hint.range && dEh > 120 && u.hp > u.maxhp * 0.55) castAbility(u, i, { x: eh.x, y: eh.y });
+        break;
       case 'hook':   // 🪝 Udica (v0.55): samo kad se tim bori ili je meta ranjena — ne vuci jačeg k sebi
         if(eh && dEh < hint.range && dEh > 200 && ((plan && plan.engage) || eh.hp < eh.maxhp * 0.45)) castAbility(u, i, leadAim(u, eh, 1300));
         break;
@@ -3787,7 +3791,7 @@ function updateUnit(u, dt){
     if(u.precT > 0) u.precT -= dt;               // 🎯 Aura preciznosti
     const prec = passiveRank(u, 'precizna');
     if(prec) for(const e of units){
-      if(e.kind === 'hero' && e.team === u.team && !e.dead && e.projSpeed > 0 && dist(u, e) <= 900){ e.precT = 0.5; e.precF = 0.04 + 0.03 * prec; }
+      if(e.kind === 'hero' && e.team === u.team && !e.dead && e.projSpeed > 0 && dist(u, e) <= 900){ e.precT = 0.5; e.precF = 0.03 + 0.02 * prec; }
     }
     if(u.epi){                                   // 🌋 Epicentar (Škorpo R): valovi sve većeg kruga
       const p = u.epi;

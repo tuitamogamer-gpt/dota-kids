@@ -1796,17 +1796,17 @@ const HEROES = [
     role:L('❄️ Snježni leopard — ledena strijelkinja', '❄️ Snow leopard — frost archer'),
     hp:520, mp:250, dmg:46,
     attrs:{ str:16, agi:24, int:15, strG:2.0, agiG:5.4, intG:1.9, primary:'agi' },
-    range:390, speed:168, atkCd:1.1, projSpeed:1000, shot:'arrow',
+    range:380, speed:168, atkCd:1.1, projSpeed:1000, shot:'arrow',   // ⚖️ simulacija: u 6 igara 101/29 — malo slabija
     passive:{ name:L('Aura preciznosti', 'Precision Aura'), emoji:'🎯', color:'#bae6fd', pid:'precizna',
       desc:L('PASIVNO: ti i prijatelji koji napadaju izdaleka (u krugu 900) udarate jače', 'PASSIVE: you and nearby friends who attack from range (within 900) hit harder'),
-      tip:rk => L('🎯 +' + (4 + 3*rk) + '% štete napada tebi i prijateljima koji gađaju izdaleka', '🎯 +' + (4 + 3*rk) + '% attack damage for you and friends who attack from range') },
+      tip:rk => L('🎯 +' + (3 + 2*rk) + '% štete napada tebi i prijateljima koji gađaju izdaleka', '🎯 +' + (3 + 2*rk) + '% attack damage for you and friends who attack from range') },
     abilities:[
       { key:'Q', name:L('Ledene strijele', 'Frost Arrows'), emoji:'❄️', cd:12, mana:45, color:'#7dd3fc',
         desc:L('Začaraj tobolac — 8 s svaka tvoja strijela je ledena: jače udara i jako usporava', 'Enchant your quiver — for 8 s every arrow is icy: it hits harder and slows a lot'),
-        tip:rk => L('❄️ 8 s: +' + (10 + 8*rk) + ' štete i 🐌 ' + (20 + 6*rk) + '% usporenje po strijeli', '❄️ 8 s: +' + (10 + 8*rk) + ' damage and 🐌 ' + (20 + 6*rk) + '% slow per arrow'),
+        tip:rk => L('❄️ 8 s: +' + (8 + 6*rk) + ' štete i 🐌 ' + (18 + 5*rk) + '% usporenje po strijeli', '❄️ 8 s: +' + (8 + 6*rk) + ' damage and 🐌 ' + (18 + 5*rk) + '% slow per arrow'),
         bot:{type:'haste', range:520},
         cast(u, aim, rk){
-          u.frostT = 8; u.frostDmg = 10 + 8*rk + (hasTal(u, 'irbis_q_plus') ? 15 : 0); u.frostSlow = 0.2 + 0.06*rk;
+          u.frostT = 8; u.frostDmg = 8 + 6*rk + (hasTal(u, 'irbis_q_plus') ? 15 : 0); u.frostSlow = 0.18 + 0.05*rk;
           addFloat(u.x, u.y - 30, L('❄️ Ledene strijele!', '❄️ Frost Arrows!'), '#bae6fd', 15);
           burst(u.x, u.y, '#bae6fd', 14, 160, 5);
           return true;
@@ -1849,16 +1849,16 @@ const HEROES = [
         }},
       { key:'R', name:L('Majstorica luka', 'Master Archer'), emoji:'🎖️', cd:0, mana:0, ult:true, passive:true, color:'#38bdf8',
         desc:L('ULTI (PASIVNO): više okretnosti, a kad nijedan neprijateljski junak nije blizu (400), strijele ponekad probiju oklop i jako udare', 'ULT (PASSIVE): more agility, and when no enemy hero is close (400), arrows sometimes pierce armor and hit hard'),
-        tip:rk => L('🤸 +' + (10 + 8*rk) + ' okretnosti • 🎯 ' + (25 + 5*rk) + '% šanse: +' + (40 + 30*rk) + ' štete (kad neprijatelj nije blizu)', '🤸 +' + (10 + 8*rk) + ' agility • 🎯 ' + (25 + 5*rk) + '% chance: +' + (40 + 30*rk) + ' damage (when no enemy is close)'),
-        onLearn(u, rk){ u.agi += rk === 1 ? 18 : 8; recomputeAttrStats(u); },
+        tip:rk => L('🤸 +' + (4 + 6*rk) + ' okretnosti • 🎯 ' + (20 + 5*rk) + '% šanse: +' + (30 + 25*rk) + ' štete (kad neprijatelj nije blizu)', '🤸 +' + (4 + 6*rk) + ' agility • 🎯 ' + (20 + 5*rk) + '% chance: +' + (30 + 25*rk) + ' damage (when no enemy is close)'),
+        onLearn(u, rk){ u.agi += rk === 1 ? 10 : 6; recomputeAttrStats(u); },   // ⚖️ v0.55 simulacija: +10/16/22 (prvo +18/26/34 — Inja je bila najjača)
         cast(){ return false; }},
     ],
   },
   {
     id:'skorpion', name:L('Škorpo', 'Skorpo'), emoji:'🦂',
     role:L('🏜️ Škorpion — kralj pijeska', '🏜️ Scorpion — king of the sands'),
-    hp:700, mp:270, dmg:56,
-    attrs:{ str:22, agi:18, int:17, strG:4.6, agiG:2.0, intG:2.6, primary:'str' },
+    hp:750, mp:270, dmg:57,
+    attrs:{ str:23, agi:18, int:17, strG:5.1, agiG:2.0, intG:2.6, primary:'str' },   // ⚖️ simulacija: prvo je poginuo 2× češće nego što je pobijedio
     range:90, speed:168, atkCd:1.1, projSpeed:0,
     passive:{ name:L('Otrovni prasak', 'Venom Burst'), emoji:'🧪', color:'#a3e635', pid:'zalac',
       desc:L('PASIVNO: napadi i moći ubrizgaju otrov — padne li meta dok je otrovana, rasprsne se i rani sve oko sebe (a preživi li 4 s, malo prasne)', 'PASSIVE: attacks and spells inject venom — if the target falls while poisoned, it bursts and hurts everyone around it (if it survives 4 s, it pops a little)'),
@@ -1868,7 +1868,7 @@ const HEROES = [
         desc:L('Zaroni pod pijesak i izleti dalje — sve neprijatelje na putu izbaci uvis i omami', 'Dive under the sand and pop out further on — every enemy in the way gets tossed up and stunned'),
         target:'point', castRange:600, line:true, lineW:180,
         tip:rk => L('⚔️ ' + (80 + 45*rk) + ' štete + omama ' + (0.9 + 0.15*rk).toFixed(2) + ' s svima na putu', '⚔️ ' + (80 + 45*rk) + ' damage + ' + (0.9 + 0.15*rk).toFixed(2) + ' s stun to everyone in the way'),
-        bot:{type:'gap', range:600},
+        bot:{type:'burrow', range:600},
         cast(u, aim, rk){
           const fx = u.x, fy = u.y;
           leapTo(u, aim, 600);
