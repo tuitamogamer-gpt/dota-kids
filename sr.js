@@ -19,7 +19,7 @@ const SR_PHRASES = [
 const SR_WORDS = {
   // v0.55 (Pecko, Inja, Škorpo)
   "snježni":"snežni", "vjetra":"vetra", "pijesak":"pesak", "pijeska":"peska", "pješčanu":"peščanu", "pješčana":"peščana",
-  "valovi":"talasi", "strijelkinja":"strelkinja", "izliječiš":"izlečiš", "valu":"talasu", "vala":"talasa",
+  "valovi":"talasi", "strijelkinja":"strelkinja", "izliječiš":"izlečiš", "valu":"talasu", "vala":"talasa", "pješčanoj":"peščanoj",
   "procjenjuju":"procenjuju", "pobijediti":"pobediti",
   "svjetlucaju":"svetlucaju", "svijetlu":"svetlu", "prozirna":"providna",
   "ucjenu":"ucenu", "dobivaju":"dobijaju", "dijele":"dele", "minute":"minuta", "pobjegne":"pobegne",
