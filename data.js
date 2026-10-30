@@ -27,16 +27,21 @@ const CFG = {
   siegeEveryNthWave: 3,
   creepXp: 46,
   xpRadius: 720,
-  heroKillGold: 200,
-  heroKillGoldPerLvl: 12,
+  // 💰 v0.54: sporija ekonomija u normalnoj igri. Predmeti ovdje koštaju otprilike pola cijene iz DotA 2, a vojnici su davali
+  //   puno DotA zlato i ubojstvo junaka i više od DotA — predmeti su stizali ~2× brže, a tko bi rano pobijedio par puta brzo bi
+  //   pobjegao svima. Sada ~30% manje zlata (ubojstva ~55% manje, više ide pomagačima); brza igra zadržava staro (TURBO_GOLD u game.js)
+  heroKillGold: 90,         // bilo 200 + 12 po levelu žrtve
+  heroKillGoldPerLvl: 5,
   heroKillXp: 150,
   assistRange: 1000,        // 🤝 suigrači u ovom krugu oko ubijenog junaka dobivaju asistenciju
-  assistGold: 50,
+  assistGold: 45,           // bilo 50
   comebackPct: 0.06,        // 🔄 bonus zlata za ubojstvo kad tvoj tim zaostaje (6% razlike u neto vrijednosti)
   comebackMax: 400,
-  towerGoldTeam: 120,
+  comebackFrom: 350,        //   bonus kreće kad tim zaostaje više od 350 po junaku (bilo 500); v0.54: dijeli se ubojici i pomagačima
+  richFrom: 1200, richPct: 0.15, richMax: 500,   // 🎯 v0.54 bogata meta: 15% neto vrijednosti iznad prosjeka + 1200 (najviše 500) ide timu koji ga sruši
+  towerGoldTeam: 80,        // svakom junaku tima (bilo 120)
   towerXp: 90,
-  passiveGold: 0.9,
+  passiveGold: 0.75,        // zlato u sekundi (bilo 0.9)
   startGold: 650,
   respawnBase: 4,
   respawnPerLvl: 1.3,
@@ -58,10 +63,11 @@ const CFG = {
   towerHp: 2600,
   ancientHp: 5000,
   heroVsStructure: 0.5,     // junaci udaraju građevine slabije (utvrđeni oklop kao u Allstarsu)
+  lateSiege: 0.6,           // 🏰 v0.54: od 25. do 40. min junaci sve jače udaraju građevine (do ×1.6) — izjednačena igra ne zapne pred bazom
   siegeVsStructure: 1.25,   // opsadni vojnici jače
   towerArmor: 8,            // 🛡️ oklop građevina (smanjuje štetu udaraca; Oštrica pustoši ga skida)
   barracksArmor: 6,
-  barracksGoldTeam: 150,
+  barracksGoldTeam: 100,    // bilo 150
   superCreepHp: 1.6,        // vojnici postaju "super" kad padne vojarna
   superCreepDmg: 1.4,
   buybackBase: 100,         // otkup (buyback): cijena = base + level * perLvl
@@ -75,12 +81,14 @@ const CFG = {
   backdoorR: 900,           // zaštita od "backdoora": bez neprijateljskih vojnika u blizini
   backdoorMul: 0.5,         //   građevina prima pola štete
   backdoorRegen: 15,        //   i obnavlja 15 života/s
-  shutdownGold: 60,         // prekid niza ubojstava: +60 zlata po ubojstvu u nizu (od 3.)
+  shutdownGold: 80,         // prekid niza ubojstava: +80 zlata po ubojstvu u nizu (od 3.; bilo 60)
   neutralDrop: 0.12,        // 🌰 šansa da čudovište iz džungle ispusti neutralni predmet
   neutralT2: 600,           //   od 10. minute bolji predmeti (razina 2)
   neutralT3: 1200,          //   od 20. minute najbolji (razina 3)
   neutralMax: 3,            //   najviše 3 po razini za svaki tim
   bountyEvery: 180,         // 💰 rune zlata u džungli svake 3 min
+  bountyGold: 25, bountyGoldMin: 1.5,   // 💰 runa zlata: svakom junaku u timu 25 + 1.5 po minuti igre (bilo 40 + 3)
+  bossGoldTeam: 150,        // 🐲 Veliki Zmaj: zlato svakom junaku tima (bilo 200)
   wisdomEvery: 420,         // 📘 rune mudrosti svakih 7 min
   courierSpeed: 520,        // 🫏 kurir leti brže od junaka
   courierBaseR: 900,        // kupljeno dalje od ovoga od fontane čeka kurira
@@ -97,7 +105,7 @@ const CFG = {
   agiArmorDiv: 12,          // ⚖️ v0.45: oklop = okretnost / 12 (bilo / 10)
   agiSpeed: 0.22,           // ⚖️ v0.45: brzina kretanja po bodu okretnosti (bilo 0.3)
   strHp: 21,                // ⚖️ v0.45: život po bodu snage (bilo 18) — snažni junaci izbliza bili su preslabi
-  creepGoldMul: 1, creepXpMul: 1,   // ⚡ brza igra množi zlato i iskustvo od vojnika i čudovišta
+  creepGoldMul: 0.68, creepXpMul: 1,   // 💰 zlato od vojnika i čudovišta: v0.54 ×0.68 (vojnik izbliza 26 umjesto 38); brza igra ×2
   shrineCd: 240,            // svetište: liječi 5 s, puni se 4 min
   shrineDur: 5,
   shrineR: 320,
@@ -124,6 +132,7 @@ const CFG = {
   //   u gank tek s levelom 3+ (ne odmah na početku)
   gankLvl: 3,
   laningPhase: 600,         // 🛣️ v0.50: prvih 10 min (sat igre) botovi ne mijenjaju staze — prava faza na stazama (i opreznije procjene)
+  pushLead: 1.2,            // 🏰 od 14. min tim gura zajedno kad ima toliko puta veću neto vrijednost (i nije u manjini)
   // 🐲 v0.47: čudovišta iz džungle i zmajevi JAČAJU kako igra teče (po satu igre — u brzoj igri brže): svake 2 minute
   //   +1 level = +18% života, +12% štete, +4% zlata i +6% iskustva; Veliki Zmaj i zmajčići +24% života i +16% štete
   //   (junaci u 20. minuti imaju ~7× veću štetu nego na početku — prije su čudovišta tada padala u sekundi)

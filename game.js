@@ -443,7 +443,7 @@ function updateExtraRunes(dt){
     if(!h) continue;
     extraRunes.splice(i, 1);
     if(r.kind === 'bounty'){
-      const g = Math.round(40 + gameClock() / 60 * 3);
+      const g = Math.round(CFG.bountyGold + gameClock() / 60 * CFG.bountyGoldMin);
       for(const e of units) if(e.kind === 'hero' && e.team === h.team) e.gold += g;
       addFloat(h.x, h.y - 30, L('💰 +' + g + ' zlata cijelom timu!', '💰 +' + g + ' gold for the whole team!'), '#fde047', 16);
       feedMsg(L('💰 ' + h.emoji + ' ' + h.name + ' je uzeo runu zlata (+' + g + ' svima u timu)', '💰 ' + h.emoji + ' ' + h.name + ' took a bounty rune (+' + g + ' for the whole team)'), TEAM_COLOR[h.team]);
@@ -1165,7 +1165,7 @@ function applyDamage(t, amount, src, kind){
   if(kind === 'atk'){   // ⚔️ običan udarac: oklop i blok (kao u DotA); magije prolaze
     amount *= armorMul(unitArmor(t));
     // 🏰 "utvrđeni" oklop građevina (kao u Allstarsu): junaci rade manje štete, opsadni vojnici više
-    if(isStructure(t) && src) amount *= src.kind === 'hero' ? CFG.heroVsStructure : (src.siege ? CFG.siegeVsStructure : 1);
+    if(isStructure(t) && src) amount *= src.kind === 'hero' ? CFG.heroVsStructure * lateSiegeMul() : (src.siege ? CFG.siegeVsStructure : 1);
     const bl = t.ifx && t.ifx.block;
     if(bl && src && !isStructure(src) && Math.random() < bl.c) amount -= bl.a * (src.projSpeed > 0 ? 0.5 : 1);   // blok ne djeluje na kule
   }
@@ -1307,7 +1307,7 @@ function kill(t, src){
         announce(L('🐲 Veliki Zmaj je poražen!', '🐲 The Great Dragon is defeated!'), L(src.emoji + ' ' + src.name + ' dobiva Zmajev blagoslov!', src.emoji + ' ' + src.name + ' gets the Dragon Blessing!'));
         annEvent('dragon', src.team);
         for(const h of units){
-          if(h.kind === 'hero' && h.team === src.team) h.gold += 200;
+          if(h.kind === 'hero' && h.team === src.team) h.gold += CFG.bossGoldTeam;
         }
         src.status.dmgMulT = Math.max(src.status.dmgMulT, 60);
         src.status.dmgMulF = Math.max(src.status.dmgMulF, 1.3);
@@ -1351,6 +1351,7 @@ function kill(t, src){
        t.lastHitter.team !== t.team && gameTime - (t.lastHitT || -99) < 6){
       credit = t.lastHitter;
     }
+    let comebackPool = 0;
     if(credit){
       credit.kills++;
       credit.streak = (credit.streak || 0) + 1;
@@ -1359,13 +1360,11 @@ function kill(t, src){
       giveXp(credit, CFG.heroKillXp + t.level * 15);
       killerName = credit.emoji + ' ' + credit.name;
       if(isHuman(credit)) addFloat(credit.x, credit.y, '+' + (CFG.heroKillGold + t.level * CFG.heroKillGoldPerLvl) + ' 💰', '#fde047', 17, credit.team);
-      // 🔄 povratak u igru (kao u DotA): tim koji gubi dobiva više zlata kad ubije junaka tima koji vodi
+      // 🔄 povratak u igru (kao u DotA): tim koji gubi dobiva više zlata kad ubije junaka tima koji vodi —
+      //   v0.54: bonus se dijeli na ubojicu i suigrače koji su pomogli (dolje; prije sve ubojici, pa je najbogatiji bivao još bogatiji)
       const behind = teamNetWorth(t.team) - teamNetWorth(credit.team);
-      if(behind > 500 * CFG.teamSize){   // 1500 u 3 na 3, 2500 u 5 na 5 (veći timovi = veće razlike)
-        const cb = Math.min(CFG.comebackMax, Math.round(behind * CFG.comebackPct / 10) * 10);
-        credit.gold += cb;
-        if(isHuman(credit)) addFloat(credit.x, credit.y - 26, L('🔄 Povratak! +' + cb + ' 💰', '🔄 Comeback! +' + cb + ' 💰'), '#a7f3d0', 15, credit.team);
-      }
+      if(behind > CFG.comebackFrom * CFG.teamSize)   // npr. 350 po junaku: 1750 u 5 na 5 (veći timovi = veće razlike)
+        comebackPool = Math.min(CFG.comebackMax, Math.round(behind * CFG.comebackPct / 10) * 10);
       // višestruko ubojstvo (unutar 10 s) i niz ubojstava — kao najavljivač u DotA
       credit.multiN = gameTime - (credit.lastKillT || -99) < 10 ? (credit.multiN || 1) + 1 : 1;
       if(credit.bot && Math.random() < 0.3 && gameTime - botBragT > 45){ botBragT = gameTime; say(credit, choice(BOT_BRAG)); }   // botovi se rijetko pohvale
@@ -1404,20 +1403,43 @@ function kill(t, src){
       }
       feedMsg(L('💰 Ucjena naplaćena za ' + t.emoji + ' ' + t.name + '!', '💰 Bounty claimed on ' + t.emoji + ' ' + t.name + '!'), '#fde047');
     }
+    // 🎯 v0.54 bogata meta (protiv snowballa, kao ucjena u LoL-u): junak puno bogatiji od prosjeka svih junaka
+    //   nosi nagradu — pola dobiva ubojica, a drugu polovicu dijele suigrači koji su pomogli (bez njih sve ubojici)
+    const richPool = credit ? richBounty(t) : 0;
     // 🔵🔴 buffovi džungle prelaze na ubojicu (kao u LoL-u)
     if(t.jbuff){
       for(const k of ['blue', 'red']) if(t.jbuff[k] > 0){ if(credit) giveJungleBuff(credit, k, Math.max(30, t.jbuff[k])); t.jbuff[k] = 0; }
     }
     // asistencije (kao u DotA): suigrači koji su udarili metu u zadnjih 10 s ili su bili blizu — i malo zlata
     if(credit){
+      const helpers = [];
       for(const h of units){
         if(h.kind !== 'hero' || h === credit || h.team !== credit.team || h.removeMe) continue;
         const hit = t.hitBy && gameTime - (t.hitBy[h.id] || -99) < 10;
         if(hit || (!h.dead && dist(h, t) < CFG.assistRange)){
           h.assists++;
           h.gold += CFG.assistGold;
+          helpers.push(h);
           if(isHuman(h)) addFloat(h.x, h.y, L('🤝 Asistencija +' + CFG.assistGold + ' 💰', '🤝 Assist +' + CFG.assistGold + ' 💰'), '#a7f3d0', 15, h.team);
         }
+      }
+      if(comebackPool > 0){   // 🔄 povratak: jednako ubojici i pomagačima
+        const part = Math.round(comebackPool / (helpers.length + 1));
+        for(const h of [credit].concat(helpers)){
+          h.gold += part;
+          if(isHuman(h)) addFloat(h.x, h.y - 40, L('🔄 Povratak! +' + part + ' 💰', '🔄 Comeback! +' + part + ' 💰'), '#a7f3d0', 15, h.team);
+        }
+      }
+      if(richPool > 0){   // 🎯 bogata meta: podjela nagrade
+        const share = helpers.length ? Math.round(richPool / 2 / helpers.length) : 0;
+        const mine = richPool - share * helpers.length;
+        credit.gold += mine;
+        if(isHuman(credit)) addFloat(credit.x, credit.y - 52, L('🎯 Bogata meta! +' + mine + ' 💰', '🎯 Rich target! +' + mine + ' 💰'), '#fde047', 16, credit.team);
+        for(const h of helpers){
+          h.gold += share;
+          if(isHuman(h)) addFloat(h.x, h.y - 26, L('🎯 Bogata meta +' + share + ' 💰', '🎯 Rich target +' + share + ' 💰'), '#fde047', 14, h.team);
+        }
+        feedMsg(L('🎯 ' + t.emoji + ' ' + t.name + ' je bio bogata meta — tim je dobio +' + richPool + ' 💰', '🎯 ' + t.emoji + ' ' + t.name + ' was a rich target — the team got +' + richPool + ' 💰'), TEAM_COLOR[credit.team]);
       }
     }
     t.hitBy = {};
@@ -2440,6 +2462,9 @@ function dropAggro(h, own){
     if(best){ cr.attackTarget = best; cr.aggroT = 0; }
   }
 }
+/* 🏰 v0.54: u dugoj igri junaci sve jače udaraju građevine (od 25. do 40. minute raste do ×(1 + lateSiege)) —
+   sporija ekonomija i manji snowball znače ujednačenije timove, pa igra ne smije zapeti pred bazom */
+function lateSiegeMul(){ return 1 + (CFG.lateSiege || 0) * clamp((gameClock() / 60 - 25) / 15, 0, 1); }
 /* 🗼 koliko jače kula udara junake: ×2 do 10. minute, pa pada do ×1.3 u 20. minuti */
 function towerHeroMul(){
   const m = gameClock() / 60, [a, b] = CFG.towerHeroMul;
@@ -2958,7 +2983,7 @@ function planTeam(ai){
   // 🏰 3) guranje kad smo jači
   const deadFoes = theirs.filter(h => h.dead && h.deadT > 10).length;
   const nwLead = teamNetWorth(team) / Math.max(1, teamNetWorth(foe));
-  const strong = (deadFoes >= 2 && mineAlive.length >= 3) || (gameClock() > 840 && nwLead > 1.2 && mineAlive.length >= theirsAlive.length) ||
+  const strong = (deadFoes >= 2 && mineAlive.length >= 3) || (gameClock() > 840 && nwLead > CFG.pushLead && mineAlive.length >= theirsAlive.length) ||
     (gameClock() > 1260 && mineAlive.length >= theirsAlive.length && mineAlive.length >= 4);
   if(!block && !ai.push && ai.pushCd <= 0 && strong && Math.random() < mk){
     const lane = pushLane(team);
@@ -4022,6 +4047,7 @@ function update(dt){
   updateCouriers(dt);
   if(gameTime >= 0) updateTeamAI(dt);   // 🤖 timska strategija botova
   if(gameTime >= 0) updateExtraRunes(dt);   // rune zlata u 0:00, mudrosti u 7:00
+  if(gameTime >= 0) updateRichBounty(dt);   // 🎯
   updatePings(dt);
   {   // 💪 vojnici jačaju svakih 7.5 min
     const tier = Math.max(0, Math.floor(gameTime / CFG.creepScaleEvery));
@@ -4427,11 +4453,14 @@ function makeWorld(){
 
 /* ================= Početak / kraj igre ================= */
 /* ⚡ BRZA IGRA (v0.45, kao Turbo u DotA): više zlata i iskustva, brže oživljavanje, slabije kule — igra traje ~12–15 min (v0.46: sporiji junaci).
-   Svaka igra kreće od izvornih vrijednosti (CFG_BASE), pa brza igra pomnoži samo ekonomiju i tempo. */
+   Svaka igra kreće od izvornih vrijednosti (CFG_BASE), pa brza igra pomnoži tempo i iskustvo (TURBO) i postavi svoje zlato (TURBO_GOLD). */
 const CFG_BASE = Object.assign({}, CFG);
-const TURBO = { passiveGold: 2.5, heroKillGold: 1.5, heroKillGoldPerLvl: 1.5, heroKillXp: 1.7, assistGold: 1.6, creepGoldMul: 2, creepXpMul: 2,
-  creepXp: 2, towerGoldTeam: 1.5, towerXp: 1.5, barracksGoldTeam: 1.5, respawnBase: 0.75, respawnPerLvl: 0.7, towerHp: 0.6, waveEvery: 0.85, timeScale: 0.6, barracksHp: 0.7, ancientHp: 0.7,
+const TURBO = { heroKillXp: 1.7, creepXpMul: 2,
+  creepXp: 2, towerXp: 1.5, respawnBase: 0.75, respawnPerLvl: 0.7, towerHp: 0.6, waveEvery: 0.85, timeScale: 0.6, barracksHp: 0.7, ancientHp: 0.7,
   campRespawn: 0.7, bossRespawn: 0.6, drakeRespawn: 0.6, barracksRespawn: 0.7, buybackCd: 0.5, startGold: 1.3, prepTime: 0.5, creepScaleEvery: 0.6 };
+/* 💰 zlato u brzoj igri — zadane vrijednosti (ne množe se): brza igra zadržava svoju brzu ekonomiju i kad se mijenja normalna (data.js) */
+const TURBO_GOLD = { passiveGold: 2.25, heroKillGold: 300, heroKillGoldPerLvl: 18, assistGold: 80, creepGoldMul: 2, towerGoldTeam: 180,
+  barracksGoldTeam: 225, bountyGold: 40, bountyGoldMin: 3, bossGoldTeam: 200, shutdownGold: 60, comebackFrom: 500 };
 /* ⏱️ „sat igre” za odluke koje ovise o vremenu (kada botovi guraju, jačina kula, rune): u brzoj igri teče brže */
 function gameClock(){ return gameTime / (CFG.timeScale || 1); }
 function gameMode(){ return net.mode === 'host' || net.mode === 'guest' ? 'normal' : (SETTINGS.mode === 'turbo' ? 'turbo' : 'normal'); }
@@ -4439,6 +4468,7 @@ function applyMode(){
   Object.assign(CFG, CFG_BASE);
   if(gameMode() !== 'turbo') return;
   for(const k in TURBO) CFG[k] = Math.round(CFG_BASE[k] * TURBO[k] * 100) / 100;
+  Object.assign(CFG, TURBO_GOLD);
 }
 /* 🛣️ na početku: poruka na koju stazu ideš (i s kim) + oznaka na tvojoj prvoj kuli te staze (vidi se i na minimapi) */
 function laneIntro(h){
@@ -4609,6 +4639,21 @@ function histGraphHtml(){
     `<span><i class="hgLGold"></i>${L('zlato', 'gold')}</span><span><i class="hgLXp"></i>${L('iskustvo', 'experience')}</span><span>🗼 ${L('kula', 'tower')} · 🐲 ${L('Zmaj', 'Dragon')}</span></div></div>`;
 }
 function teamNetWorth(team){ return units.reduce((a, h) => a + (h.kind === 'hero' && h.team === team ? netWorth(h) : 0), 0); }
+/* 🎯 v0.54 bogata meta: koliko zlata nosi junak puno bogatiji od prosjeka svih junaka (dobiva ga tim koji ga sruši) */
+function richBounty(t){
+  if(!(CFG.richPct > 0) || !t || t.kind !== 'hero') return 0;
+  let sum = 0, n = 0;
+  for(const h of units) if(h.kind === 'hero' && !h.removeMe){ sum += netWorth(h); n++; }
+  const over = netWorth(t) - sum / Math.max(1, n);
+  return over > CFG.richFrom ? Math.min(CFG.richMax, Math.round((over - CFG.richFrom) * CFG.richPct / 10) * 10) : 0;
+}
+let richT = 0;
+function updateRichBounty(dt){   // za oznaku 🎯 iznad junaka: jednom u sekundi je dosta
+  richT -= dt;
+  if(richT > 0) return;
+  richT = 1;
+  for(const h of units) if(h.kind === 'hero') h.richBounty = richBounty(h);
+}
 /* neto vrijednost (kao u DotA): zlato + vrijednost svih predmeta */
 function netWorth(h){
   return Math.floor(h.gold + h.items.concat(h.backpack || []).reduce((a, it) => a + (it.cost != null ? itemFullCost(ITEM_BY_ID[it.id] || it) : 0), 0));
@@ -6051,6 +6096,15 @@ function drawHeroBar(u, cx, cy){
   ctx.strokeStyle = mine ? '#93c5fd' : '#fca5a5'; ctx.lineWidth = 1; ctx.strokeRect(lx + 0.5, y - 0.5, 16, h + 6);
   ctx.fillStyle = '#fde047'; ctx.font = fontTxt(10.5, true); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(u.level, lx + 8.5, y + (h + 5) / 2);
+  if(u.richBounty > 0){   // 🎯 v0.54 bogata meta: toliko zlata dobiva tim koji ga sruši
+    const tx = '🎯' + u.richBounty;
+    ctx.font = fontTxt(10.5, true);
+    const tw = ctx.measureText(tx).width + 8, bx = x + w + 3;
+    ctx.fillStyle = 'rgba(5,8,12,0.85)'; ctx.fillRect(bx, y - 1, tw, h + 7);
+    ctx.strokeStyle = '#fde047'; ctx.strokeRect(bx + 0.5, y - 0.5, tw - 1, h + 6);
+    ctx.fillStyle = '#fde047'; ctx.textAlign = 'left';
+    ctx.fillText(tx, bx + 4, y + (h + 5) / 2);
+  }
 }
 function barHeight(u){
   if(u.kind === 'hero') return 110;
