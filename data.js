@@ -31,15 +31,19 @@ const CFG = {
   // 💰 v0.54: sporija ekonomija u normalnoj igri. Predmeti ovdje koštaju otprilike pola cijene iz DotA 2, a vojnici su davali
   //   puno DotA zlato i ubojstvo junaka i više od DotA — predmeti su stizali ~2× brže, a tko bi rano pobijedio par puta brzo bi
   //   pobjegao svima. Sada ~30% manje zlata (ubojstva ~55% manje, više ide pomagačima); brza igra zadržava staro (TURBO_GOLD u game.js)
-  heroKillGold: 90,         // bilo 200 + 12 po levelu žrtve
-  heroKillGoldPerLvl: 5,
+  //   v0.56: ubojstva su i dalje bila ~30% zlata (u DotA ~15–20%) — manje raste s levelom žrtve (90 + 5/lvl → 85 + 2.5/lvl:
+  //   na početku skoro isto, na levelu 20 135 umjesto 190), asistencija se dijeli, manji bonusi; predmeti skuplji (applyItemPrices u game.js)
+  heroKillGold: 85,         // bilo 200 + 12 po levelu žrtve, pa 90 + 5
+  heroKillGoldPerLvl: 2.5,
   heroKillXp: 150,
   assistRange: 1000,        // 🤝 suigrači u ovom krugu oko ubijenog junaka dobivaju asistenciju
-  assistGold: 45,           // bilo 50
+  assistGold: 50,           // 🤝 v0.56: zlato asistencije se dijeli: assistPool na sve pomagače, svakom 20–50 (prije 45 SVAKOM — 4 pomagača = 180)
+  assistPool: 100,
+  assistMin: 20,
   comebackPct: 0.06,        // 🔄 bonus zlata za ubojstvo kad tvoj tim zaostaje (6% razlike u neto vrijednosti)
-  comebackMax: 400,
+  comebackMax: 250,         // v0.56: bilo 400
   comebackFrom: 350,        //   bonus kreće kad tim zaostaje više od 350 po junaku (bilo 500); v0.54: dijeli se ubojici i pomagačima
-  richFrom: 1200, richPct: 0.15, richMax: 500,   // 🎯 v0.54 bogata meta: 15% neto vrijednosti iznad prosjeka + 1200 (najviše 500) ide timu koji ga sruši
+  richFrom: 1200, richPct: 0.12, richMax: 300,   // 🎯 v0.54 bogata meta: 12% neto vrijednosti iznad prosjeka + 1200 (najviše 300; v0.56, bilo 15% / 500) ide timu koji ga sruši
   towerGoldTeam: 80,        // svakom junaku tima (bilo 120)
   towerXp: 90,
   passiveGold: 0.75,        // zlato u sekundi (bilo 0.9)
@@ -48,6 +52,10 @@ const CFG = {
   respawnPerLvl: 1.3,
   fountainRadius: 330,
   fountainHeal: 0.07,
+  fountainAtkR: 470,        // ⛲ v0.56 fontana puca na neprijatelje u ovom krugu (do prijestola je 533 — prijestol se i dalje ruši)
+  fountainAtkCd: 0.3,       //   svakih 0,3 s, do 3 mete odjednom (junaci prvi)
+  fountainDmg: 140,         //   šteta po hicu + 4% najvećeg života mete — junak u fontani padne za nekoliko sekundi
+  fountainDmgPct: 0.04,
   maxLevel: 25,
   ultLevels: [6, 12, 18],
   statMaxRanks: 10,
@@ -82,7 +90,7 @@ const CFG = {
   backdoorR: 900,           // zaštita od "backdoora": bez neprijateljskih vojnika u blizini
   backdoorMul: 0.5,         //   građevina prima pola štete
   backdoorRegen: 15,        //   i obnavlja 15 života/s
-  shutdownGold: 80,         // prekid niza ubojstava: +80 zlata po ubojstvu u nizu (od 3.; bilo 60)
+  shutdownGold: 60,         // prekid niza ubojstava: +60 zlata po ubojstvu u nizu (od 3.)
   neutralDrop: 0.12,        // 🌰 šansa da čudovište iz džungle ispusti neutralni predmet
   neutralT2: 600,           //   od 10. minute bolji predmeti (razina 2)
   neutralT3: 1200,          //   od 20. minute najbolji (razina 3)

@@ -1875,6 +1875,7 @@ function ensureCastInd(){
     head: stripMesh(6, 0xfde047, 0.7),            //   i vrh
     hover: annulusMesh(48, 0xef4444, 0.95),       // jedinica pod mišem / meta moći
     lock: annulusMesh(40, 0xef4444, 0.75),        // 🎯 v0.56: meta koju junak napada
+    fountain: annulusMesh(96, 0xef4444, 0.55),    // ⛲ v0.56: krug u kojem neprijateljska fontana puca
   };
   return castInd;
 }
@@ -1944,6 +1945,9 @@ function syncCastIndicator(){
     setAnnulus(ci.range, px, pz, r - 6, r);
     ci.range.material.color.set('#f87171');
   }
+  // ⛲ v0.56 blizu neprijateljske fontane: crveni krug pokaže dokle puca
+  { const f = FOUNTAIN[1 - player.team], d = distXY(player.x, player.y, f.x, f.y), R = CFG.fountainAtkR;
+    if(!player.dead && d < R + 700){ const k = 4 * Math.sin(performance.now() / 160); setAnnulus(ci.fountain, f.x, f.y, R - 10 + k, R + 6 + k); } }
   // 🎯 v0.56 meta koju napadaš: crveni krug pod njom pulsira (vidiš koga tučeš, i u gužvi)
   const at = !player.dead ? player.attackTarget : null;
   if(at && !at.dead && !at.removeMe && at.team !== player.team && at !== hoverUnit && seenByPlayer(at)){
@@ -2906,7 +2910,7 @@ function buildProjMesh(p){
   ud.sx = p.sx != null ? p.sx : (p.src ? p.src.x : p.x);
   ud.sy = p.sy != null ? p.sy : (p.src ? p.src.y : p.y);
   const sk = p.src ? p.src.kind : (p.shot === 'tower' ? 'tower' : 'hero');
-  ud.h0 = sk === 'tower' ? TOWER_CRYSTAL_Z * MODEL_SCALE.tower : (sk === 'hero' ? 52 : 40);
+  ud.h0 = sk === 'tower' ? TOWER_CRYSTAL_Z * MODEL_SCALE.tower : (sk === 'hero' ? 52 : (sk === 'fountain' ? 95 : 40));   // ⛲ munja iz vrha fontane
   // v0.56: junakov hitac kreće s vrha oružja (u prvoj trećini leta glatko prijeđe na pravu putanju)
   const tip = sk === 'hero' && p.src && distXY(ud.sx, ud.sy, p.src.x, p.src.y) < 90 ? weaponTip(p.src) : null;
   if(tip){

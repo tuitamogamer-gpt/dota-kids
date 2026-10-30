@@ -570,6 +570,34 @@ function updateShrines(dt){
     }
   }
 }
+/* ⛲ v0.56 fontana brani bazu (kao u DotA 2): neprijatelja koji uđe u njen krug (CFG.fountainAtkR) gađa jakim munjama —
+   svakih 0,3 s do 3 mete (junaci prvi), vidi i nevidljive; ne doseže prijestol, pa se baza i dalje ruši s puta staza.
+   Izvor štete je "fontana" (nije jedinica): ubojstvo dobiva junak koji je metu zadnji udario (kao kod kula) */
+const FOUNTAIN_SRC = [0, 1].map(team => ({ id: -100 - team, kind: 'fountain', team, x: FOUNTAIN[team].x, y: FOUNTAIN[team].y, r: 60,
+  name: L('Fontana', 'Fountain'), emoji: '⛲', dead: false, cd: 0 }));
+function inEnemyFountain(u, pad){
+  const f = FOUNTAIN[1 - u.team];
+  return u.team !== TEAM_NEUTRAL && distXY(u.x, u.y, f.x, f.y) < CFG.fountainAtkR + (pad || 0);
+}
+function updateFountains(dt){
+  for(const fs of FOUNTAIN_SRC){
+    if(fs.cd > 0){ fs.cd -= dt; continue; }
+    const tg = units.filter(e => e.team !== fs.team && !e.dead && !e.removeMe && !e.invuln && isSpellTarget(e) &&
+      distXY(e.x, e.y, fs.x, fs.y) <= CFG.fountainAtkR + (e.r || 0) * 0.5)
+      .sort((a, b) => (b.kind === 'hero') - (a.kind === 'hero')).slice(0, 3);
+    if(!tg.length) continue;
+    fs.cd = CFG.fountainAtkCd;
+    for(const e of tg){
+      spawnHoming(fs, e, { x: fs.x, y: fs.y, speed: 1700, dmg: Math.round(CFG.fountainDmg + e.maxhp * CFG.fountainDmgPct),
+        color: TEAM_LIGHT[fs.team], shot: 'tower', big: e.kind === 'hero' });
+      if(isHuman(e) && gameTime - (e.fountainWarnT || -99) > 4){
+        e.fountainWarnT = gameTime;
+        addFloat(e.x, e.y - 30, L('⛲ Fontana te gađa — bježi!', '⛲ The fountain is shooting you — run!'), '#fca5a5', 16, e.team);
+      }
+    }
+    sfxAt('zap', fs.x, fs.y, 0.6);
+  }
+}
 /* 🎓 talenti (kao u DotA 2): na levelima 10 / 15 / 20 / 25 junak bira jedan od dva — v0.38: svaki junak ima svoje */
 function heroTalents(h){ return (h && h.hero && HERO_TALENTS[h.hero.id]) || DEFAULT_TALENTS; }
 function talentOpt(h, lvl, pick){ const tier = heroTalents(h)[TALENT_LVLS.indexOf(lvl)]; return tier ? tier[pick === 'b' ? 1 : 0] : null; }
@@ -1235,6 +1263,7 @@ function healCircle(u, r, amt){
 /* 💀 pregled pogibije (kao u LoL-u): tko ti je i čime nanio štetu u zadnjih 15 s */
 function dmgLabel(src, kind){
   if(kind === 'atk') return L('⚔️ Napadi', '⚔️ Attacks');
+  if(src && src.kind === 'fountain') return L('⛲ Munje fontane', '⛲ Fountain bolts');
   const ab = src && src.kind === 'hero' && (src.curAb || (src.lastAb && gameTime - (src.lastAbT || -99) < 8 ? src.lastAb : null));
   return ab ? ab.emoji + ' ' + ab.name : L('✨ Čarolije', '✨ Spells');
 }
@@ -1502,10 +1531,11 @@ function kill(t, src){
       credit.kills++;
       credit.streak = (credit.streak || 0) + 1;
       credit.bestStreak = Math.max(credit.bestStreak || 0, credit.streak);
-      credit.gold += CFG.heroKillGold + t.level * CFG.heroKillGoldPerLvl;
+      const kg = Math.round(CFG.heroKillGold + t.level * CFG.heroKillGoldPerLvl);
+      credit.gold += kg;
       giveXp(credit, CFG.heroKillXp + t.level * 15);
       killerName = credit.emoji + ' ' + credit.name;
-      if(isHuman(credit)) addFloat(credit.x, credit.y, '+' + (CFG.heroKillGold + t.level * CFG.heroKillGoldPerLvl) + ' 💰', '#fde047', 17, credit.team);
+      if(isHuman(credit)) addFloat(credit.x, credit.y, '+' + kg + ' 💰', '#fde047', 17, credit.team);
       // 🔄 povratak u igru (kao u DotA): tim koji gubi dobiva više zlata kad ubije junaka tima koji vodi —
       //   v0.54: bonus se dijeli na ubojicu i suigrače koji su pomogli (dolje; prije sve ubojici, pa je najbogatiji bivao još bogatiji)
       const behind = teamNetWorth(t.team) - teamNetWorth(credit.team);
@@ -1536,6 +1566,7 @@ function kill(t, src){
     }
     else if(src && src.kind === 'creep') killerName = L('⚔️ Vojnici', '⚔️ Creeps');
     else if(src && src.kind === 'neutral') killerName = src.emoji + ' ' + src.name;
+    else if(src && src.kind === 'fountain') killerName = L('⛲ Fontana', '⛲ Fountain');
     if(isHuman(t)) t.recap = buildRecap(t, killerName);   // 💀 pregled pogibije
     // 💰 Ucjena (Track): smrt označenog donosi dodatno zlato ubojici i Tragaču
     if(wasTracked){
@@ -1562,12 +1593,14 @@ function kill(t, src){
       for(const h of units){
         if(h.kind !== 'hero' || h === credit || h.team !== credit.team || h.removeMe) continue;
         const hit = t.hitBy && gameTime - (t.hitBy[h.id] || -99) < 10;
-        if(hit || (!h.dead && dist(h, t) < CFG.assistRange)){
-          h.assists++;
-          h.gold += CFG.assistGold;
-          helpers.push(h);
-          if(isHuman(h)) addFloat(h.x, h.y, L('🤝 Asistencija +' + CFG.assistGold + ' 💰', '🤝 Assist +' + CFG.assistGold + ' 💰'), '#a7f3d0', 15, h.team);
-        }
+        if(hit || (!h.dead && dist(h, t) < CFG.assistRange)) helpers.push(h);
+      }
+      // 💰 v0.56: zlato asistencije se DIJELI (kao u DotA): CFG.assistPool na sve pomagače, svakom između assistMin i assistGold
+      const each = helpers.length ? Math.round(clamp(CFG.assistPool / helpers.length, CFG.assistMin, CFG.assistGold)) : 0;
+      for(const h of helpers){
+        h.assists++;
+        h.gold += each;
+        if(isHuman(h)) addFloat(h.x, h.y, L('🤝 Asistencija +' + each + ' 💰', '🤝 Assist +' + each + ' 💰'), '#a7f3d0', 15, h.team);
       }
       if(comebackPool > 0){   // 🔄 povratak: jednako ubojici i pomagačima
         const part = Math.round(comebackPool / (helpers.length + 1));
@@ -3562,6 +3595,14 @@ function botThink(u){
   const b = u.bot;
   const fountain = FOUNTAIN[u.team];
   if(u.tpChannel > 0 || u.chan) return;   // ne prekidaj vlastiti teleport ni nišanjenje
+  if(inEnemyFountain(u, 90)){   // ⛲ v0.56: iz neprijateljske fontane odmah van (puca!), i ne juri metu u nju
+    u.attackTarget = null;
+    const f = FOUNTAIN[1 - u.team];
+    u.moveTarget = stepToward(f, { x: u.x, y: u.y }, CFG.fountainAtkR + 220);
+    return;
+  }
+  const at = u.attackTarget;
+  if(at && at.team !== u.team && at.team !== TEAM_NEUTRAL && distXY(at.x, at.y, FOUNTAIN[at.team].x, FOUNTAIN[at.team].y) < CFG.fountainAtkR + 60) u.attackTarget = null;
   if(b.state === 'retreat'){
     if(u.hp > u.maxhp * 0.9){ b.state = 'lane'; }
     else {
@@ -4393,6 +4434,7 @@ function update(dt){
   updateTrees(dt);   // 🌳 pojedena / posječena stabla ponovo izrastu
   for(let i = wards.length - 1; i >= 0; i--){ wards[i].t -= dt; if(wards[i].t <= 0) wards.splice(i, 1); }
   updateShrines(dt);
+  updateFountains(dt);   // ⛲
   updateCouriers(dt);
   if(gameTime >= 0) updateTeamAI(dt);   // 🤖 timska strategija botova
   if(gameTime >= 0) updateExtraRunes(dt);   // rune zlata u 0:00, mudrosti u 7:00
@@ -4809,16 +4851,38 @@ const TURBO = { heroKillXp: 1.7, creepXpMul: 2,
   creepXp: 2, towerXp: 1.5, respawnBase: 0.75, respawnPerLvl: 0.7, towerHp: 0.6, waveEvery: 0.85, timeScale: 0.6, barracksHp: 0.7, ancientHp: 0.7,
   campRespawn: 0.7, bossRespawn: 0.6, drakeRespawn: 0.6, barracksRespawn: 0.7, buybackCd: 0.5, startGold: 1.3, prepTime: 0.5, creepScaleEvery: 0.6 };
 /* 💰 zlato u brzoj igri — zadane vrijednosti (ne množe se): brza igra zadržava svoju brzu ekonomiju i kad se mijenja normalna (data.js) */
-const TURBO_GOLD = { passiveGold: 2.25, heroKillGold: 300, heroKillGoldPerLvl: 18, assistGold: 80, creepGoldMul: 2, towerGoldTeam: 180,
-  barracksGoldTeam: 225, bountyGold: 40, bountyGoldMin: 3, bossGoldTeam: 200, shutdownGold: 60, comebackFrom: 500 };
+const TURBO_GOLD = { passiveGold: 2.25, heroKillGold: 300, heroKillGoldPerLvl: 18, assistGold: 80, assistPool: 400, creepGoldMul: 2, towerGoldTeam: 180,
+  barracksGoldTeam: 225, bountyGold: 40, bountyGoldMin: 3, bossGoldTeam: 200, shutdownGold: 60, comebackFrom: 500, comebackMax: 400, richMax: 500, richPct: 0.15 };
 /* ⏱️ „sat igre” za odluke koje ovise o vremenu (kada botovi guraju, jačina kula, rune): u brzoj igri teče brže */
 function gameClock(){ return gameTime / (CFG.timeScale || 1); }
 function gameMode(){ return net.mode === 'host' || net.mode === 'guest' ? 'normal' : (SETTINGS.mode === 'turbo' ? 'turbo' : 'normal'); }
 function applyMode(){
   Object.assign(CFG, CFG_BASE);
+  applyItemPrices(gameMode() !== 'turbo');
   if(gameMode() !== 'turbo') return;
   for(const k in TURBO) CFG[k] = Math.round(CFG_BASE[k] * TURBO[k] * 100) / 100;
   Object.assign(CFG, TURBO_GOLD);
+}
+/* 💰 v0.56 skuplji predmeti u NORMALNOJ igri (brza igra: cijene iz data.js): početni predmeti (do 250) koštaju isto — rana igra
+   ostaje ista — a skuplji sve više, do +30% za predmete od 2000 naviše. Cijelu cijenu predmeta (s dijelovima) pomnoži itemPriceMul,
+   pa se razlika stavi na recept, da dijelovi zadrže svoje (malo veće) cijene */
+const ITEM_COST_BASE = {};
+for(const it of ITEMS) ITEM_COST_BASE[it.id] = it.cost;
+function itemPriceMul(full){ return 1 + 0.3 * clamp((full - 250) / 1750, 0, 1); }
+function applyItemPrices(normal){
+  const baseFull = it => ITEM_COST_BASE[it.id] + (it.components || []).reduce((a, c) => a + baseFull(ITEM_BY_ID[c]), 0);
+  const done = {};
+  const set = it => {
+    if(done[it.id]) return;
+    done[it.id] = true;
+    for(const c of it.components || []) set(ITEM_BY_ID[c]);
+    it.cost = ITEM_COST_BASE[it.id];
+    if(!normal || it.noShop) return;
+    const full = baseFull(it), want = Math.round(full * itemPriceMul(full) / 5) * 5;
+    const parts = (it.components || []).reduce((a, c) => a + itemFullCost(ITEM_BY_ID[c]), 0);
+    it.cost = Math.max(it.cost, want - parts);
+  };
+  for(const it of ITEMS) set(it);
 }
 /* 🛣️ na početku: poruka na koju stazu ideš (i s kim) + oznaka na tvojoj prvoj kuli te staze (vidi se i na minimapi) */
 function laneIntro(h){
