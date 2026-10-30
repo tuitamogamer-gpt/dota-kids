@@ -12,6 +12,7 @@ D = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(D))
 SRC, AB = os.path.join(D, 'src'), os.path.join(ROOT, 'assets', 'ab')
 SLOTS = ['P', 'Q', 'W', 'E', 'R', 'T']
+INSET = {'orlina': 0.05}   # listovi kojima je šav malo pomaknut
 arg = lambda k, d=None: next((a.split('=', 1)[1] for a in sys.argv if a.startswith('--' + k + '=')), d)
 only = [x for x in (arg('only') or '').split(',') if x]
 urls = json.load(open(os.path.join(D, 'urls.json'), encoding='utf-8'))
@@ -45,7 +46,7 @@ def cuts(img, n, axis):
             v -= abs(c - exp) * 0.5 * (h if axis == 0 else w) / 3 / 40   # blaga sklonost očekivanoj crti
             if v > bv:
                 bv, best = v, c
-        out.append(best)
+        out.append(best if abs(best - exp) <= size * 0.01 else round(exp))   # daleko od 1/n → rub je u slici, ne razmak
     out.append(size)
     return out
 
@@ -73,7 +74,7 @@ for hid in heroes:
         im.save(os.path.join(ROOT, 'assets', 'hero_%s.jpg' % hid), quality=86, optimize=True, progressive=True)
     if hid + '/icons' in urls:
         os.makedirs(AB, exist_ok=True)
-        for slot, t in zip(SLOTS, slice_sheet(fetch(hid + '/icons'), float(arg('inset', '0.03')))):
+        for slot, t in zip(SLOTS, slice_sheet(fetch(hid + '/icons'), float(arg('inset', INSET.get(hid, 0.03))))):
             t.resize((128, 128), Image.LANCZOS).save(os.path.join(AB, '%s_%s.jpg' % (hid, slot)), quality=86, optimize=True)
         done.append(hid)
     print('✓', hid)
