@@ -2795,13 +2795,13 @@ function syncZone(z, g, tAnim, dt){
 /* projektili: Blender model po emojiju moći ili vrsti napada (hero.shot) */
 const PROJ_BY_EMOJI = { '🔥': 'proj_fireball', '🧊': 'proj_ice', '🎯': 'proj_arrow', '🪶': 'proj_feather', '💫': 'proj_star',
   '🌰': 'proj_acorn', '🌠': 'proj_moon', '👅': 'proj_tongue', '🦅': 'proj_hawk', '🐝': 'proj_bee', '🟢': 'proj_slime', '🌵': 'proj_quill', '🖤': 'proj_ink',
-  '🌈': 'proj_rainbow', '🍌': 'proj_banana', '🕸️': 'proj_net' };
+  '🌈': 'proj_rainbow', '🍌': 'proj_banana', '🕸️': 'proj_net', '🪝': 'proj_hook', '🌬️': 'proj_gust' };
 const PROJ_BY_SHOT = { arrow: 'proj_arrow', feather: 'proj_feather', fire: 'proj_fireball', ice: 'proj_ice', leaf: 'proj_acorn',
   bolt: 'proj_bolt', tower: 'proj_bolt', rainbow: 'proj_rainbow', pellet: 'proj_pellet' };
 const PROJ_TRAIL = { proj_fireball: ['#ff7a1a', '#ffe26b'], proj_ice: ['#bfe6ff', '#ffffff'], proj_moon: ['#c4b5fd', '#fff7d6'],
   proj_star: ['#fde68a'], proj_bolt: ['#ffffff'], proj_hawk: ['#fde68a'], proj_acorn: ['#bef264'], proj_feather: ['#f8fafc'], proj_arrow: [],
   proj_bee: ['#fde68a'], proj_slime: ['#bef264'], proj_quill: [], proj_ink: ['#312e81', '#1e1b4b'],
-  proj_rainbow: ['#f87171', '#fbbf24', '#4ade80', '#60a5fa', '#c084fc'], proj_pellet: ['#e5e7eb', '#fde68a'] };
+  proj_rainbow: ['#f87171', '#fbbf24', '#4ade80', '#60a5fa', '#c084fc'], proj_pellet: ['#e5e7eb', '#fde68a'], proj_hook: [], proj_gust: ['#e0f2fe', '#ffffff'] };
 function projModelName(p){
   return (p.emoji && PROJ_BY_EMOJI[p.emoji]) || (p.shot && PROJ_BY_SHOT[p.shot]) || null;
 }
@@ -2825,6 +2825,8 @@ function projScale(name, p){
     case 'proj_banana': return 46;
     case 'proj_net': return 70;
     case 'proj_pellet': return 26;
+    case 'proj_hook': return 42;
+    case 'proj_gust': return 95;
   }
   return 30;
 }
@@ -2837,10 +2839,11 @@ function buildProjMesh(p){
   if(m){
     g.add(m);
     ud.model = m; ud.name = name;
-    if(name === 'proj_tongue'){
-      // tijelo jezika: ružičasti valjak od žapca do vrha jezika
+    if(name === 'proj_tongue' || name === 'proj_hook'){
+      // tijelo jezika: ružičasti valjak od žapca do vrha jezika — v0.55: i lanac Udice (Pecko)
       const geo = cachedGeo('tongueGeo', () => { const c = new THREE.CylinderGeometry(1, 1, 1, 8); c.rotateZ(-Math.PI / 2); return c; });
-      ud.tongue = new THREE.Mesh(geo, lambMat('#f472b6'));
+      ud.tongue = new THREE.Mesh(geo, name === 'proj_hook' ? chainMat() : lambMat('#f472b6'));
+      ud.tongueW = name === 'proj_hook' ? 4 : 7;
       scene3.add(ud.tongue);
     }
   }
@@ -2851,7 +2854,7 @@ function buildProjMesh(p){
       basicMat(p.color));
     g.add(ball);
   }
-  const noGlow = name === 'proj_pellet' || name === 'proj_arrow' || name === 'proj_feather' || name === 'proj_acorn' || name === 'proj_hawk' || name === 'proj_tongue' || name === 'proj_bee' || name === 'proj_quill' || name === 'proj_banana' || name === 'proj_net';
+  const noGlow = name === 'proj_pellet' || name === 'proj_arrow' || name === 'proj_feather' || name === 'proj_acorn' || name === 'proj_hawk' || name === 'proj_tongue' || name === 'proj_bee' || name === 'proj_quill' || name === 'proj_banana' || name === 'proj_net' || name === 'proj_hook';
   if(p.crit || p.big){   // 💥 kritični / veliki hitac: crveno-zlatni sjaj oko projektila
     const cg = new THREE.Sprite(glowMat(p.crit ? '#ff5a1f' : '#ffd166'));
     cg.scale.set(110, 110, 1);
@@ -2939,7 +2942,7 @@ function syncProj(p, g, tAnim, dt){
       ud.tongue.position.set((sx + p.x) / 2, (sh + h) / 2, (sy + p.y) / 2);
       ud.tongue.rotation.y = -Math.atan2(p.y - sy, p.x - sx);
       ud.tongue.rotation.z = Math.atan2(h - sh, L || 1);
-      ud.tongue.scale.set(Math.max(1, L), 7, 7);
+      ud.tongue.scale.set(Math.max(1, L), ud.tongueW || 7, ud.tongueW || 7);
     }
   }
   else if(seenProj(p) && Math.random() < 0.85)
@@ -3574,7 +3577,7 @@ function gatherFx(u, gh, col){
 }
 /* 🎯 efekti na mjestu cilja za magije koje nemaju projektil ni zonu */
 function castTargetFx(u, key, aim){
-  const range = { 'tragac:W': 550, 'hobotnica:E': 320, 'sova:W': 1400, 'tragac:R': 700, 'nisan:W': 520, 'bikos:W': 650, 'bikos:R': 260 }[key];
+  const range = { 'tragac:W': 550, 'hobotnica:E': 320, 'sova:W': 1400, 'tragac:R': 700, 'nisan:W': 520, 'bikos:W': 650, 'bikos:R': 260, 'skorpion:E': 700 }[key];
   if(!range) return;
   const d = distXY(u.x, u.y, aim.x, aim.y), k = d > range ? range / d : 1;   // isto ograničenje dometa kao u igri
   const x = u.x + (aim.x - u.x) * k, y = u.y + (aim.y - u.y) * k, gh = groundHeight(x, y);
@@ -3633,6 +3636,13 @@ function castTargetFx(u, key, aim){
     }
     case 'bikos:R': {   // 🪓 Smrtni udarac: golemi crveni zamah sjekirom preko mete
       cleaveFx(u, x, y);
+      break;
+    }
+    case 'skorpion:E': {   // 🦂 Žalac (v0.55): pijesak prasne iz tla, zeleni otrov i žalac koji izbije iz zemlje
+      shockwave(x, y, 170, '#a3e635');
+      spellLight(x, y, gh + 40, '#a3e635', 2.4, 0.4, 420);
+      for(let i = 0; i < 22; i++) fxSpawn(x, y, gh + 10, i % 3 ? '#d6a35c' : '#a3e635', { spd: 220, up: 160, grav: -260, life: 0.7, size: 24 });
+      fxRise('fx_root', x, y, 60, 3, { scale: 34, life: 0.8, look: 'v' });
       break;
     }
     case 'tragac:R': {   // 💰 Ucjena: zlatni stup i zlatnici nad metom
@@ -3933,7 +3943,36 @@ function castFx(u, g, key){
     case 'bikos:W': break;
     case 'bikos:E': dust(16); break;   // 🐂 Bikovski skok (luk + doskok: LEAP_KEYS)
     case 'bikos:R': shakeAt(u.x, u.y, 1.0, 0.45); break;
+    // ---- v0.55 ----
+    case 'nilski:Q': sfxAt('whoosh', u.x, u.y); break;   // 🪝 Udica: lanac crta buildProjMesh
+    case 'nilski:W': for(let i = 0; i < 20; i++) fxSpawn(u.x, u.y, gh + 20, i % 2 ? '#a3e635' : '#65a30d', { spd: 140, up: 40, grav: 0, life: 0.8, size: 28 }); break;
+    case 'nilski:E': fxFloat('fx_heart', u.x, u.y, 60, 4, { scale: 18, up: 70, life: 1.0, h0: 30 }); break;
+    case 'nilski:R': for(let i = 0; i < 16; i++) fxSpawn(u.x + Math.cos(u.dir || 0) * 50, u.y + Math.sin(u.dir || 0) * 50, gh + 50, i % 2 ? '#fb7185' : '#fecdd3', { spd: 120, up: 60, grav: -60, life: 0.6, size: 20 }); break;
+    case 'irbis:Q': for(let i = 0; i < 22; i++){ const a = i / 22 * TAU; fxSpawn(u.x + Math.cos(a) * 50, u.y + Math.sin(a) * 50, gh + 30, i % 2 ? '#e0f2fe' : '#7dd3fc', { spd: 0, up: 120, grav: 0, life: 0.7, size: 18 }); } break;
+    case 'irbis:W': for(let i = 0; i < 16; i++){ const a = (u.dir || 0) + (Math.random() - 0.5) * 1.2; const n = fx.list.length; fxSpawn(u.x, u.y, gh + 40, '#f0f9ff', { spd: 0, up: 10, grav: 0, life: 0.5, size: 26 }); if(fx.list.length > n){ fx.list[n].vx = Math.cos(a) * 520; fx.list[n].vy = Math.sin(a) * 520; } } break;
+    case 'irbis:E': muzzleFx(u, gh, '#bae6fd'); break;
+    case 'skorpion:Q': {   // 🕳️ Podzemni juriš: pijesak se otvori na startu, trag ispod zemlje i erupcija na kraju
+      const x0 = ud0(g).lastX != null ? ud0(g).lastX : u.x, y0 = ud0(g).lastY != null ? ud0(g).lastY : u.y;
+      const L = distXY(x0, y0, u.x, u.y), n = Math.max(4, Math.round(L / 40));
+      for(let i = 0; i <= n; i++){
+        const f = i / n, x = lerp(x0, u.x, f), y = lerp(y0, u.y, f);
+        fxSpawn(x, y, groundHeight(x, y) + 4, i % 2 ? '#d6a35c' : '#a87b47', { spd: 60, up: 120 + Math.random() * 80, grav: -300, life: 0.6 + f * 0.3, size: 26 });
+      }
+      scorchFx(u.x, u.y, 110, '#7c5a32', 2.5);
+      shockwave(u.x, u.y, 200, '#d6a35c');
+      shakeAt(u.x, u.y, 0.7, 0.35);
+      break;
+    }
+    case 'skorpion:W': for(let i = 0; i < 26; i++){ const a = i / 26 * TAU; fxSpawn(u.x + Math.cos(a) * 60, u.y + Math.sin(a) * 60, gh + 10, i % 2 ? '#e7c27d' : '#b8915a', { spd: 260, up: 50, grav: 0, life: 0.8, size: 30 }); } break;
+    case 'skorpion:R': dust(26, '#d6a35c'); shakeAt(u.x, u.y, 0.6, 0.6); break;
   }
+}
+function ud0(g){ return g.userData; }
+/* ⛓️ v0.55: metalni lanac (Udica) */
+let _chainMat = null;
+function chainMat(){
+  if(!_chainMat) _chainMat = new THREE.MeshLambertMaterial({ color: '#9ca3af', emissive: '#1f2937' });
+  return _chainMat;
 }
 /* 🔫 bljesak iz cijevi puške (Nišan) */
 function muzzleFx(u, gh, col){
@@ -4042,9 +4081,70 @@ function syncHeroExtras(u, g, gh, tAnim, dt, seen){
     b.material.opacity = 0.45 + 0.4 * Math.abs(Math.sin(tAnim * 6));
     if(Math.random() < dt * 30) fxSpawn(dest.x + 70 + (Math.random() - 0.5) * r * 2, dest.y + 70 + (Math.random() - 0.5) * r * 2, dh + 5, TEAM_LIGHT[u.team] || '#93c5fd', { spd: 10, up: 160, grav: 0, life: 0.8, size: 18 });
   } else if(ud.tpBeam) ud.tpBeam.visible = false;
+  // 🤢⏳ v0.55: oblak oko junaka — zeleni smrad (Pecko) ili pješčana oluja (Škorpo); vidi ga i protivnik (kao u Doti)
+  const ck = u.cloud ? u.cloud.kind : u.cloudK;
+  if(ck && !u.dead && (u.team === myTeam || isVisibleTo(myTeam, { x: u.x, y: u.y, team: -1 }))){
+    const sand = ck === 'sand';
+    if(!ud.cloudG || ud.cloudG.userData.k !== ck){
+      if(ud.cloudG) scene3.remove(ud.cloudG);
+      const grp = new THREE.Group(), n = sand ? 16 : 11;
+      grp.userData.k = ck;
+      for(let i = 0; i < n; i++){
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: puffTexture(), transparent: true, opacity: 0.4, depthWrite: false,
+          color: sand ? (i % 2 ? '#e7c27d' : '#b8915a') : (i % 2 ? '#a3e635' : '#4d7c0f') }));
+        sp.userData.a = i / n * TAU; sp.userData.r = (sand ? 120 : 90) + (i % 3) * (sand ? 60 : 55); sp.userData.h = 18 + (i % 4) * 26;
+        grp.add(sp);
+      }
+      scene3.add(grp); ud.cloudG = grp;
+    }
+    const grp = ud.cloudG;
+    grp.visible = true;
+    grp.position.set(u.x, gh, u.y);
+    for(const sp of grp.children){
+      const a = sp.userData.a + tAnim * (sand ? 2.4 : 0.5);
+      sp.position.set(Math.cos(a) * sp.userData.r, sp.userData.h + Math.sin(tAnim * 2 + sp.userData.a * 3) * 10, Math.sin(a) * sp.userData.r);
+      const sz = (sand ? 150 : 175) + Math.sin(tAnim * 3 + sp.userData.a) * 22;
+      sp.scale.set(sz, sz * 0.8, 1);
+      sp.material.opacity = sand ? 0.4 : 0.34;
+    }
+    if(Math.random() < dt * (sand ? 26 : 10)){
+      const a = Math.random() * TAU, r = Math.random() * (sand ? 260 : 220);
+      fxSpawn(u.x + Math.cos(a) * r, u.y + Math.sin(a) * r, gh + 10, sand ? '#f3d9a4' : '#d9f99d', { spd: sand ? 80 : 10, up: sand ? 30 : 50, grav: 0, life: 0.7, size: sand ? 14 : 18 });
+    }
+  } else if(ud.cloudG) ud.cloudG.visible = false;
+  // 🪝 v0.55: lanac Udice dok vuče metu do Pecka
+  const dsrc = u.drag ? u.drag.src : (u.dragId ? units.find(e => e.id === u.dragId) : null);
+  if(dsrc && !u.dead && (seen || u === player || dsrc === player)){
+    if(!ud.chain){
+      const geo = cachedGeo('tongueGeo', () => { const c = new THREE.CylinderGeometry(1, 1, 1, 8); c.rotateZ(-Math.PI / 2); return c; });
+      ud.chain = new THREE.Mesh(geo, chainMat());
+      scene3.add(ud.chain);
+    }
+    const sh = groundHeight(dsrc.x, dsrc.y) + 58, th = gh + 45, L = distXY(dsrc.x, dsrc.y, u.x, u.y);
+    ud.chain.visible = true;
+    ud.chain.position.set((dsrc.x + u.x) / 2, (sh + th) / 2, (dsrc.y + u.y) / 2);
+    ud.chain.rotation.set(0, -Math.atan2(u.y - dsrc.y, u.x - dsrc.x), Math.atan2(th - sh, L || 1));
+    ud.chain.scale.set(Math.max(1, L), 4, 4);
+  } else if(ud.chain) ud.chain.visible = false;
+  // 🌋 v0.55: val Epicentra — udarni val, prašina i potres
+  if(u.epiN && u.epiN !== ud.epiSeen){
+    ud.epiSeen = u.epiN;
+    if(seen || u.team === myTeam){
+      const r = u.epiR || 300;
+      shockwave(u.x, u.y, r, '#f59e0b');
+      for(let i = 0; i < 18; i++){ const a = i / 18 * TAU; fxSpawn(u.x + Math.cos(a) * r * 0.9, u.y + Math.sin(a) * r * 0.9, gh + 6, i % 2 ? '#d6a35c' : '#fde68a', { spd: 60, up: 90, grav: -120, life: 0.6, size: 24 }); }
+      shakeAt(u.x, u.y, 0.5, 0.3);
+    }
+  }
+  // ❄️ v0.55: Ledene strijele — ledene iskrice oko Inje
+  if(u.frostT > 0 && seen && Math.random() < dt * 14)
+    fxSpawn(u.x + (Math.random() - 0.5) * 50, u.y + (Math.random() - 0.5) * 50, gh + 40 + Math.random() * 40, Math.random() < 0.5 ? '#e0f2fe' : '#7dd3fc', { spd: 10, up: 30, grav: 0, life: 0.5, size: 14 });
+  // 🧪 v0.55: otrovan (Otrovni prasak) — zeleni mjehurići
+  if(u.causticT > 0 && seen && Math.random() < dt * 8)
+    fxSpawn(u.x + (Math.random() - 0.5) * 30, u.y + (Math.random() - 0.5) * 30, gh + 30 + Math.random() * 30, '#a3e635', { spd: 6, up: 40, grav: 0, life: 0.6, size: 12 });
   // 🎯 Savršen hitac: crveni laser od Nišana do mete + nišan nad metom
   let ct = null, cf = 0;
-  if(u.chan && u.chan.target){ ct = u.chan.target; cf = 1 - u.chan.t / u.chan.dur; }
+  if(u.chan && u.chan.target && !u.chan.o){ ct = u.chan.target; cf = 1 - u.chan.t / u.chan.dur; }
   else if(u.chanFx){ ct = units.find(e => e.id === u.chanFx.id); cf = u.chanFx.f; }
   if(ct && !ct.dead && (seen || ct === player)){
     if(!ud.laser){
@@ -4166,7 +4266,8 @@ function animateUnit(u, g, now, dt){
   const stunned = u.status && u.status.stun > 0;
   if(((typeof winnerTeam !== 'undefined' && winnerTeam != null && u.kind === 'hero' && u.team === winnerTeam) || u.danceT > 0) && a.acts.victory)
     animBase(a, 'victory', 1, now);   // pobjednički ples (i 💃 ples na tipku J)
-  else if((u.chan || u.chanFx) && a.acts.aim) animBase(a, 'aim', 1, now);   // 🎯 nišani (Savršen hitac)
+  else if(((u.chan && !u.chan.o) || u.chanFx) && a.acts.aim) animBase(a, 'aim', 1, now);   // 🎯 nišani (Savršen hitac)
+  else if(((u.chan && u.chan.o) || u.chanK) && a.acts.channel) animBase(a, 'channel', 1.3, now);   // v0.55: Veliki zalogaj, Lepeza strijela, Epicentar
   else if(u.tpChannel > 0 && a.acts.channel) animBase(a, 'channel', 1, now);
   else if(moving && !stunned) animBase(a, 'walk', 0.7 + (u.speed || 150) / 240, now);
   else {
@@ -4802,7 +4903,7 @@ function syncCosmetics(u, ud, gh, tAnim, dt){
 }
 function heroSceneExtras(g){   // objekti junaka koji žive izravno u sceni (TP stup, laser, nišan)
   const ud = g.userData;
-  for(const k of ['tpBeam', 'laser', 'cross', 'topper']) if(ud[k]){ scene3.remove(ud[k]); ud[k] = null; }
+  for(const k of ['tpBeam', 'laser', 'cross', 'topper', 'cloudG', 'chain']) if(ud[k]){ scene3.remove(ud[k]); ud[k] = null; }
   ud.topperId = null;
 }
 function clearScene3D(){

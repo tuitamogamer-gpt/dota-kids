@@ -1710,6 +1710,220 @@ const HEROES = [
         }},
     ],
   },
+  // ---- v0.55: novi junaci (Pudge, Drow Ranger i Sand King iz DotA) ----
+  {
+    id:'nilski', name:L('Pecko', 'Petsko'), emoji:'🦛',
+    role:L('🪝 Nilski konj — udicom dovlači neprijatelje', '🪝 Hippo — reels enemies in with a hook'),
+    hp:760, mp:230, dmg:60,
+    attrs:{ str:25, agi:12, int:15, strG:5.4, agiG:1.6, intG:1.9, primary:'str' },
+    range:85, speed:166, atkCd:1.15, projSpeed:0,
+    passive:{ name:L('Gozba', 'Feast'), emoji:'🍉', color:'#f87171', pid:'gozba',
+      desc:L('PASIVNO: kad neprijateljski junak padne blizu tebe, pojedeš lubenicu i zauvijek si jači (+snaga); debela koža smanjuje štetu od magija', 'PASSIVE: when an enemy hero falls near you, you eat a watermelon and get stronger forever (+strength); thick skin reduces magic damage'),
+      tip:rk => L('🍉 +' + (1 + 0.5*rk).toFixed(1) + ' snage za svakog pobijeđenog junaka u blizini • ✨ −' + (4 + 3*rk) + '% štete od magija', '🍉 +' + (1 + 0.5*rk).toFixed(1) + ' strength for every enemy hero defeated near you • ✨ −' + (4 + 3*rk) + '% magic damage') },
+    abilities:[
+      { key:'Q', name:L('Udica', 'Hook'), emoji:'🪝', cd:14, mana:100, color:'#cbd5e1',
+        desc:L('Baci udicu na lancu — prvog pogođenog neprijatelja dovuče skroz do tebe!', 'Throw a hook on a chain — the first enemy it hits gets reeled all the way to you!'),
+        target:'point', castRange:1000, line:true, lineFull:true, lineW:56,
+        tip:rk => L('⚔️ ' + (90 + 60*rk) + ' štete + 🪝 dovlačenje do tebe (domet 1000)', '⚔️ ' + (90 + 60*rk) + ' damage + 🪝 pulled all the way to you (range 1000)'),
+        bot:{type:'hook', range:950},
+        cast(u, aim, rk){
+          const R = 1000 + (hasTal(u, 'nilski_q_far') ? 250 : 0);
+          return spawnSkillshot(u, aim, {speed:1300, r:22, range:R, dmg:90 + 60*rk, color:'#cbd5e1', emoji:'🪝',
+            onHit(e){
+              dragTo(e, u, 1500);
+              addFloat(e.x, e.y, L('🪝 Upecan!', '🪝 Hooked!'), '#e2e8f0', 16);
+            }});
+        }},
+      { key:'W', name:L('Smrdljivi oblak', 'Stinky Cloud'), emoji:'🤢', cd:10, mana:35, color:'#84cc16',
+        desc:L('Oko tebe se digne smrdljivi zeleni oblak — neprijatelji u njemu gube život i sporiji su (i tebi malo smrdi!)', 'A stinky green cloud rises around you — enemies in it lose health and slow down (it stinks a little for you too!)'),
+        selfAoe:250,
+        tip:rk => L('⚔️ ' + (18 + 12*rk) + ' štete/s + 🐌 ' + (20 + 5*rk) + '% usporenje u krugu 250 na 6 s • ti gubiš ' + (4 + rk) + '/s', '⚔️ ' + (18 + 12*rk) + ' damage/s + 🐌 ' + (20 + 5*rk) + '% slow within 250 for 6 s • you lose ' + (4 + rk) + '/s'),
+        bot:{type:'aoe-self', range:250},
+        cast(u, aim, rk){
+          startCloud(u, { kind:'rot', t:6, r:250, dps:18 + 12*rk, slow:0.2 + 0.05*rk, self:4 + rk, color:'#84cc16' });
+          burst(u.x, u.y, '#a3e635', 18, 200, 6);
+          addFloat(u.x, u.y - 30, L('🤢 Fuj!', '🤢 Phew!'), '#bef264', 15);
+          return true;
+        }},
+      { key:'E', name:L('Pojas za spas', 'Life Ring'), emoji:'🛟', cd:16, mana:60, color:'#fb923c',
+        desc:L('Navuci pojas za spašavanje — 5 s primaš puno manje štete, a odmah se malo izliječiš', 'Put on your life ring — for 5 s you take much less damage, and you heal a bit right away'),
+        tip:rk => L('🛡️ −' + (20 + 6*rk) + '% štete na 5 s + 💚 ' + (40 + 30*rk) + ' liječenja', '🛡️ −' + (20 + 6*rk) + '% damage for 5 s + 💚 ' + (40 + 30*rk) + ' healing'),
+        bot:{type:'shield', range:450},
+        cast(u, aim, rk){
+          applyShield(u, 0.2 + 0.06*rk, 5);
+          heal(u, 40 + 30*rk);
+          ring(u.x, u.y, 120, '#fb923c');
+          burst(u.x, u.y, '#fdba74', 14, 160, 5);
+          return true;
+        }},
+      { key:'R', name:L('Veliki zalogaj', 'Big Gulp'), emoji:'😋', cd:70, mana:120, ult:true, color:'#f43f5e',
+        desc:L('ULTI: Zgrabi neprijatelja uz sebe i "žvači" ga 3 sekunde — ne može se micati, gubi puno života, a ti se liječiš', 'ULT: Grab an enemy next to you and "chew" them for 3 seconds — they can\'t move, lose lots of health, and you heal'),
+        target:'point', castRange:220, aoe:120,
+        tip:rk => L('😋 ' + (60 + 35*rk) + ' štete/s na 3 s (ukupno ' + 3*(60 + 35*rk) + ') + omama • 💚 liječiš se pola štete', '😋 ' + (60 + 35*rk) + ' damage/s for 3 s (' + 3*(60 + 35*rk) + ' total) + stun • 💚 you heal for half the damage'),
+        bot:{type:'grab', range:230},
+        cast(u, aim, rk){
+          const p = clampRange(u, aim, 260);
+          let best = null, bd = 300;
+          for(const e of units){
+            if(e.team === u.team || e.dead || e.removeMe || e.invuln || !isSpellTarget(e) || isStructure(e) || dist(u, e) > 220 + e.r + u.r) continue;
+            if(e.kind === 'hero' && e.status.invisT > 0 && e.status.trackT <= 0) continue;
+            const d = distXY(p.x, p.y, e.x, e.y) - (e.kind === 'hero' ? 120 : 0);
+            if(d < bd){ bd = d; best = e; }
+          }
+          if(!best) return false;
+          const dps = 60 + 35*rk, dur = 3 + (hasTal(u, 'nilski_r_long') ? 1 : 0);
+          let acc = 0;
+          startChannel(u, dur, best, null, { kind:'channel', msg:L('😋 Zalogaj prekinut!', '😋 Gulp interrupted!'),
+            tick(t, dt){
+              applyStun(t, 0.2);
+              if(dist(u, t) > u.r + t.r + 30){ const q = stepToward(u, t, u.r + t.r + 20); t.x = q.x; t.y = q.y; }
+              acc += dt;
+              while(acc >= 0.5 && !t.dead){
+                acc -= 0.5;
+                const hp0 = t.hp;
+                applyDamage(t, dps * 0.5, u);
+                heal(u, Math.max(0, hp0 - t.hp) * 0.5);
+                burst(t.x, t.y, '#fb7185', 6, 120, 4);
+              }
+            }});
+          addFloat(best.x, best.y, L('😋 Njam!', '😋 Nom nom!'), '#fda4af', 18);
+          return true;
+        }},
+    ],
+  },
+  {
+    id:'irbis', name:L('Inja', 'Inya'), emoji:'🐆',
+    role:L('❄️ Snježni leopard — ledena strijelkinja', '❄️ Snow leopard — frost archer'),
+    hp:520, mp:250, dmg:46,
+    attrs:{ str:16, agi:24, int:15, strG:2.0, agiG:5.4, intG:1.9, primary:'agi' },
+    range:390, speed:168, atkCd:1.1, projSpeed:1000, shot:'arrow',
+    passive:{ name:L('Aura preciznosti', 'Precision Aura'), emoji:'🎯', color:'#bae6fd', pid:'precizna',
+      desc:L('PASIVNO: ti i prijatelji koji napadaju izdaleka (u krugu 900) udarate jače', 'PASSIVE: you and nearby friends who attack from range (within 900) hit harder'),
+      tip:rk => L('🎯 +' + (4 + 3*rk) + '% štete napada tebi i prijateljima koji gađaju izdaleka', '🎯 +' + (4 + 3*rk) + '% attack damage for you and friends who attack from range') },
+    abilities:[
+      { key:'Q', name:L('Ledene strijele', 'Frost Arrows'), emoji:'❄️', cd:12, mana:45, color:'#7dd3fc',
+        desc:L('Začaraj tobolac — 8 s svaka tvoja strijela je ledena: jače udara i jako usporava', 'Enchant your quiver — for 8 s every arrow is icy: it hits harder and slows a lot'),
+        tip:rk => L('❄️ 8 s: +' + (10 + 8*rk) + ' štete i 🐌 ' + (20 + 6*rk) + '% usporenje po strijeli', '❄️ 8 s: +' + (10 + 8*rk) + ' damage and 🐌 ' + (20 + 6*rk) + '% slow per arrow'),
+        bot:{type:'haste', range:520},
+        cast(u, aim, rk){
+          u.frostT = 8; u.frostDmg = 10 + 8*rk + (hasTal(u, 'irbis_q_plus') ? 15 : 0); u.frostSlow = 0.2 + 0.06*rk;
+          addFloat(u.x, u.y - 30, L('❄️ Ledene strijele!', '❄️ Frost Arrows!'), '#bae6fd', 15);
+          burst(u.x, u.y, '#bae6fd', 14, 160, 5);
+          return true;
+        }},
+      { key:'W', name:L('Snježni nalet', 'Snow Gust'), emoji:'🌬️', cd:15, mana:75, color:'#e0f2fe',
+        desc:L('Pošalji ledeni nalet vjetra — odgura neprijatelje i ušutka ih (ne mogu bacati moći)', 'Send an icy gust of wind — it pushes enemies back and silences them (they can\'t cast spells)'),
+        target:'point', castRange:750, line:true, lineFull:true, lineW:180,
+        tip:rk => L('⚔️ ' + (30 + 20*rk) + ' štete + 🤐 tišina ' + (1.5 + 0.5*rk).toFixed(1) + ' s + 💨 odbačaj', '⚔️ ' + (30 + 20*rk) + ' damage + 🤐 ' + (1.5 + 0.5*rk).toFixed(1) + ' s silence + 💨 knockback'),
+        bot:{type:'shot', range:650},
+        cast(u, aim, rk){
+          return spawnSkillshot(u, aim, {speed:950, r:90, range:750, pierce:true, dmg:30 + 20*rk, color:'#e0f2fe', emoji:'🌬️',
+            onHit(e, p){
+              applySilence(e, 1.5 + 0.5*rk);
+              knockback(e, e.x - p.vx, e.y - p.vy, 150);
+              addFloat(e.x, e.y, '🤐', '#e0f2fe', 16);
+            }});
+        }},
+      { key:'E', name:L('Lepeza strijela', 'Arrow Fan'), emoji:'🏹', cd:14, mana:70, color:'#93c5fd',
+        desc:L('Ispali tri lepeze ledenih strijela ispred sebe — svaka pogođena meta je usporena', 'Fire three fans of icy arrows in front of you — everyone hit is slowed'),
+        target:'point', castRange:650, line:true, lineW:300,
+        tip:rk => L('⚔️ 3 vala × ' + (28 + 16*rk) + ' štete + 🐌 25% usporenje (po 5 strijela u valu)', '⚔️ 3 waves × ' + (28 + 16*rk) + ' damage + 🐌 25% slow (5 arrows per wave)'),
+        bot:{type:'zone', range:600},
+        cast(u, aim, rk){
+          const dir = Math.atan2(aim.y - u.y, aim.x - u.x) || u.dir || 0;
+          const waves = 3 + (hasTal(u, 'irbis_e_wave') ? 1 : 0), dmg = 28 + 16*rk;
+          let el = 0, n = 0;
+          const volley = () => {
+            const hitIds = {};
+            for(let k = -2; k <= 2; k++){
+              const a = dir + k * 0.2;
+              spawnSkillshot(u, { x: u.x + Math.cos(a) * 300, y: u.y + Math.sin(a) * 300 }, {speed:1050, r:16, range:650,
+                dmg, slow:{f:0.25, t:1.5}, color:'#bae6fd', emoji:'🎯', hitIds});
+            }
+            n++;
+          };
+          volley();
+          startChannel(u, 0.35 * (waves - 1) + 0.05, u, null, { kind:'channel', dir,
+            tick(t, dt){ el += dt; while(n < waves && el >= 0.35 * n) volley(); }});
+          return true;
+        }},
+      { key:'R', name:L('Majstorica luka', 'Master Archer'), emoji:'🎖️', cd:0, mana:0, ult:true, passive:true, color:'#38bdf8',
+        desc:L('ULTI (PASIVNO): više okretnosti, a kad nijedan neprijateljski junak nije blizu (400), strijele ponekad probiju oklop i jako udare', 'ULT (PASSIVE): more agility, and when no enemy hero is close (400), arrows sometimes pierce armor and hit hard'),
+        tip:rk => L('🤸 +' + (10 + 8*rk) + ' okretnosti • 🎯 ' + (25 + 5*rk) + '% šanse: +' + (40 + 30*rk) + ' štete (kad neprijatelj nije blizu)', '🤸 +' + (10 + 8*rk) + ' agility • 🎯 ' + (25 + 5*rk) + '% chance: +' + (40 + 30*rk) + ' damage (when no enemy is close)'),
+        onLearn(u, rk){ u.agi += rk === 1 ? 18 : 8; recomputeAttrStats(u); },
+        cast(){ return false; }},
+    ],
+  },
+  {
+    id:'skorpion', name:L('Škorpo', 'Skorpo'), emoji:'🦂',
+    role:L('🏜️ Škorpion — kralj pijeska', '🏜️ Scorpion — king of the sands'),
+    hp:700, mp:270, dmg:56,
+    attrs:{ str:22, agi:18, int:17, strG:4.6, agiG:2.0, intG:2.6, primary:'str' },
+    range:90, speed:168, atkCd:1.1, projSpeed:0,
+    passive:{ name:L('Otrovni prasak', 'Venom Burst'), emoji:'🧪', color:'#a3e635', pid:'zalac',
+      desc:L('PASIVNO: napadi i moći ubrizgaju otrov — padne li meta dok je otrovana, rasprsne se i rani sve oko sebe (a preživi li 4 s, malo prasne)', 'PASSIVE: attacks and spells inject venom — if the target falls while poisoned, it bursts and hurts everyone around it (if it survives 4 s, it pops a little)'),
+      tip:rk => L('🧪 prasak ' + (30 + 30*rk) + ' štete u krugu 220 (pola ako meta preživi 4 s)', '🧪 burst ' + (30 + 30*rk) + ' damage within 220 (half if the target survives 4 s)') },
+    abilities:[
+      { key:'Q', name:L('Podzemni juriš', 'Burrow Strike'), emoji:'🕳️', cd:13, mana:100, color:'#d6a35c',
+        desc:L('Zaroni pod pijesak i izleti dalje — sve neprijatelje na putu izbaci uvis i omami', 'Dive under the sand and pop out further on — every enemy in the way gets tossed up and stunned'),
+        target:'point', castRange:600, line:true, lineW:180,
+        tip:rk => L('⚔️ ' + (80 + 45*rk) + ' štete + omama ' + (0.9 + 0.15*rk).toFixed(2) + ' s svima na putu', '⚔️ ' + (80 + 45*rk) + ' damage + ' + (0.9 + 0.15*rk).toFixed(2) + ' s stun to everyone in the way'),
+        bot:{type:'gap', range:600},
+        cast(u, aim, rk){
+          const fx = u.x, fy = u.y;
+          leapTo(u, aim, 600);
+          for(const e of units){
+            if(e.team === u.team || e.dead || e.removeMe || e.invuln || !isSpellTarget(e)) continue;
+            if(distToSeg(e.x, e.y, fx, fy, u.x, u.y) > 90 + e.r) continue;
+            applyDamage(e, 80 + 45*rk, u); applyStun(e, 0.9 + 0.15*rk); applyCaustic(e, u);
+            e.knockN = (e.knockN || 0) + 1;
+          }
+          addLine(fx, fy, u.x, u.y, '#d6a35c', 14, 0.6);
+          burst(u.x, u.y, '#e7c27d', 22, 240, 6);
+          return true;
+        }},
+      { key:'W', name:L('Pješčana oluja', 'Sandstorm'), emoji:'⏳', cd:18, mana:80, color:'#e2b86b',
+        desc:L('Digni pješčanu oluju oko sebe — neprijatelji u njoj gube život, a tebe nitko ne vidi (dok ne napadneš)', 'Whip up a sandstorm around you — enemies inside lose health, and nobody can see you (until you attack)'),
+        selfAoe:280,
+        tip:rk => L('⚔️ ' + (25 + 15*rk) + ' štete/s u krugu 280 na 5 s + 👻 nevidljiv', '⚔️ ' + (25 + 15*rk) + ' damage/s within 280 for 5 s + 👻 invisible'),
+        bot:{type:'aoe-self', range:280},
+        cast(u, aim, rk){
+          startCloud(u, { kind:'sand', t:5, r:280, dps:25 + 15*rk, slow:0.1, self:0, color:'#e2b86b' });
+          u.status.invisT = Math.max(u.status.invisT, 5);
+          burst(u.x, u.y, '#e7c27d', 24, 240, 7);
+          return true;
+        }},
+      { key:'E', name:L('Žalac', 'Stinger'), emoji:'🦂', cd:9, mana:70, color:'#a3e635',
+        desc:L('Ubodi repom izdaleka — rani, jako uspori i otruje sve u krugu', 'Sting with your tail from afar — it hurts, slows a lot and poisons everyone in the circle'),
+        target:'point', castRange:700, aoe:170,
+        tip:rk => L('⚔️ ' + (65 + 40*rk) + ' štete + 🐌 40% usporenje 2.5 s + 🧪 otrov', '⚔️ ' + (65 + 40*rk) + ' damage + 🐌 40% slow for 2.5 s + 🧪 venom'),
+        bot:{type:'zone', range:650},
+        cast(u, aim, rk){
+          const p = clampRange(u, aim, 700);
+          for(const e of units){
+            if(e.team === u.team || e.dead || e.removeMe || e.invuln || !isSpellTarget(e)) continue;
+            if(distXY(p.x, p.y, e.x, e.y) > 170 + e.r * 0.5) continue;
+            applyDamage(e, 65 + 40*rk, u); applySlow(e, 0.4, 2.5); applyCaustic(e, u);
+          }
+          ring(p.x, p.y, 170, '#a3e635');
+          burst(p.x, p.y, '#bef264', 18, 200, 6);
+          return true;
+        }},
+      { key:'R', name:L('Epicentar', 'Epicenter'), emoji:'🌋', cd:80, mana:150, ult:true, color:'#f59e0b',
+        desc:L('ULTI: Nakon kratkog zamaha zemlja se zatrese — sve veći udarni valovi oko tebe ranjavaju i usporavaju neprijatelje', 'ULT: After a short wind-up the ground shakes — ever bigger shockwaves around you hurt and slow enemies'),
+        selfAoe:450,
+        tip:rk => L('⏳ 1 s zamaha, pa ' + (6 + rk) + ' udara po ' + (35 + 20*rk) + ' štete + 🐌 30% (krug raste 250 → 450)', '⏳ 1 s wind-up, then ' + (6 + rk) + ' pulses of ' + (35 + 20*rk) + ' damage + 🐌 30% (circle grows 250 → 450)'),
+        bot:{type:'ult-aoe', range:320},
+        cast(u, aim, rk){
+          const n = 6 + rk + (hasTal(u, 'skorpion_r_more') ? 3 : 0), dmg = 35 + 20*rk;
+          startChannel(u, 1, u, () => {
+            u.epi = { n, i: 0, t: 0, dmg };
+            addFloat(u.x, u.y - 30, L('🌋 Epicentar!', '🌋 Epicenter!'), '#fcd34d', 18);
+          }, { kind:'channel', msg:L('🌋 Epicentar prekinut!', '🌋 Epicenter interrupted!') });
+          return true;
+        }},
+    ],
+  },
 ];
 
 /* ---------------- DUĆAN S RECEPTIMA ---------------- */
@@ -2075,6 +2289,9 @@ const HERO_BUILDS = {
   morskipas: ['wraith', 'phase', 'mom', 'bfury', 'abyssal', 'satanic'],
   nisan: ['wraith', 'treads', 'crystalys', 'mkb', 'daedalus', 'butterfly'],   // v0.38
   bikos: ['bracer', 'vanguard', 'blink', 'bkb', 'assault', 'titanheart'],
+  nilski: ['bracer', 'phase', 'blink', 'vanguard', 'bkb', 'titanheart'],   // v0.55
+  irbis: ['wraith', 'treads', 'mom', 'crystalys', 'butterfly', 'daedalus'],
+  skorpion: ['bracer', 'arcane', 'blink', 'bkb', 'shiva', 'refresher'],
 };
 for(const h of HEROES) h.build = HERO_BUILDS[h.id] || BOT_BUILD;
 /* ✨ ČAROLIJE PRIZIVAČA (kao u League of Legends): svaki junak nosi dvije (tipke D i F), bira ih na početku */
@@ -2329,6 +2546,25 @@ const HERO_TALENTS = {
     [TAL('🍖', L('Ratna glad +15 štete/s', 'Battle Hunger +15 damage/s'), { flag:'bikos_w_plus' }), TAL('🛡️', L('+5 oklopa', '+5 armor'), { armor:5 })],
     [TAL('🌀', L('Bikovski vrtlog +1 rang', 'Bull Spin +1 rank'), { pas:1 }), TAL('🏃', L('+30 brzine', '+30 speed'), { spd:30 })],
     [TAL('🪓', L('Smrtni udarac: prag +150', 'Final Blow: +150 HP threshold'), { flag:'bikos_r_plus' }), TAL('🗯️', L('Bojni zov −4 s hlađenja', 'Battle Call −4 s cooldown'), { ab:{ Q:{ cd:-4 } } })],
+  ],
+  // ---- v0.55 ----
+  nilski: [
+    [TAL('🪝', L('Udica +70 štete', 'Hook +70 damage'), { ab:{ Q:{ dmg:70 } } }), TAL('❤️', L('+250 života', '+250 HP'), { hp:250 })],
+    [TAL('🤢', L('Smrdljivi oblak +10 štete/s', 'Stinky Cloud +10 damage/s'), { ab:{ W:{ dmg:5 } } }), TAL('🛡️', L('+5 oklopa', '+5 armor'), { armor:5 })],
+    [TAL('🪝', L('Udica −4 s hlađenja', 'Hook −4 s cooldown'), { ab:{ Q:{ cd:-4 } } }), TAL('🍉', L('Gozba +1 rang', 'Feast +1 rank'), { pas:1 })],
+    [TAL('😋', L('Veliki zalogaj traje 1 s dulje', 'Big Gulp lasts 1 s longer'), { flag:'nilski_r_long' }), TAL('🪝', L('Udica +250 dometa', 'Hook +250 range'), { flag:'nilski_q_far' })],
+  ],
+  irbis: [
+    [TAL('❄️', L('Ledene strijele +15 štete', 'Frost Arrows +15 damage'), { flag:'irbis_q_plus' }), TAL('⚡', L('+20% brzine napada', '+20% attack speed'), { aspd:0.2 })],
+    [TAL('🌬️', L('Snježni nalet +1 s tišine', 'Snow Gust +1 s silence'), { ab:{ W:{ dur:1 } } }), TAL('🏹', L('+75 dometa napada', '+75 attack range'), { range:75 })],
+    [TAL('🏹', L('Lepeza strijela: +1 val', 'Arrow Fan: +1 wave'), { flag:'irbis_e_wave' }), TAL('🎯', L('Aura preciznosti +1 rang', 'Precision Aura +1 rank'), { pas:1 })],
+    [TAL('🎖️', L('Majstorica luka radi i kad su neprijatelji blizu', 'Master Archer works even with enemies close'), { flag:'irbis_r_always' }), TAL('🦋', L('+25% izbjegavanja', '+25% evasion'), { evasion:0.25 })],
+  ],
+  skorpion: [
+    [TAL('🕳️', L('Podzemni juriš +60 štete', 'Burrow Strike +60 damage'), { ab:{ Q:{ dmg:60 } } }), TAL('❤️', L('+250 života', '+250 HP'), { hp:250 })],
+    [TAL('🦂', L('Žalac −3 s hlađenja', 'Stinger −3 s cooldown'), { ab:{ E:{ cd:-3 } } }), TAL('🛡️', L('+5 oklopa', '+5 armor'), { armor:5 })],
+    [TAL('🧪', L('Otrovni prasak +1 rang', 'Venom Burst +1 rank'), { pas:1 }), TAL('⏳', L('Pješčana oluja +10 štete/s', 'Sandstorm +10 damage/s'), { ab:{ W:{ dmg:5 } } })],
+    [TAL('🌋', L('Epicentar +3 udara', 'Epicenter +3 pulses'), { flag:'skorpion_r_more' }), TAL('🕳️', L('Podzemni juriš +0.6 s omame', 'Burrow Strike +0.6 s stun'), { ab:{ Q:{ dur:0.6 } } })],
   ],
 };
 

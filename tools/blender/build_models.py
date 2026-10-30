@@ -1068,6 +1068,15 @@ def biped(name, c, opts):
             h.sphere(V(0.47, sd * 0.09, 1.19), (0.03 * S, 0.045 * S, 0.035 * S), mix(mz, '#000000', 0.55), seg=(10, 7))
         h.arc(V(0.5, 0, 1.105), 0.05 * S, 0, 360, 12, 0.014 * S, '#f6c945', plane='yz', seg=6)   # alka u nosu
         h.arc(V(0.465, 0, 1.08), 0.08 * S, 215, 325, 6, 0.012 * S, '#5a2a2a', plane='yz', seg=5)
+    elif snout == 'hippo':   # v0.55 nilski konj: golema široka njuška, nosnice na vrhu, dva zubića i veliki osmijeh
+        h.sphere(V(0.3, 0, 1.15), (0.2 * S, 0.33 * S, 0.19 * S), mz, seg=(20, 14))
+        h.sphere(V(0.36, 0, 1.06), (0.15 * S, 0.27 * S, 0.08 * S), mix(mz, '#000000', 0.06), seg=(16, 8))   # donja usna
+        for sd in (1, -1):
+            h.sphere(V(0.43, sd * 0.11, 1.29), (0.04 * S, 0.05 * S, 0.035 * S), mix(mz, '#ffffff', 0.12), seg=(10, 7))   # kvrga nosnice
+            h.sphere(V(0.455, sd * 0.11, 1.305), (0.022 * S, 0.03 * S, 0.016 * S), mix(mz, '#000000', 0.6), seg=(8, 5))
+            h.cyl(V(0.47, sd * 0.13, 1.07), V(0.48, sd * 0.135, 1.13), 0.022 * S, 0.012 * S, '#fffbeb', seg=6)   # zubić
+            h.sphere(V(0.27, sd * 0.3, 1.15), (0.02 * S, 0.02 * S, 0.02 * S), mix(mz, '#000000', 0.3), seg=(6, 4))   # brčići
+        h.arc(V(0.44, 0, 1.13), 0.2 * S, -62, 62, 10, 0.012 * S, '#7a2f3a', plane='xy', seg=5)   # široki osmijeh
     elif snout == 'frog':
         h.box(V(0.3, 0, 1.14), (0.06 * S, 0.5 * S, 0.02 * S), '#c2185b', bevel=0.008)
         h.sphere(V(0.33, 0, 1.11), (0.08 * S, 0.12 * S, 0.03 * S), '#f48fb1')
@@ -2203,7 +2212,132 @@ def sig_bikos(k):
     b.sphere(V(0.335, 0, 0.64), (0.014 * S, 0.03 * S, 0.026 * S), '#dc2626', mat='glow', seg=(8, 6))
 
 
-SIGS = {'nisan': sig_nisan, 'bikos': sig_bikos, 'vitez': sig_vitez, 'zarko': sig_zarko, 'ledena': sig_ledena, 'strijela': sig_strijela, 'listko': sig_listko,
+def sig_nilski(k):
+    """v0.55 Pecko (nilski konj, kao Pudge): ribarski šešir s mamcem, okrugli trbuh, udica na lancu i ribica za pojasom"""
+    m, h, b, R, L, V, S = k['m'], k['h'], k['b'], k['R'], k['L'], k['V'], k['S']
+    hc, rad = V(0, 0, k['hz']), (k['hr'][0] * S, k['hr'][1] * S, k['hr'][2] * S)
+    # okrugli trbuh (gozba!) — strši ispod prsluka
+    b.sphere(V(0.12, 0, 0.62), (0.2 * S, 0.25 * S, 0.21 * S), k['belly'], seg=(18, 12))
+    b.sphere(V(0.29, 0, 0.62), (0.02 * S, 0.03 * S, 0.03 * S), mix(k['belly'], '#000000', 0.3), seg=(8, 6))   # pupak
+    # ribarski šešir (maslinasti) s trakom i mamcem
+    top = V(-0.02, 0, 1.6)
+    h.cyl(V(-0.02, 0, 1.58), V(-0.02, 0, 1.6), 0.4 * S, 0.4 * S, '#6b7d3a', seg=24)              # obod
+    h.cyl(V(-0.02, 0, 1.58), V(-0.02, 0, 1.6), 0.405 * S, 0.405 * S, '#55652c', seg=24, caps=False)
+    h.cyl(V(-0.02, 0, 1.6), V(-0.02, 0, 1.78), 0.27 * S, 0.22 * S, '#7c8f43', seg=20, smooth=True)   # kruna šešira
+    h.sphere(V(-0.02, 0, 1.78), (0.22 * S, 0.22 * S, 0.06 * S), '#7c8f43', seg=(16, 8))
+    h.cyl(V(-0.02, 0, 1.61), V(-0.02, 0, 1.66), 0.272 * S, 0.262 * S, '#7c2d12', seg=20)            # traka
+    h.cyl(V(0.2, 0.12, 1.64), V(0.24, 0.16, 1.6), 0.012 * S, 0.012 * S, '#9ca3af', seg=5)           # mamac: udičica
+    h.sphere(V(0.24, 0.16, 1.62), (0.03 * S, 0.02 * S, 0.02 * S), '#f43f5e', seg=(8, 5))
+    h.poly([V(0.21, 0.13, 1.66), V(0.18, 0.2, 1.73), V(0.25, 0.17, 1.68)], '#facc15', thick=0.01)  # pero mamca
+    # udica na lancu u desnoj ruci: drška, savijeni zub s kukicom, lanac do pojasa
+    hR = Vector(k['hR'])
+    up = Vector((0.25, 0, 1.0)).normalized()
+    s0, s1 = hR - up * 0.08 * S, hR + up * 0.42 * S
+    R.cyl(tuple(s0), tuple(s1), 0.03 * S, 0.026 * S, '#9ca3af', seg=10)
+    R.sphere(tuple(s0), 0.04 * S, '#6b7280', seg=(8, 6))
+    pts = R.arc(tuple(s1 + Vector((0.12 * S, 0, 0))), 0.12 * S, 180, 360, 9, 0.026 * S, '#cbd5e1', plane='xz', seg=8)
+    pts = R.arc(tuple(s1 + Vector((0.12 * S, 0, -0.0))), 0.12 * S, 0, 45, 3, 0.024 * S, '#cbd5e1', plane='xz', seg=8)
+    tip = Vector(pts[-1])
+    R.cyl(tuple(tip), tuple(tip + Vector((-0.07 * S, 0, 0.08 * S))), 0.024 * S, 0.0, '#e5e7eb', seg=6)   # vrh
+    R.cyl(tuple(tip + Vector((-0.02 * S, 0, 0.03 * S))), tuple(tip + Vector((0.03 * S, 0, -0.01 * S))), 0.014 * S, 0.0, '#e5e7eb', seg=5)  # kukica
+    for i in range(9):   # karike lanca od ruke do pojasa (visi u luku)
+        t_ = i / 8
+        q = hR.lerp(Vector(V(0.18, -0.28, 0.6)), t_) + Vector((0, 0, -0.12 * S * math.sin(t_ * math.pi)))
+        R.arc(tuple(q), 0.024 * S, 0, 360, 6, 0.008 * S, '#9ca3af', plane='xz' if i % 2 else 'xy', seg=4)
+    # ribica za pojasom (lijevi bok)
+    fc = Vector(V(0.12, 0.3, 0.5))
+    b.sphere(tuple(fc), (0.09 * S, 0.03 * S, 0.05 * S), '#38bdf8', seg=(10, 7))
+    b.poly([tuple(fc + Vector((-0.08, 0, 0)) * S), tuple(fc + Vector((-0.15, 0, 0.05)) * S), tuple(fc + Vector((-0.15, 0, -0.05)) * S)], '#0ea5e9', thick=0.012)
+    b.sphere(tuple(fc + Vector((0.06, 0.02, 0.015)) * S), 0.012 * S, '#0f172a', seg=(6, 4))
+    b.cyl(tuple(fc + Vector((0.09, 0, 0.02)) * S), tuple(fc + Vector((0.12, -0.02, 0.12)) * S), 0.006 * S, 0.006 * S, '#a16207', seg=4)
+
+
+def sig_irbis(k):
+    """v0.55 Inja (snježni leopard, kao Drow Ranger): tamne rozete po krznu, ledeni vrhovi luka i pahuljica na kapuljači"""
+    m, h, b, R, L, V, S = k['m'], k['h'], k['b'], k['R'], k['L'], k['V'], k['S']
+    hc, rad = V(0, 0, k['hz']), (k['hr'][0] * S, k['hr'][1] * S, k['hr'][2] * S)
+    dk = '#3f4654'
+    for (th, ph) in ((66, -2), (-66, -2), (80, -18), (-80, -18)):   # rozete na obrazima (ispod kapuljače)
+        face_cap(h, hc, rad, th, ph, (0.034 * S, 0.028 * S), dk, out=0.004 * S)
+    for (th, ph) in ((60, 0), (-60, 0), (90, 25), (-90, 25), (120, -10), (-120, -10)):
+        face_cap(b, V(0, 0, 0.70), (0.27 * S, 0.29 * S, 0.33 * S), th, ph, (0.04 * S, 0.034 * S), dk, out=0.003 * S)
+    # pahuljica na kapuljači (srebrna, svijetli)
+    sc = Vector(V(0.2, 0.0, 1.66))
+    for kk in range(6):
+        a = RAD(kk * 60)
+        d = Vector((0, math.cos(a), math.sin(a)))
+        h.cyl(tuple(sc), tuple(sc + d * 0.07 * S), 0.01 * S, 0.006 * S, '#e0f2fe', mat='glow', seg=5)
+    h.sphere(tuple(sc), 0.02 * S, '#bae6fd', mat='glow', seg=(8, 6))
+    # ledeni kristali na krajevima luka (luk je u lijevoj ruci)
+    hL = Vector(k['hL'])
+    for sd in (1, -1):
+        tipp = hL + Vector((0.06 * S, 0.02 * S, sd * 0.5 * S))
+        L.ico(tuple(tipp), 0.045 * S, '#a5f3fc', mat='glow', sub=1)
+        L.cyl(tuple(tipp), tuple(tipp + Vector((0.02 * S, 0, sd * 0.09 * S))), 0.03 * S, 0.0, '#e0f2fe', mat='glow', seg=6)
+    # ledeni dragulj na prsima (kopča plašta)
+    b.ico(V(0.29, 0, 0.93), 0.035 * S, '#7dd3fc', mat='glow', sub=1)
+
+
+def sig_skorpion(k):
+    """v0.55 Škorpo (škorpion, kao Sand King): kliješta, šest nožica, oklopljene ploče i golemi rep sa žalcem iznad glave"""
+    m, h, b, R, L, V, S = k['m'], k['h'], k['b'], k['R'], k['L'], k['V'], k['S']
+    fur, dark = k['fur'], k['dark']
+    shell, shell2 = '#c2410c', '#9a3412'
+    # kliješta na obje ruke
+    for arm, hh, sd in ((R, Vector(k['hR']), -1), (L, Vector(k['hL']), 1)):
+        pc = hh + Vector((0.1 * S, 0, 0.04 * S))
+        arm.sphere(tuple(pc), (0.14 * S, 0.1 * S, 0.11 * S), shell, seg=(14, 10))
+        arm.sphere(tuple(pc + Vector((0.04, 0, 0.06)) * S), (0.08 * S, 0.06 * S, 0.04 * S), mix(shell, '#ffffff', 0.15), seg=(10, 6))
+        for jz, ln, rr in ((0.06, 0.26, 0.05), (-0.05, 0.2, 0.04)):   # gornji (veći) i donji krak
+            a0 = pc + Vector((0.1 * S, 0, jz * S))
+            mid = a0 + Vector((0.13 * S, 0, jz * 0.6 * S))
+            tipp = a0 + Vector((ln * S, 0, -jz * 0.4 * S))
+            arm.cyl(tuple(a0), tuple(mid), rr * S, rr * 0.8 * S, shell, seg=8, smooth=True)
+            arm.cyl(tuple(mid), tuple(tipp), rr * 0.8 * S, 0.0, shell2, seg=8, smooth=True)
+            for tt in (0.35, 0.7):   # zupci
+                q = Vector(mid).lerp(Vector(tipp), tt)
+                arm.cyl(tuple(q), tuple(q + Vector((0, 0, -0.035 * S if jz > 0 else 0.035 * S))), 0.012 * S, 0.0, '#fde68a', seg=4)
+    # šest nožica sa strane trbuha
+    for sd in (1, -1):
+        for i, (xx, zz) in enumerate(((0.1, 0.56), (-0.02, 0.54), (-0.14, 0.56))):
+            p0 = Vector(V(xx, sd * 0.24, zz))
+            knee = p0 + Vector((xx * 0.5, sd * 0.2, 0.06)) * S
+            foot = p0 + Vector((xx * 0.9, sd * 0.3, -0.2)) * S
+            b.cyl(tuple(p0), tuple(knee), 0.034 * S, 0.03 * S, shell, seg=8, smooth=True)
+            b.sphere(tuple(knee), 0.034 * S, shell2, seg=(8, 6))
+            b.cyl(tuple(knee), tuple(foot), 0.03 * S, 0.012 * S, shell2, seg=8, smooth=True)
+    # oklopljene ploče na leđima
+    for i in range(4):
+        z_ = 0.56 + i * 0.12
+        b.sphere(V(-0.1, 0, z_), (0.22 * S, (0.26 - i * 0.015) * S, 0.07 * S), shell if i % 2 else shell2, rot=(0, 20, 0), seg=(14, 8))
+    # oklopna kaciga glave: tri preklopljene ploče od čela do potiljka i greben
+    hc, rad = Vector(V(0, 0, k['hz'])), (k['hr'][0] * S, k['hr'][1] * S, k['hr'][2] * S)
+    for i, (ox, oz, sz) in enumerate(((-0.1, 0.1, 0.96), (-0.2, 0.06, 0.9), (-0.3, 0.0, 0.8))):
+        h.sphere(tuple(hc + Vector((ox, 0, oz)) * S), (rad[0] * 0.78 * sz, rad[1] * 1.03 * sz, rad[2] * 0.92 * sz), shell if i % 2 else shell2, seg=(20, 12))
+    # mala usna kliješta (helicere) ispod očiju i usta
+    for sd in (1, -1):
+        h.cyl(V(0.33, sd * 0.09, 1.15), V(0.44, sd * 0.05, 1.1), 0.032 * S, 0.012 * S, shell2, seg=7, smooth=True)
+        h.cyl(V(0.44, sd * 0.05, 1.1), V(0.46, sd * 0.015, 1.06), 0.012 * S, 0.0, '#fde68a', seg=5)
+    h.arc(V(0.4, 0, 1.17), 0.06 * S, 210, 330, 6, 0.011 * S, '#5a2a12', plane='yz', seg=5)
+    for sd in (1, -1):   # dva mala dodatna oka iznad velikih
+        h.sphere(V(0.32, sd * 0.07, 1.5), 0.028 * S, '#111827', seg=(8, 6))
+        h.sphere(V(0.335, sd * 0.065, 1.51), 0.009 * S, '#ffffff', seg=(6, 4))
+    # golemi rep sa žalcem: luk od leđa do iznad glave (dio "tail" — njiše se)
+    t = k['t']
+    if t is not None:
+        pts = [(-0.26, 0, 0.6), (-0.5, 0, 0.66), (-0.7, 0, 0.86), (-0.78, 0, 1.12), (-0.74, 0, 1.4), (-0.62, 0, 1.64), (-0.44, 0, 1.84)]
+        rr = [0.12, 0.115, 0.11, 0.1, 0.09, 0.08, 0.075]
+        for i, (pt, r_) in enumerate(zip(pts, rr)):
+            t.sphere(V(*pt), (r_ * S, r_ * S * 0.95, r_ * S), shell if i % 2 else shell2, seg=(14, 10))
+            if i:
+                t.cyl(V(*pts[i - 1]), V(*pt), rr[i - 1] * 0.8 * S, r_ * 0.8 * S, mix(shell2, '#000000', 0.2), seg=10)
+        bulb = Vector(V(-0.28, 0, 1.94))
+        t.sphere(tuple(bulb), (0.1 * S, 0.08 * S, 0.08 * S), '#fbbf24', seg=(12, 9))
+        t.cyl(tuple(bulb + Vector((0.06, 0, 0)) * S), tuple(bulb + Vector((0.2, 0, -0.1)) * S), 0.045 * S, 0.0, '#a3e635', mat='glow', seg=8)
+        t.sphere(tuple(bulb + Vector((0.2, 0, -0.1)) * S), 0.02 * S, '#d9f99d', mat='glow', seg=(6, 4))
+
+
+SIGS = {'nilski': sig_nilski, 'irbis': sig_irbis, 'skorpion': sig_skorpion, 'nisan': sig_nisan, 'bikos': sig_bikos, 'vitez': sig_vitez, 'zarko': sig_zarko, 'ledena': sig_ledena, 'strijela': sig_strijela, 'listko': sig_listko,
         'munja': sig_munja, 'skokica': sig_skokica, 'orlina': sig_orlina, 'luna': sig_luna, 'tragac': sig_tragac,
         'jez': sig_jez, 'slon': sig_slon, 'pcela': sig_pcela, 'sova': sig_sova, 'majmun': sig_majmun, 'vuk': sig_vuk,
         'gavran': sig_gavran, 'hobotnica': sig_hobotnica, 'nosorog': sig_nosorog, 'panda': sig_panda,
@@ -2211,6 +2345,23 @@ SIGS = {'nisan': sig_nisan, 'bikos': sig_bikos, 'vitez': sig_vitez, 'zarko': sig
 
 
 HEROES = {
+    # ---- v0.55 ----
+    'nilski': (dict(fur='#9b8fb5', belly='#f2c6d6', muzzle='#e3b3c8', dark='#5b4f75', inner='#f9a8d4', limb='#9b8fb5',
+                    hand='#8a7ea6', feet='#6e6290', nose='#3b2f4a'),
+               dict(ears='round', earScale=0.62, snout='hippo', tail='stub', atk='melee', scale=1.18, brows='#4a3f63', browAngle=6,
+                    headR=(0.43, 0.47, 0.38), eyes={'color': '#2b1d3a', 'size': 0.92}, blush=True, strap=False, boots='#5b3a1e',
+                    outfit=dict(style='vest', cloth='#facc15', lining='#ca8a04', trim='#1e3a8a', buttons='#1e3a8a', sleeves=True))),
+    'irbis': (dict(fur='#e6e8ee', belly='#ffffff', muzzle='#ffffff', dark='#4b5563', inner='#f6c1cf', limb='#e6e8ee',
+                   hand='#d9dce4', feet='#b8bdc9', nose='#7a5866'),
+              dict(ears='round', earScale=0.82, snout='muzzle', tail='ringed', weapon='bow', atk='bow', bowColor='#e0f2fe',
+                   hood=True, hoodColor='#0f5f70', scarf=True, scarfColor='#155e75', quiverColor='#cbd5e1',
+                   eyes={'color': '#0ea5e9', 'size': 1.1}, brows='#4b5563', browAngle=-6, bracers='#164e63',
+                   outfit=dict(style='vest', cloth='#1e3a5f', lining='#0f172a', trim='#7dd3fc', sleeves=True))),
+    'skorpion': (dict(fur='#e0a64a', belly='#f6dca6', muzzle='#f6dca6', dark='#7c4a1e', limb='#c9853a', hand='#c2410c',
+                      feet='#7c4a1e', nose='#5a3412'),
+                 dict(ears=None, snout='none', tail='stub', atk='claws', crown=True, bellyPlates=True, scale=1.12,
+                      eyes={'white': True, 'color': '#b45309', 'size': 1.05}, brows='#7c4a1e', browAngle=12, blush=False,
+                      cheekFluff=False, headR=(0.4, 0.43, 0.36), cape=True, capeColor='#7f1d1d', strap=False)),
     # ---- v0.38 ----
     'nisan': (dict(fur='#c8692e', belly='#fbe7cc', muzzle='#fbe7cc', dark='#7a3510', inner='#f6b98a', eartip='#5a2a0e',
                    limb='#b85f28', hand='#b85f28', feet='#7a3510', nose='#2b1a10'),
@@ -3315,7 +3466,8 @@ def _look_at(obj, frm, to):
 # junaci čiji se portret renderira iz 3D modela (ostali imaju naslikane portrete) i boja pozadine
 PORTRAIT_BG = [('jez', '#8a9a4a'), ('slon', '#5a6a8a'), ('pcela', '#b8860b'), ('sova', '#3b2f5c'), ('majmun', '#7a5a2a'),
                ('vuk', '#5a6270'), ('gavran', '#2e2a5c'), ('hobotnica', '#4a3a8a'), ('nosorog', '#6a7a6a'), ('panda', '#4a8a5a'),
-               ('jednorog', '#7c3aed'), ('morskipas', '#0e7490'), ('nisan', '#b45309'), ('bikos', '#7f1d1d')]
+               ('jednorog', '#7c3aed'), ('morskipas', '#0e7490'), ('nisan', '#b45309'), ('bikos', '#7f1d1d'),
+               ('nilski', '#6b5a8a'), ('irbis', '#1e5a7a'), ('skorpion', '#a16207')]
 
 
 def render_portraits(ids, size=512, outdir=None, samples=128):
@@ -4041,6 +4193,29 @@ def build_projectiles():
         p.poly([(0.04, s_ * 0.06, 0.08), (-0.1, s_ * 0.38, 0.22), (-0.3, s_ * 0.42, 0.14), (-0.2, s_ * 0.1, 0.06)], '#2b2f3a', thick=0.02)
         p.sphere((0.32, s_ * 0.06, 0.1), 0.025, '#a78bfa', mat='glow', seg=(5, 4))
     m.finish()
+    # 🪝 v0.55 Udica (Pecko Q) — kuka na kraju lanca (lanac rasteže three.js), leti prema +X
+    m = Model('proj_hook')
+    p = m.part('mesh')
+    p.cyl((-0.3, 0, 0), (0.12, 0, 0), 0.045, 0.04, '#9ca3af', seg=10)
+    p.sphere((-0.3, 0, 0), 0.07, '#6b7280', seg=(8, 6))
+    pts = p.arc((0.12, 0, -0.16), 0.16, 90, -120, 10, 0.045, '#e5e7eb', plane='xz', seg=8)
+    tp = Vector(pts[-1])
+    p.cyl(tuple(tp), tuple(tp + Vector((0.12, 0, 0.1))), 0.045, 0.0, '#f8fafc', seg=8)
+    p.cyl(tuple(tp + Vector((0.04, 0, 0.03))), tuple(tp + Vector((0.0, 0, 0.12))), 0.025, 0.0, '#f8fafc', seg=6)
+    m.finish()
+    # 🌬️ v0.55 Snježni nalet (Inja W) — široki ledeni polumjesec vjetra s pahuljicama
+    m = Model('proj_gust')
+    p = m.part('mesh')
+    for k, (rad, col_, th) in enumerate(((0.42, '#e0f2fe', 0.05), (0.34, '#bae6fd', 0.04), (0.26, '#f0f9ff', 0.03))):
+        p.arc((-0.12 - k * 0.06, 0, 0.0), rad, -70, 70, 14, th, col_, plane='xy', mat='glow', seg=6)
+    for k in range(5):
+        a = RAD(-56 + k * 28)
+        c0 = (math.cos(a) * 0.46 - 0.1, math.sin(a) * 0.46, 0.0)
+        for j in range(3):
+            b_ = RAD(j * 60)
+            d = Vector((math.cos(b_), 0, math.sin(b_))) * 0.05
+            p.cyl(tuple(Vector(c0) - d), tuple(Vector(c0) + d), 0.012, 0.012, '#ffffff', mat='glow', seg=4)
+    m.finish()
     # vrh jezika (Skokica) — tijelo jezika rasteže three.js
     m = Model('proj_tongue')
     p = m.part('mesh')
@@ -4529,6 +4704,14 @@ def main():
         pal = dict(PORTRAIT_BG)
         render_portraits([(h, pal.get(h, '#4a5a7a')) for h in (only or list(HEROES))], size=int(arg('size', '512')),
                          outdir=arg('out', HERE), samples=int(arg('samples', '32')))
+        return
+    if '--dev-v55' in argv:   # v0.55 novi junaci + udica i nalet (bez izvoza):  --out=put.png  --zoom=2.2
+        arg = lambda k, d: next((a[len(k) + 3:] for a in argv if a.startswith('--' + k + '=')), d)
+        build_heroes(['nilski', 'irbis', 'skorpion'])
+        build_projectiles()
+        bake_ao(do_ao='--ao' in argv)
+        preview(arg('out', os.path.join(HERE, 'preview_v55.png')), only=['hero_nilski', 'hero_irbis', 'hero_skorpion', 'proj_hook', 'proj_gust'],
+                cols=int(arg('cols', '5')), zoom=float(arg('zoom', '2.0')))
         return
     if '--dev-v14' in argv:   # brza provjera novih modela (bez izvoza)
         build_courier()

@@ -258,7 +258,13 @@ function buildSnapshot(){
     if(u.danceN){ b.dz = u.danceN % 1000; if(u.danceT > 0) b.dc = 1; }   // 💃 ples
     if(u.charge) b.ch = 1;                 // juriš
     if(u.tpChannel > 0 && u.tpDest) b.td = [Math.round(u.tpDest.x), Math.round(u.tpDest.y), +(u.tpChannel / (u.tpDur || 3)).toFixed(2)];   // 🌀 TP do kule
-    if(u.chan && u.chan.target) b.cz = [u.chan.target.id, +(1 - u.chan.t / u.chan.dur).toFixed(2)];   // 🎯 nišanjenje
+    if(u.chan && u.chan.target && !u.chan.o) b.cz = [u.chan.target.id, +(1 - u.chan.t / u.chan.dur).toFixed(2)];   // 🎯 nišanjenje
+    else if(u.chan) b.cq = 1;              // kanaliziranje (Veliki zalogaj, Lepeza strijela, Epicentar — v0.55)
+    if(u.cloud) b.cl = u.cloud.kind === 'sand' ? 2 : 1;   // 🤢⏳ oblak oko junaka
+    if(u.drag && u.drag.src) b.dg = u.drag.src.id;        // 🪝 vuče ga Udica
+    if(u.epiN){ b.ep = u.epiN % 1000; b.er = Math.round(u.epiR || 300); }   // 🌋 val Epicentra
+    if(u.frostT > 0) b.fr = 1;             // ❄️ Ledene strijele
+    if(u.causticT > 0) b.cs = 1;           // 🧪 otrovan
     if(u.hungerT > 0) b.hg = 1;            // 🍖 ratna glad
     if(u.travel) b.tv = u.travel;          // 💨 putovanje
     if(u.streak >= 3) b.sk = u.streak;     // 🔥 niz pobjeda
@@ -422,6 +428,8 @@ function applySnapshot(d){
     u.danceN = b.dz || 0; u.danceT = b.dc ? 1 : 0;   // 💃
     u.tpDest = b.td ? { x: b.td[0], y: b.td[1] } : null; u.tpFrac = b.td ? b.td[2] : 0;
     u.chanFx = b.cz ? { id: b.cz[0], f: b.cz[1] } : null;
+    u.chanK = b.cq ? 1 : 0; u.cloudK = b.cl === 2 ? 'sand' : (b.cl ? 'rot' : null); u.dragId = b.dg || 0;
+    u.epiN = b.ep || 0; u.epiR = b.er || 300; u.frostT = b.fr ? 1 : 0; u.causticT = b.cs ? 1 : 0;
     u.hungerT = b.hg ? 1 : 0; u.helixN = b.hx || 0; u.talN = b.tn || 0; u.travel = b.tv || 0; u.streak = b.sk || 0; u.richBounty = b.rb || 0;
     u.killFxN = b.kf || 0; u.killAt = b.ka ? { x: b.ka[0], y: b.ka[1] } : null;
     if(u.kind === 'hero'){
