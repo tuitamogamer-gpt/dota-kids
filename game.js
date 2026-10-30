@@ -288,6 +288,20 @@ function seenByPlayer(u){
 
 /* ================= Grafika (AI generirane slike) ================= */
 const GFX = { heroes: {}, mobs: {}, tex: {} };
+/* 🎨 v0.55 ikona moći (GPT Image 2.5) za platno — null dok se ne učita (ili je nema), tada se crta emoji */
+const SPELL_IMG = {};
+function spellIconImg(heroId, slot){
+  const src = spellIconSrc(heroId, slot);
+  if(!src) return null;
+  let im = SPELL_IMG[src];
+  if(!im){ im = SPELL_IMG[src] = new Image(); im.src = src; }
+  return im.complete && im.naturalWidth > 0 ? im : null;
+}
+/* ikona moći za HTML (ekran junaka, opisi): <img> s emojijem kao rezervom */
+function spellIconHtml(heroId, slot, emoji, cls){
+  const src = spellIconSrc(heroId, slot);
+  return src ? `<img class="${cls || 'spIcon'}" src="${src}" alt="${emoji}" draggable="false" onerror="this.replaceWith(document.createTextNode(this.alt))">` : emoji;
+}
 function loadGameArt(){
   for(const h of HEROES){
     const im = new Image();
@@ -6129,13 +6143,13 @@ function selectHero(i){
     '<span class="chip chipP">' + primNames[h.attrs.primary] + '</span>' +
     '<span class="chip chipD' + dif + '" title="' + L('Koliko je junak težak za igranje', 'How hard this hero is to play') + '">' + [L('🟢 Lako', '🟢 Easy'), L('🟡 Srednje', '🟡 Medium'), L('🔴 Teško', '🔴 Hard')][dif] + '</span>';
   const tiles = [];
-  if(h.passive) tiles.push({ k: '✨', cls: 'pas', e: h.passive.emoji, name: h.passive.name, tag: L('<span class="pasTag">✨ UROĐENO</span>', '<span class="pasTag">✨ INNATE</span>'),
+  if(h.passive) tiles.push({ k: '✨', cls: 'pas', e: spellIconHtml(h.id, 'P', h.passive.emoji, 'ab-img'), name: h.passive.name, tag: L('<span class="pasTag">✨ UROĐENO</span>', '<span class="pasTag">✨ INNATE</span>'),
     desc: h.passive.desc.replace(/^(PASIVNO|PASSIVE|ПАСИВНО):\s*/, '') + L(' (uvijek radi)', ' (always on)') });
-  for(const a of h.abilities) tiles.push({ k: a.key, cls: a.ult ? 'ult' : '', e: a.emoji, name: a.name,
+  for(const a of h.abilities) tiles.push({ k: a.key, cls: a.ult ? 'ult' : '', e: spellIconHtml(h.id, a.key, a.emoji, 'ab-img'), name: a.name,
     tag: a.ult ? L('<span class="ultTag">🌟 ULTI</span>', '<span class="ultTag">🌟 ULTIMATE</span>') : '', desc: a.desc.replace(/^(ULTI|ULT|УЛТИ):\s*/, '') });
   {   // 🎓 stablo talenata: na levelima 10 / 15 / 20 / 25 biraš jedan od dva bonusa (svaki junak ima svoje)
     const tt = HERO_TALENTS[h.id] || DEFAULT_TALENTS;
-    tiles.push({ k: '🎓', cls: 'tal', e: '🌳', name: L('Talenti', 'Talents'), tag: '<span class="pasTag">🎓 LEVEL 10 / 15 / 20 / 25</span>',
+    tiles.push({ k: '🎓', cls: 'tal', e: spellIconHtml(h.id, 'T', '🌳', 'ab-img'), name: L('Talenti', 'Talents'), tag: '<span class="pasTag">🎓 LEVEL 10 / 15 / 20 / 25</span>',
       desc: '<div class="talTree">' + tt.map((tier, j) => `<div class="talRow"><span class="talL">${TALENT_LVLS[j]}</span>` +
         `<span class="talO">${tier[0].emoji} ${tier[0].txt}</span><i>${L('ili', 'or')}</i><span class="talO">${tier[1].emoji} ${tier[1].txt}</span></div>`).reverse().join('') + '</div>' });
   }
@@ -7005,9 +7019,13 @@ function drawHud(){
       ctx.beginPath(); ctx.arc(cx, cy, 14, 0, TAU); ctx.fill();
       ctx.strokeStyle = '#34d399'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(cx, cy, 14, 0, TAU); ctx.stroke();
-      ctx.font = fontEmoji(15);
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(pv.emoji, cx, cy + 1);
+      const pim = spellIconImg(player.hero.id, 'P');
+      if(pim){ ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, 12.5, 0, TAU); ctx.clip(); ctx.drawImage(pim, cx - 12.5, cy - 12.5, 25, 25); ctx.restore(); }
+      else {
+        ctx.font = fontEmoji(15);
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(pv.emoji, cx, cy + 1);
+      }
       const ir = innateRank(player);
       for(let k = 0; k < 4; k++){   // točkice ranga ispod značke
         ctx.fillStyle = k < ir ? '#34d399' : '#334155';
@@ -7139,7 +7157,16 @@ function drawHud(){
       ctx.font = fontEmoji(26);
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.globalAlpha = unlearned ? 0.3 : ((ab.cd > 0 || noMana) ? 0.45 : 1);
-      ctx.fillText(ab.def.emoji, ax + as / 2, ay + as / 2 - 6);
+      const sim = spellIconImg(player.hero.id, ab.def.key);   // 🎨 v0.55: naslikana ikona moći
+      if(sim){
+        ctx.save(); ctx.beginPath(); ctx.roundRect(ax + 3, ay + 3, as - 6, as - 6, 4); ctx.clip();
+        ctx.drawImage(sim, ax + 3, ay + 3, as - 6, as - 6);
+        const sh = ctx.createLinearGradient(0, ay + as * 0.55, 0, ay + as);   // tamni rub dolje: točkice ranga i tipka se vide
+        sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,0,0.6)');
+        ctx.fillStyle = sh; ctx.fillRect(ax, ay, as, as);
+        ctx.restore();
+      }
+      else ctx.fillText(ab.def.emoji, ax + as / 2, ay + as / 2 - 6);
       ctx.globalAlpha = 1;
       if(ultLocked){
         ctx.fillStyle = 'rgba(0,0,0,0.55)';

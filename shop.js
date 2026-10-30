@@ -118,7 +118,7 @@ function hideItemTip(){
 function abilityTipHtml(h, i){
   const ab = h.abilities[i], d = ab.def, max = abilityMaxRank(ab), rk = Math.max(1, ab.rank);
   const keyL = ['Q', 'W', 'E', 'R'][i] || '';
-  let html = `<div class="tipHead q-abil"><span class="tipAbIcon" style="background:linear-gradient(160deg, ${d.color || '#64748b'}, #10141b)">${d.emoji}</span>` +
+  let html = `<div class="tipHead q-abil"><span class="tipAbIcon" style="background:linear-gradient(160deg, ${d.color || '#64748b'}, #10141b)">${spellIconHtml(h.hero.id, d.key, d.emoji, 'tipAbImg')}</span>` +
     `<div class="tipT"><b>${escHtml(d.name)}${d.ult ? ' 🌟' : ''}</b><span class="tipSub">${keyL} · ${L('rang', 'rank')} ${ab.rank}/${max}${d.ult ? L(' · ULTI', ' · ULTIMATE') : ''}</span>` +
     `<span class="tipDots">${Array.from({ length: max }, (_, k) => `<i class="${k < ab.rank ? 'on' : ''}"></i>`).join('')}</span></div></div>`;
   html += `<div class="tipDesc">${escHtml(d.desc.replace(/^(ULTI|ULTIMATE|ULT|УЛТИ):\s*/, ''))}</div>`;
@@ -143,7 +143,7 @@ function abilityTipHtml(h, i){
 }
 function innateTipHtml(h){
   const pv = h.hero.passive, ir = innateRank(h);
-  return `<div class="tipHead q-common"><span class="tipAbIcon" style="background:linear-gradient(160deg, ${pv.color || '#34d399'}, #10141b)">${pv.emoji}</span>` +
+  return `<div class="tipHead q-common"><span class="tipAbIcon" style="background:linear-gradient(160deg, ${pv.color || '#34d399'}, #10141b)">${spellIconHtml(h.hero.id, 'P', pv.emoji, 'tipAbImg')}</span>` +
     `<div class="tipT"><b>${escHtml(pv.name)}</b><span class="tipSub">${L('✨ Urođeno · rang', '✨ Innate · rank')} ${ir}/${Math.max(4, ir)}</span>` +
     `<span class="tipDots">${Array.from({ length: Math.max(4, ir) }, (_, k) => `<i class="${k < ir ? 'on' : ''}"></i>`).join('')}</span></div></div>` +
     `<div class="tipDesc">${escHtml(pv.desc.replace(/^(PASIVNO|PASSIVE|INNATE|ПАСИВНО):\s*/, ''))}</div>` +

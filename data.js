@@ -1926,6 +1926,11 @@ const HEROES = [
   },
 ];
 
+/* 🎨 v0.55: ikone moći iz GPT Image 2.5 — assets/ab/<junak>_<P|Q|W|E|R|T>.jpg (P = urođena pasiva, T = talenti).
+   Popis junaka koji ih imaju piše tools/art/dl.py kad preuzme i izreže slike; bez ikone igra crta emoji kao prije. */
+const SPELL_ICONS = [];
+function spellIconSrc(heroId, slot){ return SPELL_ICONS.includes(heroId) ? 'assets/ab/' + heroId + '_' + slot + '.jpg' : null; }
+
 /* ---------------- DUĆAN S RECEPTIMA ---------------- */
 
 /* ================= PREDMETI (kao u DotA) =================

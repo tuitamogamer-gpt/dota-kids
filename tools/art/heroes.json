@@ -1,0 +1,1271 @@
+[
+ {
+  "id": "vitez",
+  "name": "Lavko",
+  "emoji": "🦁",
+  "role": "🛡️ Knight — brave tank",
+  "ranged": false,
+  "P": {
+   "name": "Lion Hide",
+   "emoji": "🦺",
+   "desc": "PASSIVE: tough lion hide always reduces ALL damage you take",
+   "color": "#fde047"
+  },
+  "ab": [
+   {
+    "key": "Q",
+    "name": "Whirlwind",
+    "emoji": "🌪️",
+    "desc": "Spin your sword and hit everyone around you",
+    "color": "#fbbf24",
+    "ult": false
+   },
+   {
+    "key": "W",
+    "name": "Battle Cry",
+    "emoji": "📯",
+    "desc": "Roar to cheer your team — you and nearby friends hit harder and run faster",
+    "color": "#f59e0b",
+    "ult": false
+   },
+   {
+    "key": "E",
+    "name": "Hero Leap",
+    "emoji": "💥",
+    "desc": "Leap to a spot, hit and stun enemies",
+    "color": "#f97316",
+    "ult": false
+   },
+   {
+    "key": "R",
+    "name": "King's Roar",
+    "emoji": "🦁",
+    "desc": "ULT: A mighty roar — big damage and stun around you, and you get a shield",
+    "color": "#fde047",
+    "ult": true
+   }
+  ]
+ },
+ {
+  "id": "zarko",
+  "name": "Zharko",
+  "emoji": "🐉",
+  "role": "🔥 Fire dragon — mage",
+  "ranged": true,
+  "P": {
+   "name": "Fire Blood",
+   "emoji": "🔥",
+   "desc": "PASSIVE: attacks set enemies on fire — they burn for 2 more seconds",
+   "color": "#fb923c"
+  },
+  "ab": [
+   {
+    "key": "Q",
+    "name": "Fireball",
+    "emoji": "🔥",
+    "desc": "Shoot a fireball at the target",
+    "color": "#fb923c",
+    "ult": false
+   },
+   {
+    "key": "W",
+    "name": "Flame Ring",
+    "emoji": "💍",
+    "desc": "Flames scorch everyone around you and slow them a bit",
+    "color": "#f97316",
+    "ult": false
+   },
+   {
+    "key": "E",
+    "name": "Meteor",
+    "emoji": "☄️",
+    "desc": "Call a meteor — big damage and a short stun",
+    "color": "#f97316",
+    "ult": false
+   },
+   {
+    "key": "R",
+    "name": "Dragon's Breath",
+    "emoji": "🐲",
+    "desc": "ULT: A huge fireball that pierces everything in its path",
+    "color": "#ef4444",
+    "ult": true
+   }
+  ]
+ },
+ {
+  "id": "ledena",
+  "name": "Ledena",
+  "emoji": "🐧",
+  "role": "❄️ Snow witch",
+  "ranged": true,
+  "P": {
+   "name": "Icy Touch",
+   "emoji": "❄️",
+   "desc": "PASSIVE: every attack you make slows the enemy",
+   "color": "#7dd3fc"
+  },
+  "ab": [
+   {
+    "key": "Q",
+    "name": "Ice Arrow",
+    "emoji": "🧊",
+    "desc": "An icy arrow that hurts and slows a lot",
+    "color": "#38bdf8",
+    "ult": false
+   },
+   {
+    "key": "W",
+    "name": "Belly Slide",
+    "emoji": "🛷",
+    "desc": "Slide on your belly over the ice — hurt and slow everyone you slide over",
+    "color": "#7dd3fc",
+    "ult": false
+   },
+   {
+    "key": "E",
+    "name": "Snowstorm",
+    "emoji": "🌨️",
+    "desc": "A blizzard on the spot — hits 4 times and slows",
+    "color": "#7dd3fc",
+    "ult": false
+   },
+   {
+    "key": "R",
+    "name": "Ice Age",
+    "emoji": "🥶",
+    "desc": "ULT: Freeze a big area — enemies are stunned",
+    "color": "#bae6fd",
+    "ult": true
+   }
+  ]
+ },
+ {
+  "id": "strijela",
+  "name": "Strijela",
+  "emoji": "🦊",
+  "role": "🏹 Sly fox — archer",
+  "ranged": true,
+  "P": {
+   "name": "Sharp Eye",
+   "emoji": "👁️",
+   "desc": "PASSIVE: chance for a CRITICAL hit",
+   "color": "#fb923c"
+  },
+  "ab": [
+   {
+    "key": "Q",
+    "name": "Piercing Arrow",
+    "emoji": "🎯",
+    "desc": "An arrow that pierces everything in its path",
+    "color": "#fbbf24",
+    "ult": false
+   },
+   {
+    "key": "W",
+    "name": "Hunter's Net",
+    "emoji": "🕸️",
+    "desc": "Throw a net — the first enemy it hits gets stuck in place",
+    "color": "#a3e635",
+    "ult": false
+   },
+   {
+    "key": "E",
+    "name": "Arrow Rain",
+    "emoji": "🌧️",
+    "desc": "Arrows fall 3 times on the chosen spot",
+    "color": "#f59e0b",
+    "ult": false
+   },
+   {
+    "key": "R",
+    "name": "Falcon's Eye",
+    "emoji": "🌠",
+    "desc": "ULT: A magic arrow finds the weakest enemy hero by itself!",
+    "color": "#fde047",
+    "ult": true
+   }
+  ]
+ },
+ {
+  "id": "listko",
+  "name": "Listko",
+  "emoji": "🐢",
+  "role": "🌿 Forest healer",
+  "ranged": true,
+  "P": {
+   "name": "Roots",
+   "emoji": "🌱",
+   "desc": "PASSIVE: when you stand still, you grow roots and heal fast",
+   "color": "#4ade80"
+  },
+  "ab": [
+   {
+    "key": "Q",
+    "name": "Thorn Ball",
+    "emoji": "🌰",
+    "desc": "Throw a spiky ball that slows",
+    "color": "#84cc16",
+    "ult": false
+   },
+   {
+    "key": "W",
+    "name": "Healing",
+    "emoji": "💚",
+    "desc": "Heal yourself and nearby friends",
+    "color": "#4ade80",
+    "ult": false
+   },
+   {
+    "key": "E",
+    "name": "Entangle",
+    "emoji": "🌱",
+    "desc": "Roots hold enemies in place",
+    "color": "#22c55e",
+    "ult": false
+   },
+   {
+    "key": "R",
+    "name": "Forest Heart",
+    "emoji": "🌳",
+    "desc": "ULT: A great forest — heals and speeds up friends, and roots enemies",
+    "color": "#22c55e",
+    "ult": true
+   }
+  ]
+ },
+ {
+  "id": "munja",
+  "name": "Munya",
+  "emoji": "🐯",
+  "role": "⚡ Fast tiger — assassin",
+  "ranged": false,
+  "P": {
+   "name": "Static Charge",
+   "emoji": "🔋",
+   "desc": "PASSIVE: your attacks have a chance to fire an extra lightning bolt",
+   "color": "#fde047"
+  },
+  "ab": [
+   {
+    "key": "Q",
+    "name": "Lightning Strike",
+    "emoji": "⚡",
+    "desc": "Lightning jumps from enemy to enemy (up to 3)",
+    "color": "#fde047",
+    "ult": false
+   },
+   {
+    "key": "W",
+    "name": "Flash",
+    "emoji": "🌀",
+    "desc": "Dash like lightning to the target and hurt everything on the way",
+    "color": "#fde047",
+    "ult": false
+   },
+   {
+    "key": "E",
+    "name": "Tiger Claws",
+    "emoji": "🐾",
+    "desc": "Swipe your claws super fast — you attack much faster for a few seconds",
+    "color": "#facc15",
+    "ult": false
+   },
+   {
+    "key": "R",
+    "name": "Storm's Wrath",
+    "emoji": "🌩️",
+    "desc": "ULT: Giant lightning jumps to as many as 6 enemies and speeds you up",
+    "color": "#a78bfa",
+    "ult": true
+   }
+  ]
+ },
+ {
+  "id": "skokica",
+  "name": "Skokitsa",
+  "emoji": "🐸",
+  "role": "👅 Frog — pulls enemies in",
+  "ranged": false,
+  "P": {
+   "name": "Amphibian",
+   "emoji": "💧",
+   "desc": "PASSIVE: in the river you are faster and you heal",
+   "color": "#38bdf8"
+  },
+  "ab": [
+   {
+    "key": "Q",
+    "name": "Big Tongue",
+    "emoji": "👅",
+    "desc": "Shoot out your tongue — pull the first one hit to you and stun them briefly!",
+    "color": "#f472b6",
+    "ult": false
+   },
+   {
+    "key": "W",
+    "name": "Frog Leap",
+    "emoji": "🦵",
+    "desc": "Leap to a spot and slow everyone around you",
+    "color": "#86efac",
+    "ult": false
+   },
+   {
+    "key": "E",
+    "name": "Bubble",
+    "emoji": "🫧",
+    "desc": "Bubbles protect you and your friends (they soak up a third of the damage)",
+    "color": "#a5f3fc",
+    "ult": false
+   },
+   {
+    "key": "R",
+    "name": "Big Wave",
+    "emoji": "🌊",
+    "desc": "ULT: Call a giant wave — big damage and a strong slow",
+    "color": "#38bdf8",
+    "ult": true
+   }
+  ]
+ },
+ {
+  "id": "orlina",
+  "name": "Orlina",
+  "emoji": "🦅",
+  "role": "🪶 Eagle — sky sniper",
+  "ranged": true,
+  "P": {
+   "name": "Eagle Sight",
+   "emoji": "🔭",
+   "desc": "PASSIVE: eagle eyes — you shoot from farther away",
+   "color": "#fbbf24"
+  },
+  "ab": [
+   {
+    "key": "Q",
+    "name": "Blade Feather",
+    "emoji": "🪶",
+    "desc": "A lightning-fast feather — hits from far away",
+    "color": "#e2e8f0",
+    "ult": false
+   },
+   {
+    "key": "W",
+    "name": "Updraft",
+    "emoji": "🌬️",
+    "desc": "Wind under your wings — speeds you up and removes all slows",
+    "color": "#bae6fd",
+    "ult": false
+   },
+   {
+    "key": "E",
+    "name": "Dive",
+    "emoji": "🦅",
+    "desc": "Dive onto a spot — damage and slow",
+    "color": "#fbbf24",
+    "ult": false
+   },
+   {
+    "key": "R",
+    "name": "Sky King",
+    "emoji": "🌪️",
+    "desc": "ULT: Send falcons at ALL nearby enemy heroes!",
+    "color": "#fde047",
+    "ult": true
+   }
+  ]
+ },
+ {
+  "id": "luna",
+  "name": "Luna",
+  "emoji": "🐱",
+  "role": "🌙 Moon cat — arrows from the shadows",
+  "ranged": true,
+  "P": {
+   "name": "Moon Blade",
+   "emoji": "🌙",
+   "desc": "PASSIVE: every attack bounces to one more nearby enemy",
+   "color": "#c4b5fd"
+  },
+  "ab": [
+   {
+    "key": "Q",
+    "name": "Sacred Arrow",
+    "emoji": "🌠",
+    "desc": "A moon arrow that flies VERY far — the farther it flies, the harder it stuns and hurts!",
+    "color": "#e9d5ff",
+    "ult": false
+   },
+   {
+    "key": "W",
+    "name": "Star Shower",
+    "emoji": "⭐",
+    "desc": "Stars fall on all enemies around you",
+    "color": "#e9d5ff",
+    "ult": false
+   },
+   {
+    "key": "E",
+    "name": "Moon Leap",
+    "emoji": "🌜",
+    "desc": "Leap forward and run faster for 2 seconds",
+    "color": "#bae6fd",
+    "ult": false
+   },
+   {
+    "key": "R",
+    "name": "Moon Shadow",
+    "emoji": "👻",
+    "desc": "ULT: Your WHOLE team turns INVISIBLE! Attacking breaks invisibility",
+    "color": "#c4b5fd",
+    "ult": true
+   }
+  ]
+ },
+ {
+  "id": "tragac",
+  "name": "Tracker",
+  "emoji": "🦝",
+  "role": "💰 Bounty hunter — invisible mercenary",
+  "ranged": false,
+  "P": {
+   "name": "Sneaky Strike",
+   "emoji": "💢",
+   "desc": "PASSIVE: a chance for a sneaky hit — extra damage and slow",
+   "color": "#fb923c"
+  },
+  "ab": [
+   {
+    "key": "Q",
+    "name": "Throwing Star",
+    "emoji": "💫",
+    "desc": "Throw a sharp star that hurts and stuns briefly",
+    "color": "#fbbf24",
+    "ult": false
+   },
+   {
+    "key": "W",
+    "name": "Smoke Bomb",
+    "emoji": "💨",
+    "desc": "Throw a smoke bomb — enemies in the smoke can't cast spells and miss their attacks",
+    "color": "#94a3b8",
+    "ult": false
+   },
+   {
+    "key": "E",
+    "name": "Shadow",
+    "emoji": "👤",
+    "desc": "Vanish into the shadows — you are invisible, and an attack from the shadows really hurts!",
+    "color": "#c4b5fd",
+    "ult": false
+   },
+   {
+    "key": "R",
+    "name": "Bounty",
+    "emoji": "💰",
+    "desc": "ULT: Mark an enemy hero — everyone can see them (even if invisible!), and taking them down gives EXTRA gold",
+    "color": "#fde047",
+    "ult": true
+   }
+  ]
+ },
+ {
+  "id": "jez",
+  "name": "Bodlyo",
+  "emoji": "🦔",
+  "role": "🌵 Hedgehog — spiky tank",
+  "ranged": false,
+  "P": {
+   "name": "Quill Armor",
+   "emoji": "🦔",
+   "desc": "PASSIVE: whoever hits you might get quills back!",
+   "color": "#a3e635"
+  },
+  "ab": [
+   {
+    "key": "Q",
+    "name": "Quill Spray",
+    "emoji": "🌵",
+    "desc": "Shoot quills at everyone around you; every quill stuck in an enemy makes it hurt more!",
+    "color": "#a3e635",
+    "ult": false
+   },
+   {
+    "key": "W",
+    "name": "Sticky Goo",
+    "emoji": "🟢",
+    "desc": "Throw a sticky blob — the first one hit gets stuck and slowed",
+    "color": "#84cc16",
+    "ult": false
+   },
+   {
+    "key": "E",
+    "name": "Rolling Ball",
+    "emoji": "🌰",
+    "desc": "Curl into a spiky ball and roll — the first enemy in your path is stunned",
+    "color": "#a16207",
+    "ult": false
+   },
+   {
+    "key": "R",
+    "name": "Quill Rush",
+    "emoji": "🏃",
+    "desc": "ULT: Charge! Much faster and stronger for 8 seconds, and your health comes back",
+    "color": "#bef264",
+    "ult": true
+   }
+  ]
+ },
+ {
+  "id": "slon",
+  "name": "Tootnyo",
+  "emoji": "🐘",
+  "role": "🐘 Elephant — giant defender",
+  "ranged": false,
+  "P": {
+   "name": "Thick Skin",
+   "emoji": "🛡️",
+   "desc": "PASSIVE: whoever hits you up close gets hurt too",
+   "color": "#c7d2fe"
+  },
+  "ab": [
+   {
+    "key": "Q",
+    "name": "Stomp",
+    "emoji": "🦶",
+    "desc": "Stomp your foot — the ground shakes and everyone around you is stunned",
+    "color": "#c4b5fd",
+    "ult": false
+   },
+   {
+    "key": "W",
+    "name": "Trunk Swing",
+    "emoji": "🌀",
+    "desc": "Swing your trunk in front of you — big damage in a line",
+    "color": "#a5b4fc",
+    "ult": false
+   },
+   {
+    "key": "E",
+    "name": "Trunk Shower",
+    "emoji": "💦",
+    "desc": "Spray friends with water from your trunk — heal them and give them a small shield",
+    "color": "#38bdf8",
+    "ult": false
+   },
+   {
+    "key": "R",
+    "name": "Stampede",
+    "emoji": "🐘",
+    "desc": "ULT: Your whole team charges like a stampede! Enemies around you get trampled and stunned",
+    "color": "#818cf8",
+    "ult": true
+   }
+  ]
+ },
+ {
+  "id": "pcela",
+  "name": "Zooya",
+  "emoji": "🐝",
+  "role": "🍯 Bee — poison witch",
+  "ranged": true,
+  "P": {
+   "name": "Honey",
+   "emoji": "🧈",
+   "desc": "PASSIVE: sweet honey slowly heals you and nearby friends",
+   "color": "#fde68a"
+  },
+  "ab": [
+   {
+    "key": "Q",
+    "name": "Poison Sting",
+    "emoji": "🐝",
+    "desc": "Send a bee — its sting poisons the enemy, who loses health for a few seconds",
+    "color": "#facc15",
+    "ult": false
+   },
+   {
+    "key": "W",
+    "name": "Swarm",
+    "emoji": "🍯",
+    "desc": "Call a bee swarm to a spot — they sting and slow everyone in the circle",
+    "color": "#fbbf24",
+    "ult": false
+   },
+   {
+    "key": "E",
+    "name": "Buzz Off",
+    "emoji": "🌬️",
+    "desc": "Bzzz! Zip away to another spot and get a short speed boost",
+    "color": "#fde047",
+    "ult": false
+   },
+   {
+    "key": "R",
+    "name": "Beehive",
+    "emoji": "🏺",
+    "desc": "ULT: A giant beehive — a long-lasting cloud that poisons everyone inside",
+    "color": "#f59e0b",
+    "ult": true
+   }
+  ]
+ },
+ {
+  "id": "sova",
+  "name": "Mudra",
+  "emoji": "🦉",
+  "role": "🌙 Owl — queen of the night",
+  "ranged": true,
+  "P": {
+   "name": "Night Bird",
+   "emoji": "🌙",
+   "desc": "PASSIVE: at night you are faster and stronger!",
+   "color": "#a78bfa"
+  },
+  "ab": [
+   {
+    "key": "Q",
+    "name": "Hoot",
+    "emoji": "📣",
+    "desc": "A loud hoot — enemies around you are silenced and can't use abilities",
+    "color": "#e9d5ff",
+    "ult": false
+   },
+   {
+    "key": "W",
+    "name": "Owl Eye",
+    "emoji": "👁️",
+    "desc": "Look far away — see the chosen spot for 10 seconds (even through the fog of war!)",
+    "color": "#c4b5fd",
+    "ult": false
+   },
+   {
+    "key": "E",
+    "name": "Silent Flight",
+    "emoji": "🌫️",
+    "desc": "The owl flies totally silently — you turn invisible and faster (attacking reveals you)",
+    "color": "#a78bfa",
+    "ult": false
+   },
+   {
+    "key": "R",
+    "name": "Endless Night",
+    "emoji": "🌑",
+    "desc": "ULT: Call the night in the middle of the day! Enemies see less, and your team is faster and hits harder",
+    "color": "#6d28d9",
+    "ult": true
+   }
+  ]
+ },
+ {
+  "id": "majmun",
+  "name": "Skakach",
+  "emoji": "🐵",
+  "role": "🥢 Monkey — fast fighter with a staff",
+  "ranged": false,
+  "P": {
+   "name": "Combo",
+   "emoji": "👊",
+   "desc": "PASSIVE: every third hit is stronger and heals you a little",
+   "color": "#fde047"
+  },
+  "ab": [
+   {
+    "key": "Q",
+    "name": "Staff Strike",
+    "emoji": "🥢",
+    "desc": "Your staff grows long and hits everything in a line — short stun",
+    "color": "#fbbf24",
+    "ult": false
+   },
+   {
+    "key": "W",
+    "name": "Monkey Leap",
+    "emoji": "🐵",
+    "desc": "Leap to a spot and run faster for a bit",
+    "color": "#86efac",
+    "ult": false
+   },
+   {
+    "key": "E",
+    "name": "Banana",
+    "emoji": "🍌",
+    "desc": "Throw a banana peel — whoever it hits slips and falls",
+    "color": "#fde047",
+    "ult": false
+   },
+   {
+    "key": "R",
+    "name": "Monkey Army",
+    "emoji": "🐒",
+    "desc": "ULT: Call 3 monkeys to fight by your side!",
+    "color": "#f59e0b",
+    "ult": true
+   }
+  ]
+ },
+ {
+  "id": "vuk",
+  "name": "Sivko",
+  "emoji": "🐺",
+  "role": "🌕 Wolf — pack leader",
+  "ranged": false,
+  "P": {
+   "name": "Pack",
+   "emoji": "🐾",
+   "desc": "PASSIVE: you attack faster and your wounds heal faster",
+   "color": "#cbd5e1"
+  },
+  "ab": [
+   {
+    "key": "Q",
+    "name": "Howl",
+    "emoji": "🌕",
+    "desc": "Howl at the moon — your team hits harder, and scared enemies slow down",
+    "color": "#e2e8f0",
+    "ult": false
+   },
+   {
+    "key": "W",
+    "name": "Bite",
+    "emoji": "🦷",
+    "desc": "Jump on an enemy and bite — the wound bleeds for 3 more seconds",
+    "color": "#fca5a5",
+    "ult": false
+   },
+   {
+    "key": "E",
+    "name": "Wild Claws",
+    "emoji": "💢",
+    "desc": "Sharpen your claws — your next 3 attacks hit harder and slow",
+    "color": "#ef4444",
+    "ult": false
+   },
+   {
+    "key": "R",
+    "name": "Wolf Form",
+    "emoji": "🐺",
+    "desc": "ULT: Turn into a giant wolf — much faster and stronger, and your wounds heal",
+    "color": "#94a3b8",
+    "ult": true
+   }
+  ]
+ },
+ {
+  "id": "gavran",
+  "name": "Mrak",
+  "emoji": "🐦‍⬛",
+  "role": "🌑 Raven — dark wizard",
+  "ranged": true,
+  "P": {
+   "name": "Raven Feather",
+   "emoji": "🪶",
+   "desc": "PASSIVE: some attacks steal mana from the enemy and give it to you",
+   "color": "#ddd6fe"
+  },
+  "ab": [
+   {
+    "key": "Q",
+    "name": "Curse",
+    "emoji": "🌀",
+    "desc": "Cast a curse on a spot — cursed enemies take more damage from everything for 5 seconds",
+    "color": "#a78bfa",
+    "ult": false
+   },
+   {
+    "key": "W",
+    "name": "Swap",
+    "emoji": "🔁",
+    "desc": "Swap places with an enemy hero — pull them over to your team!",
+    "color": "#c4b5fd",
+    "ult": false
+   },
+   {
+    "key": "E",
+    "name": "Feather Storm",
+    "emoji": "🪶",
+    "desc": "A whirl of sharp feathers spins over a spot — hurts and slows everyone in it",
+    "color": "#6366f1",
+    "ult": false
+   },
+   {
+    "key": "R",
+    "name": "Raven Flock",
+    "emoji": "🐦‍⬛",
+    "desc": "ULT: Call a flock of ravens — they peck and silence everyone in the circle",
+    "color": "#4c1d95",
+    "ult": true
+   }
+  ]
+ },
+ {
+  "id": "hobotnica",
+  "name": "Pipko",
+  "emoji": "🐙",
+  "role": "🌊 Octopus — ruler of the deep",
+  "ranged": false,
+  "P": {
+   "name": "Slimy Skin",
+   "emoji": "💧",
+   "desc": "PASSIVE: whoever hits you slips on slime and slows down",
+   "color": "#a5b4fc"
+  },
+  "ab": [
+   {
+    "key": "Q",
+    "name": "Ink Jet",
+    "emoji": "🖤",
+    "desc": "Spit ink — whoever is hit can't see well and misses attacks",
+    "color": "#312e81",
+    "ult": false
+   },
+   {
+    "key": "W",
+    "name": "Tentacles",
+    "emoji": "🐙",
+    "desc": "Stretch your tentacles in a line — grab enemies and pull them to you",
+    "color": "#818cf8",
+    "ult": false
+   },
+   {
+    "key": "E",
+    "name": "Tentacle Hug",
+    "emoji": "🫂",
+    "desc": "Grab enemies in front of you with your tentacles — they can't move and slowly lose health",
+    "color": "#8b5cf6",
+    "ult": false
+   },
+   {
+    "key": "R",
+    "name": "Deep Whirlpool",
+    "emoji": "🌀",
+    "desc": "ULT: A giant whirlpool pulls all enemies to you and stuns them",
+    "color": "#4f46e5",
+    "ult": true
+   }
+  ]
+ },
+ {
+  "id": "nosorog",
+  "name": "Rogo",
+  "emoji": "🦏",
+  "role": "💥 Rhino — unstoppable charger",
+  "ranged": false,
+  "P": {
+   "name": "Thick Armor",
+   "emoji": "🛡️",
+   "desc": "PASSIVE: thick skin blocks some damage from every hit",
+   "color": "#fde68a"
+  },
+  "ab": [
+   {
+    "key": "Q",
+    "name": "Charge",
+    "emoji": "🏃",
+    "desc": "Charge straight ahead — the first enemy you hit goes flying and gets stunned",
+    "color": "#fbbf24",
+    "ult": false
+   },
+   {
+    "key": "W",
+    "name": "Horn Hit",
+    "emoji": "🦏",
+    "desc": "Swing your horn — enemies around you fly back",
+    "color": "#f59e0b",
+    "ult": false
+   },
+   {
+    "key": "E",
+    "name": "Challenge",
+    "emoji": "📢",
+    "desc": "Challenge nearby enemies — they must attack only you, and you get a shield",
+    "color": "#f97316",
+    "ult": false
+   },
+   {
+    "key": "R",
+    "name": "Rage",
+    "emoji": "😡",
+    "desc": "ULT: Go wild — you attack faster, and every hit stuns briefly",
+    "color": "#ef4444",
+    "ult": true
+   }
+  ]
+ },
+ {
+  "id": "panda",
+  "name": "Bambus",
+  "emoji": "🐼",
+  "role": "🎋 Panda — calm master",
+  "ranged": false,
+  "P": {
+   "name": "Bamboo",
+   "emoji": "🎋",
+   "desc": "PASSIVE: chewing bamboo keeps restoring health and mana",
+   "color": "#86efac"
+  },
+  "ab": [
+   {
+    "key": "Q",
+    "name": "Thunder Clap",
+    "emoji": "👏",
+    "desc": "Clap your paws — thunder shakes everyone around you and slows them",
+    "color": "#fde68a",
+    "ult": false
+   },
+   {
+    "key": "W",
+    "name": "Dizzy Spin",
+    "emoji": "💫",
+    "desc": "Spin enemies around — they get dizzy and miss",
+    "color": "#f9a8d4",
+    "ult": false
+   },
+   {
+    "key": "E",
+    "name": "Wobbly Step",
+    "emoji": "🥴",
+    "desc": "Wobble like a kung-fu master — enemy hits often miss you",
+    "color": "#86efac",
+    "ult": false
+   },
+   {
+    "key": "R",
+    "name": "Three Pandas",
+    "emoji": "🐼",
+    "desc": "ULT: Call three little pandas to fight by your side, and you get a shield",
+    "color": "#f59e0b",
+    "ult": true
+   }
+  ]
+ },
+ {
+  "id": "jednorog",
+  "name": "Duga",
+  "emoji": "🦄",
+  "role": "🌈 Unicorn — magical helper",
+  "ranged": true,
+  "P": {
+   "name": "Magic Mane",
+   "emoji": "✨",
+   "desc": "PASSIVE: all friends around you regain mana faster",
+   "color": "#c4b5fd"
+  },
+  "ab": [
+   {
+    "key": "Q",
+    "name": "Rainbow Beam",
+    "emoji": "🌈",
+    "desc": "Shoot a rainbow that goes through all enemies in its path and slows them",
+    "color": "#f0abfc",
+    "ult": false
+   },
+   {
+    "key": "W",
+    "name": "Healing Horn",
+    "emoji": "💖",
+    "desc": "Your horn shines and heals you and all friends around you",
+    "color": "#f9a8d4",
+    "ult": false
+   },
+   {
+    "key": "E",
+    "name": "Rainbow Bridge",
+    "emoji": "🌉",
+    "desc": "Walk along a rainbow to a new spot — you and friends along the rainbow get speed",
+    "color": "#f0abfc",
+    "ult": false
+   },
+   {
+    "key": "R",
+    "name": "Star Gallop",
+    "emoji": "🌠",
+    "desc": "ULT: A star blast stuns enemies around you, and your whole team gets speed and a shield",
+    "color": "#fde047",
+    "ult": true
+   }
+  ]
+ },
+ {
+  "id": "morskipas",
+  "name": "Zoobo",
+  "emoji": "🦈",
+  "role": "🦷 Shark — hungry hunter",
+  "ranged": false,
+  "P": {
+   "name": "Scent of Blood",
+   "emoji": "🩸",
+   "desc": "PASSIVE: you hit hurt enemies harder (below half health)",
+   "color": "#f87171"
+  },
+  "ab": [
+   {
+    "key": "Q",
+    "name": "Bite",
+    "emoji": "🦷",
+    "desc": "Bite the enemies in front of you hard — they bleed for a few more seconds",
+    "color": "#ef4444",
+    "ult": false
+   },
+   {
+    "key": "W",
+    "name": "Water Leap",
+    "emoji": "🌊",
+    "desc": "Leap out like from the waves and splash everyone where you land",
+    "color": "#38bdf8",
+    "ult": false
+   },
+   {
+    "key": "E",
+    "name": "Blood Whirl",
+    "emoji": "🌀",
+    "desc": "Spin like a whirl of teeth — everything around you bleeds",
+    "color": "#dc2626",
+    "ult": false
+   },
+   {
+    "key": "R",
+    "name": "Frenzy",
+    "emoji": "😤",
+    "desc": "ULT: Go wild! You attack much faster, run faster, and every bite heals you",
+    "color": "#dc2626",
+    "ult": true
+   }
+  ]
+ },
+ {
+  "id": "nisan",
+  "name": "Nishan",
+  "emoji": "🐿️",
+  "role": "🎯 Squirrel — sniper (shoots from far away)",
+  "ranged": true,
+  "P": {
+   "name": "Headshot",
+   "emoji": "🎯",
+   "desc": "PASSIVE: a shot sometimes lands a \"headshot\" — extra damage, a short stun, and the target gets knocked back a bit",
+   "color": "#fbbf24"
+  },
+  "ab": [
+   {
+    "key": "Q",
+    "name": "Acorn Rain",
+    "emoji": "🌰",
+    "desc": "Fire a rain of acorns at a faraway spot — it falls for a long time, hurting and slowing everyone in the circle",
+    "color": "#d97706",
+    "ult": false
+   },
+   {
+    "key": "W",
+    "name": "Pinecone Bomb",
+    "emoji": "💣",
+    "desc": "Throw a pinecone that pops — it knocks enemies back and slows them; if you stand close, it knocks you back too (escape!)",
+    "color": "#f97316",
+    "ult": false
+   },
+   {
+    "key": "E",
+    "name": "Spyglass",
+    "emoji": "🔭",
+    "desc": "Look through your spyglass — for 6 seconds you shoot much farther and faster",
+    "color": "#7dd3fc",
+    "ult": false
+   },
+   {
+    "key": "R",
+    "name": "Perfect Shot",
+    "emoji": "🔫",
+    "desc": "ULT: Aim at an enemy hero from far away — after a short aim, the shot always hits",
+    "color": "#ef4444",
+    "ult": true
+   }
+  ]
+ },
+ {
+  "id": "bikos",
+  "name": "Bikosh",
+  "emoji": "🐂",
+  "role": "🪓 Bull warrior — taunts and chops",
+  "ranged": false,
+  "P": {
+   "name": "Bull Spin",
+   "emoji": "🌀",
+   "desc": "PASSIVE: when someone hits you, sometimes you spin with your axe and hurt EVERYONE around you",
+   "color": "#ef4444"
+  },
+  "ab": [
+   {
+    "key": "Q",
+    "name": "Battle Call",
+    "emoji": "🗯️",
+    "desc": "Roar at nearby enemies — they must attack only you, and you get strong armor",
+    "color": "#ef4444",
+    "ult": false
+   },
+   {
+    "key": "W",
+    "name": "Battle Hunger",
+    "emoji": "🍖",
+    "desc": "Make an enemy hungry — they lose health and are slower until they defeat someone; you run faster",
+    "color": "#f97316",
+    "ult": false
+   },
+   {
+    "key": "E",
+    "name": "Bull Leap",
+    "emoji": "🐂",
+    "desc": "Leap with your axe to a spot — hit and slow everyone where you land",
+    "color": "#fbbf24",
+    "ult": false
+   },
+   {
+    "key": "R",
+    "name": "Final Blow",
+    "emoji": "🪓",
+    "desc": "ULT: A giant axe swing — instantly defeats a hurt enemy! If it works, your team runs faster and your ult is ready again",
+    "color": "#dc2626",
+    "ult": true
+   }
+  ]
+ },
+ {
+  "id": "nilski",
+  "name": "Petsko",
+  "emoji": "🦛",
+  "role": "🪝 Hippo — reels enemies in with a hook",
+  "ranged": false,
+  "P": {
+   "name": "Feast",
+   "emoji": "🍉",
+   "desc": "PASSIVE: when an enemy hero falls near you, you eat a watermelon and get stronger forever (+strength); thick skin reduces magic damage",
+   "color": "#f87171"
+  },
+  "ab": [
+   {
+    "key": "Q",
+    "name": "Hook",
+    "emoji": "🪝",
+    "desc": "Throw a hook on a chain — the first enemy it hits gets reeled all the way to you!",
+    "color": "#cbd5e1",
+    "ult": false
+   },
+   {
+    "key": "W",
+    "name": "Stinky Cloud",
+    "emoji": "🤢",
+    "desc": "A stinky green cloud rises around you — enemies in it lose health and slow down (it stinks a little for you too!)",
+    "color": "#84cc16",
+    "ult": false
+   },
+   {
+    "key": "E",
+    "name": "Life Ring",
+    "emoji": "🛟",
+    "desc": "Put on your life ring — for 5 s you take much less damage, and you heal a bit right away",
+    "color": "#fb923c",
+    "ult": false
+   },
+   {
+    "key": "R",
+    "name": "Big Gulp",
+    "emoji": "😋",
+    "desc": "ULT: Grab an enemy next to you and \"chew\" them for 3 seconds — they can't move, lose lots of health, and you heal",
+    "color": "#f43f5e",
+    "ult": true
+   }
+  ]
+ },
+ {
+  "id": "irbis",
+  "name": "Inya",
+  "emoji": "🐆",
+  "role": "❄️ Snow leopard — frost archer",
+  "ranged": true,
+  "P": {
+   "name": "Precision Aura",
+   "emoji": "🎯",
+   "desc": "PASSIVE: you and nearby friends who attack from range (within 900) hit harder",
+   "color": "#bae6fd"
+  },
+  "ab": [
+   {
+    "key": "Q",
+    "name": "Frost Arrows",
+    "emoji": "❄️",
+    "desc": "Enchant your quiver — for 8 s every arrow is icy: it hits harder and slows a lot",
+    "color": "#7dd3fc",
+    "ult": false
+   },
+   {
+    "key": "W",
+    "name": "Snow Gust",
+    "emoji": "🌬️",
+    "desc": "Send an icy gust of wind — it pushes enemies back and silences them (they can't cast spells)",
+    "color": "#e0f2fe",
+    "ult": false
+   },
+   {
+    "key": "E",
+    "name": "Arrow Fan",
+    "emoji": "🏹",
+    "desc": "Fire three fans of icy arrows in front of you — everyone hit is slowed",
+    "color": "#93c5fd",
+    "ult": false
+   },
+   {
+    "key": "R",
+    "name": "Master Archer",
+    "emoji": "🎖️",
+    "desc": "ULT (PASSIVE): more agility, and when no enemy hero is close (400), arrows sometimes pierce armor and hit hard",
+    "color": "#38bdf8",
+    "ult": true
+   }
+  ]
+ },
+ {
+  "id": "skorpion",
+  "name": "Skorpo",
+  "emoji": "🦂",
+  "role": "🏜️ Scorpion — king of the sands",
+  "ranged": false,
+  "P": {
+   "name": "Venom Burst",
+   "emoji": "🧪",
+   "desc": "PASSIVE: attacks and spells inject venom — if the target falls while poisoned, it bursts and hurts everyone around it (if it survives 4 s, it pops a little)",
+   "color": "#a3e635"
+  },
+  "ab": [
+   {
+    "key": "Q",
+    "name": "Burrow Strike",
+    "emoji": "🕳️",
+    "desc": "Dive under the sand and pop out further on — every enemy in the way gets tossed up and stunned",
+    "color": "#d6a35c",
+    "ult": false
+   },
+   {
+    "key": "W",
+    "name": "Sandstorm",
+    "emoji": "⏳",
+    "desc": "Whip up a sandstorm around you — enemies inside lose health, and nobody can see you (until you attack)",
+    "color": "#e2b86b",
+    "ult": false
+   },
+   {
+    "key": "E",
+    "name": "Stinger",
+    "emoji": "🦂",
+    "desc": "Sting with your tail from afar — it hurts, slows a lot and poisons everyone in the circle",
+    "color": "#a3e635",
+    "ult": false
+   },
+   {
+    "key": "R",
+    "name": "Epicenter",
+    "emoji": "🌋",
+    "desc": "ULT: After a short wind-up the ground shakes — ever bigger shockwaves around you hurt and slow enemies",
+    "color": "#f59e0b",
+    "ult": true
+   }
+  ]
+ }
+]
