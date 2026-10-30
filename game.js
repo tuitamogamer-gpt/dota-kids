@@ -7096,6 +7096,67 @@ function drawFrame(x, y, w, h, r, alpha){
   ctx.restore();
 }
 
+/* ----- velika najava (traka) — kad je igrač mrtav, crta se tek preko tamnog sloja ----- */
+function drawBanner(){
+  if(!banner) return;
+  const f = banner.t < 0.25 ? banner.t / 0.25 : (banner.t > banner.dur ? 1 - (banner.t - banner.dur) / 0.4 : 1);
+  ctx.globalAlpha = clamp(f, 0, 1);
+  ctx.textAlign = 'center';
+  const kind = bannerKind(banner), art = BANNER_ART[kind], bim = artImg('assets/ui/banner_' + kind + '.webp');
+  if(bim){   // 🎀 v0.56: naslov i podnaslov na naslikanoj traci (plava vijest, zlatna dobra, crvena loša)
+    const k = clamp(Math.min(VH / 720, VW / 900), 0.6, 1);
+    let fs = 32 * k, ss = 15 * k;
+    ctx.font = fontTxt(fs, true);
+    const tw = ctx.measureText(banner.txt).width;
+    ctx.font = fontTxt(ss, true);
+    const sw = banner.sub ? ctx.measureText(banner.sub).width : 0;
+    const maxW = VW * 0.96;
+    let bw = Math.max(440 * k, Math.max(tw, sw) / art.tw);
+    if(bw > maxW){ fs *= maxW / bw; ss *= maxW / bw; bw = maxW; }   // predug tekst: manja slova
+    const pop = banner.t < 0.25 ? 0.82 + 0.18 * Math.sin(banner.t / 0.25 * Math.PI / 2) : 1;   // traka "iskoči"
+    const bh = bw * bim.naturalHeight / bim.naturalWidth;
+    const top = player && !player.dead && pendingTalent(player) ? TAL_PANEL_Y + TAL_PANEL_H + 6   // ne preko ploče talenata,
+      : gameTime < 0 && !gameOver && !shopOpen ? 148 : 70;                                       // okvira pripreme ni gornje trake
+    const cy = Math.max(VH * 0.24, top + bh * art.cy);
+    ctx.save();
+    ctx.translate(VW / 2, cy);
+    ctx.scale(pop, pop);
+    ctx.drawImage(bim, -bw / 2, -bh * art.cy, bw, bh);
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+    const ty = banner.sub ? -ss * 0.72 : 0;
+    ctx.font = fontTxt(Math.round(fs), true);
+    ctx.strokeStyle = art.stroke; ctx.lineWidth = Math.max(3, fs * 0.17);
+    ctx.strokeText(banner.txt, 0, ty);
+    ctx.fillStyle = art.title;
+    ctx.fillText(banner.txt, 0, ty);
+    if(banner.sub){
+      ctx.font = fontTxt(Math.round(ss), true);
+      ctx.lineWidth = Math.max(2.5, ss * 0.22);
+      ctx.strokeText(banner.sub, 0, ty + fs * 0.5 + ss * 0.85);
+      ctx.fillStyle = art.sub;
+      ctx.fillText(banner.sub, 0, ty + fs * 0.5 + ss * 0.85);
+    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  } else {   // traka se još učitava: samo tekst
+    ctx.font = fontTxt(34, true);
+    ctx.strokeStyle = 'rgba(0,0,0,0.75)';
+    ctx.lineWidth = 6;
+    ctx.strokeText(banner.txt, VW / 2, VH * 0.26);
+    ctx.fillStyle = '#fde047';
+    ctx.fillText(banner.txt, VW / 2, VH * 0.26);
+    if(banner.sub){
+      ctx.font = fontTxt(17, true);
+      ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+      ctx.lineWidth = 4;
+      ctx.strokeText(banner.sub, VW / 2, VH * 0.26 + 34);
+      ctx.fillStyle = '#fff';
+      ctx.fillText(banner.sub, VW / 2, VH * 0.26 + 34);
+    }
+    ctx.globalAlpha = 1;
+  }
+}
 function drawHud(){
   // ----- gornja ploča -----
   const tw = 280, tx = (VW - tw) / 2;
@@ -7171,65 +7232,7 @@ function drawHud(){
   }
 
   // ----- velika najava -----
-  if(banner){
-    const f = banner.t < 0.25 ? banner.t / 0.25 : (banner.t > banner.dur ? 1 - (banner.t - banner.dur) / 0.4 : 1);
-    ctx.globalAlpha = clamp(f, 0, 1);
-    ctx.textAlign = 'center';
-    const kind = bannerKind(banner), art = BANNER_ART[kind], bim = artImg('assets/ui/banner_' + kind + '.webp');
-    if(bim){   // 🎀 v0.56: naslov i podnaslov na naslikanoj traci (plava vijest, zlatna dobra, crvena loša)
-      const k = clamp(Math.min(VH / 720, VW / 900), 0.6, 1);
-      let fs = 32 * k, ss = 15 * k;
-      ctx.font = fontTxt(fs, true);
-      const tw = ctx.measureText(banner.txt).width;
-      ctx.font = fontTxt(ss, true);
-      const sw = banner.sub ? ctx.measureText(banner.sub).width : 0;
-      const maxW = VW * 0.96;
-      let bw = Math.max(440 * k, Math.max(tw, sw) / art.tw);
-      if(bw > maxW){ fs *= maxW / bw; ss *= maxW / bw; bw = maxW; }   // predug tekst: manja slova
-      const pop = banner.t < 0.25 ? 0.82 + 0.18 * Math.sin(banner.t / 0.25 * Math.PI / 2) : 1;   // traka "iskoči"
-      const bh = bw * bim.naturalHeight / bim.naturalWidth;
-      const top = player && !player.dead && pendingTalent(player) ? TAL_PANEL_Y + TAL_PANEL_H + 6   // ne preko ploče talenata,
-        : gameTime < 0 && !gameOver && !shopOpen ? 148 : 70;                                       // okvira pripreme ni gornje trake
-      const cy = Math.max(VH * 0.24, top + bh * art.cy);
-      ctx.save();
-      ctx.translate(VW / 2, cy);
-      ctx.scale(pop, pop);
-      ctx.drawImage(bim, -bw / 2, -bh * art.cy, bw, bh);
-      ctx.textBaseline = 'middle';
-      ctx.lineJoin = 'round';
-      const ty = banner.sub ? -ss * 0.72 : 0;
-      ctx.font = fontTxt(Math.round(fs), true);
-      ctx.strokeStyle = art.stroke; ctx.lineWidth = Math.max(3, fs * 0.17);
-      ctx.strokeText(banner.txt, 0, ty);
-      ctx.fillStyle = art.title;
-      ctx.fillText(banner.txt, 0, ty);
-      if(banner.sub){
-        ctx.font = fontTxt(Math.round(ss), true);
-        ctx.lineWidth = Math.max(2.5, ss * 0.22);
-        ctx.strokeText(banner.sub, 0, ty + fs * 0.5 + ss * 0.85);
-        ctx.fillStyle = art.sub;
-        ctx.fillText(banner.sub, 0, ty + fs * 0.5 + ss * 0.85);
-      }
-      ctx.restore();
-      ctx.globalAlpha = 1;
-    } else {   // traka se još učitava: samo tekst
-      ctx.font = fontTxt(34, true);
-      ctx.strokeStyle = 'rgba(0,0,0,0.75)';
-      ctx.lineWidth = 6;
-      ctx.strokeText(banner.txt, VW / 2, VH * 0.26);
-      ctx.fillStyle = '#fde047';
-      ctx.fillText(banner.txt, VW / 2, VH * 0.26);
-      if(banner.sub){
-        ctx.font = fontTxt(17, true);
-        ctx.strokeStyle = 'rgba(0,0,0,0.7)';
-        ctx.lineWidth = 4;
-        ctx.strokeText(banner.sub, VW / 2, VH * 0.26 + 34);
-        ctx.fillStyle = '#fff';
-        ctx.fillText(banner.sub, VW / 2, VH * 0.26 + 34);
-      }
-      ctx.globalAlpha = 1;
-    }
-  }
+  if(!(player && player.dead && !gameOver)) drawBanner();   // mrtav: crta se iznad tamnog sloja (niže)
 
   // ----- donja ploča igrača -----
   uiRects.learn = [];
@@ -7650,6 +7653,7 @@ function drawHud(){
     if(player.dead && !gameOver){   // na kraju igre ne prekrivaj završni ekran
       ctx.fillStyle = 'rgba(15,23,42,0.45)';
       ctx.fillRect(0, 0, VW, VH);
+      drawBanner();
       const rc = player.recap && player.recap.rows && player.recap.rows.length ? player.recap : null;
       const ty = rc ? VH * 0.26 + 72 : VH * 0.42;   // 💀 s pregledom pogibije sve malo više (ali ispod najave "Ne brini!")
       ctx.textAlign = 'center';
