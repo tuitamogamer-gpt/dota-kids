@@ -18,6 +18,7 @@ const SR_PHRASES = [
 ];
 const SR_WORDS = {
   "procjenjuju":"procenjuju", "pobijediti":"pobediti",
+  "svjetlucaju":"svetlucaju", "svijetlu":"svetlu", "prozirna":"providna",
   "svatko":"svako", "cijelu":"celu", "zalijeću":"zaleću", "umjesto":"umesto", "ljepša":"lepša", "ljepši":"lepši", "mjesečina":"mesečina", "mjesečine":"mesečine", "svijetle":"svetle", "medvjed":"medved", "medvjedi":"medvedi", "zvjezdice":"zvezdice", "glazba":"muzika", "izborniku":"meniju", "bitci":"bici", "riješen":"rešen", "riješeni":"rešeni", "riješeno":"rešeno", "riješi":"reši", "zadnjim":"poslednjim",
   "bijeg":"beg", "bijega":"bega", "bijes":"bes", "blijedi":"bledi", "bljesak":"blesak", "branič":"branilac",
   "cijela":"cela", "cijeli":"ceo", "cijelog":"celog", "cijelom":"celom", "cijena":"cena", "cijene":"cene",

@@ -274,6 +274,85 @@ function setModelLook(obj, look){
   if(!ud.meshes || ud.look === look) return;
   ud.look = look;
   for(const m of ud.meshes) m.material = modelMat(m.userData.matName, ud.team, look, ud.variant);
+  if(ud.outlines) for(const o of ud.outlines) o.visible = look !== 'g';   // 👻 nevidljiv junak nema ni obris
+}
+
+/* ✏️ v0.53: tamni obris junaka (kao u crtićima) — junak se jasno odvaja od trave, staza i drugih junaka.
+   Stražnje plohe svakog dijela tijela napuhnu se duž normala za stalnu širinu u pikselima (na svakom zaslonu
+   i zumu jednako); svi komadi jednog dijela spoje se u jednu geometriju — jedan draw call po dijelu.
+   Na niskoj kvaliteti je isključen. */
+const OUTLINE = { px: 1.6, width: { value: 1.6 }, res: { value: new THREE.Vector2(1280, 720) }, color: { value: new THREE.Color('#24170f') } };
+const OUTLINE_GEO = {};
+let outlineMat_ = null;
+function outlineMat(){
+  if(outlineMat_) return outlineMat_;
+  outlineMat_ = new THREE.ShaderMaterial({
+    uniforms: { uWidth: OUTLINE.width, uRes: OUTLINE.res, uColor: OUTLINE.color },
+    vertexShader: 'uniform float uWidth;\nuniform vec2 uRes;\nvoid main(){\n' +
+      '  vec4 clip = projectionMatrix * modelViewMatrix * vec4(position, 1.0);\n' +
+      '  vec2 d = (projectionMatrix * vec4(normalize(normalMatrix * normal), 0.0)).xy;\n' +
+      '  float L = length(d);\n' +
+      '  if(L > 1e-5) clip.xy += d / L * uWidth * 2.0 / uRes * clip.w;\n' +
+      '  gl_Position = clip;\n}',
+    fragmentShader: 'uniform vec3 uColor;\nvoid main(){ gl_FragColor = vec4(uColor, 1.0); }',
+    side: THREE.BackSide,
+  });
+  outlineMat_.visible = quality3 !== 'low';
+  outlineMat_.userData.shared = true;
+  return outlineMat_;
+}
+function outlinePrep(r){   // širina u pikselima zaslona, i za mali 3D pregled na ekranu odabira
+  r.getDrawingBufferSize(OUTLINE.res.value);
+  OUTLINE.width.value = OUTLINE.px * r.getPixelRatio();
+}
+/* svi komadi (po materijalu) jednog dijela tijela → jedna geometrija samo s položajem i normalom */
+function outlinePartGeo(key, part){
+  if(OUTLINE_GEO[key] !== undefined) return OUTLINE_GEO[key];
+  const geos = [];
+  for(const c of part.children){
+    if(!c.isMesh || c.userData.outline || !c.name.startsWith(part.name + '_') || /GLOW/.test(c.userData.matName || '')) continue;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', c.geometry.attributes.position.clone());
+    g.setAttribute('normal', c.geometry.attributes.normal.clone());
+    if(c.geometry.index) g.setIndex(c.geometry.index.clone());
+    c.updateMatrix();
+    g.applyMatrix4(c.matrix);
+    geos.push(g.index ? g : g.toNonIndexed());
+  }
+  let geo = null;
+  if(geos.length === 1) geo = geos[0];
+  else if(geos.length > 1 && THREE.mergeBufferGeometries){
+    const ix = geos.every(g => g.index);
+    geo = THREE.mergeBufferGeometries(ix ? geos : geos.map(g => g.index ? g.toNonIndexed() : g), false);
+  }
+  if(geo) geo.userData.shared = true;
+  OUTLINE_GEO[key] = geo;
+  return geo;
+}
+function addOutline(obj, name){
+  const adds = [];
+  obj.traverse(o => {
+    if(o === obj || o.userData.outline) return;
+    let geo = null;
+    if(o.isMesh){
+      const p = o.parent;
+      if(p && p !== obj && o.name.startsWith(p.name + '_')) return;   // komad dijela — u spojenoj geometriji dijela
+      if(!/GLOW/.test(o.userData.matName || '')) geo = o.geometry;   // dio od jednog komada (npr. rep)
+    } else if(o.children.some(c => c.isMesh && c.name.startsWith(o.name + '_'))){
+      geo = outlinePartGeo(name + '|' + o.name, o);
+    }
+    if(geo) adds.push([o, geo]);
+  });
+  const outs = [];
+  for(const [o, geo] of adds){
+    const m = new THREE.Mesh(geo, outlineMat());
+    m.userData.outline = true;
+    m.onBeforeRender = outlinePrep;
+    o.add(m);
+    outs.push(m);
+  }
+  obj.userData.outlines = outs;
+  return obj;
 }
 
 /* ---------- animacije (AnimationMixer po jedinici) ---------- */
@@ -560,6 +639,7 @@ function qualityPixelRatio(){
 }
 function setQuality3D(q){
   quality3 = q;
+  if(outlineMat_) outlineMat_.visible = q !== 'low';   // ✏️ obris junaka samo na srednjoj i visokoj kvaliteti
   if(!renderer3) return;
   const sh = q !== 'low';
   if(renderer3.shadowMap.enabled !== sh){
@@ -2288,6 +2368,7 @@ function buildHeroMesh(u){
   ud.ring = heroRingMesh(ringCol);
   g.add(ud.ring);
   const m = MODELS.ready ? addModel(g, 'hero_' + u.hero.id, u.team, MODEL_SCALE.hero) : null;
+  if(m) addOutline(m, 'hero_' + u.hero.id);   // ✏️ v0.53: obris junaka
   if(!m){
     const body = new THREE.Mesh(
       cachedGeo('heroBody', () => new THREE.CapsuleGeometry(16, 24, 4, 12)),
@@ -4756,7 +4837,7 @@ function showHeroPreview(container, heroId){
     if(cv.parentNode !== container) container.appendChild(cv);
     if(heroPv.id !== heroId){
       if(heroPv.model){ heroPv.scene.remove(heroPv.model); if(heroPv.anim) heroPv.anim.mixer.stopAllAction(); }
-      heroPv.model = modelInstance('hero_' + heroId, TEAM_BLUE, 1);
+      heroPv.model = addOutline(modelInstance('hero_' + heroId, TEAM_BLUE, 1), 'hero_' + heroId);   // ✏️ i u 3D pregledu
       heroPv.anim = makeAnimator(heroPv.model, 'hero_' + heroId);
       heroPv.model.rotation.y = -0.6;
       heroPv.scene.add(heroPv.model);

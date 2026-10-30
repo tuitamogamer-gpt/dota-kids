@@ -652,6 +652,8 @@ def eyes(p, x, y, z, r=0.07, color='#1b1b2a', glint=True, spread=0.15, big=1.0, 
         p.sphere((x, cy, z), (rx, ry, rz), color, seg=(14, 10))
         p.sphere((x + rx * 0.55, cy, z - rz * 0.06), (rx * 0.5, ry * 0.72, rz * 0.72), iris_c, seg=(12, 8))     # šarenica
         p.sphere((x + rx * 0.8, cy, z - rz * 0.06), (rx * 0.32, ry * 0.42, rz * 0.46), '#07070d', seg=(10, 7))  # zjenica
+        p.sphere((x + rx * 0.9, cy - s * ry * 0.04, z - rz * 0.47), (rx * 0.13, ry * 0.36, rz * 0.13), mix(iris_c, '#ffffff', 0.5),
+                 seg=(10, 6))   # v0.53: svjetliji polumjesec pri dnu šarenice — oko "svjetluca"
         if glint:
             p.sphere((x + r * 0.66, cy + s * 0.03, z + r * 0.45), r * 0.34, '#ffffff', seg=(7, 5))
             p.sphere((x + r * 0.7, cy - s * 0.03, z - r * 0.35), r * 0.15, '#ffffff', seg=(5, 4))
@@ -670,9 +672,56 @@ def on_sphere(center, radii, th, ph, out=0.0):
     return (center[0] + d.x * (radii[0] + out), center[1] + d.y * (radii[1] + out), center[2] + d.z * (radii[2] + out))
 
 
-def brows(p, x, y, z, color, angle=12, spread=0.15):
+def _orient(n, t):
+    """v0.53: Euler (stupnjevi) koji lokalnu os x okrene u n (normala plohe), a os z u t (smjer duljine)"""
+    t = Vector(t).normalized()
+    n = Vector(n)
+    n = (n - t * n.dot(t)).normalized()
+    return tuple(math.degrees(a) for a in Matrix((n, t.cross(n), t)).transposed().to_euler('XYZ'))
+
+
+def face_cap(p, hc, rad, th, ph, size, color, out=0.008, tilt=0.0):
+    """v0.53: mrlja koja prianja uz glavu (sovin disk lica, majmunova maska): spljošteni elipsoid iz kojeg viri
+    samo vrh, pa se rub glatko utapa u glavu; size = (pola širine, pola visine), out = koliko viri"""
+    th_, ph_ = RAD(th), RAD(ph)
+    d = Vector((math.cos(ph_) * math.cos(th_), math.cos(ph_) * math.sin(th_), math.sin(ph_)))
+    pt = Vector(hc) + Vector((d.x * rad[0], d.y * rad[1], d.z * rad[2]))
+    n = Vector((d.x / rad[0], d.y / rad[1], d.z / rad[2])).normalized()
+    up = Vector((0, 0, 1))
+    t = (up - n * up.dot(n)).normalized()
+    if tilt:
+        t = Matrix.Rotation(RAD(tilt), 3, n) @ t
+    k = 0.42 * max(size)
+    p.sphere(tuple(pt + n * (out - k)), (k, size[0], size[1]), color, rot=_orient(n, t), seg=(22, 14))
+
+
+def feather(p, base, d, ln, w, color, nrm, thick=0.16, mat='vc'):
+    """v0.53 pero (ili krilce kukca): spljošteni elipsoid od korijena base u smjeru d, duljine ln i širine w,
+    plohom okrenut prema nrm"""
+    d = Vector(d).normalized()
+    p.sphere(tuple(Vector(base) + d * ln * 0.5), (w * thick, w * 0.5, ln * 0.5), color, mat=mat, rot=_orient(nrm, d), seg=(12, 8))
+
+
+def brows(p, x, y, z, color, angle=12, spread=0.15, head=None, width=0.065):
+    """obrve; angle > 0: unutarnji krajevi niže (odlučan pogled), < 0: podignuti (blag pogled).
+    v0.53: s head=(središte, polumjeri) obrva je zaobljen luk koji prianja uz čelo i stanjuje se prema van"""
+    if not head:
+        for s in (1, -1):
+            p.box((x, s * spread, z), (0.03, 0.11, 0.025), color, rot=(s * angle, 0, 0), bevel=0.008)
+        return
+    (hx, hy, hz_), (rx, ry, rz) = head
+    ta = math.tan(RAD(angle))
     for s in (1, -1):
-        p.box((x, s * spread, z), (0.03, 0.11, 0.025), color, rot=(s * angle, 0, 0), bevel=0.008)
+        pts = []
+        for t in (-1.0, -0.4, 0.25, 0.85, 1.25):          # od unutarnjeg prema vanjskom kraju
+            yy = s * (spread + t * width)
+            zz = z + t * width * ta + 0.02 * (1 - min(1.0, t * t))
+            q = 1 - ((yy - hy) / ry) ** 2 - ((zz - hz_) / rz) ** 2
+            pts.append(Vector((hx + rx * math.sqrt(max(q, 0.04)) + 0.01, yy, zz)))
+        rr = (0.02, 0.022, 0.019, 0.014, 0.007)
+        for i in range(len(pts) - 1):
+            p.cyl(tuple(pts[i]), tuple(pts[i + 1]), rr[i], rr[i + 1], color, seg=8, smooth=True)
+            p.sphere(tuple(pts[i]), rr[i], color, seg=(8, 6))
 
 
 def tuft(p, base, d, length, r, color, bend=(0.0, 0.0, 0.0), mat='vc'):
@@ -937,12 +986,38 @@ def biped(name, c, opts):
         for side, nm in ((1, 'wingL'), (-1, 'wingR')):
             P = lambda x, y, z: V(-0.2 + (x + 0.2) * ws, side * (0.12 + (y - 0.12) * ws), 0.92 + (z - 0.92) * ws)
             w = m.part(nm, V(-0.2, side * 0.12, 0.92), 'body')
-            w.cyl(P(-0.2, 0.12, 0.92), P(-0.36, 0.5, 1.22), 0.03 * S, 0.02 * S, dark, seg=6)
-            w.cyl(P(-0.36, 0.5, 1.22), P(-0.42, 0.78, 1.0), 0.02 * S, 0.012 * S, dark, seg=6)
-            w.cyl(P(-0.36, 0.5, 1.22), P(-0.36, 0.62, 0.86), 0.014 * S, 0.008 * S, dark, seg=4)
-            w.cyl(P(-0.36, 0.5, 1.22), P(-0.3, 0.42, 0.76), 0.012 * S, 0.006 * S, dark, seg=4)   # v0.29: još jedna kost krila
-            w.poly([P(-0.2, 0.12, 0.92), P(-0.36, 0.5, 1.22), P(-0.42, 0.78, 1.0),
-                    P(-0.36, 0.62, 0.86), P(-0.3, 0.42, 0.76)], wc, thick=0.012)
+            if opts.get('wingStyle') == 'bee':
+                # v0.53 pčela: dva zaobljena prozirno-plava krilca sa žilicama (prije šišmišja krila)
+                root = Vector(P(-0.22, 0.1, 0.96))
+                for dv, ln, wd in (((-0.3, 0.72, 0.62), 0.46, 0.25), ((-0.42, 0.9, -0.08), 0.32, 0.17)):
+                    d = Vector((dv[0], side * dv[1], dv[2])).normalized()
+                    nr = Vector((1, 0, 0.25))
+                    feather(w, root, d, ln * ws * S, wd * ws * S, wc, nr, thick=0.06)
+                    fl = (nr - d * nr.dot(d)).normalized()
+                    sd_ = d.cross(fl)
+                    for k_ in (-1, 0, 1):   # žilice
+                        e = root + (d * 0.8 + sd_ * 0.22 * k_).normalized() * ln * ws * S * (0.82 - 0.12 * abs(k_))
+                        w.cyl(tuple(root + fl * 0.006), tuple(e + fl * 0.006), 0.006 * S, 0.003 * S, mix(wc, '#1e3a5f', 0.35), seg=4)
+                        w.cyl(tuple(root - fl * 0.006), tuple(e - fl * 0.006), 0.006 * S, 0.003 * S, mix(wc, '#1e3a5f', 0.35), seg=4)
+                w.sphere(tuple(root), 0.04 * S, dark, seg=(8, 6))
+                continue
+            wrist, root = P(-0.36, 0.5, 1.22), P(-0.2, 0.12, 0.92)
+            tips = [P(-0.42, 0.78, 1.0), P(-0.36, 0.62, 0.86), P(-0.3, 0.42, 0.76)]
+            w.cyl(root, wrist, 0.03 * S, 0.02 * S, dark, seg=6)
+            w.cyl(wrist, tips[0], 0.02 * S, 0.012 * S, dark, seg=6)
+            w.cyl(wrist, tips[1], 0.014 * S, 0.008 * S, dark, seg=4)
+            w.cyl(wrist, tips[2], 0.012 * S, 0.006 * S, dark, seg=4)   # v0.29: još jedna kost krila
+            w.sphere(wrist, 0.026 * S, dark, seg=(8, 6))
+            w.cyl(wrist, Vector(wrist) + Vector((0.01, side * 0.02, 0.07 * S)), 0.018 * S, 0.0, '#fff1c9', seg=6)   # v0.53: kandžica
+            # v0.53: opna između prstiju s lukovima na rubu (prije jedan ravni mnogokut)
+            wv = Vector(wrist)
+            ring = tips + [root]
+            for i in range(len(ring) - 1):
+                a_, b_ = Vector(ring[i]), Vector(ring[i + 1])
+                sag = a_.lerp(b_, 0.5).lerp(wv, 0.24 if i < len(ring) - 2 else 0.12)
+                cc = wc if i % 2 == 0 else mix(wc, '#ffffff', 0.14)
+                w.poly([wrist, tuple(a_), tuple(sag)], cc, thick=0.012)
+                w.poly([wrist, tuple(sag), tuple(b_)], cc, thick=0.012)
     # glava
     h = m.part('head', V(0, 0, 0.98), 'body')
     hr = opts.get('headR', (0.40, 0.42, 0.37))
@@ -1005,15 +1080,19 @@ def biped(name, c, opts):
             h.sphere(V(0.28, s * 0.22, 1.64), (0.04 * S, 0.06 * S, 0.07 * S), '#14141f')
             h.sphere(V(0.31, s * 0.21, 1.67), 0.018 * S, '#ffffff', seg=(6, 4))
     else:
+        # v0.53: oko uvijek malo viri iz glave (kod velikih okruglih glava, npr. hobotnice, prije je bilo utonulo),
+        # a bjeloočnica je odmah iza šarenice (kod sove je prije bila zakopana u glavi)
+        esz = ey.get('size', 1)
+        xs = hr[0] * math.sqrt(max(0.05, 1 - (0.15 / hr[1]) ** 2 - (0.06 / (hr[2] * 1.0)) ** 2))
+        ex = max(0.335, xs - 0.0624 * esz + 0.035)
         if ey.get('white'):
-            ws_ = ey.get('size', 1)
             for s in (1, -1):
-                h.sphere(V(0.3, s * 0.15, 1.36), (0.06 * S, 0.095 * S * ws_, 0.11 * S * ws_), '#ffffff', seg=(10, 7))
-        eyes(h, 0.335 * S, 0, 1.36 * S, r=0.078 * S * ey.get('size', 1), color=ey.get('color', '#1b1b2a'),
-             spread=0.15 * S)
+                h.sphere(V(ex + 0.053 * esz - 0.06, s * 0.15, 1.36), (0.06 * S, 0.095 * S * esz, 0.11 * S * esz), '#ffffff', seg=(12, 8))
+        eyes(h, ex * S, 0, 1.36 * S, r=0.078 * S * esz, color=ey.get('color', '#1b1b2a'), spread=0.15 * S)
         bc = opts.get('brows', dark)
         if bc:
-            brows(h, 0.355 * S, 0, 1.47 * S, bc, angle=opts.get('browAngle', 12), spread=0.15 * S)
+            brows(h, 0.355 * S, 0, 1.475 * S, bc, angle=opts.get('browAngle', 12), spread=0.15 * S,
+                  head=(V(0, 0, hz), (hr[0] * S, hr[1] * S, hr[2] * S)), width=0.065 * S)
         if opts.get('blush', True):
             for s in (1, -1):
                 h.sphere(V(0.3, s * 0.27, 1.22), (0.03 * S, 0.06 * S, 0.035 * S), '#f49ab0', seg=(8, 5))
@@ -1250,9 +1329,17 @@ def biped(name, c, opts):
         for s_ in (1, -1):
             h.cyl(V(-0.05, s_ * 0.22, 1.56), V(-0.1, s_ * 0.36, 1.88), 0.09 * S, 0.0, fur, seg=5)
             h.cyl(V(-0.05, s_ * 0.22, 1.58), V(-0.09, s_ * 0.33, 1.84), 0.05 * S, 0.0, dark, seg=5)
-    if opts.get('faceDisc'):   # sova: svijetli disk oko očiju
+    if opts.get('faceDisc'):   # sova: srcoliki svijetli disk lica s tamnijim rubom (v0.53: prianja uz glavu, prije zakopan)
+        hcen, rad, fd = V(0, 0, hz), (hr[0] * S, hr[1] * S, hr[2] * S), opts['faceDisc']
         for s_ in (1, -1):
-            h.sphere(V(0.27, s_ * 0.15, 1.36), (0.07 * S, 0.17 * S, 0.18 * S), opts['faceDisc'], seg=(10, 8))
+            face_cap(h, hcen, rad, s_ * 22, 6, (0.185 * S, 0.2 * S), mix(fd, '#5a3a1a', 0.45), out=0.008 * S, tilt=s_ * 8)
+            face_cap(h, hcen, rad, s_ * 22, 6, (0.16 * S, 0.175 * S), fd, out=0.016 * S, tilt=s_ * 8)
+        face_cap(h, hcen, rad, 0, -10, (0.08 * S, 0.12 * S), fd, out=0.014 * S)   # spoj ispod kljuna
+    if opts.get('faceMask'):   # v0.53 majmun: svijetla srcolika maska lica oko očiju (prije je izgledao kao medo)
+        hcen, rad, fm = V(0, 0, hz), (hr[0] * S, hr[1] * S, hr[2] * S), opts['faceMask']
+        for s_ in (1, -1):
+            face_cap(h, hcen, rad, s_ * 20, 9, (0.15 * S, 0.165 * S), fm, out=0.012 * S, tilt=-s_ * 10)
+        face_cap(h, hcen, rad, 0, -6, (0.17 * S, 0.14 * S), fm, out=0.01 * S)
     if opts.get('beanieStar'):
         for k in range(3):
             a = RAD(k * 60)
@@ -1366,14 +1453,34 @@ def biped(name, c, opts):
     for side, nm in ((1, 'armL'), (-1, 'armR')):
         a = m.part(nm, V(0, side * 0.3, 0.86), 'body')
         if arm_wings:
+            # v0.53: krilo od preklopljenih pera — duga letna pera i preko njih kraća, svjetlija pokrovna
+            # (prije ravna ploha s prugama, izgledala je kao karton)
             wc = arm_wings
             a.sphere(V(-0.02, side * 0.34, 0.78), (0.1 * S, 0.08 * S, 0.14 * S), fur)
-            a.poly([V(0.02, side * 0.3, 0.9), V(-0.12, side * 0.62, 0.86), V(-0.2, side * 0.72, 0.6),
-                    V(-0.1, side * 0.55, 0.45), V(0.0, side * 0.38, 0.55)], wc, thick=0.04)
-            for i in range(4):
-                tz = 0.84 - i * 0.1
-                a.cyl(V(-0.06, side * (0.5 + i * 0.05), tz), V(-0.2 - i * 0.02, side * (0.62 + i * 0.04), tz - 0.24),
-                      0.04 * S, 0.01 * S, mix(wc, '#000000', 0.15 * (i % 2)), seg=4)
+            s0, w0 = Vector(V(-0.02, side * 0.35, 0.83)), Vector(V(-0.08, side * 0.6, 0.72))
+            a.cyl(tuple(s0), tuple(w0), 0.075 * S, 0.05 * S, wc, seg=10, smooth=True)     # prednji rub krila
+            a.sphere(tuple(w0), 0.05 * S, wc, seg=(10, 8))
+            arm = w0 - s0
+            n_ = 7
+            out_ = Vector((0, side, 0))
+
+            def wnorm(d):   # ploha pera napola prema naprijed, napola u stranu: puno krilo i na portretu i odozgo u igri
+                nr = arm.cross(d)
+                return ((nr if nr.x > 0 else -nr).normalized() + out_).normalized()
+            for i in range(n_):
+                t = i / (n_ - 1)
+                d = Vector((-0.25 - 0.1 * t, side * (0.1 + 0.75 * t), -1.0 + 0.45 * t))
+                nr = wnorm(d)
+                base = s0.lerp(w0, t) + nr * 0.005 * S * i
+                cc = mix(wc, '#000000', 0.22) if i % 2 else wc
+                feather(a, base, d, (0.26 + 0.17 * t) * S, 0.13 * S, cc, nr)
+                feather(a, base + d.normalized() * 0.2 * S, d, (0.06 + 0.17 * t) * S, 0.08 * S, mix(wc, '#000000', 0.38), nr)  # tamniji vrh
+            for i in range(5):
+                t = i / 4
+                d = Vector((-0.2 - 0.1 * t, side * (0.15 + 0.6 * t), -1.0 + 0.4 * t))
+                nr = wnorm(d)
+                cc = mix(wc, '#ffffff', 0.2 if i % 2 else 0.1)
+                feather(a, s0.lerp(w0, t) + nr * 0.045 * S + Vector((0, 0, 0.02 * S)), d, (0.15 + 0.05 * t) * S, 0.11 * S, cc, nr)
             continue
         a.cyl(V(0, side * 0.31, 0.88), V(0.02, side * 0.36, 0.62), 0.072 * S, 0.066 * S, limb, seg=10, smooth=True)
         hc = c.get('hand', limb)
@@ -2114,7 +2221,7 @@ HEROES = {
     'bikos': (dict(fur='#9c3a22', belly='#e7a77f', muzzle='#e9b99a', dark='#5a1f12', inner='#e9a39a', limb='#9c3a22',
                    hand='#7a2c18', feet='#3b2414', nose='#3b1a10'),
               dict(ears='round', earScale=0.75, snout='bull', bullHorns='#f1e6c8', tail='thin', tuft='#3b1a10', weapon='axe',
-                   atk='melee', scale=1.12, brows='#3b1a10', browAngle=-18, headR=(0.43, 0.46, 0.39), bracers='#4b5563',
+                   atk='melee', scale=1.12, brows='#3b1a10', browAngle=10, headR=(0.43, 0.46, 0.39), bracers='#4b5563',
                    neckFur='#4a2516', boots='#3b2414',
                    eyes={'color': '#7f1d1d', 'size': 0.95}, blush=False, strap=False)),
     # ---- v0.15 ----
@@ -2123,7 +2230,7 @@ HEROES = {
                  dict(ears='pointy', snout='horse', tail='rainbow', unicornHorn='#f6c945',
                       rainbowMane=('#f87171', '#fb923c', '#fbbf24', '#4ade80', '#60a5fa', '#c084fc'),
                       weapon='orb', orb='#f0abfc', atk='mage', eyes={'color': '#7c3aed', 'size': 1.15}, brows='#a78bfa',
-                      browAngle=8, cheekFluff=False, cape=True, capeColor='#f9a8d4', capeStars=True, tunic='team')),
+                      browAngle=-4, cheekFluff=False, cape=True, capeColor='#f9a8d4', capeStars=True, tunic='team')),
     'morskipas': (dict(fur='#64748b', belly='#f1f5f9', muzzle='#f1f5f9', dark='#334155', limb='#64748b', feet='#475569'),
                   dict(ears=None, snout='shark', tail='shark', dorsalFin='#556274', weapon='claws', clawColor='#f1f5f9',
                        atk='claws', eyes={'white': True, 'color': '#0f172a', 'size': 1.0}, brows='#1e293b', browAngle=-16,
@@ -2149,7 +2256,7 @@ HEROES = {
                       quiverColor='#7a4b25', outfit=dict(style='vest', cloth='#4d7c0f', lining='#365314', trim='#a16207', sleeves=True))),
     'listko': (dict(fur='#80c96d', belly='#f4e6a1', muzzle='#a7dc8f', dark='#3f7a2d'),
                dict(shell=('#5e8a35', '#7aa846', '#3e5f22'), headband=True, weapon='staff', orb='#86efac',
-                    orbShape='leaf', staffWood='#7a4b25', tail='stub', atk='mage', tunic='team', flowerHat=True)),
+                    orbShape='leaf', staffWood='#7a4b25', tail='stub', atk='mage', tunic='team', flowerHat=True, browAngle=-6)),
     'munja': (dict(fur='#f39a2b', belly='#fff6e8', muzzle='#fff6e8', dark='#2b1a10'),
               dict(ears='round', stripesHead=True, stripesBody=True, tail='ringed', weapon='claws',
                    clawColor='#fde047', atk='claws', brows='#2b1a10', browAngle=-6, boltMark=True, fangs=True, tufts=True,
@@ -2159,14 +2266,14 @@ HEROES = {
                      headR=(0.42, 0.46, 0.33), spots=True, brows=None, shoulders='#7c4a24', ornate=False, bracers='#7c4a24')),
     'orlina': (dict(fur='#7a4a2a', belly='#efe7d6', muzzle='#ffffff', beak='#f5b324', feet='#f5b324', limb='#f5b324'),
                dict(snout='beak', armWings='#6b3f22', tail=None, atk='wing', eyes={'color': '#3b1d08'},
-                    brows='#3b2414', browAngle=-14, headR=(0.38, 0.38, 0.38), whiteHead=True, goggles=True,
+                    brows='#3b2414', browAngle=8, headR=(0.38, 0.38, 0.38), whiteHead=True, goggles=True,
                     tailFeathers=True, tufts=True, scarfColor='#dc2626',
                     outfit=dict(style='vest', cloth='#7c4a24', lining='#4a2a14', trim='#d6b37a'))),
     'luna': (dict(fur='#d7cdf0', belly='#ffffff', muzzle='#ffffff', dark='#6d5aa8', inner='#f9b4d0',
                   limb='#d7cdf0'),
              dict(ears='pointy', snout='muzzle', tail='catlong', tuft='#6d5aa8', weapon='bow', atk='bow',
                   bowColor='#e5e7eb', crescent=True, cape=True, capeStars=True, eyes={'color': '#4c1d95'},
-                  brows='#6d5aa8', tufts=True, capeColor='#4c1d95',
+                  brows='#6d5aa8', browAngle=-4, tufts=True, capeColor='#4c1d95',
                   outfit=dict(style='vest', cloth='#312e81', lining='#1e1b4b', trim='#f6c945', sleeves=True))),
     'jez': (dict(fur='#b48a5c', belly='#f1e3c8', muzzle='#f1e3c8', dark='#4a3728', nose='#1f1a17'),
             dict(ears='round', earScale=0.8, snout='long', tail='stub', quills=('#4a3728', '#e8d5b5'),
@@ -2177,7 +2284,7 @@ HEROES = {
                   atk='melee', scale=1.08, brows='#5b6474', browAngle=-4, headR=(0.42, 0.44, 0.38),
                   outfit=dict(style='vest', cloth='#0f766e', lining='#134e4a', trim='#f6c945', collar='#f6c945'))),
     'pcela': (dict(fur='#f5c518', belly='#fde68a', muzzle='#fde68a', dark='#1f1a17', nose='#1f1a17'),
-              dict(ears=None, snout='muzzle', bands='#1f1a17', wings='#dff6ff', wingScale=1.15, antennae=True,
+              dict(ears=None, snout='muzzle', bands='#1f1a17', wings='#dff6ff', wingScale=1.15, wingStyle='bee', browAngle=-4, antennae=True,
                    stinger=True, weapon='orb', orb='#f59e0b', atk='mage', tunic='team', eyes={'size': 1.1}, cheekFluff=False)),
     'sova': (dict(fur='#8a6a4a', belly='#e9dcc3', muzzle='#e9dcc3', beak='#f5b324', feet='#f5b324', limb='#f5b324',
                   dark='#4a3222'),
@@ -2187,7 +2294,7 @@ HEROES = {
     'majmun': (dict(fur='#8b5a2b', belly='#f1d8b5', muzzle='#f1d8b5', dark='#4a2a14', inner='#f1d8b5', nose='#2b1d1a'),
                dict(ears='round', earScale=1.4, snout='muzzle', tail='catlong', tuft='#8b5a2b', weapon='staff',
                     orbShape='none', staffWood='#f6c945', headband=True, bandColor='#f6c945', bandNoTails=True, atk='melee',
-                    brows='#4a2a14', tufts=True, outfit=dict(style='vest', cloth='#b91c1c', lining='#7f1d1d', trim='#f6c945'))),
+                    brows='#4a2a14', browAngle=-4, tufts=True, faceMask='#f1d8b5', outfit=dict(style='vest', cloth='#b91c1c', lining='#7f1d1d', trim='#f6c945'))),
     'tragac': (dict(fur='#8e93a0', belly='#e7e9ee', muzzle='#eef0f4', dark='#2d2f36', nose='#111111'),
                dict(ears='round', snout='muzzle', mask='#2a2c33', tail='ringed', weapon='shuriken', atk='claws',
                     hood=True, hoodColor='#1f2328', eyes={'white': True}, beltStar=True, scarf=True, scarfColor='#374151',
@@ -2208,7 +2315,7 @@ HEROES = {
                        blush=True, cheekFluff=False, outfit=dict(style='vest', cloth='#1e3a8a', lining='#172554', trim='#ffffff', collar='#f8fafc'))),
     'nosorog': (dict(fur='#7d8a96', belly='#b8c2cc', muzzle='#9aa6b2', dark='#4a5560', inner='#d8c0c8', nose='#3b4450'),
                 dict(ears='round', earScale=0.7, snout='long', tail='thin', tuft='#4a5560', atk='melee', scale=1.1,
-                     noseHorn='#f1e9d6', chest='#9aa3ad', shoulders='#9aa3ad', brows='#4a5560', browAngle=-16,
+                     noseHorn='#f1e9d6', chest='#9aa3ad', shoulders='#9aa3ad', brows='#4a5560', browAngle=8,
                      headR=(0.42, 0.44, 0.38))),
     'panda': (dict(fur='#f3f4f6', belly='#ffffff', muzzle='#ffffff', dark='#1f2328', nose='#1f2328', limb='#1f2328',
                    inner='#1f2328'),
@@ -3199,27 +3306,43 @@ def build_cliffs():
 
 
 # ------------------------------------------------------------------ PORTRETI (render glave za ekran odabira)
-def render_portraits(ids, size=512):
+def _look_at(obj, frm, to):
+    """postavi objekt (kamera/svjetlo/ploha) u frm tako da mu -Z gleda prema to"""
+    obj.location = tuple(frm)
+    obj.rotation_euler = (Vector(to) - Vector(frm)).to_track_quat('-Z', 'Y').to_euler()
+
+
+# junaci čiji se portret renderira iz 3D modela (ostali imaju naslikane portrete) i boja pozadine
+PORTRAIT_BG = [('jez', '#8a9a4a'), ('slon', '#5a6a8a'), ('pcela', '#b8860b'), ('sova', '#3b2f5c'), ('majmun', '#7a5a2a'),
+               ('vuk', '#5a6270'), ('gavran', '#2e2a5c'), ('hobotnica', '#4a3a8a'), ('nosorog', '#6a7a6a'), ('panda', '#4a8a5a'),
+               ('jednorog', '#7c3aed'), ('morskipas', '#0e7490'), ('nisan', '#b45309'), ('bikos', '#7f1d1d')]
+
+
+def render_portraits(ids, size=512, outdir=None, samples=128):
+    """v0.53: portret u kadru glava + ramena (kao naslikani portreti ostalih junaka), lice u 3/4 profilu,
+    rubno svjetlo iza junaka i mekana pozadina u boji junaka koja svijetli iza glave"""
     sc = bpy.context.scene
     roots = {o.name: o for o in sc.objects if o.parent is None and o.type == 'EMPTY'}
     for o in roots.values():
         o.location = (0, 0, -200)
     cam = bpy.data.objects.new('pcam', bpy.data.cameras.new('pcam'))
     sc.collection.objects.link(cam)
-    cam.data.lens = 70
-    cam.location = (3.0, -2.4, 2.1)
-    cam.rotation_euler = (Vector((0.08, 0, 1.12)) - cam.location).to_track_quat('-Z', 'Y').to_euler()
+    cam.data.lens = 85
     sc.camera = cam
-    sun = bpy.data.objects.new('psun', bpy.data.lights.new('psun', 'SUN'))
-    sun.data.energy = 3.0
-    sun.rotation_euler = (RAD(45), RAD(15), RAD(40))
-    sc.collection.objects.link(sun)
-    fill = bpy.data.objects.new('pfill', bpy.data.lights.new('pfill', 'AREA'))
-    fill.data.energy = 300
-    fill.data.size = 4
-    fill.location = (2.5, -3.5, 2.5)
-    fill.rotation_euler = (RAD(60), 0, RAD(35))
-    sc.collection.objects.link(fill)
+
+    def light(nm, kind, energy, size_=1.0, color=(1, 1, 1)):
+        lt = bpy.data.objects.new(nm, bpy.data.lights.new(nm, kind))
+        lt.data.energy = energy
+        lt.data.color = color
+        if kind == 'AREA':
+            lt.data.size = size_
+        sc.collection.objects.link(lt)
+        return lt
+    key = light('pkey', 'SUN', 3.2, color=(1.0, 0.96, 0.9))
+    key.data.angle = RAD(8)
+    fill = light('pfill', 'AREA', 140, 3.0, (0.9, 0.95, 1.0))
+    rim = light('prim', 'AREA', 420, 1.6, (1.0, 0.95, 0.85))
+    rim2 = light('prim2', 'AREA', 220, 1.4, (0.85, 0.92, 1.0))
     world = bpy.data.worlds.new('pw')
     sc.world = world
     try:
@@ -3227,59 +3350,77 @@ def render_portraits(ids, size=512):
     except Exception:
         pass
     bg = world.node_tree.nodes['Background']
-    # pozadina: ploha iza junaka u boji njegove teme
+    # pozadina: ploha okrenuta kameri, svijetli krug iza glave koji prema rubovima tamni (samo emisija — ne baca sjene)
     back = bpy.data.objects.new('pback', bpy.data.meshes.new('pback'))
     bm = bmesh.new()
-    bmesh.ops.create_grid(bm, x_segments=1, y_segments=1, size=12)
+    bmesh.ops.create_grid(bm, x_segments=1, y_segments=1, size=14)
     bm.to_mesh(back.data)
     bm.free()
     sc.collection.objects.link(back)
-    back.rotation_euler = (RAD(90), 0, RAD(50))
-    back.location = (-3.0, 3.0, 2)
     bmat = bpy.data.materials.new('pbm')
     try:
         bmat.use_nodes = True
     except Exception:
         pass
+    nt = bmat.node_tree
+    for n_ in list(nt.nodes):
+        nt.nodes.remove(n_)
+    tco = nt.nodes.new('ShaderNodeTexCoord')
+    mp = nt.nodes.new('ShaderNodeMapping')
+    mp.inputs['Scale'].default_value = (0.36, 0.36, 0.36)
+    gr = nt.nodes.new('ShaderNodeTexGradient')
+    gr.gradient_type = 'SPHERICAL'
+    ramp = nt.nodes.new('ShaderNodeValToRGB')
+    em = nt.nodes.new('ShaderNodeEmission')
+    out = nt.nodes.new('ShaderNodeOutputMaterial')
+    nt.links.new(tco.outputs['Object'], mp.inputs['Vector'])
+    nt.links.new(mp.outputs['Vector'], gr.inputs['Vector'])
+    nt.links.new(gr.outputs['Fac'], ramp.inputs['Fac'])
+    nt.links.new(ramp.outputs['Color'], em.inputs['Color'])
+    nt.links.new(em.outputs['Emission'], out.inputs['Surface'])
     back.data.materials.append(bmat)
-    ground = bpy.data.objects.new('pground', bpy.data.meshes.new('pground'))
-    bm = bmesh.new()
-    bmesh.ops.create_grid(bm, x_segments=1, y_segments=1, size=12)
-    bm.to_mesh(ground.data)
-    bm.free()
-    sc.collection.objects.link(ground)
-    gmat = bpy.data.materials.new('pgm')
-    try:
-        gmat.use_nodes = True
-    except Exception:
-        pass
-    ground.data.materials.append(gmat)
     sc.render.engine = 'CYCLES'
-    sc.cycles.samples = 64
-    sc.cycles.use_denoising = False
+    sc.cycles.samples = samples
+    sc.cycles.use_denoising = True
+    try:
+        sc.cycles.denoiser = 'OPENIMAGEDENOISE'
+    except Exception:
+        sc.cycles.use_denoising = False
+        sc.cycles.samples = samples * 3
     sc.render.resolution_x = size
     sc.render.resolution_y = size
     sc.render.resolution_percentage = 100
+    face = RAD(-22)                 # kamo junak gleda
+    view = face - RAD(30)           # kamera 30° u stranu: lice u 3/4 profilu, okrenuto udesno
     for hid, bgcol in ids:
         r = roots.get('hero_' + hid)
         if not r:
             continue
+        S = HEROES[hid][1].get('scale', 1.0) if hid in HEROES else 1.0
         r.location = (0, 0, 0)
-        r.rotation_euler = (0, 0, RAD(-25))
+        r.rotation_euler = (0, 0, face)
+        tgt = Vector((0.05 * S, 0, 1.2 * S))
+        d = Vector((math.cos(view) * math.cos(RAD(8)), math.sin(view) * math.cos(RAD(8)), math.sin(RAD(8))))
+        dist = 0.8 * S * cam.data.lens / 18
+        _look_at(cam, tgt + d * dist, tgt)
+        fwd = -d
+        right = fwd.cross(Vector((0, 0, 1))).normalized()
+        up = right.cross(fwd)
+        _look_at(key, tgt - right * 3 + up * 2.6 + d * 2.5, tgt)
+        _look_at(fill, tgt + right * 3.2 + up * 0.6 + d * 2.8, tgt)
+        _look_at(rim, tgt + right * 1.7 + up * 1.9 - d * 2.2, tgt + Vector((0, 0, 0.15 * S)))
+        _look_at(rim2, tgt - right * 1.9 + up * 1.2 - d * 2.0, tgt)
+        hb = tgt + Vector((0, 0, 0.22 * S))
+        _look_at(back, hb + fwd * 4.5, hb + fwd * 9.0)    # -Z od kamere: lice plohe (+Z) gleda u kameru
         c = col(bgcol)
+        dk = [v * 0.42 for v in c]
+        lt = [min(1.0, v * 1.15 + 0.16) for v in c]
+        ramp.color_ramp.elements[0].color = (dk[0], dk[1], dk[2], 1)
+        ramp.color_ramp.elements[1].color = (lt[0], lt[1], lt[2], 1)
+        ramp.color_ramp.elements[0].position = 0.15
         bg.inputs['Color'].default_value = (c[0], c[1], c[2], 1)
-        bg.inputs['Strength'].default_value = 1.0
-        # pozadina i tlo: dio boje kroz emisiju, da nikad nisu crni (tlo je u sjeni kulise)
-        for mat, kd, ke in ((bmat, 0.5, 0.45), (gmat, 0.35, 0.3)):
-            bsdf = mat.node_tree.nodes['Principled BSDF']
-            bsdf.inputs['Base Color'].default_value = (c[0] * kd, c[1] * kd, c[2] * kd, 1)
-            for nm in ('Emission Color', 'Emission'):
-                if nm in bsdf.inputs:
-                    bsdf.inputs[nm].default_value = (c[0] * ke, c[1] * ke, c[2] * ke, 1)
-                    break
-            if 'Emission Strength' in bsdf.inputs:
-                bsdf.inputs['Emission Strength'].default_value = 1.0
-        sc.render.filepath = os.path.join(ASSETS, 'hero_%s.png' % hid)
+        bg.inputs['Strength'].default_value = 0.55
+        sc.render.filepath = os.path.join(outdir or ASSETS, 'hero_%s.png' % hid)
         bpy.ops.render.render(write_still=True)
         r.location = (0, 0, -200)
         r.rotation_euler = (0, 0, 0)
@@ -4380,6 +4521,15 @@ def main():
         bake_ao(do_ao='--ao' in argv)
         preview(arg('out', os.path.join(HERE, 'preview_v52.png')), only=['hero_'], cols=int(arg('cols', '4')), zoom=float(arg('zoom', '1.0')))
         return
+    if '--dev-v53' in argv:   # v0.53 portreti/lica izbliza (bez izvoza):  --only=sova,vuk  --out=mapa  --samples=32  --ao
+        arg = lambda k, d: next((a[len(k) + 3:] for a in argv if a.startswith('--' + k + '=')), d)
+        only = [x for x in arg('only', '').split(',') if x]
+        build_heroes(only or None)
+        bake_ao(do_ao='--ao' in argv)
+        pal = dict(PORTRAIT_BG)
+        render_portraits([(h, pal.get(h, '#4a5a7a')) for h in (only or list(HEROES))], size=int(arg('size', '512')),
+                         outdir=arg('out', HERE), samples=int(arg('samples', '32')))
+        return
     if '--dev-v14' in argv:   # brza provjera novih modela (bez izvoza)
         build_courier()
         build_spell_fx()
@@ -4423,14 +4573,12 @@ def main():
         preview(os.path.join(HERE, 'preview_new.png'), only=['tree_birch', 'stump', 'flowers', 'grass0', 'reeds', 'lilypad', 'crystal', 'campfire',
                                                                'tent', 'barrel', 'crate', 'fence', 'torch', 'ford', 'shrine', 'rock_big', 'signpost', 'mob_golem'], cols=5)
     if '--portraits' in argv:
-        render_portraits([('vuk', '#5a6270'), ('gavran', '#2e2a5c'), ('hobotnica', '#4a3a8a'), ('nosorog', '#6a7a6a'), ('panda', '#4a8a5a')])
+        render_portraits([pb for pb in PORTRAIT_BG if pb[0] in ('vuk', 'gavran', 'hobotnica', 'nosorog', 'panda')])
     if '--portraits-v15' in argv:
-        render_portraits([('jednorog', '#7c3aed'), ('morskipas', '#0e7490')])
+        render_portraits([pb for pb in PORTRAIT_BG if pb[0] in ('jednorog', 'morskipas')])
     if '--portraits-v38' in argv:
-        render_portraits([('nisan', '#b45309'), ('bikos', '#7f1d1d')])
-    if '--portraits-all' in argv:
-        render_portraits([('jez', '#8a9a4a'), ('slon', '#5a6a8a'), ('pcela', '#b8860b'), ('sova', '#3b2f5c'), ('majmun', '#7a5a2a'),
-                          ('vuk', '#5a6270'), ('gavran', '#2e2a5c'), ('hobotnica', '#4a3a8a'), ('nosorog', '#6a7a6a'), ('panda', '#4a8a5a')])
-
+        render_portraits([pb for pb in PORTRAIT_BG if pb[0] in ('nisan', 'bikos')])
+    if '--portraits-all' in argv:   # v0.53: svih 14 portreta iz modela
+        render_portraits(PORTRAIT_BG)
 
 main()
