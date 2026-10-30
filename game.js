@@ -73,7 +73,8 @@ function pointAt(pts, frac){
   const last = pts[pts.length - 1];
   return { x: last[0], y: last[1] };
 }
-function fontTxt(px, bold){ return (bold ? 'bold ' : '') + px + 'px "Comic Sans MS","Segoe UI",sans-serif'; }
+const FONT_UI = '"Nunito","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif';   // 🔤 v0.56 (bez Comic Sansa i rukopisnih slova)
+function fontTxt(px, bold){ return (bold ? '800 ' : '600 ') + px + 'px ' + FONT_UI; }
 function fontEmoji(px){ return px + 'px "Segoe UI Emoji","Apple Color Emoji",sans-serif'; }
 
 // roundRect polyfill
@@ -2080,7 +2081,7 @@ function castAbility(u, i, aim){
   }
   u.mp -= abMana(u, ab);
   if(u.isPlayer) u.qCasts = (u.qCasts || 0) + 1;   // 🎯 zadaci
-  ab.cd = Math.max(0.5, ab.def.cd * (1 - Math.min(0.5, (u.cdr || 0) + (u.itemCdr || 0)) - (u.jbuff && u.jbuff.blue > 0 ? 0.15 : 0)) + abBonus(u, ab.def.key, 'cd'));   // 🎓 talent / 🟣 Oktarinska jezgra / 🔵 plavi buff: kraće hlađenje
+  ab.cd = Math.max(0.5, ab.def.cd * (1 - Math.min(0.5, (u.cdr || 0) + (u.itemCdr || 0)) - (u.jbuff && u.jbuff.blue > 0 ? 0.15 : 0)) + abBonus(u, ab.def.key, 'cd'));   // 🎓 talent / ⚛️ Oktarinska jezgra / 🔵 plavi buff: kraće hlađenje
   if(u.cullRefresh){ ab.cd = 0; u.cullRefresh = false; }   // 🪓 Smrtni udarac: pobjeda nad junakom = ulti odmah spreman
   if(u.windup){ u.windup = null; u.atkTimer = 0; }   // čaranje prekida zamah — napad nije potrošen
   u.castAim = aim ? { x: aim.x, y: aim.y } : null;   // 3D: efekt na mjestu cilja
@@ -8018,6 +8019,8 @@ window.addEventListener('DOMContentLoaded', () => {
   hudCv = document.getElementById('hud');
   ctx = hudCv.getContext('2d');
   loadGameArt();
+  // 🔤 v0.56: platno (HUD) samo ne učitava font — učitaj Nunito odmah (latinica, naša slova, ćirilica)
+  if(document.fonts && document.fonts.load) for(const w of ['600', '800']) document.fonts.load(w + ' 16px Nunito', 'AaŽžĐđЖжЉљ').catch(() => {});
   fogCanvas = document.createElement('canvas');
   fogCanvas.width = fogCanvas.height = VIS_N;
   fogCtx = fogCanvas.getContext('2d');

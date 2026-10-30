@@ -2252,9 +2252,9 @@ const ITEMS = [
       } } },
   { id:'kaya', emoji:'📘', name:L('Kaja', 'Kaya'), cat:'magic', cost:300, components:['wizstaff', 'robe'], stats:{int:16, mpRegen:1, amp:0.1},   // v0.56
     lore:L('Knjiga koja pojačava svaku čaroliju.', 'A book that makes every spell stronger.') },
-  { id:'octarine', emoji:'🟣', name:L('Oktarinska jezgra', 'Octarine Core'), cat:'magic', cost:500, components:['mystic', 'pointbooster'], stats:{int:25, hp:175, mp:175, cdr:0.25},   // v0.56
+  { id:'octarine', emoji:'⚛️', name:L('Oktarinska jezgra', 'Octarine Core'), cat:'magic', cost:500, components:['mystic', 'pointbooster'], stats:{int:25, hp:175, mp:175, cdr:0.25},   // v0.56
     lore:L('Srce čarobnjaka: moći se brže vraćaju.', 'A wizard\'s heart: abilities come back faster.') },
-  { id:'orchid', emoji:'🟪', name:L('Orhideja zloće', 'Orchid Malevolence'), cat:'magic', cost:425, components:['wizstaff', 'gloves', 'voidstone'], stats:{int:12, aspd:30, mpRegen:3, dmg:10},   // v0.56
+  { id:'orchid', emoji:'🌺', name:L('Orhideja zloće', 'Orchid Malevolence'), cat:'magic', cost:425, components:['wizstaff', 'gloves', 'voidstone'], stats:{int:12, aspd:30, mpRegen:3, dmg:10},   // v0.56
     act:L('Tišina: neprijateljski junak 4 s ne može bacati moći (domet 900)', 'Silence: an enemy hero can\'t cast abilities for 4 s (range 900)'), lore:L('Lijep cvijet — opasan miris.', 'A pretty flower — a dangerous scent.'),
     active:{ cd:18, mana:100, target:'point', castRange:900,
       use(h, aim){

@@ -9,16 +9,18 @@
 
 /* ---------- ikone predmeta ---------- */
 const ITEM_ICON = {}, ITEM_ICON_URL = {};
-const ICON_W = 88, ICON_H = 64;
+const ICON_W = 88, ICON_H = 64, ICON_S = 2;   // ICON_S: razlučivost platna (oštre ikone na mobitelu / retina zaslonu)
 function hexA(hex, a){
   const n = parseInt(hex.slice(1), 16);
   return 'rgba(' + (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')';
 }
 function itemIconCanvas(it){
   if(ITEM_ICON[it.id]) return ITEM_ICON[it.id];
-  const c = document.createElement('canvas'); c.width = ICON_W; c.height = ICON_H;
+  // 🖼️ v0.56: platno u ICON_S × većoj razlučivosti (oštro i na mobitelu / retina zaslonu), crta se u istim koordinatama
+  const c = document.createElement('canvas'); c.width = ICON_W * ICON_S; c.height = ICON_H * ICON_S;
   // softversko platno: toDataURL() je tada trenutan (ne čeka grafičku karticu koja crta 3D scenu)
   const g = c.getContext('2d', { willReadFrequently: true });
+  g.scale(ICON_S, ICON_S);
   const q = ITEM_QUALITY[it.q] || ITEM_QUALITY.comp;
   // pozadina: tamni gradijent u boji kvalitete
   const bg = g.createRadialGradient(ICON_W * 0.5, ICON_H * 0.36, 4, ICON_W * 0.5, ICON_H * 0.5, ICON_W * 0.66);
@@ -28,22 +30,22 @@ function itemIconCanvas(it){
   g.save(); g.translate(ICON_W / 2, ICON_H * 0.48); g.globalAlpha = 0.09; g.fillStyle = q[0];
   for(let i = 0; i < 12; i++){ g.rotate(TAU / 12); g.beginPath(); g.moveTo(0, 0); g.lineTo(-6, -70); g.lineTo(6, -70); g.closePath(); g.fill(); }
   g.restore();
-  // sjaj iza emojija
-  const gl = g.createRadialGradient(ICON_W / 2, ICON_H / 2, 2, ICON_W / 2, ICON_H / 2, 30);
-  gl.addColorStop(0, hexA(q[0], 0.5)); gl.addColorStop(1, hexA(q[0], 0));
-  g.fillStyle = gl; g.fillRect(0, 0, ICON_W, ICON_H);
-  // sam predmet
-  g.font = fontEmoji(38); g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.shadowColor = 'rgba(0,0,0,0.75)'; g.shadowBlur = 7; g.shadowOffsetY = 3;
-  g.fillText(it.emoji, ICON_W / 2, ICON_H / 2 + 2);
-  g.shadowColor = 'transparent';
-  // odsjaj gore + tamni rubovi
+  // odsjaj gore + tamni rubovi — v0.56: ISPOD predmeta (prije je bijeli odsjaj prekrivao emoji pa je izgledao blijedo)
   const gg = g.createLinearGradient(0, 0, 0, ICON_H * 0.55);
-  gg.addColorStop(0, 'rgba(255,255,255,0.17)'); gg.addColorStop(1, 'rgba(255,255,255,0)');
+  gg.addColorStop(0, 'rgba(255,255,255,0.12)'); gg.addColorStop(1, 'rgba(255,255,255,0)');
   g.fillStyle = gg; g.fillRect(0, 0, ICON_W, ICON_H * 0.55);
   const vg = g.createRadialGradient(ICON_W / 2, ICON_H / 2, ICON_H * 0.42, ICON_W / 2, ICON_H / 2, ICON_W * 0.62);
   vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.45)');
   g.fillStyle = vg; g.fillRect(0, 0, ICON_W, ICON_H);
+  // sjaj iza emojija
+  const gl = g.createRadialGradient(ICON_W / 2, ICON_H / 2, 2, ICON_W / 2, ICON_H / 2, 30);
+  gl.addColorStop(0, hexA(q[0], 0.55)); gl.addColorStop(1, hexA(q[0], 0));
+  g.fillStyle = gl; g.fillRect(0, 0, ICON_W, ICON_H);
+  // sam predmet: pune boje, veći, s mekom sjenom
+  g.font = fontEmoji(42); g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.shadowColor = 'rgba(0,0,0,0.7)'; g.shadowBlur = 6; g.shadowOffsetY = 2;
+  g.fillText(it.emoji, ICON_W / 2, ICON_H / 2 + 2);
+  g.shadowColor = 'transparent';
   g.strokeStyle = hexA(q[0], 0.9); g.lineWidth = 2; g.strokeRect(1, 1, ICON_W - 2, ICON_H - 2);
   g.strokeStyle = 'rgba(0,0,0,0.55)'; g.lineWidth = 1; g.strokeRect(3.5, 3.5, ICON_W - 7, ICON_H - 7);
   ITEM_ICON[it.id] = c;
