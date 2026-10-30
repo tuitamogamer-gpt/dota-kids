@@ -128,6 +128,22 @@ const VOICES = {
     attack: '[battle roar] Face my axe!', ult: '[huge battle roar] One mighty chop!', kill: '[triumphant, laughing] Ha! Chopped like a log!',
     death: '[groaning, falling] Moooo... not fair...', respawn: "[angry and pumped] The bull is back! Who's next?",
     taunt: '[boastful, laughing] Look at these horns! Come on, try me!' },
+  // ---- v0.55 ----
+  nilski: { voice: 'a28bebb5662c41c98bc77fb162f86559',  // caveman — dubok, hrapav, gladni dobričina
+    pick: "[hungry and jolly] Petsko's here! Who wants to go fishing?", move1: '[cheerful, munching] On my way!', move2: '[hungry, sniffing] Mmm... I smell watermelon.',
+    attack: '[gleeful] Come here, little fishy!', ult: '[very hungry, excited] Big gulp! Nom nom nom!', kill: '[satisfied, laughing] Yum! Fresh catch!',
+    death: '[sad, groaning] My tummy... so empty...', respawn: '[jolly and loud] Petsko is back, and still hungry!',
+    taunt: '[playful, belly laugh] Ha! Look at this belly bounce!' },
+  irbis: { voice: '933563129e564b19a115bedd57b7406a',   // Sarah (Fish Official) — mirna, tiha, hladna
+    pick: '[cool and calm] Inya. The snow sees everything.', move1: '[quiet, focused] Silent as snow.', move2: '[calm] Moving through the frost.',
+    attack: '[focused, icy] Frozen arrow, fly!', ult: '[confident, steady] My aim never misses.', kill: '[cool, satisfied] Chilled to the bone.',
+    death: '[soft, fading] The cold... takes me...', respawn: '[calm, determined] Back from the blizzard.',
+    taunt: '[teasing, cool] Brrr. Did you feel that breeze?' },
+  skorpion: { voice: 'bf322df2096a46f18c579d0baa36f41d', // Adrian (Fish Official) — dubok, spor, kraljevski
+    pick: '[deep, regal] I am Skorpo, king of the sands!', move1: '[deep, rumbling] The sands obey.', move2: '[deep, calm] Burrowing forward.',
+    attack: '[menacing] Feel my sting!', ult: '[booming, powerful] The ground trembles! Epicenter!', kill: '[proud, slow chuckle] Buried in the sand.',
+    death: '[weak, crumbling] Back... to dust...', respawn: '[regal, powerful] The king rises from the dunes!',
+    taunt: '[haughty, amused] Click, click! Bow before the king!' },
 };
 // 📣 najavljivač (kao u DotA/LoL): assets/voice/ann/<ključ>.mp3; "ours"/"enemy" ovisi o tvom timu
 const ANNOUNCER = { voice: '92e3ee13d7524fee904324e350a532a0',   // Epic Game Announcer — dubok, gromki
@@ -177,6 +193,9 @@ const VOICE_REMOTE = {
   morskipas: '2026-10-25/3f6811067db64bddb7d61e14cae18e49 2026-10-25/0fd120c5fd3b44b48d30325035411238 2026-10-25/fb9f80ba450146eda6e6dab8c9bb560b 2026-10-25/cd09b796d32b433b856339ad8ccf0550 2026-10-25/2ed5dc661a284f6faaab17371c22b707 2026-10-25/fc8dbcdb9e444f07b47813d3ab97d8db 2026-10-25/b93a99ce06514e539af0db6a59015f3d 2026-10-25/b689a9eb8aa74063a94feb112f283390 2026-10-25/660e8f54d6b24d47a71aa6abf7b10084',
   nisan: '2026-10-27/f76a07b9c8664933aaf6fd1163c2bf94 2026-10-27/97a39e6ae3b743baa0de254cbcef3972 2026-10-27/5f4dc66989214c23a5c9f186c123053f 2026-10-27/fcd5e76b14054b8ca66d3f048f8ce6ec 2026-10-27/b30b283a300f477daa3fa391349fed36 2026-10-27/f7f7a9d3cf9645afb0b3d24f736f28cb 2026-10-27/93fe8affadf64f668a198a92cc5c7160 2026-10-27/3883b40175eb426ab38718c4c270af16 2026-10-27/e40af20e29a7427b9219e1fdda91a4c5',
   bikos: '2026-10-27/02c1c815f2034f4389556f9ead43f551 2026-10-27/725e8a2238a94af8bcb45d1e4689f6d8 2026-10-27/0d0b5045cc8043968bb86f9154b8a56b 2026-10-27/099f91bd25d2446f8852568941ec135e 2026-10-27/0ca789ba7c2e4a1cb7e67fce41d7a35f 2026-10-27/629803a59f394a4b86f6ebee5add133d 2026-10-27/db6335d6d2f9426a8b08a05865c42fef 2026-10-27/ad6f1977f81a45c9a31055b504758253 2026-10-27/ceb07ac5281c41949dc5c49ba0b576db',
+  nilski: '2026-10-30/663e22a10a0147f988fd6468d7ab5fe2 2026-10-30/85fd50618a014113b206d2f5d56abc21 2026-10-30/bc45136e42264940b1b81dcee22cfa1b 2026-10-30/e881bae6d3a04fdbae98f2090bd0d4b4 2026-10-30/1c2e97a78d2e4ef9b9a271954a4c66a8 2026-10-30/603da289fe214a6282c739055d6afe4d 2026-10-30/dad30d670de249fd98d137ce2909b665 2026-10-30/d1a8a2f2a4a34bada64cd26024733667 2026-10-30/eea38860fcb8464182991dcea892da4d',
+  irbis: '2026-10-30/dd22625cbab54af5975605576fa3e752 2026-10-30/ae78c70c418747218067e5220a5bc03f 2026-10-30/f3e05a1f66fc40698e7555a7a10cdcaf 2026-10-30/d14dad7dfcf24a61a135fb86d42a0983 2026-10-30/a8e619fc77ae4f82b291811286fdaba8 2026-10-30/1cc5961ab27345649b0d862467f78997 2026-10-30/934d2e0c7e434e2cb9b477385ec44d9a 2026-10-30/74c7c1f437b94cb1a897c0539ff1545f 2026-10-30/558e8c1993b341bd9be53dbd384858ee',
+  skorpion: '2026-10-30/c714713f99204d89be24e7c7dc82719b 2026-10-30/ddfaadd65ed340e39fa4749339eea3d9 2026-10-30/7ce3f3faa4214922bf739cf470a2456a 2026-10-30/be7e3c9529e64d37ba48ef8ea8f85cbb 2026-10-30/9d5de9eda275464ca3e094c35bbeffbc 2026-10-30/42bf69cc8d1d4a5db8ac187db536b7a2 2026-10-30/4f17628ccbe843c6be756874c5035f07 2026-10-30/705a555628b14322a12614a27ec95c62 2026-10-30/1c1baad9df4d47f1927587d60ccb33e2',
 };
 const ANN_REMOTE = {
   welcome: '2026-10-25/299b95be31fb43229ae2751293bbf5ac',
