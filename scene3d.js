@@ -3338,7 +3338,7 @@ function ensureStars(g, h, big){
   const ud = g.userData;
   if(ud.stars !== undefined) return ud.stars;
   const im = instancedFx('fx_star', big ? 5 : 3, true);
-  if(im){ g.add(im); ud.starsH = h; }
+  if(im){ g.add(im); ud.starsH = big ? h - 14 : h; }   // junaci: malo niže, da ih ne skriva traka života
   ud.stars = im || null;
   if(big){
     if(!stunHaloMat) stunHaloMat = new THREE.MeshBasicMaterial({ color: '#fde047', transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending });
