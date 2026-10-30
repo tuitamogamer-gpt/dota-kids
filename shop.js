@@ -87,7 +87,7 @@ function itemTipHtml(it, opts){
   if(it.pas) h += `<div class="tipBox tipPas"><span class="tipLbl">${L('PASIVNO', 'PASSIVE')}</span>${escHtml(it.pas)}</div>`;
   if(it.act){
     const a = it.active || ITEM_BY_ID[it.id].active || {};
-    h += `<div class="tipBox tipAct"><div class="tipActH"><span class="tipLbl">${L('AKTIVNO', 'ACTIVE')}</span><span class="tipCd">${a.mana ? '💧 ' + a.mana + ' &nbsp;' : ''}⏱️ ${a.cd || 0} s</span></div>${escHtml(it.act)}</div>`;
+    h += `<div class="tipBox tipAct"><div class="tipActH"><span class="tipLbl">${L('AKTIVNO', 'ACTIVE')}</span><span class="tipCd">${a.mana ? '💧 ' + a.mana + ' &nbsp;' : ''}⏱️ ${a.cd || 0} ${U_SEC}</span></div>${escHtml(it.act)}</div>`;
   }
   if(it.charges && !it.instant) h += `<div class="tipNote">${L('🔢 Punjenja', '🔢 Charges')}: ${it.charges}${it.consume ? L(' (potroši se)', ' (used up)') : ''}</div>`;
   if(it.lore && !it.neutral && !opts.compact) h += `<div class="tipLore">${escHtml(it.lore)}</div>`;
@@ -126,7 +126,7 @@ function abilityTipHtml(h, i){
   html += `<div class="tipDesc">${escHtml(d.desc.replace(/^(ULTI|ULTIMATE|ULT|УЛТИ):\s*/, ''))}</div>`;
   if(d.tip){
     html += `<div class="tipBox tipAct"><div class="tipActH"><span class="tipLbl">${ab.rank ? L('RANG ', 'RANK ') + ab.rank : L('NA RANGU 1', 'AT RANK 1')}</span>` +
-      (d.passive ? '' : `<span class="tipCd">💧 ${d.mana} &nbsp;⏱️ ${d.cd} s</span>`) + `</div>${escHtml(d.tip(rk))}</div>`;
+      (d.passive ? '' : `<span class="tipCd">💧 ${d.mana} &nbsp;⏱️ ${d.cd} ${U_SEC}</span>`) + `</div>${escHtml(d.tip(rk))}</div>`;
     if(ab.rank > 0 && ab.rank < max) html += `<div class="tipNote">⬆️ ${L('Rang', 'Rank')} ${ab.rank + 1}: ${escHtml(d.tip(ab.rank + 1))}</div>`;
   }
   {   // 🎓 odabrani talenti koji jačaju ovu moć
@@ -158,7 +158,7 @@ function summonerTipHtml(h, k){
   return `<div class="tipHead"><span class="tipAbIcon" style="border-radius:50%;background:linear-gradient(160deg, ${sp.color}, #10141b)">${sp.emoji}</span>` +
     `<div class="tipT"><b>${escHtml(sp.name)}</b><span class="tipSub">${L('Čarolija prizivača · tipka', 'Summoner spell · key')} ${k ? 'F' : 'D'}</span></div></div>` +
     `<div class="tipDesc">${escHtml(sp.desc)}</div>` +
-    `<div class="tipBox tipAct"><div class="tipActH"><span class="tipLbl">LEVEL ${h.level}</span><span class="tipCd">⏱️ ${sp.cd} s</span></div>${escHtml(sp.tip(h.level))}</div>` +
+    `<div class="tipBox tipAct"><div class="tipActH"><span class="tipLbl">${LS('LEVEL')} ${h.level}</span><span class="tipCd">⏱️ ${sp.cd} ${U_SEC}</span></div>${escHtml(sp.tip(h.level))}</div>` +
     `<div class="tipFoot">${cd > 0 ? L('⏳ Spremno za ' + Math.ceil(cd) + ' s', '⏳ Ready in ' + Math.ceil(cd) + ' s') : L('✅ Spremno!', '✅ Ready!')}${sp.target ? L(' · klik na cilj', ' · click a target') : ''}</div>`;
 }
 function simpleTipHtml(title, text, foot){

@@ -1564,9 +1564,9 @@ function kill(t, src){
     if(!firstBlood){ firstBlood = true; announce(L('🩸 Prva krv!', '🩸 First Blood!'), killerName); annEvent('first_blood'); if(src && src.kind === 'hero') src.firstBlood = true; }
     // 💀 ACE (kao u LoL-u): pao je cijeli tim
     else if(units.filter(h => h.kind === 'hero' && h.team === t.team).every(h => h.dead)){
-      announce('💀 ACE!', L('Cijeli tim ' + TEAM_NAME[t.team] + ' je pao — sada guraj!', 'All of Team ' + TEAM_NAME[t.team] + ' fell — push now!'));
+      announce(CYR ? '💀 ЕЈС!' : '💀 ACE!', L('Cijeli tim ' + TEAM_NAME[t.team] + ' je pao — sada guraj!', 'All of Team ' + TEAM_NAME[t.team] + ' fell — push now!'));
       annEvent('ace');
-      feedMsg(L('💀 ACE! Tim ' + TEAM_NAME[t.team] + ' je pao', '💀 ACE! Team ' + TEAM_NAME[t.team] + ' fell'), TEAM_COLOR[1 - t.team]);
+      feedMsg(L((CYR ? '💀 ЕЈС! ' : '💀 ACE! ') + 'Tim ' + TEAM_NAME[t.team] + ' je pao', '💀 ACE! Team ' + TEAM_NAME[t.team] + ' fell'), TEAM_COLOR[1 - t.team]);
       milestoneAnn = true;
     }
     // osobne najave (i za gosta u mrežnoj igri — svatko vidi samo svoje)
@@ -1673,7 +1673,7 @@ function levelUp(h){
   h.int += a.intG;
   recomputeAttrStats(h);
   h.skillPoints++;
-  addFloat(h.x, h.y, 'LEVEL ' + h.level + '! ⬆️', '#fde047', 18);
+  addFloat(h.x, h.y, LS('LEVEL ') + h.level + '! ⬆️', '#fde047', 18);
   burst(h.x, h.y, '#fde047', 18, 200, 6);
   if(h.bot){
     botSpendPoints(h);
@@ -4888,7 +4888,7 @@ function histGraphHtml(){
   for(const p of P) m = Math.max(m, Math.abs(p[1]), Math.abs(p[2]));
   const nice = [1000, 2000, 3000, 5000, 8000, 10000, 15000, 20000, 30000, 50000, 80000, 100000].find(v => v >= m) || m;
   const X = t => (pl + t / tMax * iw).toFixed(1), Y = v => (mid - v / nice * hh).toFixed(1);
-  const fmt = v => (v > 0 ? '+' : v < 0 ? '−' : '') + (Math.abs(v) >= 1000 ? (Math.abs(v) / 1000) + 'k' : Math.abs(v));
+  const fmt = v => (v > 0 ? '+' : v < 0 ? '−' : '') + (Math.abs(v) >= 1000 ? (Math.abs(v) / 1000) + LS('k') : Math.abs(v));   // tisuće (ćirilica: к)
   const line = P.map(p => X(p[0]) + ',' + Y(p[1])).join(' ');
   const area = `${X(P[0][0])},${mid} ${line} ${X(P[P.length - 1][0])},${mid}`;
   let g = `<svg class="etGraph" viewBox="0 0 ${W} ${H}" role="img">` +
@@ -4959,7 +4959,7 @@ function endTableHtml(winTeam){
   for(const team of [TEAM_BLUE, TEAM_RED]){
     const hs = heroesAll.filter(h => h.team === team).sort((a, b) => netWorth(b) - netWorth(a));
     const win = team === winTeam;
-    html += `<tr class="etTeam t${team}"><th colspan="6">${team === TEAM_BLUE ? '🔵 Sentinel' : '🔴 Scourge'} ${win ? L('<span class="etWin">🏆 POBJEDNIK</span>', '<span class="etWin">🏆 WINNER</span>') : ''}</th></tr>`;
+    html += `<tr class="etTeam t${team}"><th colspan="6">${team === TEAM_BLUE ? '🔵 ' + SIDE_NAME[0] : '🔴 ' + SIDE_NAME[1]} ${win ? L('<span class="etWin">🏆 POBJEDNIK</span>', '<span class="etWin">🏆 WINNER</span>') : ''}</th></tr>`;
     html += L('<tr class="etHead"><th>Junak</th><th>Lvl</th><th>K / D / A</th><th>LH / DN</th><th>🪙 Neto</th><th>Predmeti</th></tr>', '<tr class="etHead"><th>Hero</th><th>Lvl</th><th>K / D / A</th><th>LH / DN</th><th>🪙 Net</th><th>Items</th></tr>');
     for(const h of hs){
       const items = [];
@@ -6322,7 +6322,7 @@ function selectHero(i){
   });
   det.querySelectorAll('.sumb').forEach(b => {
     const sp = SUMMONER_BY_ID[b.dataset.id];
-    b.addEventListener('mouseenter', () => { det.querySelector('.d-desc').innerHTML = `${sp.emoji} <b>${sp.name}</b> <span class="pasTag">${L('✨ ČAROLIJA', '✨ SPELL')}</span><br>${sp.desc} · ⏱️ ${sp.cd} s`; });
+    b.addEventListener('mouseenter', () => { det.querySelector('.d-desc').innerHTML = `${sp.emoji} <b>${sp.name}</b> <span class="pasTag">${L('✨ ČAROLIJA', '✨ SPELL')}</span><br>${sp.desc} · ⏱️ ${sp.cd} ${U_SEC}`; });
     b.addEventListener('click', () => {
       const k = pickedSummoners.indexOf(sp.id);
       if(k >= 0) return;                              // već odabrana
@@ -7285,8 +7285,8 @@ function drawHud(){
       ctx.font = fontTxt(10.5, true);
       put(player.level >= CFG.maxLevel ? '⭐ Max!' : '⭐ ' + Math.floor(player.xp) + '/' + xpNeed(player.level), '#fde68a', py + 101);
       const wd = drakeN(player.team, 'water');   // 💧 vodeni zmajčići se vide u obnovi
-      put('♥ +' + (player.hpRegen + 3 * wd).toFixed(1) + '/s', '#4ade80', py + 101);
-      put('💧 +' + (player.mpRegen + 1.5 * wd).toFixed(1) + '/s', '#7dd3fc', py + 101);
+      put('♥ +' + (player.hpRegen + 3 * wd).toFixed(1) + '/' + U_SEC, '#4ade80', py + 101);
+      put('💧 +' + (player.mpRegen + 1.5 * wd).toFixed(1) + '/' + U_SEC, '#7dd3fc', py + 101);
     }
 
     // 🎒 torba 3×2 + ruksak 3 (kao u DotA): slika predmeta, hlađenje, punjenja, tipka; povuci = premjesti, desni klik = prodaj
@@ -7670,7 +7670,7 @@ function drawScoreboard(){
     ctx.fillStyle = team === TEAM_BLUE ? 'rgba(59,130,246,0.28)' : 'rgba(239,68,68,0.28)';
     ctx.fillRect(x + 10, ry, w - 20, 22);
     ctx.font = fontTxt(12, true); ctx.textAlign = 'left'; ctx.fillStyle = team === TEAM_BLUE ? '#bfdbfe' : '#fecaca';
-    ctx.fillText((team === TEAM_BLUE ? '🔵 Sentinel' : '🔴 Scourge') + '   ⚔️ ' + kills[team] +
+    ctx.fillText((team === TEAM_BLUE ? '🔵 ' + SIDE_NAME[0] : '🔴 ' + SIDE_NAME[1]) + '   ⚔️ ' + kills[team] +
       (teamDrakes[team].length ? '   🐉 ' + teamDrakes[team].map(k => DRAKES[k].emoji).join('') : ''), x + 18, ry + 11);
     ry += 24;
     for(const hh of heroes.filter(u => u.team === team).sort((a, b) => netWorth(b) - netWorth(a))){

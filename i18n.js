@@ -32,6 +32,7 @@ const CYR = LANG === 'cy';                   // ćirilica
 function L(hr, en){
   const r = EN && en != null ? en : (SR ? toSr(hr) : hr);
   if(L_TRACK && typeof r === 'string') lPairSet(r, hr, en);
+  if(L_NAMES) nameRec(hr, en);
   return r;
 }
 /* 🌐 mrežna igra: domaćin pamti od kojeg je para (hrvatski, engleski) nastao gotov tekst, pa gostu šalje
@@ -44,9 +45,33 @@ function lPairSet(r, hr, en){
   LPAIR.set(r, en != null ? [hr, en] : [hr]);
 }
 function netTx(s){ return (typeof s === 'string' && s && LPAIR.get(s)) || s; }   // domaćin → gost: [hr, en] ili gotov tekst
-function locTx(v){ return Array.isArray(v) ? L(v[0], v[1]) : v; }                 // gost: tekst na svom jeziku
+function locTx(v){ return fixNames(Array.isArray(v) ? L(v[0], v[1]) : v); }       // gost: tekst na svom jeziku (i imena u njemu)
+/* 🌐 v0.56 imena u porukama: domaćin složi poruku sa SVOJIM imenima junaka, moći, predmeta i čudovišta („Žarko je
+   pobijedio…” i u engleskom paru). Dok se učitava data.js pamte se kratka imena (hrvatski + engleski), a gost u
+   primljenoj poruci zamijeni ime na bilo kojem jeziku (hrvatski, engleski, srpski, ćirilica) svojim. */
+let L_NAMES = [];
+function nameRec(hr, en){
+  if(typeof hr === 'string' && hr.length <= 28 && /^[A-ZČĆŽŠĐ]/.test(hr) && !/[0-9.!?:•(+%—]/.test(hr)) L_NAMES.push([hr, en]);
+}
+let nameFix = null;
+function fixNames(s){
+  if(typeof s !== 'string' || !s || !L_NAMES_DONE) return s;
+  if(!nameFix){
+    const map = new Map();
+    const add = (v, loc) => { if(v && v.length >= 3 && v !== loc && !map.has(v)) map.set(v, loc); };
+    for(const [hr, en] of L_NAMES_DONE){
+      const loc = EN && en != null ? en : (SR ? toSr(hr) : hr), sr = srText(hr);
+      for(const v of [hr, en, sr, toCyr(sr)]){ add(v, loc); if(v) add(v.toLowerCase(), loc.toLowerCase()); }
+    }
+    const keys = [...map.keys()].sort((a, b) => b.length - a.length).map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    nameFix = { map, re: keys.length ? new RegExp('(?<![\\p{L}])(' + keys.join('|') + ')(?![\\p{L}])', 'gu') : null };
+  }
+  return nameFix.re ? s.replace(nameFix.re, m => nameFix.map.get(m)) : s;
+}
+let L_NAMES_DONE = null;
+function lockNames(){ L_NAMES_DONE = L_NAMES; L_NAMES = null; }   // kraj data.js: dalje L() piše poruke, ne imena
 /* samo hrvatski tekst → odabrana varijanta (gdje je L lokalna varijabla: EN ? 'English' : LS('hrvatski')) */
-function LS(hr){ return SR ? toSr(hr) : hr; }
+function LS(hr){ if(L_NAMES) nameRec(hr, null); return SR ? toSr(hr) : hr; }
 function setLang(l){
   l = normLang(l) || 'hr';
   try { localStorage.setItem('dk_lang', l); } catch(e){}
@@ -141,3 +166,4 @@ function applyLangDom(){
   document.title = '🏰 DOTA Kids 3D ⚔️ — a MOBA for kids';
 }
 if(typeof document !== 'undefined' && document.body) applyLangDom();
+const U_SEC = LS('s');   // ⏱️ v0.56: „s” (sekunde) i u ćirilici (с) — za brojke izvan L() (na kraju: treba toSr i toCyr)

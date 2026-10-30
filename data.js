@@ -16,6 +16,7 @@ const TEAM_COLOR = ['#3b82f6', '#ef4444', '#f59e0b'];
 const TEAM_LIGHT = ['#93c5fd', '#fca5a5', '#fcd34d'];
 const TEAM_DARK  = ['#1e3a8a', '#7f1d1d', '#92400e'];
 const TEAM_NAME  = [L('Plavi', 'Blue'), L('Crveni', 'Red'), L('Neutralni', 'Neutral')];
+const SIDE_NAME = [CYR ? 'Сентинел' : 'Sentinel', CYR ? 'Скурџ' : 'Scourge'];   // strane kao u DotA Allstarsu (v0.56: i ćirilicom)
 
 const CFG = {
   teamSize: 5,         // 👥 5 na 5 (kao u DotA i LoL): ti + 4 bota protiv 5 botova
@@ -342,7 +343,7 @@ const HEROES = [
     ],
   },
   {
-    id:'strijela', name:LS('Strijela'), emoji:'🦊',
+    id:'strijela', name:L('Strijela', 'Arrow'), emoji:'🦊',
     role:L('🏹 Lukava lisica — strijelac', '🏹 Sly fox — archer'),
     hp:550, mp:250, dmg:50,
     attrs:{ str:18, agi:24, int:15, strG:3.4, agiG:5.5, intG:2.2, primary:'agi' },
@@ -2757,3 +2758,4 @@ const RUNE_TYPES = [
   { id:'shield', emoji:'🛡️', name:L('Runa štita', 'Shield Rune'),
     apply(h){ applyShield(h, 0.5, 15); } },
 ];
+lockNames();   // 🌐 v0.56: imena junaka, moći, predmeta i čudovišta (za poruke u mrežnoj igri — i18n.js)
