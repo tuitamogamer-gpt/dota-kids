@@ -163,10 +163,10 @@ class Part:
             for l in f.loops:
                 l[self.col] = (c[0], c[1], c[2], 1.0)
 
-    def sphere(self, c, r, color, mat='vc', rot=(0, 0, 0), seg=(12, 8), smooth=True):
+    def sphere(self, c, r, color, mat='vc', rot=(0, 0, 0), seg=(12, 8), smooth=True, dense=False):
         if isinstance(r, (int, float)):
             r = (r, r, r)
-        seg = smooth_seg(seg, max(r))
+        seg = seg if dense else smooth_seg(seg, max(r))   # v0.56 dense: gušća mreža za uzorke krzna (pruge, pjege)
         before = set(self.bm.faces)
         bmesh.ops.create_uvsphere(self.bm, u_segments=seg[0], v_segments=seg[1],
                                   radius=1.0, matrix=self.M(c, rot, r))
@@ -643,17 +643,24 @@ def quad_anims(m, heavy=1.0, wings=False, bz=0.5, W=0.3, H=0.3, lr=0.08):
 
 
 # ------------------------------------------------------------------ OČI, UŠI, NJUŠKE
-def eyes(p, x, y, z, r=0.07, color='#1b1b2a', glint=True, spread=0.15, big=1.0, liner='#14141f', lashes=True):
-    """oko: bjeloočnica/osnova, svjetlija šarenica, zjenica, dva odsjaja, tuš-linija i trepavice"""
+def eyes(p, x, y, z, r=0.07, color='#1b1b2a', glint=True, spread=0.15, big=1.0, liner='#14141f', lashes=True, shape='round'):
+    """oko: bjeloočnica/osnova, svjetlija šarenica, zjenica, dva odsjaja, tuš-linija i trepavice.
+    v0.56 shape: 'round' (okruglo), 'almond' (bademasto, vanjski kut gore — mačke), 'slit' (bademasto s uskom
+    zjenicom — mačke, zmaj, morski pas), 'bead' (malo okruglo — glodavci, ptice), 'wide' (okruglo i veliko — sova)"""
     iris_c = '#3a3a5c' if color == '#1b1b2a' else mix(color, '#ffffff', 0.3)
+    sy, sz, tilt = {'almond': (1.12, 0.8, 14), 'slit': (1.12, 0.8, 14), 'bead': (0.86, 0.86, 0), 'wide': (1.1, 1.0, 0)}.get(shape, (1, 1, 0))
     for s in (1, -1):
-        rx, ry, rz = r * 0.8 * big, r * big, r * 1.2 * big
+        rx, ry, rz = r * 0.8 * big, r * big * sy, r * 1.2 * big * sz
         cy = s * spread
-        p.sphere((x, cy, z), (rx, ry, rz), color, seg=(14, 10))
-        p.sphere((x + rx * 0.55, cy, z - rz * 0.06), (rx * 0.5, ry * 0.72, rz * 0.72), iris_c, seg=(12, 8))     # šarenica
-        p.sphere((x + rx * 0.8, cy, z - rz * 0.06), (rx * 0.32, ry * 0.42, rz * 0.46), '#07070d', seg=(10, 7))  # zjenica
+        rot = (s * tilt, 0, 0)
+        p.sphere((x, cy, z), (rx, ry, rz), color, seg=(14, 10), rot=rot)
+        p.sphere((x + rx * 0.55, cy, z - rz * 0.06), (rx * 0.5, ry * 0.72, rz * 0.72), iris_c, seg=(12, 8), rot=rot)     # šarenica
+        if shape == 'slit':   # uska okomita zjenica
+            p.sphere((x + rx * 0.8, cy, z - rz * 0.04), (rx * 0.32, ry * 0.16, rz * 0.6), '#07070d', seg=(10, 7), rot=rot)
+        else:
+            p.sphere((x + rx * 0.8, cy, z - rz * 0.06), (rx * 0.32, ry * 0.42, rz * 0.46), '#07070d', seg=(10, 7), rot=rot)  # zjenica
         p.sphere((x + rx * 0.9, cy - s * ry * 0.04, z - rz * 0.47), (rx * 0.13, ry * 0.36, rz * 0.13), mix(iris_c, '#ffffff', 0.5),
-                 seg=(10, 6))   # v0.53: svjetliji polumjesec pri dnu šarenice — oko "svjetluca"
+                 seg=(10, 6), rot=rot)   # v0.53: svjetliji polumjesec pri dnu šarenice — oko "svjetluca"
         if glint:
             p.sphere((x + r * 0.66, cy + s * 0.03, z + r * 0.45), r * 0.34, '#ffffff', seg=(7, 5))
             p.sphere((x + r * 0.7, cy - s * 0.03, z - r * 0.35), r * 0.15, '#ffffff', seg=(5, 4))
@@ -844,6 +851,160 @@ def outfit_sleeve(a, V, S, side, o):
 
 
 # ------------------------------------------------------------------ BIPED JUNAK
+
+# ------------------------------------------------------------------ v0.56 UZORCI: KRZNO, PRUGE, ROZETE, LJUSKE, PERJE
+# Prije je svaki junak bio jednobojan (glatka plastika). Sada se nakon slaganja modela boje vrhova "oslikaju": svako
+# krzno dobije blagi šum (pramenovi), a vrste svoj uzorak. Bojaju se samo plohe u boji krzna (fur / limb), trbuh i
+# njuška tek blago — odjeća, oči i oružje ostaju netaknuti. Koordinate su modela, podijeljene s veličinom junaka (S).
+DENSE_PATTERNS = {'tiger', 'rosettes', 'scales', 'feathers', 'spots', 'plates', 'frog', 'tabby', 'sparkle'}
+HEAD_C, BODY_C = Vector((0, 0, 1.30)), Vector((0, 0, 0.70))
+
+
+def _waves(seed, n, fmin, fmax):
+    rnd = random.Random(seed)
+    return [(Vector((rnd.uniform(-1, 1), rnd.uniform(-1, 1), rnd.uniform(-1, 1))).normalized() * rnd.uniform(fmin, fmax),
+             rnd.uniform(0, math.tau), 1.0 / (k + 1)) for k in range(n)]
+
+
+def _wnoise(q, waves):
+    """glatki šum −1…1 (zbroj sinusnih valova u nasumičnim smjerovima)"""
+    t = w = 0.0
+    for a, ph, wt in waves:
+        t += wt * math.sin(a.dot(q) + ph)
+        w += wt
+    return t / w
+
+
+def _hash3(i, j, k, seed):
+    x = (i * 73856093) ^ (j * 19349663) ^ (k * 83492791) ^ (seed * 2654435761)
+    x &= 0xffffffff
+    out = []
+    for _ in range(3):
+        x = (x * 1103515245 + 12345) & 0x7fffffff
+        out.append((x % 10007) / 10007.0)
+    return out
+
+
+def _cells(q, size, seed):
+    """Voronoi: udaljenost do najbliže i druge najbliže nasumične točke (u jedinicama veličine ćelije)"""
+    gx, gy, gz = math.floor(q.x / size), math.floor(q.y / size), math.floor(q.z / size)
+    d1 = d2 = 9.0
+    for dx in (-1, 0, 1):
+        for dy in (-1, 0, 1):
+            for dz in (-1, 0, 1):
+                cx, cy, cz = gx + dx, gy + dy, gz + dz
+                r = _hash3(cx, cy, cz, seed)
+                d = math.sqrt(((cx + r[0]) * size - q.x) ** 2 + ((cy + r[1]) * size - q.y) ** 2 + ((cz + r[2]) * size - q.z) ** 2) / size
+                if d < d1:
+                    d1, d2 = d, d1
+                elif d < d2:
+                    d2 = d
+    return d1, d2
+
+
+def _sstep(a, b, x):
+    t = min(1.0, max(0.0, (x - a) / (b - a)))
+    return t * t * (3 - 2 * t)
+
+
+def _mixc(a, b, t):
+    return (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t)
+
+
+def paint_patterns(m, S, c, opts, seed=1):
+    kind = opts.get('pattern', 'fur')
+    fur = col(c['fur'])
+    main = [fur, col(c.get('limb', c['fur']))]
+    soft = [col(c.get('belly', c['fur'])), col(c.get('muzzle', c.get('belly', c['fur'])))]
+    pc = col(opts.get('patternColor', c.get('dark', '#222222')))
+    light = col(opts.get('patternLight', c.get('belly', '#ffffff')))
+    fine, broad = _waves(seed, 4, 14.0, 26.0), _waves(seed + 7, 3, 3.0, 7.0)
+    near = lambda a, b: abs(a[0] - b[0]) + abs(a[1] - b[1]) + abs(a[2] - b[2]) < 0.006
+    amp = opts.get('furNoise', 0.09)
+    for part in m.order:
+        cache = {}
+        for f in part.bm.faces:
+            for l in f.loops:
+                cc = l[part.col]
+                base = (cc[0], cc[1], cc[2])
+                is_main = any(near(base, t) for t in main)
+                if not is_main and not any(near(base, t) for t in soft):
+                    # ostalo (odjeća, remenje, oklop od boje): vrlo blagi šum tkanine — bez očiju, zubi i tamnih detalja
+                    lum = 0.2126 * base[0] + 0.7152 * base[1] + 0.0722 * base[2]
+                    if f.material_index == SLOT['vc'] and 0.02 < lum < 0.8 and opts.get('clothNoise', True):
+                        key = (l.vert, base)
+                        if key not in cache:
+                            q = (l.vert.co + part.pivot) / S
+                            k = 1 + 0.045 * _wnoise(q, fine)
+                            cache[key] = (base[0] * k, base[1] * k, base[2] * k, 1.0)
+                        l[part.col] = cache[key]
+                    continue
+                q = (l.vert.co + part.pivot) / S
+                key = (l.vert, base)
+                if key in cache:
+                    l[part.col] = cache[key]
+                    continue
+                head = q.z > 0.98
+                ctr = HEAD_C if head else BODY_C
+                d = q - ctr
+                face = head and d.x > 0.22 and abs(d.y) < 0.24 and d.z < 0.12    # lice ostaje čisto (oči, njuška)
+                # 1) svako krzno: pramenovi (sitni šum) + blage mrlje (krupni šum); trbuh i njuška upola slabije
+                k = 1 + (amp if is_main else amp * 0.45) * (0.65 * _wnoise(q, fine) + 0.35 * _wnoise(q, broad))
+                r = (base[0] * k, base[1] * k, base[2] * k)
+                if is_main and not face:
+                    az = math.atan2(d.y, -d.x)   # kut oko okomite osi, 0 = leđa
+                    if kind in ('tiger', 'tabby'):
+                        if head:   # na glavi: lukovi (ševroni) preko čela i obraza
+                            v = math.sin((d.z * 36 + abs(d.y) * 21) + 2.0 * _wnoise(q, broad))
+                        else:      # na tijelu i udovima: okomite pruge oko trupa
+                            v = math.sin(az * 11 + 2.0 * _wnoise(q, broad) + d.z * 6)
+                        w = _sstep(0.42, 0.72, v) * (0.9 if kind == 'tiger' else 0.32)
+                        if kind == 'tabby' and not (head and d.z > 0.05):
+                            w = 0.0
+                        r = _mixc(r, pc, w)
+                    elif kind == 'rosettes':
+                        d1, _ = _cells(q, 0.115, seed)
+                        r = _mixc(r, pc, 0.8 * _sstep(0.2, 0.27, d1) * (1 - _sstep(0.36, 0.43, d1)) + 0.12 * (1 - _sstep(0.18, 0.22, d1)))
+                    elif kind in ('scales', 'plates_soft'):
+                        d1, d2 = _cells(q, 0.06, seed)
+                        e = d2 - d1
+                        r = _mixc(r, pc, 0.5 * (1 - _sstep(0.04, 0.16, e)))
+                        r = tuple(x * (1 + 0.1 * (1 - _sstep(0.0, 0.5, d1))) for x in r)
+                    elif kind == 'feathers':
+                        fz = (d.z * (14 if head else 11)) + 0.55 * math.cos(az * 9)
+                        e = fz - math.floor(fz)
+                        r = tuple(x * (0.8 + 0.2 * _sstep(0.0, 0.45, e)) * (1 + 0.1 * _sstep(0.8, 0.98, e)) for x in r)
+                    elif kind == 'spots':
+                        d1, _ = _cells(q, 0.12, seed)
+                        r = _mixc(r, light, 0.62 * (1 - _sstep(0.26, 0.34, d1)))
+                    elif kind == 'frog':
+                        back = _sstep(-0.05, 0.25, -d.x / 0.3)
+                        r = tuple(x * (1 - 0.18 * back) for x in r)
+                        d1, _ = _cells(q, 0.1, seed)
+                        r = _mixc(r, pc, 0.55 * (1 - _sstep(0.16, 0.24, d1)))
+                    elif kind == 'plates':
+                        fz = d.z * (9 if head else 8) - 0.6 * (d.x if head else 0)
+                        e = fz - math.floor(fz)
+                        r = tuple(x * (0.72 + 0.28 * _sstep(0.0, 0.14, e)) * (1 + 0.08 * (1 - _sstep(0.15, 0.4, e))) for x in r)
+                    elif kind == 'countershade':
+                        t = min(1.0, max(0.0, 0.55 + 1.3 * d.z / (0.37 if head else 0.33) * 0.5 - 0.6 * d.x / 0.3))
+                        r = tuple(x * (1.12 - 0.3 * t) for x in r)
+                    elif kind == 'skin':
+                        v = abs(math.sin(q.z * 38 + 3.0 * _wnoise(q, broad)))
+                        r = tuple(x * (1 - 0.13 * (1 - _sstep(0.06, 0.22, v))) for x in r)
+                    elif kind == 'saddle':   # vuk: tamnije krzno po leđima i tjemenu
+                        r = _mixc(r, pc, 0.32 * _sstep(-0.1, 0.5, (-d.x + d.z * 0.6) / 0.3))
+                    elif kind == 'sparkle':
+                        d1, _ = _cells(q, 0.075, seed)
+                        r = _mixc(r, (1.0, 1.0, 1.0), 0.85 * (1 - _sstep(0.06, 0.12, d1)))
+                        r = _mixc(r, light, 0.18 * (0.5 + 0.5 * _wnoise(q, broad)))
+                    elif kind == 'grizzle':   # rakun: prošarano sivo krzno
+                        r = tuple(x * (1 + 0.12 * _wnoise(q, fine)) for x in r)
+                out = (max(0.0, r[0]), max(0.0, r[1]), max(0.0, r[2]), 1.0)
+                cache[key] = out
+                l[part.col] = out
+
+
 def biped(name, c, opts):
     """Chibi junak-životinja. c = paleta, opts = dodaci."""
     m = Model(name)
@@ -871,7 +1032,8 @@ def biped(name, c, opts):
             lg.cyl(V(0, side * 0.15, 0.235), V(0, side * 0.15, 0.255), 0.096 * S, 0.096 * S, '#f6c945', seg=12, caps=False)
     # tijelo
     b = m.part('body', V(0, 0, 0.42))
-    b.sphere(V(0, 0, 0.70), (0.27 * S, 0.29 * S, 0.33 * S), fur, seg=(18, 12))
+    b.sphere(V(0, 0, 0.70), (0.27 * S, 0.29 * S, 0.33 * S), fur, seg=(48, 32) if opts.get('pattern') in DENSE_PATTERNS else (18, 12),
+             dense=opts.get('pattern') in DENSE_PATTERNS)
     b.sphere(V(0.10, 0, 0.68), (0.19 * S, 0.22 * S, 0.25 * S), belly, seg=(16, 10))
     tun = opts.get('tunic', 'team')
     if tun:
@@ -1022,8 +1184,10 @@ def biped(name, c, opts):
     h = m.part('head', V(0, 0, 0.98), 'body')
     hr = opts.get('headR', (0.40, 0.42, 0.37))
     hz = 1.30
-    h.sphere(V(0, 0, hz), (hr[0] * S, hr[1] * S, hr[2] * S), fur, seg=(26, 18))
+    dense = opts.get('pattern') in DENSE_PATTERNS   # v0.56: gušća mreža da se vide pruge, rozete, ljuske, perje
+    h.sphere(V(0, 0, hz), (hr[0] * S, hr[1] * S, hr[2] * S), fur, seg=(60, 40) if dense else (26, 18), dense=dense)
     snout = opts.get('snout', 'muzzle')
+    nosec = c.get('nose', '#2b1d1a')
     mz = c.get('muzzle', belly)
     if snout == 'muzzle':
         h.sphere(V(0.32, 0, 1.19), (0.14 * S, 0.19 * S, 0.12 * S), mz, seg=(14, 10))
@@ -1057,11 +1221,14 @@ def biped(name, c, opts):
             for k in range(3):
                 h.box(V(-0.06 - k * 0.06, sd * 0.37, 1.22), (0.012 * S, 0.02 * S, 0.1 * S), mix(fur, '#000000', 0.35), rot=(sd * 12, 0, 0))
         h.sphere(V(0.47, 0, 1.23), (0.03 * S, 0.06 * S, 0.02 * S), mix(fur, '#000000', 0.3))     # nosnice
-    elif snout == 'horse':   # jednorog: duga konjska njuška
-        h.sphere(V(0.36, 0, 1.2), (0.24 * S, 0.2 * S, 0.15 * S), mz, seg=(16, 10))
-        for sd in (1, -1):
-            h.sphere(V(0.57, sd * 0.07, 1.23), (0.025 * S, 0.03 * S, 0.02 * S), mix(mz, '#000000', 0.45), seg=(8, 5))
-        h.arc(V(0.53, 0, 1.12), 0.06 * S, 205, 335, 6, 0.011 * S, '#9d174d', plane='yz', seg=5)
+    elif snout == 'horse':   # jednorog: duga konjska njuška (v0.56: izdužena, s nosnicama na kraju i bradom)
+        h.cyl(V(0.22, 0, 1.27), V(0.52, 0, 1.17), 0.17 * S, 0.12 * S, mz, seg=18, smooth=True)
+        h.sphere(V(0.55, 0, 1.16), (0.13 * S, 0.12 * S, 0.11 * S), mz, seg=(16, 10))
+        h.sphere(V(0.47, 0, 1.08), (0.09 * S, 0.09 * S, 0.05 * S), mz, seg=(12, 8))   # brada
+        for sd in (1, -1):   # nosnice gore sa strane (kao kod konja), ne sprijeda
+            h.sphere(V(0.6, sd * 0.07, 1.225), (0.028 * S, 0.016 * S, 0.034 * S), mix(mz, '#7a2a4a', 0.55), rot=(sd * 25, 0, -sd * 20), seg=(8, 5))
+            h.cyl(V(0.45, sd * 0.1, 1.12), V(0.62, sd * 0.07, 1.115), 0.007 * S, 0.006 * S, mix(mz, '#9d174d', 0.6), seg=4)   # usna
+        h.arc(V(0.62, 0, 1.12), 0.045 * S, 215, 325, 6, 0.009 * S, '#9d174d', plane='yz', seg=5)
     elif snout == 'bull':   # v0.38 bik: široka njuška, velike nosnice i zlatna alka
         h.sphere(V(0.33, 0, 1.16), (0.17 * S, 0.26 * S, 0.15 * S), mz, seg=(18, 12))
         for sd in (1, -1):
@@ -1077,6 +1244,133 @@ def biped(name, c, opts):
             h.cyl(V(0.47, sd * 0.13, 1.07), V(0.48, sd * 0.135, 1.13), 0.022 * S, 0.012 * S, '#fffbeb', seg=6)   # zubić
             h.sphere(V(0.27, sd * 0.3, 1.15), (0.02 * S, 0.02 * S, 0.02 * S), mix(mz, '#000000', 0.3), seg=(6, 4))   # brčići
         h.arc(V(0.44, 0, 1.13), 0.2 * S, -62, 62, 10, 0.012 * S, '#7a2f3a', plane='xy', seg=5)   # široki osmijeh
+    # ---------- v0.56 glave po vrsti: svaka životinja ima svoju njušku / kljun (prije su skoro svi imali istu medvjeđu) ----------
+    elif snout == 'feline':   # lav, tigar, mačka, snježni leopard: jastučići za brkove, trokutasti nos, bradica, brkovi
+        fs = opts.get('felineScale', 1.0)
+        for sd in (1, -1):
+            h.sphere(V(0.35, sd * 0.068 * fs, 1.2), (0.078 * S * fs, 0.09 * S * fs, 0.072 * S * fs), mz, seg=(14, 10))
+            for k in range(3):   # točkice iz kojih rastu brkovi
+                h.sphere(V(0.415 + 0.01 * fs, sd * (0.045 + 0.028 * k) * fs, 1.218 - 0.016 * k), 0.0085 * S, mix(mz, '#000000', 0.5), seg=(5, 4))
+            wc = opts.get('whiskers', '#ffffff')
+            for k in range(3):   # brkovi
+                h.cyl(V(0.4, sd * 0.1 * fs, 1.215 - 0.02 * k), V(0.42, sd * (0.33 + 0.03 * k) * fs, 1.25 - 0.055 * k), 0.0065 * S, 0.002 * S, wc, seg=4)
+        h.sphere(V(0.325, 0, 1.13), (0.055 * S * fs, 0.07 * S * fs, 0.045 * S), mz, seg=(12, 8))   # bradica
+        h.cyl(V(0.42 + 0.02 * (fs - 1), 0, 1.275), V(0.44 + 0.02 * (fs - 1), 0, 1.222), 0.05 * S * fs, 0.008 * S, c.get('nose', '#e48aa0'), seg=14, smooth=True)   # nos
+        for sd in (1, -1):   # usta u obliku slova w
+            h.arc(V(0.432 + 0.015 * (fs - 1), sd * 0.026 * fs, 1.205), 0.027 * S * fs, 200, 340, 6, 0.0075 * S, '#5a2a2a', plane='yz', seg=4)
+    elif snout == 'canine':   # vuk, lisica, rakun: izdužena njuška koja se sužava do crnog nosa, svijetla donja čeljust
+        ln, w0 = opts.get('snoutLen', 0.3), opts.get('snoutW', 0.13)
+        top = mz if opts.get('snoutLight') else fur
+        h.sphere(V(0.29, 0, 1.215), (0.13 * S, w0 * 1.25 * S, 0.12 * S), top, seg=(16, 10))
+        h.cyl(V(0.3, 0, 1.22), V(0.3 + ln, 0, 1.215), w0 * S, w0 * 0.45 * S, top, seg=16, smooth=True)
+        h.cyl(V(0.29, 0, 1.155), V(0.26 + ln, 0, 1.16), w0 * 0.86 * S, w0 * 0.32 * S, mz, seg=14, smooth=True)   # donja čeljust
+        h.sphere(V(0.3 + ln, 0, 1.225), (0.042 * S, 0.06 * S, 0.044 * S), nosec, seg=(12, 8))
+        h.sphere(V(0.3 + ln + 0.02, 0.018, 1.24), 0.012 * S, '#ffffff', seg=(5, 4))   # odsjaj na nosu
+        h.arc(V(0.26 + ln, 0, 1.19), 0.035 * S, 205, 335, 6, 0.008 * S, '#3b1f1f', plane='yz', seg=4)
+        for sd in (1, -1):   # usna duž njuške
+            h.cyl(V(0.33, sd * w0 * 0.82, 1.18), V(0.22 + ln, sd * w0 * 0.42, 1.185), 0.007 * S, 0.006 * S, mix(fur, '#000000', 0.5), seg=4)
+        if opts.get('foxCheeks'):   # lisica: bijeli obrazi koji se šire prema van
+            hcen, rad = V(0, 0, hz), (hr[0] * S, hr[1] * S, hr[2] * S)
+            for sd in (1, -1):
+                face_cap(h, hcen, rad, sd * 38, -18, (0.17 * S, 0.12 * S), mz, out=0.012 * S, tilt=sd * 25)
+    elif snout == 'rodent':   # vjeverica: kratka njuška, napuhani obrazi, ružičasti nosić i dva zuba
+        h.sphere(V(0.33, 0, 1.2), (0.1 * S, 0.1 * S, 0.085 * S), mz, seg=(14, 10))
+        for sd in (1, -1):
+            h.sphere(V(0.28, sd * 0.12, 1.18), (0.11 * S, 0.12 * S, 0.1 * S), mz, seg=(14, 10))   # obrazi
+        h.sphere(V(0.425, 0, 1.24), (0.032 * S, 0.045 * S, 0.03 * S), c.get('nose', '#e48aa0'), seg=(10, 7))
+        for sd in (1, -1):
+            h.box(V(0.405, sd * 0.016, 1.12), (0.012 * S, 0.026 * S, 0.05 * S), '#fffbeb', bevel=0.004)   # zubi
+        h.arc(V(0.415, 0, 1.17), 0.04 * S, 210, 330, 6, 0.007 * S, '#5a2a2a', plane='yz', seg=4)
+    elif snout == 'hedgehog':   # jež: duga šiljata njuška s crnim nosićem
+        h.cyl(V(0.28, 0, 1.2), V(0.66, 0, 1.17), 0.14 * S, 0.035 * S, mz, seg=16, smooth=True)
+        h.sphere(V(0.67, 0, 1.172), (0.04 * S, 0.045 * S, 0.038 * S), nosec, seg=(10, 7))
+        h.sphere(V(0.69, 0.012, 1.185), 0.01 * S, '#ffffff', seg=(5, 4))
+        h.arc(V(0.5, 0, 1.15), 0.04 * S, 210, 330, 6, 0.007 * S, '#3b1f1f', plane='yz', seg=4)
+    elif snout == 'monkey':   # majmun: plosnato lice, široka njuška s nosnicama, veliki osmijeh
+        h.sphere(V(0.34, 0, 1.17), (0.12 * S, 0.19 * S, 0.1 * S), mz, seg=(16, 10))
+        for sd in (1, -1):
+            h.sphere(V(0.445, sd * 0.03, 1.215), (0.012 * S, 0.016 * S, 0.012 * S), mix(mz, '#000000', 0.6), seg=(6, 4))
+        h.arc(V(0.43, 0, 1.17), 0.1 * S, 205, 335, 8, 0.01 * S, '#5a2a2a', plane='yz', seg=4)
+    elif snout == 'turtle':   # kornjača: glatka glava, rožnati kljun i široki osmijeh
+        h.sphere(V(0.3, 0, 1.2), (0.16 * S, 0.24 * S, 0.14 * S), fur, seg=(18, 12))
+        h.sphere(V(0.41, 0, 1.17), (0.07 * S, 0.13 * S, 0.075 * S), mix(fur, '#3a2a10', 0.35), seg=(14, 9))   # kljun
+        h.arc(V(0.3, 0, 1.165), 0.15 * S, -62, 62, 10, 0.009 * S, mix(fur, '#000000', 0.55), plane='xy', seg=4)
+        for sd in (1, -1):
+            h.sphere(V(0.45, sd * 0.03, 1.25), 0.01 * S, mix(fur, '#000000', 0.55), seg=(5, 4))
+    elif snout == 'rhino':   # nosorog: velika duga njuška, nosnice sa strane, nabori kože
+        h.sphere(V(0.32, 0, 1.15), (0.24 * S, 0.25 * S, 0.17 * S), mz, seg=(20, 12))
+        h.sphere(V(0.52, 0, 1.11), (0.07 * S, 0.1 * S, 0.06 * S), mz, seg=(12, 8))   # gornja usna
+        for sd in (1, -1):
+            h.sphere(V(0.5, sd * 0.11, 1.18), (0.022 * S, 0.03 * S, 0.035 * S), mix(mz, '#000000', 0.55), seg=(8, 5))
+            for k in range(2):   # nabori na obrazu
+                h.arc(V(0.2 - 0.05 * k, sd * 0.19, 1.16), (0.12 + 0.03 * k) * S, 40, 140, 6, 0.008 * S, mix(fur, '#000000', 0.3), plane='xz', seg=4)
+        h.arc(V(0.5, 0, 1.08), 0.06 * S, 210, 330, 6, 0.009 * S, '#3b2a2a', plane='yz', seg=4)
+    elif snout == 'hookbeak':   # orao: debeli kukasti kljun s voštanom kožicom pri korijenu
+        bc = c.get('beak', '#f5b324')
+        h.sphere(V(0.33, 0, 1.25), (0.09 * S, 0.12 * S, 0.09 * S), mix(bc, '#ffffff', 0.25), seg=(14, 10))
+        pts = [V(0.34, 0, 1.275), V(0.47, 0, 1.275), V(0.57, 0, 1.22), V(0.585, 0, 1.13)]
+        rr = (0.095, 0.075, 0.045, 0.0)
+        for i in range(3):
+            h.cyl(pts[i], pts[i + 1], rr[i] * S, rr[i + 1] * S, bc, seg=14, smooth=True)
+            if rr[i + 1] > 0:
+                h.sphere(pts[i + 1], rr[i + 1] * S, bc, seg=(12, 8))
+        h.cyl(V(0.33, 0, 1.18), V(0.49, 0, 1.17), 0.06 * S, 0.018 * S, mix(bc, '#000000', 0.12), seg=12, smooth=True)   # donji kljun
+        for sd in (1, -1):
+            h.sphere(V(0.42, sd * 0.035, 1.3), 0.012 * S, mix(bc, '#000000', 0.55), seg=(5, 4))   # nosnice
+    elif snout == 'owlbeak':   # sova: kratki kukasti kljun između očiju
+        bc = c.get('beak', '#f5b324')
+        pts = [V(0.39, 0, 1.31), V(0.46, 0, 1.27), V(0.465, 0, 1.18)]
+        rr = (0.05, 0.034, 0.0)
+        for i in range(2):
+            h.cyl(pts[i], pts[i + 1], rr[i] * S, rr[i + 1] * S, bc, seg=12, smooth=True)
+        h.sphere(pts[1], 0.034 * S, bc, seg=(10, 7))
+        h.sphere(pts[0], (0.04 * S, 0.06 * S, 0.04 * S), mix(bc, '#ffffff', 0.2), seg=(10, 7))
+    elif snout == 'ravenbeak':   # gavran: dugi debeli tamni kljun, malo savijen, s čekinjama pri korijenu
+        bc = c.get('beak', '#3b3f4a')
+        up = [V(0.3, 0, 1.275), V(0.5, 0, 1.26), V(0.65, 0, 1.21), V(0.72, 0, 1.15)]
+        ur = (0.1, 0.07, 0.04, 0.0)
+        for i in range(3):
+            h.cyl(up[i], up[i + 1], ur[i] * S, ur[i + 1] * S, bc, seg=14, smooth=True)
+            if ur[i + 1] > 0:
+                h.sphere(up[i + 1], ur[i + 1] * S, bc, seg=(12, 8))
+        h.cyl(V(0.3, 0, 1.19), V(0.62, 0, 1.17), 0.07 * S, 0.0, mix(bc, '#000000', 0.15), seg=12, smooth=True)   # donji kljun
+        h.cyl(V(0.38, 0.035, 1.3), V(0.6, 0.02, 1.25), 0.008 * S, 0.004 * S, mix(bc, '#ffffff', 0.45), seg=4)    # sjaj
+        for sd in (1, -1):
+            for k in range(3):   # čekinje pri korijenu kljuna
+                h.cyl(V(0.31, sd * (0.05 + 0.025 * k), 1.27 - 0.02 * k), V(0.4, sd * (0.06 + 0.03 * k), 1.26 - 0.03 * k), 0.012 * S, 0.0, fur, seg=4)
+    elif snout == 'penguin':   # pingvin: dugi uski kljun s narančastom crtom
+        bc = c.get('beak', '#f59e0b')
+        h.cyl(V(0.33, 0, 1.25), V(0.6, 0, 1.2), 0.07 * S, 0.012 * S, bc, seg=14, smooth=True)
+        h.cyl(V(0.33, 0, 1.19), V(0.56, 0, 1.185), 0.055 * S, 0.01 * S, mix(bc, '#000000', 0.12), seg=12, smooth=True)
+        for sd in (1, -1):   # svijetle mrlje iznad očiju
+            face_cap(h, V(0, 0, hz), (hr[0] * S, hr[1] * S, hr[2] * S), sd * 40, 25, (0.06 * S, 0.1 * S), '#e0f2fe', out=0.01 * S, tilt=sd * 30)
+    elif snout == 'bee':   # pčela: svijetla pločica lica, mala klješta i osmijeh
+        hcen, rad = V(0, 0, hz), (hr[0] * S, hr[1] * S, hr[2] * S)
+        face_cap(h, hcen, rad, 0, -14, (0.2 * S, 0.17 * S), mz, out=0.012 * S)
+        for sd in (1, -1):   # mala jantarna klješta u kutovima usta (vodoravno, prema sredini)
+            h.cyl(V(0.39, sd * 0.085, 1.16), V(0.425, sd * 0.045, 1.15), 0.016 * S, 0.0, '#b45309', seg=6, smooth=True)
+        h.arc(V(0.41, 0, 1.18), 0.045 * S, 210, 330, 6, 0.008 * S, '#5a2a2a', plane='yz', seg=4)
+    elif snout == 'scorpion':   # škorpion: oklop-kaciga od ploča s grebenom, mala oka na čelu, klještica uz usta
+        pc = c.get('hand', mix(fur, c.get('dark', '#7c4a1e'), 0.45))   # oklop iste crvene boje kao kliješta i rep
+        hcen, rad = V(0, 0, hz), (hr[0] * S, hr[1] * S, hr[2] * S)
+        for i, (th, ph, wd, ht) in enumerate(((0, 52, 0.3, 0.13), (0, 76, 0.33, 0.15), (180, 64, 0.34, 0.15), (180, 36, 0.32, 0.14))):
+            face_cap(h, hcen, rad, th, ph, (wd * S, ht * S), pc if i % 2 == 0 else mix(pc, '#000000', 0.14), out=0.04 * S)
+        for ph in (44, 58, 72, 86, 100, 114, 128, 142):   # greben po sredini oklopa
+            th_, ph_ = (0, ph) if ph <= 90 else (180, 180 - ph)
+            h.sphere(on_sphere(hcen, rad, th_, ph_, 0.045 * S), 0.022 * S, mix(pc, '#000000', 0.3), seg=(8, 6))
+        for sd in (1, -1):
+            e = on_sphere(hcen, rad, sd * 10, 50, 0.05 * S)   # dva sjajna oka na čelu oklopa
+            h.sphere(e, 0.03 * S, '#140a05', seg=(10, 7))
+            h.sphere((e[0] + 0.012 * S, e[1] + sd * 0.004 * S, e[2] + 0.012 * S), 0.009 * S, '#ffffff', seg=(5, 4))
+            for k in range(2):   # i po dva mala sa strane
+                h.sphere(on_sphere(hcen, rad, sd * (52 + 10 * k), 28 - 4 * k, 0.005 * S), 0.016 * S, '#140a05', seg=(6, 5))
+            h.sphere(V(0.375, sd * 0.07, 1.135), (0.04 * S, 0.036 * S, 0.036 * S), pc, seg=(10, 7))   # klještica
+            h.cyl(V(0.4, sd * 0.07, 1.125), V(0.46, sd * 0.04, 1.105), 0.02 * S, 0.0, mix(pc, '#000000', 0.3), seg=6, smooth=True)
+        h.arc(V(0.41, 0, 1.19), 0.04 * S, 210, 330, 6, 0.008 * S, '#5a2a2a', plane='yz', seg=4)
+    elif snout == 'octopus':   # hobotnica: veliki plašt iznad i iza glave, mala okrugla usta
+        h.sphere(V(-0.14, 0, 1.6), (0.36 * S, 0.37 * S, 0.44 * S), fur, rot=(0, -28, 0), seg=(36, 24) if dense else (22, 14), dense=dense)
+        h.arc(V(0.425, 0, 1.17), 0.032 * S, 0, 360, 10, 0.011 * S, mix(fur, '#000000', 0.45), plane='yz', seg=5)
+        h.sphere(V(0.415, 0, 1.17), (0.012 * S, 0.028 * S, 0.028 * S), mix(fur, '#000000', 0.6), seg=(8, 6))
     elif snout == 'frog':
         h.box(V(0.3, 0, 1.14), (0.06 * S, 0.5 * S, 0.02 * S), '#c2185b', bevel=0.008)
         h.sphere(V(0.33, 0, 1.11), (0.08 * S, 0.12 * S, 0.03 * S), '#f48fb1')
@@ -1097,7 +1391,7 @@ def biped(name, c, opts):
         if ey.get('white'):
             for s in (1, -1):
                 h.sphere(V(ex + 0.053 * esz - 0.06, s * 0.15, 1.36), (0.06 * S, 0.095 * S * esz, 0.11 * S * esz), '#ffffff', seg=(12, 8))
-        eyes(h, ex * S, 0, 1.36 * S, r=0.078 * S * esz, color=ey.get('color', '#1b1b2a'), spread=0.15 * S)
+        eyes(h, ex * S, 0, 1.36 * S, r=0.078 * S * esz, color=ey.get('color', '#1b1b2a'), spread=0.15 * S, shape=ey.get('shape', 'round'))
         bc = opts.get('brows', dark)
         if bc:
             brows(h, 0.355 * S, 0, 1.475 * S, bc, angle=opts.get('browAngle', 12), spread=0.15 * S,
@@ -1117,6 +1411,14 @@ def biped(name, c, opts):
         for s in (1, -1):
             h.sphere(V(-0.08, s * 0.44, 1.38), (0.07 * S, 0.2 * S, 0.27 * S), fur, rot=(s * 10, 0, 0))
             h.sphere(V(-0.04, s * 0.45, 1.38), (0.04 * S, 0.14 * S, 0.2 * S), inner, rot=(s * 10, 0, 0))
+    elif ears == 'side':   # v0.56 majmun: velike okrugle uši sa strane glave (ne na tjemenu kao medo)
+        for s in (1, -1):
+            h.sphere(V(-0.02, s * (0.41 + 0.04 * (es - 1)), 1.34), (0.05 * S * es, 0.11 * S * es, 0.13 * S * es), fur, rot=(s * -12, 0, 0))
+            h.sphere(V(0.0, s * (0.42 + 0.04 * (es - 1)), 1.34), (0.03 * S * es, 0.075 * S * es, 0.09 * S * es), inner, rot=(s * -12, 0, 0))
+    elif ears == 'tube':   # v0.56 nosorog: male cjevaste uši na tjemenu
+        for s in (1, -1):
+            h.cyl(V(-0.08, s * 0.22, 1.58), V(-0.12, s * 0.3, 1.8), 0.065 * S * es, 0.04 * S * es, fur, seg=10, smooth=True)
+            h.sphere(V(-0.1, s * 0.29, 1.79), (0.025 * S * es, 0.035 * S * es, 0.02 * S * es), inner, seg=(8, 6))
     elif ears in ('pointy', 'bigpointy'):
         big = 1.35 if ears == 'bigpointy' else 1.0
         for s in (1, -1):
@@ -1274,9 +1576,10 @@ def biped(name, c, opts):
             h.cyl(bpts[i], bpts[i + 1], 0.022 * S, 0.022 * S, '#fde047', mat='glow', seg=6)
             h.sphere(bpts[i + 1], 0.022 * S, '#fde047', mat='glow', seg=(6, 4))
         h.cyl(bpts[3], (bpts[3][0] + 0.02 * S, bpts[3][1] - 0.01 * S, bpts[3][2] - 0.05 * S), 0.022 * S, 0.0, '#fde047', mat='glow', seg=6)
-    if opts.get('fangs'):
+    if opts.get('fangs'):   # v0.56: očnjaci prate oblik njuške
+        fx, fy, fz = {'canine': (0.22 + opts.get('snoutLen', 0.3), 0.045, 1.17), 'feline': (0.405, 0.03, 1.165)}.get(snout, (0.44, 0.06, 1.14))
         for s in (1, -1):
-            h.cyl(V(0.44, s * 0.06, 1.14), V(0.45, s * 0.065, 1.08), 0.016 * S, 0.0, '#ffffff', seg=4)
+            h.cyl(V(fx, s * fy, fz), V(fx + 0.01, s * (fy + 0.005), fz - 0.06), 0.016 * S, 0.0, '#ffffff', seg=4)
     if opts.get('spots'):
         for (th, ph) in ((150, 35), (-140, 45), (180, 10), (120, 60)):
             h.sphere(on_sphere(V(0, 0, hz), (hr[0] * S, hr[1] * S, hr[2] * S), th, ph), 0.05 * S, dark, seg=(7, 5))
@@ -1408,7 +1711,7 @@ def biped(name, c, opts):
             h.sphere(V(-0.03, s * 0.3, 1.64), (0.07 * S, 0.13 * S, 0.13 * S), opts['earColor'])
 
     # --- v0.13 detalji: krzno na obrazima, čuperak na prsima, tunika s rubom, naborima, torbicom i ovratnikom ---
-    if snout in ('muzzle', 'long') and opts.get('cheekFluff', True) and not opts.get('trunk'):
+    if snout in ('muzzle', 'long', 'canine', 'feline', 'rodent') and opts.get('cheekFluff', True) and not opts.get('trunk'):
         for s_ in (1, -1):
             for k in range(3):
                 pt = on_sphere(V(0, 0, hz), (hr[0] * S, hr[1] * S, hr[2] * S), s_ * (68 + k * 11), -22 + k * 9, -0.015 * S)
@@ -1697,6 +2000,7 @@ def biped(name, c, opts):
     if sig:
         sig(dict(m=m, b=b, h=h, R=R, L=L, V=V, S=S, hz=hz, hr=hr, fur=fur, belly=belly, dark=dark, limb=limb,
                  hR=hR, hL=hL, t=m.parts.get('tail'), opts=opts))
+    paint_patterns(m, S, c, opts, seed=sum(ord(ch) for ch in name))   # v0.56: krzno, pruge, rozete, ljuske, perje
     biped_anims(m, kind=opts.get('atk', 'melee'), wings=bool(opts.get('wings')), tail=bool(opts.get('tail')),
                 arm_wings=bool(arm_wings))
     return m.finish()
@@ -2074,12 +2378,14 @@ def sig_gavran(k):
 
 
 def sig_hobotnica(k):
-    """Pipko: kruna od koralja i biserna ogrlica"""
+    """Pipko: kruna od koralja i biserna ogrlica (v0.56: na vrhu plašta)"""
     h, b, V, S = k['h'], k['b'], k['V'], k['S']
-    hc, rad = V(0, 0, k['hz']), tuple(r * S for r in k['hr'])
+    mant = k['opts'].get('snout') == 'octopus'
+    hc, rad = (V(-0.14, 0, 1.6), (0.36 * S, 0.37 * S, 0.44 * S)) if mant else (V(0, 0, k['hz']), tuple(r * S for r in k['hr']))
+    R = Euler((0, RAD(-28), 0)).to_matrix() if mant else Matrix.Identity(3)
     for i, th in enumerate((10, 82, 154, 226, 298)):
-        base = Vector(on_sphere(hc, rad, th, 66, -0.02 * S))
-        n = Vector(on_sphere((0, 0, 0), (1, 1, 1), th, 66))
+        base = Vector(hc) + R @ (Vector(on_sphere((0, 0, 0), rad, th, 66, -0.02 * S)))
+        n = R @ Vector(on_sphere((0, 0, 0), (1, 1, 1), th, 66))
         d = (n + Vector((0, 0, 1.2))).normalized()
         tip = base + d * 0.17 * S
         cc = ('#fb923c', '#f97316')[i % 2]
@@ -2349,23 +2655,24 @@ HEROES = {
     'nilski': (dict(fur='#9b8fb5', belly='#f2c6d6', muzzle='#e3b3c8', dark='#5b4f75', inner='#f9a8d4', limb='#9b8fb5',
                     hand='#8a7ea6', feet='#6e6290', nose='#3b2f4a'),
                dict(ears='round', earScale=0.62, snout='hippo', tail='stub', atk='melee', scale=1.18, brows='#4a3f63', browAngle=6,
-                    headR=(0.43, 0.47, 0.38), eyes={'color': '#2b1d3a', 'size': 0.92}, blush=True, strap=False, boots='#5b3a1e',
+                    headR=(0.43, 0.47, 0.38), eyes={'color': '#2b1d3a', 'size': 0.92}, blush=True, strap=False, boots='#5b3a1e', pattern='skin',
                     outfit=dict(style='vest', cloth='#facc15', lining='#ca8a04', trim='#1e3a8a', buttons='#1e3a8a', sleeves=True))),
     'irbis': (dict(fur='#e6e8ee', belly='#ffffff', muzzle='#ffffff', dark='#4b5563', inner='#f6c1cf', limb='#e6e8ee',
                    hand='#d9dce4', feet='#b8bdc9', nose='#7a5866'),
-              dict(ears='round', earScale=0.82, snout='muzzle', tail='ringed', weapon='bow', atk='bow', bowColor='#e0f2fe',
+              dict(ears='round', earScale=0.82, snout='feline', tail='ringed', weapon='bow', atk='bow', bowColor='#e0f2fe',
                    hood=True, hoodColor='#0f5f70', scarf=True, scarfColor='#155e75', quiverColor='#cbd5e1',
-                   eyes={'color': '#0ea5e9', 'size': 1.1}, brows='#4b5563', browAngle=-6, bracers='#164e63',
+                   pattern='rosettes', patternColor='#59606e', whiskers='#ffffff',
+                   eyes={'color': '#0ea5e9', 'size': 1.1, 'shape': 'almond'}, brows='#4b5563', browAngle=-6, bracers='#164e63',
                    outfit=dict(style='vest', cloth='#1e3a5f', lining='#0f172a', trim='#7dd3fc', sleeves=True))),
     'skorpion': (dict(fur='#e0a64a', belly='#f6dca6', muzzle='#f6dca6', dark='#7c4a1e', limb='#c9853a', hand='#c2410c',
                       feet='#7c4a1e', nose='#5a3412'),
-                 dict(ears=None, snout='none', tail='stub', atk='claws', crown=True, bellyPlates=True, scale=1.12,
+                 dict(ears=None, snout='scorpion', tail='stub', atk='claws', crown=True, bellyPlates=True, scale=1.12, pattern='plates',
                       eyes={'white': True, 'color': '#b45309', 'size': 1.05}, brows='#7c4a1e', browAngle=12, blush=False,
                       cheekFluff=False, headR=(0.4, 0.43, 0.36), cape=True, capeColor='#7f1d1d', strap=False)),
     # ---- v0.38 ----
     'nisan': (dict(fur='#c8692e', belly='#fbe7cc', muzzle='#fbe7cc', dark='#7a3510', inner='#f6b98a', eartip='#5a2a0e',
-                   limb='#b85f28', hand='#b85f28', feet='#7a3510', nose='#2b1a10'),
-              dict(ears='pointy', snout='muzzle', tail='squirrel', tuft='#e8a066', weapon='rifle', atk='rifle', strap=True,
+                   limb='#b85f28', hand='#b85f28', feet='#7a3510', nose='#9a4a3a'),
+              dict(ears='pointy', snout='rodent', tail='squirrel', tuft='#e8a066', weapon='rifle', atk='rifle', strap=True,
                    scarf=True, eyes={'color': '#3b1d08', 'size': 1.12}, brows='#7a3510', browAngle=-8,
                    headR=(0.4, 0.42, 0.37), hat='ranger', shoulders='#7a5230', bracers='#5b3a1e', boots='#4a2a14',
                    outfit=dict(style='vest', cloth='#4d7c0f', lining='#365314', trim='#a16207', sleeves=True))),
@@ -2373,99 +2680,102 @@ HEROES = {
                    hand='#7a2c18', feet='#3b2414', nose='#3b1a10'),
               dict(ears='round', earScale=0.75, snout='bull', bullHorns='#f1e6c8', tail='thin', tuft='#3b1a10', weapon='axe',
                    atk='melee', scale=1.12, brows='#3b1a10', browAngle=10, headR=(0.43, 0.46, 0.39), bracers='#4b5563',
-                   neckFur='#4a2516', boots='#3b2414',
+                   neckFur='#4a2516', boots='#3b2414', furNoise=0.12,
                    eyes={'color': '#7f1d1d', 'size': 0.95}, blush=False, strap=False)),
     # ---- v0.15 ----
     'jednorog': (dict(fur='#fdf4ff', belly='#ffffff', muzzle='#fce7f3', dark='#a78bfa', inner='#f9a8d4', limb='#fdf4ff',
                       feet='#c4b5fd'),
                  dict(ears='pointy', snout='horse', tail='rainbow', unicornHorn='#f6c945',
-                      rainbowMane=('#f87171', '#fb923c', '#fbbf24', '#4ade80', '#60a5fa', '#c084fc'),
+                      rainbowMane=('#f87171', '#fb923c', '#fbbf24', '#4ade80', '#60a5fa', '#c084fc'), pattern='sparkle', patternLight='#fbcfe8',
                       weapon='orb', orb='#f0abfc', atk='mage', eyes={'color': '#7c3aed', 'size': 1.15}, brows='#a78bfa',
                       browAngle=-4, cheekFluff=False, cape=True, capeColor='#f9a8d4', capeStars=True, tunic='team')),
     'morskipas': (dict(fur='#64748b', belly='#f1f5f9', muzzle='#f1f5f9', dark='#334155', limb='#64748b', feet='#475569'),
-                  dict(ears=None, snout='shark', tail='shark', dorsalFin='#556274', weapon='claws', clawColor='#f1f5f9',
+                  dict(ears=None, snout='shark', tail='shark', dorsalFin='#556274', weapon='claws', clawColor='#f1f5f9', pattern='countershade',
                        atk='claws', eyes={'white': True, 'color': '#0f172a', 'size': 1.0}, brows='#1e293b', browAngle=-16,
                        headR=(0.42, 0.44, 0.38), blush=False, cheekFluff=False, tabardEmblem=False,
                        outfit=dict(style='coat', cloth='#991b1b', lining='#7f1d1d', trim='#f6c945', buttons='#f6c945', sleeves=True))),
     'vitez': (dict(fur='#e9a93b', belly='#f9e3ad', muzzle='#fbe8bb', nose='#4a2a1a', dark='#9c5a1c'),
-              dict(ears='round', mane='#b5541e', tail='thin', tuft='#b5541e', weapon='sword', shield=True,
+              dict(ears='round', mane='#b5541e', tail='thin', tuft='#b5541e', weapon='sword', shield=True, snout='feline', felineScale=1.12,
+                   whiskers='#fff7e0',
                    crown=True, brows='#7a3b12', chest='#cfd8e3', shoulders='#cfd8e3', boots='#5b3a1e', atk='melee', cape=True,
                    capeColor='#b91c1c')),
     'zarko': (dict(fur='#e4572e', belly='#ffcf56', dark='#8f2414', inner='#ffcf56'),
-              dict(snout='dragon', horns='#fff1c9', wings='#ff8a4c', wingScale=1.25, tail='long', tailFlame=True,
+              dict(snout='dragon', horns='#fff1c9', wings='#ff8a4c', wingScale=1.25, tail='long', tailFlame=True, pattern='scales',
+                   eyes={'shape': 'slit', 'color': '#b45309'},
                    weapon='orb', orb='#ffb020', crest='#ffcf56', bellyPlates=True, atk='mage',
                    outfit=dict(style='vest', cloth='#6d28d9', lining='#4c1d95', trim='#f6c945', collar='#6d28d9'))),
     'ledena': (dict(fur='#26324f', belly='#f4f8ff', muzzle='#f4f8ff', beak='#f59e0b', feet='#f59e0b', limb='#26324f',
                     hand='#ef4444'),
-               dict(snout='flatbeak', hat='wizard', hatColor='#2563eb', weapon='staff', orb='#9ae6ff', orbShape='crystal',
+               dict(snout='penguin', pattern='feathers', furNoise=0.05, hat='wizard', hatColor='#2563eb', weapon='staff', orb='#9ae6ff', orbShape='crystal',
                     staffWood='#cbd5e1', flippers=True, atk='mage', blush=True, brows='#0f172a', browAngle=16, headR=(0.4, 0.4, 0.4),
                     outfit=dict(style='coat', cloth='#dbeafe', lining='#93c5fd', trim='#ffffff', collar='fur', fur='#ffffff'))),
     'strijela': (dict(fur='#f07c2b', belly='#fff3e3', muzzle='#fff3e3', dark='#8a3a0e', eartip='#3b2414',
                       limb='#3b2414', hand='#3b2414'),
-                 dict(ears='bigpointy', snout='long', tail='bushy', tuft='#ffffff', weapon='bow', atk='bow',
+                 dict(ears='bigpointy', snout='canine', snoutLen=0.3, snoutW=0.12, foxCheeks=True, tail='bushy', tuft='#ffffff', weapon='bow', atk='bow',
+                      eyes={'shape': 'almond', 'color': '#3b1d08'},
                       sleeve=False, headFeather='#ef4444', bracers='#5b3a1e', tufts=True, hood=True, hoodColor='#3f7d3a',
                       quiverColor='#7a4b25', outfit=dict(style='vest', cloth='#4d7c0f', lining='#365314', trim='#a16207', sleeves=True))),
     'listko': (dict(fur='#80c96d', belly='#f4e6a1', muzzle='#a7dc8f', dark='#3f7a2d'),
-               dict(shell=('#5e8a35', '#7aa846', '#3e5f22'), headband=True, weapon='staff', orb='#86efac',
+               dict(snout='turtle', pattern='scales', patternColor='#3f7a2d', shell=('#5e8a35', '#7aa846', '#3e5f22'), headband=True, weapon='staff', orb='#86efac',
                     orbShape='leaf', staffWood='#7a4b25', tail='stub', atk='mage', tunic='team', flowerHat=True, browAngle=-6)),
-    'munja': (dict(fur='#f39a2b', belly='#fff6e8', muzzle='#fff6e8', dark='#2b1a10'),
-              dict(ears='round', stripesHead=True, stripesBody=True, tail='ringed', weapon='claws',
+    'munja': (dict(fur='#f39a2b', belly='#fff6e8', muzzle='#fff6e8', dark='#2b1a10', nose='#e07a8a'),
+              dict(ears='round', snout='feline', pattern='tiger', eyes={'shape': 'almond', 'color': '#65a30d'}, tail='ringed', weapon='claws',
                    clawColor='#fde047', atk='claws', brows='#2b1a10', browAngle=-6, boltMark=True, fangs=True, tufts=True,
                    chest='#374151', shoulders='#374151', ornate=False)),
     'skokica': (dict(fur='#5cc04f', belly='#f4f19b', dark='#2f7a2a', feet='#4aa63f'),
-                dict(snout='frog', weapon='club', lilypad=True, atk='melee', blush=False,
+                dict(snout='frog', pattern='frog', weapon='club', lilypad=True, atk='melee', blush=False,
                      headR=(0.42, 0.46, 0.33), spots=True, brows=None, shoulders='#7c4a24', ornate=False, bracers='#7c4a24')),
     'orlina': (dict(fur='#7a4a2a', belly='#efe7d6', muzzle='#ffffff', beak='#f5b324', feet='#f5b324', limb='#f5b324'),
-               dict(snout='beak', armWings='#6b3f22', tail=None, atk='wing', eyes={'color': '#3b1d08'},
+               dict(snout='hookbeak', pattern='feathers', armWings='#6b3f22', tail=None, atk='wing', eyes={'color': '#3b1d08'},
                     brows='#3b2414', browAngle=8, headR=(0.38, 0.38, 0.38), whiteHead=True, goggles=True,
                     tailFeathers=True, tufts=True, scarfColor='#dc2626',
                     outfit=dict(style='vest', cloth='#7c4a24', lining='#4a2a14', trim='#d6b37a'))),
     'luna': (dict(fur='#d7cdf0', belly='#ffffff', muzzle='#ffffff', dark='#6d5aa8', inner='#f9b4d0',
-                  limb='#d7cdf0'),
-             dict(ears='pointy', snout='muzzle', tail='catlong', tuft='#6d5aa8', weapon='bow', atk='bow',
-                  bowColor='#e5e7eb', crescent=True, cape=True, capeStars=True, eyes={'color': '#4c1d95'},
+                  limb='#d7cdf0', nose='#f49ab0'),
+             dict(ears='pointy', snout='feline', felineScale=0.92, pattern='tabby', tail='catlong', tuft='#6d5aa8', weapon='bow', atk='bow',
+                  bowColor='#e5e7eb', crescent=True, cape=True, capeStars=True, eyes={'color': '#4c1d95', 'shape': 'slit'},
                   brows='#6d5aa8', browAngle=-4, tufts=True, capeColor='#4c1d95',
                   outfit=dict(style='vest', cloth='#312e81', lining='#1e1b4b', trim='#f6c945', sleeves=True))),
     'jez': (dict(fur='#b48a5c', belly='#f1e3c8', muzzle='#f1e3c8', dark='#4a3728', nose='#1f1a17'),
-            dict(ears='round', earScale=0.8, snout='long', tail='stub', quills=('#4a3728', '#e8d5b5'),
+            dict(ears='round', earScale=0.8, snout='hedgehog', eyes={'shape': 'bead', 'size': 1.05}, tail='stub', quills=('#4a3728', '#e8d5b5'),
                  atk='melee', brows='#4a3728', browAngle=-6,
                  outfit=dict(style='vest', cloth='#7c4a24', lining='#4a2a14', trim='#d6b37a', buttons='#d6b37a'))),
     'slon': (dict(fur='#9aa4b5', belly='#c9d1dc', muzzle='#9aa4b5', dark='#5b6474', inner='#e9b8c4'),
              dict(ears='big', snout='none', trunk=True, tusks=True, tail='thin', tuft='#5b6474', weapon='hammer',
-                  atk='melee', scale=1.08, brows='#5b6474', browAngle=-4, headR=(0.42, 0.44, 0.38),
+                  atk='melee', scale=1.08, brows='#5b6474', browAngle=-4, headR=(0.42, 0.44, 0.38), pattern='skin',
                   outfit=dict(style='vest', cloth='#0f766e', lining='#134e4a', trim='#f6c945', collar='#f6c945'))),
     'pcela': (dict(fur='#f5c518', belly='#fde68a', muzzle='#fde68a', dark='#1f1a17', nose='#1f1a17'),
-              dict(ears=None, snout='muzzle', bands='#1f1a17', wings='#dff6ff', wingScale=1.15, wingStyle='bee', browAngle=-4, antennae=True,
+              dict(ears=None, snout='bee', furNoise=0.15, bands='#1f1a17', wings='#dff6ff', wingScale=1.15, wingStyle='bee', browAngle=-4, antennae=True,
                    stinger=True, weapon='orb', orb='#f59e0b', atk='mage', tunic='team', eyes={'size': 1.1}, cheekFluff=False)),
     'sova': (dict(fur='#8a6a4a', belly='#e9dcc3', muzzle='#e9dcc3', beak='#f5b324', feet='#f5b324', limb='#f5b324',
                   dark='#4a3222'),
-             dict(snout='beak', armWings='#6b4f35', tail=None, atk='wing', eyes={'white': True, 'color': '#f59e0b', 'size': 1.2},
+             dict(snout='owlbeak', pattern='feathers', armWings='#6b4f35', tail=None, atk='wing', eyes={'white': True, 'color': '#f59e0b', 'size': 1.2, 'shape': 'wide'},
                   earTufts=True, faceDisc='#f3e9d2', brows='#4a3222', browAngle=-16, headR=(0.4, 0.42, 0.4),
                   blush=False, outfit=dict(style='robe', cloth='#1e3a8a', lining='#172554', trim='#f6c945'))),
     'majmun': (dict(fur='#8b5a2b', belly='#f1d8b5', muzzle='#f1d8b5', dark='#4a2a14', inner='#f1d8b5', nose='#2b1d1a'),
-               dict(ears='round', earScale=1.4, snout='muzzle', tail='catlong', tuft='#8b5a2b', weapon='staff',
+               dict(ears='side', earScale=1.0, snout='monkey', tail='catlong', tuft='#8b5a2b', weapon='staff',
                     orbShape='none', staffWood='#f6c945', headband=True, bandColor='#f6c945', bandNoTails=True, atk='melee',
                     brows='#4a2a14', browAngle=-4, tufts=True, faceMask='#f1d8b5', outfit=dict(style='vest', cloth='#b91c1c', lining='#7f1d1d', trim='#f6c945'))),
     'tragac': (dict(fur='#8e93a0', belly='#e7e9ee', muzzle='#eef0f4', dark='#2d2f36', nose='#111111'),
-               dict(ears='round', snout='muzzle', mask='#2a2c33', tail='ringed', weapon='shuriken', atk='claws',
+               dict(ears='round', snout='canine', snoutLen=0.2, snoutW=0.12, snoutLight=True, pattern='grizzle', mask='#2a2c33', tail='ringed', weapon='shuriken', atk='claws',
                     hood=True, hoodColor='#1f2328', eyes={'white': True}, beltStar=True, scarf=True, scarfColor='#374151',
                     brows='#111111', browAngle=-8, outfit=dict(style='vest', cloth='#5b3a1e', lining='#3b2414', trim='#9ca3af'))),
     # ---- v0.10 ----
     'vuk': (dict(fur='#8a8f98', belly='#e5e7eb', muzzle='#e5e7eb', dark='#3b3f47', nose='#1f1a17', inner='#d1d5db'),
-            dict(ears='pointy', snout='long', tail='bushy', tuft='#e5e7eb', weapon='claws', clawColor='#e5e7eb',
-                 atk='claws', fangs=True, neckFur='#d1d5db', brows='#3b3f47', browAngle=-12, eyes={'color': '#fbbf24'}, tufts=True,
+            dict(ears='pointy', snout='canine', snoutLen=0.32, snoutW=0.14, pattern='saddle', tail='bushy', tuft='#e5e7eb', weapon='claws', clawColor='#e5e7eb',
+                 atk='claws', fangs=True, neckFur='#d1d5db', brows='#3b3f47', browAngle=-12, eyes={'color': '#fbbf24', 'shape': 'almond'}, tufts=True,
                  outfit=dict(style='vest', cloth='#3f3f46', lining='#27272a', trim='#9ca3af'))),
-    'gavran': (dict(fur='#2b2f3a', belly='#3f4452', muzzle='#3f4452', beak='#f59e0b', feet='#f59e0b', limb='#f59e0b',
+    'gavran': (dict(fur='#2b2f3a', belly='#3f4452', muzzle='#3f4452', beak='#4a5060', feet='#f59e0b', limb='#f59e0b',
                     dark='#14161c'),
-               dict(snout='beak', armWings='#1f2430', tail=None, atk='wing', eyes={'white': True, 'color': '#a78bfa', 'size': 1.1},
+               dict(snout='ravenbeak', pattern='feathers', armWings='#1f2430', tail=None, atk='wing', eyes={'white': True, 'color': '#a78bfa', 'size': 1.1},
                     hat='cone', hatColor='#312e81', tailFeatherColors=('#1f2430', '#3f4452'), brows='#14161c', browAngle=-10,
                     blush=False, headR=(0.38, 0.38, 0.38), outfit=dict(style='robe', cloth='#4c1d95', lining='#2e1065', trim='#cbd5e1'))),
     'hobotnica': (dict(fur='#8b5cf6', belly='#c4b5fd', muzzle='#c4b5fd', dark='#5b21b6', limb='#8b5cf6'),
-                  dict(ears=None, snout='muzzle', tail=None, tentacles='#7c3aed', atk='melee', tunic='team',
+                  dict(ears=None, snout='octopus', pattern='spots', tail=None, tentacles='#7c3aed', atk='melee', tunic='team',
                        eyes={'white': True, 'size': 1.25}, brows='#5b21b6', browAngle=-4, headR=(0.44, 0.46, 0.42),
                        blush=True, cheekFluff=False, outfit=dict(style='vest', cloth='#1e3a8a', lining='#172554', trim='#ffffff', collar='#f8fafc'))),
     'nosorog': (dict(fur='#7d8a96', belly='#b8c2cc', muzzle='#9aa6b2', dark='#4a5560', inner='#d8c0c8', nose='#3b4450'),
-                dict(ears='round', earScale=0.7, snout='long', tail='thin', tuft='#4a5560', atk='melee', scale=1.1,
+                dict(ears='tube', earScale=1.0, snout='rhino', pattern='skin', eyes={'size': 0.86, 'shape': 'bead'}, tail='thin', tuft='#4a5560', atk='melee', scale=1.1,
                      noseHorn='#f1e9d6', chest='#9aa3ad', shoulders='#9aa3ad', brows='#4a5560', browAngle=8,
                      headR=(0.42, 0.44, 0.38))),
     'panda': (dict(fur='#f3f4f6', belly='#ffffff', muzzle='#ffffff', dark='#1f2328', nose='#1f2328', limb='#1f2328',
