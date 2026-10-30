@@ -386,15 +386,16 @@ def biped_anims(m, kind='melee', wings=False, tail=True, arm_wings=False):
         idle['wingL'] = [(0, (0, 0, 0)), (24, (14, 0, -8)), (48, (0, 0, 0))]
         idle['wingR'] = [(0, (0, 0, 0)), (24, (-14, 0, 8)), (48, (0, 0, 0))]
     m.anim('idle', 48, idle)
-    # ---- WALK (20 kadrova; igra skalira brzinu prema brzini junaka)
-    sw = 34
+    # ---- WALK (20 kadrova; igra skalira brzinu prema stvarnoj brzini junaka)
+    #      v0.56: dulji korak, noga koja prolazi naprijed se podigne, tijelo prebacuje težinu s noge na nogu (njihanje)
+    sw = 38
     aw = 28 if not arm_wings else 12
     walk = {
-        'legL': [(0, (0, sw, 0)), (10, (0, -sw, 0)), (20, (0, sw, 0))],
-        'legR': [(0, (0, -sw, 0)), (10, (0, sw, 0)), (20, (0, -sw, 0))],
-        'body': [(0, (0, 4, 4), Z), (5, (0, 5, 0), (0, 0, 0.05)), (10, (0, 4, -4), Z),
-                 (15, (0, 5, 0), (0, 0, 0.05)), (20, (0, 4, 4), Z)],
-        'head': [(0, (0, -3, -4)), (10, (0, -3, 4)), (20, (0, -3, -4))],
+        'legL': [(0, (0, sw, 0), Z), (5, (0, 0, 0), (0, 0, 0.04)), (10, (0, -sw, 0), Z), (15, (0, 0, 0), Z), (20, (0, sw, 0), Z)],
+        'legR': [(0, (0, -sw, 0), Z), (5, (0, 0, 0), Z), (10, (0, sw, 0), Z), (15, (0, 0, 0), (0, 0, 0.04)), (20, (0, -sw, 0), Z)],
+        'body': [(0, (0, 5, 5), Z), (5, (4, 6, 0), (0, 0, 0.05)), (10, (0, 5, -5), Z),
+                 (15, (-4, 6, 0), (0, 0, 0.05)), (20, (0, 5, 5), Z)],
+        'head': [(0, (0, -4, -5)), (5, (-3, -2, 0)), (10, (0, -4, 5)), (15, (3, -2, 0)), (20, (0, -4, -5))],
         'armL': [(0, (-6, -aw, 0)), (10, (-6, aw, 0)), (20, (-6, -aw, 0))],
         'armR': [(0, (6, aw * 0.6, 0)), (10, (6, -aw * 0.6, 0)), (20, (6, aw * 0.6, 0))],
     }
@@ -407,6 +408,27 @@ def biped_anims(m, kind='melee', wings=False, tail=True, arm_wings=False):
         walk['wingL'] = [(0, (0, 0, 0)), (10, (22, 0, -10)), (20, (0, 0, 0))]
         walk['wingR'] = [(0, (0, 0, 0)), (10, (-22, 0, 10)), (20, (0, 0, 0))]
     m.anim('walk', 20, walk)
+    # ---- RUN (16 kadrova, v0.56): brzo kretanje (izvan borbe, ubrzanje) — dug korak, nagib naprijed, ruke rade, odraz
+    rs = 52
+    run = {
+        'legL': [(0, (0, rs, 0), Z), (4, (0, 0, 0), (0, 0, 0.07)), (8, (0, -rs, 0), Z), (12, (0, 10, 0), Z), (16, (0, rs, 0), Z)],
+        'legR': [(0, (0, -rs, 0), Z), (4, (0, 10, 0), Z), (8, (0, rs, 0), Z), (12, (0, 0, 0), (0, 0, 0.07)), (16, (0, -rs, 0), Z)],
+        'body': [(0, (0, 14, 7), (0, 0, -0.02)), (4, (5, 16, 0), (0.02, 0, 0.09)), (8, (0, 14, -7), (0, 0, -0.02)),
+                 (12, (-5, 16, 0), (0.02, 0, 0.09)), (16, (0, 14, 7), (0, 0, -0.02))],
+        'head': [(0, (0, -10, -6)), (4, (-4, -7, 0)), (8, (0, -10, 6)), (12, (4, -7, 0)), (16, (0, -10, -6))],
+    }
+    if arm_wings:   # ptice: krila raširena unatrag kao pri jedrenju, lagano zamahuju
+        run['armL'] = [(0, (-40, 20, 0)), (8, (-55, 6, 0)), (16, (-40, 20, 0))]
+        run['armR'] = [(0, (40, 20, 0)), (8, (55, 6, 0)), (16, (40, 20, 0))]
+    else:           # ruke rade suprotno od nogu
+        run['armL'] = [(0, (-8, -48, 0)), (8, (-8, 40, 0)), (16, (-8, -48, 0))]
+        run['armR'] = [(0, (8, 30, 0)), (8, (8, -34, 0)), (16, (8, 30, 0))]
+    if tail:
+        run['tail'] = [(0, (0, 20, -24)), (8, (0, 26, 24)), (16, (0, 20, -24))]
+    if wings:
+        run['wingL'] = [(0, (0, 0, 0)), (8, (30, 0, -14)), (16, (0, 0, 0))]
+        run['wingR'] = [(0, (0, 0, 0)), (8, (-30, 0, 14)), (16, (0, 0, 0))]
+    m.anim('run', 16, run)
     # ---- ATTACK (14 kadrova ≈ 0.58 s; udarac TOČNO u 7. kadru — game.js ATK_POINT tada nanosi štetu)
     #      napinjanje (3–5) → brz udarac (7) → zamah prolazi dalje (9) → smiri se (14)
     if kind == 'melee':
@@ -530,6 +552,18 @@ def biped_anims(m, kind='melee', wings=False, tail=True, arm_wings=False):
         'armL': [(0, Z), (3, (-24, -30, 0)), (8, Z)],
         'armR': [(0, Z), (3, (24, -30, 0)), (8, Z)],
     })
+    # ---- STUN (24 kadra, petlja, v0.56): omamljen — tetura, glava kruži, ruke mlitavo vise
+    stun = {
+        'body': [(0, (6, 4, 0), Z), (6, (0, 8, 6), (0, 0, -0.02)), (12, (-6, 4, 0), Z), (18, (0, 0, -6), (0, 0, -0.02)), (24, (6, 4, 0), Z)],
+        'head': [(0, (14, 0, 8)), (6, (0, 12, 14)), (12, (-14, 0, 8)), (18, (0, -8, 0)), (24, (14, 0, 8))],
+        'armL': [(0, (-14, 18, 0)), (12, (-6, 26, 0)), (24, (-14, 18, 0))],
+        'armR': [(0, (6, 26, 0)), (12, (14, 18, 0)), (24, (6, 26, 0))],
+        'legL': [(0, (0, 6, 0)), (12, (0, -6, 0)), (24, (0, 6, 0))],
+        'legR': [(0, (0, -4, 0)), (12, (0, 8, 0)), (24, (0, -4, 0))],
+    }
+    if tail:
+        stun['tail'] = [(0, (0, -10, -10)), (12, (0, -14, 10)), (24, (0, -10, -10))]
+    m.anim('stun', 24, stun)
     # ---- DIE (16 kadrova): padne na leđa (zadnji kadar ostaje)
     die = {
         'body': [(0, Z, Z), (4, (0, -35, 0), (0, 0, 0.06)), (9, (0, -94, 0), (0, 0, -0.15)),
@@ -1819,6 +1853,13 @@ def biped(name, c, opts):
     R, L = m['armR'], m['armL']
     hR = Vector(V(0.04, -0.37, 0.57))
     hL = Vector(V(0.04, 0.37, 0.57))
+    # v0.56: vrh oružja (odakle izlijeće strijela / čarolija / metak) — nevidljiva oznaka <junak>_tip na ruci, igra je čita
+    tip = {'bow': ('armL', hL + Vector((0.02, 0.02, 0)) + Vector((0.16 * S, 0, 0))),
+           'staff': ('armR', hR + Vector((0, 0, 0.74 * S))),
+           'orb': ('armR', hR + Vector((0.1 * S, 0, 0.1 * S))),
+           'rifle': ('armR', hR + Vector((0.02 * S, 0, 0)) + Vector((0.866, 0, -0.5)) * 1.11 * S)}.get(wpn)
+    if not tip and opts.get('atk') == 'wing':
+        tip = ('armR', hR + Vector((0.06 * S, 0, 0)))
     if wpn == 'sword':
         d = Vector((0.94, 0, 0.34))
         R.cyl(hR - d * 0.1 * S, hR + d * 0.08 * S, 0.03 * S, 0.03 * S, '#6b3e1f', seg=6)
@@ -2003,7 +2044,15 @@ def biped(name, c, opts):
     paint_patterns(m, S, c, opts, seed=sum(ord(ch) for ch in name))   # v0.56: krzno, pruge, rozete, ljuske, perje
     biped_anims(m, kind=opts.get('atk', 'melee'), wings=bool(opts.get('wings')), tail=bool(opts.get('tail')),
                 arm_wings=bool(arm_wings))
-    return m.finish()
+    m.finish()
+    if tip:   # nevidljivi čvor na vrhu oružja (dijete ruke — prati animaciju)
+        part = m.parts[tip[0]]
+        e = bpy.data.objects.new(name + '_tip', None)
+        bpy.context.scene.collection.objects.link(e)
+        e.parent = part.obj
+        e.location = Vector(tip[1]) - part.pivot
+        e.empty_display_size = 0.02
+    return m
 
 
 # ------------------------------------------------------------------ v0.30 POTPISNI DETALJI JUNAKA

@@ -42,6 +42,14 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
   - nova polja predmeta: `stats.mres` (otpor magiji, množi se), `stats.cdr` (ne zbraja se, s talentima najviše 50 %), `stats.amp`, `chain`, `cold`, `mburn`, `hunt`; status `disarmT`; u opisu u dućanu nove crte (otpor magiji, hlađenje, jačina magija)
   - 🎲 **raznolikost**: svaki bot svaku igru odabere jednu od tri inačice gradnje za svoju vrstu (tenk, borac, strijelac, čarobnjak, podrška — `BUILD_ALTS`), a junaci s vlastitom gradnjom u 40 % igara zamijene zadnji predmet novim legendarnim (`LATE_ALTS`); botovi znaju koristiti sve nove aktivne predmete
 
+- 🏹 **Napadi, kretanje i animacije junaka** (v0.56):
+  - **strijele, čarolije i metci izlijeću iz oružja**, ne iz trbuha: svaki junak na daljinu u modelu ima nevidljivu oznaku vrha oružja (`<junak>_tip` — sredina luka, kugla na štapu, čarobna kugla u ruci, usta cijevi puške, vrh krila), koja prati animaciju napada; projektil krene odande i u prvoj trećini leta glatko prijeđe na svoju putanju; i sjaj punjenja napada svijetli na vrhu oružja
+  - **trčanje**: nova animacija `run` (dug korak, nagib naprijed, ruke rade, ptice raširenih krila) kad junak ide brže (izvan borbe, ubrzanje); u borbi hoda — brzina koraka prati stvarnu brzinu po tlu, pa noge puno manje kližu (prije je brzina animacije bila stalna)
+  - **hodanje**: dulji korak, noga koja prolazi naprijed se podigne, tijelo prebacuje težinu s noge na nogu, glava se njiše
+  - **nagib**: junak se nagne naprijed kad trči i u zavoj kad skreće (samo izgled — kretanje i pogađanje se ne mijenjaju)
+  - **omamljenost**: nova animacija `stun` — tetura, glava kruži, ruke mlitavo vise (prije je samo usporio mirovanje)
+  - **prašina pod stopalom** točno kad stopalo stane na tlo (dva oblačića po ciklusu koraka, više kad trči), ne više u stalnom razmaku
+  - **glatki položaj**: kad se junaci guraju jedan uz drugoga ili uz drveće, model se više ne trza (skok, odbačaj i teleport ostaju trenutni)
 - 🧸 **Junaci s identitetom: svoja glava i teksture** (v0.56) — prije je skoro svaki junak imao istu okruglu glavu s istom „medvjeđom” njuškom, a ptice tanak kljun poput štapa. Sada svaka vrsta ima svoje lice (`tools/blender/build_models.py`, `snout=`):
   - 🦁🐯🐱🐆 **mačke** (Lavko, Munja, Luna, Inja): jastučići s brkovima, trokutasti nosić, bradica i usta u obliku slova w; Luna ima bademaste oči s uskom zjenicom
   - 🦊🐺🦝 **pseće njuške** (Strijela, Sivko, Tragač): izdužena njuška koja se sužava do crnog nosa, svijetla donja čeljust i usna; lisica ima bijele obraze, rakun kratku svijetlu njušku uz masku

@@ -2830,6 +2830,18 @@ function projScale(name, p){
   }
   return 30;
 }
+/* 🎯 v0.56 vrh oružja junaka u svijetu (luk, štap, kugla, puška, krilo — čvor <junak>_tip iz Blendera, prati animaciju):
+   strijele, čarolije i metci izlijeću odande, a ne iz sredine trbuha */
+const _tipV = new THREE.Vector3();
+function weaponTip(u){
+  const g = u && meshByUnit.get(u);
+  const m = g && g.visible && g.userData.model;
+  const tip = m && m.userData.parts && m.userData.parts.tip;
+  if(!tip) return null;
+  tip.updateWorldMatrix(true, false);
+  tip.getWorldPosition(_tipV);
+  return { x: _tipV.x, y: _tipV.z, h: _tipV.y };
+}
 function buildProjMesh(p){
   const g = new THREE.Group();
   const ud = g.userData;
@@ -2878,6 +2890,13 @@ function buildProjMesh(p){
   ud.sy = p.sy != null ? p.sy : (p.src ? p.src.y : p.y);
   const sk = p.src ? p.src.kind : (p.shot === 'tower' ? 'tower' : 'hero');
   ud.h0 = sk === 'tower' ? TOWER_CRYSTAL_Z * MODEL_SCALE.tower : (sk === 'hero' ? 52 : 40);
+  // v0.56: junakov hitac kreće s vrha oružja (u prvoj trećini leta glatko prijeđe na pravu putanju)
+  const tip = sk === 'hero' && p.src && distXY(ud.sx, ud.sy, p.src.x, p.src.y) < 90 ? weaponTip(p.src) : null;
+  if(tip){
+    ud.h0 = Math.max(8, tip.h - groundHeight(p.x, p.y));
+    ud.offX = tip.x - p.x; ud.offY = tip.y - p.y;
+    if(Math.hypot(ud.offX, ud.offY) > 120){ ud.offX = ud.offY = 0; }
+  }
   ud.arc = (name === 'proj_arrow' || name === 'proj_feather' || name === 'proj_acorn') && !p.emoji ? 70 : 0;
   ud.lastH = null;
   g.position.set(p.x, groundHeight(p.x, p.y) + 34, p.y);
@@ -2897,7 +2916,14 @@ function syncProj(p, g, tAnim, dt){
     const frac = Math.min(1, Math.max(0, 1 - distXY(p.x, p.y, tx, ty) / total));
     h = base + lerp(ud.h0, 38, frac) + Math.sin(frac * Math.PI) * ud.arc;
   }
-  g.position.set(p.x, h, p.y);
+  let px = p.x, py = p.y;
+  if(ud.offX || ud.offY){   // v0.56: od vrha oružja prema pravoj putanji
+    const total = distXY(ud.sx, ud.sy, tx != null ? tx : p.x, ty != null ? ty : p.y) || 1;
+    const w = Math.max(0, 1 - distXY(ud.sx, ud.sy, p.x, p.y) / Math.min(total, 220) );
+    px += ud.offX * w * w; py += ud.offY * w * w;
+    if(w <= 0) ud.offX = ud.offY = 0;
+  }
+  g.position.set(px, h, py);
   g.rotation.y = ud.yaw;
   const m = ud.model;
   if(m){
@@ -2922,7 +2948,7 @@ function syncProj(p, g, tAnim, dt){
     }
     if(ud.trailCol && seenProj(p)){
       if(!ud.trail){ ud.trail = { pts: [], mesh: trailMesh() }; scene3.add(ud.trail.mesh); }
-      updateTrail(ud.trail, p.x, h, p.y, ud.trailCol, ud.trailW);
+      updateTrail(ud.trail, px, h, py, ud.trailCol, ud.trailW);
     }
     if(ud.critGlow){
       const s = 100 + Math.sin(tAnim * 40) * 18;
@@ -3539,7 +3565,22 @@ function isStructureKind(k){ return k === 'tower' || k === 'ancient' || k === 'b
 function syncSteps(u, g, dt){
   const ud = g.userData;
   const moving = gameTime - (u.lastMoveT == null ? -9 : u.lastMoveT) < 0.15;
-  if(!moving){ ud.stepT = 0.15; return; }
+  if(!moving){ ud.stepT = 0.15; ud.stepPh = null; return; }
+  const a = ud.anim, act = a && (a.cur === 'walk' || a.cur === 'run') && a.acts[a.cur];
+  if(act){   // v0.56: oblačić prašine pod stopalom koje upravo stane na tlo (dva koraka po ciklusu)
+    const ph = (act.time / act.getClip().duration) % 1;
+    const prev = ud.stepPh;
+    ud.stepPh = ph;
+    if(prev == null) return;
+    const hit = (prev < 0.5 && ph >= 0.5) ? -1 : (ph < prev ? 1 : 0);
+    if(!hit) return;
+    const dir = u.dir || 0, r = u.r || 16, run = a.cur === 'run';
+    const fx_ = u.x + Math.cos(dir + hit * Math.PI / 2) * r * 0.45 + Math.cos(dir) * r * 0.3;
+    const fy_ = u.y + Math.sin(dir + hit * Math.PI / 2) * r * 0.45 + Math.sin(dir) * r * 0.3;
+    for(let i = 0; i < (run ? 3 : 2); i++)
+      fxSpawn(fx_, fy_, g.position.y + 3, '#c9b48c', { spd: run ? 26 : 14, up: run ? 22 : 14, grav: -14, life: 0.45, size: 9 + r * (run ? 0.42 : 0.32) });
+    return;
+  }
   ud.stepT = (ud.stepT || 0) + dt;
   if(ud.stepT >= 0.22){
     ud.stepT = 0;
@@ -4264,12 +4305,25 @@ function animateUnit(u, g, now, dt){
   }
   const moving = gameTime - (u.lastMoveT == null ? -9 : u.lastMoveT) < 0.15;
   const stunned = u.status && u.status.stun > 0;
+  // v0.56: stvarna brzina po tlu (izglađena) — korak animacije prati brzinu (manje klizanja), skok/teleport se ne broji
+  if(dt > 0){
+    let sp = ud.aX == null ? 0 : Math.hypot(u.x - ud.aX, u.y - ud.aY) / dt;
+    if(sp > 1200) sp = ud.gSpd || 0;
+    ud.gSpd = (ud.gSpd || 0) + (sp - (ud.gSpd || 0)) * Math.min(1, dt * 8);
+  }
+  ud.aX = u.x; ud.aY = u.y;
   if(((typeof winnerTeam !== 'undefined' && winnerTeam != null && u.kind === 'hero' && u.team === winnerTeam) || u.danceT > 0) && a.acts.victory)
     animBase(a, 'victory', 1, now);   // pobjednički ples (i 💃 ples na tipku J)
   else if(((u.chan && !u.chan.o) || u.chanFx) && a.acts.aim) animBase(a, 'aim', 1, now);   // 🎯 nišani (Savršen hitac)
   else if(((u.chan && u.chan.o) || u.chanK) && a.acts.channel) animBase(a, 'channel', 1.3, now);   // v0.55: Veliki zalogaj, Lepeza strijela, Epicentar
   else if(u.tpChannel > 0 && a.acts.channel) animBase(a, 'channel', 1, now);
-  else if(moving && !stunned) animBase(a, 'walk', 0.7 + (u.speed || 150) / 240, now);
+  else if(stunned && a.acts.stun && !u.cycloneT) animBase(a, 'stun', 1, now);   // v0.56: tetura, glava kruži
+  else if(moving && !stunned){
+    const v = Math.max(40, ud.gSpd || (u.speed || 150));
+    const run = a.acts.run && (a.cur === 'run' ? v > 150 : v > 172);   // trči izvan borbe i s ubrzanjem (histereza: ne treperi)
+    if(run) animBase(a, 'run', Math.min(2.4, Math.max(1, v / 105)), now);
+    else animBase(a, 'walk', Math.min(2.3, Math.max(0.6, v / 86)), now);
+  }
   else {
     // s vremena na vrijeme: ogleda se / protegne
     if(!stunned && a.acts.idle2 && now >= a.oneEnd && now > (ud.nextIdle2 || 0)){
@@ -4310,10 +4364,14 @@ function chargeFx(u, g, impact, crit){
   const col = crit ? '#ff5a1f' : ((u.hero && u.hero.abilities[0].color) || TEAM_LIGHT[u.team]);
   const spr = new THREE.Sprite(glowMatOwn(col));
   addFx(spr, impact + 0.12, (o, f, t) => {
-    const dir = u.dir || 0, gh = groundHeight(u.x, u.y);
-    const gun = u.hero && u.hero.shot === 'pellet';   // 🔫 Nišan: bljesak na ustima cijevi
-    const off = gun ? 58 : (u.r || 16) * 0.8 + 8;
-    o.position.set(u.x + Math.cos(dir) * off, gh + (gun ? 40 : 50), u.y + Math.sin(dir) * off);
+    const tip = weaponTip(u);   // v0.56: sjaj na vrhu oružja (luk, štap, kugla, cijev puške)
+    if(tip){ o.position.set(tip.x, tip.h, tip.y); }
+    else {
+      const dir = u.dir || 0, gh = groundHeight(u.x, u.y);
+      const gun = u.hero && u.hero.shot === 'pellet';   // 🔫 Nišan: bljesak na ustima cijevi
+      const off = gun ? 58 : (u.r || 16) * 0.8 + 8;
+      o.position.set(u.x + Math.cos(dir) * off, gh + (gun ? 40 : 50), u.y + Math.sin(dir) * off);
+    }
     const k = t < impact ? t / impact : 1 + (t - impact) / 0.12 * 0.8;   // raste do ispaljivanja, pa kratko prasne
     const s = (t < impact ? 10 + 26 * k : 36 + 40 * (k - 1)) * (crit ? 1.6 : 1);
     o.scale.set(s, s, 1);
@@ -4415,7 +4473,10 @@ function syncScene(tAnim){
         ud.level = u.level;
       }
       g.visible = seen;
-      g.position.set(u.x, gh, u.y);
+      // v0.56: glatki položaj — sitna guranja (junaci jedan uz drugoga, drveće) ne trzaju model; skok i teleport su trenutni
+      if(ud.sx_ == null || Math.hypot(u.x - ud.sx_, u.y - ud.sy_) > 45){ ud.sx_ = u.x; ud.sy_ = u.y; }
+      else { const k = Math.min(1, dt * 30); ud.sx_ += (u.x - ud.sx_) * k; ud.sy_ += (u.y - ud.sy_) * k; }
+      g.position.set(ud.sx_, groundHeight(ud.sx_, ud.sy_), ud.sy_);
       if((u.sumN || 0) !== (ud.sumN || 0)){   // ✨ čarolija prizivača
         const old = ud.lastX != null ? { x: ud.lastX, y: ud.lastY } : null;
         ud.sumN = u.sumN || 0;
@@ -4447,7 +4508,22 @@ function syncScene(tAnim){
       if(u.cycloneT > 0 && !(ud.spin > 0)) ud.spin = TAU;   // vrti se u vihoru
       // Vrtlog: dodatna vrtnja modela
       if(ud.spin > 0){ const d = Math.min(ud.spin, dt * 22); ud.spinA = (ud.spinA || 0) + d; ud.spin -= d; if(ud.spin <= 0) ud.spinA = 0; }
-      if(ud.model) ud.model.rotation.y = ud.yaw + (ud.spinA || 0);
+      if(ud.model){
+        ud.model.rotation.y = ud.yaw + (ud.spinA || 0);
+        // 🏃 v0.56: nagne se naprijed kad trči i u zavoj kad skreće (kao trkač) — samo izgled, ne mijenja kretanje
+        let dyaw = ud.yaw - (ud.yawPrev == null ? ud.yaw : ud.yawPrev);
+        while(dyaw > Math.PI) dyaw -= TAU;
+        while(dyaw < -Math.PI) dyaw += TAU;
+        ud.yawPrev = ud.yaw;
+        const sp = ud.gSpd || 0, k = Math.min(1, dt * 7);
+        const leanT = -Math.min(0.15, sp / 1600);
+        const bankT = Math.max(-0.2, Math.min(0.2, -(dyaw / Math.max(dt, 1e-3)) * 0.04)) * Math.min(1, sp / 140);
+        ud.lean = (ud.lean || 0) + (leanT - (ud.lean || 0)) * k;
+        ud.bank = (ud.bank || 0) + (bankT - (ud.bank || 0)) * k;
+        ud.model.rotation.order = 'YXZ';
+        ud.model.rotation.z = ud.lean;
+        ud.model.rotation.x = ud.bank;
+      }
       else g.rotation.y = ud.yaw;
       ud.shield.visible = u.status.shieldT > 0 || u.barrierT > 0;   // 🫧 i Barijera
       const ch = pickStatusEmoji(u);
