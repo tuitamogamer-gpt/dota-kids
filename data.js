@@ -1928,7 +1928,7 @@ const HEROES = [
 
 /* 🎨 v0.55: ikone moći iz GPT Image 2.5 — assets/ab/<junak>_<P|Q|W|E|R|T>.jpg (P = urođena pasiva, T = talenti).
    Popis junaka koji ih imaju piše tools/art/dl.py kad preuzme i izreže slike; bez ikone igra crta emoji kao prije. */
-const SPELL_ICONS = [];
+const SPELL_ICONS = ['bikos', 'gavran', 'hobotnica', 'irbis', 'jednorog', 'jez', 'ledena', 'listko', 'luna', 'majmun', 'morskipas', 'munja', 'nilski', 'nisan', 'nosorog', 'orlina', 'panda', 'pcela', 'skokica', 'skorpion', 'slon', 'sova', 'strijela', 'tragac', 'vitez', 'vuk', 'zarko'];
 function spellIconSrc(heroId, slot){ return SPELL_ICONS.includes(heroId) ? 'assets/ab/' + heroId + '_' + slot + '.jpg' : null; }
 
 /* ---------------- DUĆAN S RECEPTIMA ---------------- */
