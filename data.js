@@ -2570,6 +2570,16 @@ const SHRINE_SPOTS = [{ x:1150, y:2250, team:0 }, { x:1850, y:750, team:1 }];
      ab:{ Q:{ dmg (šteta po pogotku), cd (s), dur (omama/korijen/tišina/izazov +s), heal, mana } }, flag (posebno) */
 const TALENT_LVLS = [10, 15, 20, 25];
 const TAL = (emoji, txt, e) => ({ emoji, txt, e });
+/* 🎨 v0.56 slika talenta: talent moći / pasive ima ikonu te moći, a opći bonus naslikanu ikonu učinka (assets/talent/) */
+const TAL_STAT_ICONS = ['dmg', 'aspd', 'ls', 'range', 'evasion', 'spellAmp', 'cdr', 'mp', 'hp', 'armor', 'hpRegen', 'mpRegen', 'spd', 'gold'];
+function talentIconSrc(heroId, t){
+  const e = (t && t.e) || {};
+  let slot = e.ab ? Object.keys(e.ab)[0] : e.pas ? 'P' : null;
+  if(!slot && e.flag){ const m = /^[a-z]+_([qwer])/.exec(e.flag); if(m) slot = m[1].toUpperCase(); }   // 'zarko_q_pierce' → Q
+  if(slot) return spellIconSrc(heroId, slot) || 'assets/talent/special.jpg';
+  const ks = TAL_STAT_ICONS.filter(k => e[k] != null);
+  return 'assets/talent/' + (ks.length > 1 ? 'all' : ks[0] || 'special') + '.jpg';
+}
 const DEFAULT_TALENTS = [
   [TAL('⚔️', L('+30 štete', '+30 damage'), { dmg:30 }), TAL('❤️', L('+300 života', '+300 HP'), { hp:300 })],
   [TAL('🏃', L('+25 brzine', '+25 speed'), { spd:25 }), TAL('⏱️', L('−15% hlađenja moći', '−15% ability cooldowns'), { cdr:0.15 })],

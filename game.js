@@ -295,13 +295,13 @@ function seenByPlayer(u){
 const GFX = { heroes: {}, mobs: {}, tex: {} };
 /* 🎨 v0.55 ikona moći (GPT Image 2.5) za platno — null dok se ne učita (ili je nema), tada se crta emoji */
 const SPELL_IMG = {};
-function spellIconImg(heroId, slot){
-  const src = spellIconSrc(heroId, slot);
+function artImg(src){   // v0.56: i ikone talenata i trake najava
   if(!src) return null;
   let im = SPELL_IMG[src];
   if(!im){ im = SPELL_IMG[src] = new Image(); im.src = src; }
   return im.complete && im.naturalWidth > 0 ? im : null;
 }
+function spellIconImg(heroId, slot){ return artImg(spellIconSrc(heroId, slot)); }
 /* ikona moći za HTML (ekran junaka, opisi): <img> s emojijem kao rezervom */
 function spellIconHtml(heroId, slot, emoji, cls){
   const src = spellIconSrc(heroId, slot);
@@ -324,6 +324,17 @@ function loadGameArt(){
     im.src = 'assets/tex_' + k + '.jpg';
     GFX.tex[k] = im;
   }
+  for(const k in BANNER_ART) artImg('assets/ui/banner_' + k + '.webp');   // 🎀 da i prva najava ima traku
+}
+function wrapLines(txt, maxW){   // riječi u retke koji stanu u maxW (trenutni ctx.font)
+  const out = [];
+  let cur = '';
+  for(const w of String(txt).split(' ')){
+    const t = cur ? cur + ' ' + w : w;
+    if(cur && ctx.measureText(t).width > maxW){ out.push(cur); cur = w; } else cur = t;
+  }
+  if(cur) out.push(cur);
+  return out;
 }
 function imgReady(im){ return !!(im && im.complete && im.naturalWidth > 0); }
 
@@ -684,6 +695,13 @@ let gameTime = 0, waveTimer = CFG.firstWave, waveCount = 0;
 let firstBlood = false, muted = false, shopOpen = false;
 let banner = null;            // najava koju vidi OVAJ igrač
 let netBanner = null, guestBanner = null, bannerN = 0;   // 🌐 domaćin: zajednička i gostova osobna najava (idu u snimku)
+/* 🎀 v0.56 naslikane trake za velike najave (GPT Image 2.5, assets/ui/): cy = sredina trake po visini, tw = širina za tekst */
+const BANNER_ART = {
+  blue: { cy: 0.49, tw: 0.6, title: '#fde047', sub: '#fff', stroke: 'rgba(15,23,42,0.85)' },
+  red: { cy: 0.49, tw: 0.62, title: '#fde047', sub: '#fff', stroke: 'rgba(69,10,10,0.9)' },
+  gold: { cy: 0.47, tw: 0.6, title: '#7c2d12', sub: '#451a03', stroke: 'rgba(255,251,235,0.9)' },
+};
+const TAL_PANEL_Y = 76, TAL_PANEL_H = 104;   // 🎓 ploča za izbor talenta (najava ide ispod nje)
 let kills = [0, 0];
 let uiRects = { abil: [], learn: [], inv: [], qb: [], sum: [], tp: null, glyph: null, statBtn: null, mini: null, shop: null, mute: null, help: null };
 let hoverUi = null;
@@ -957,16 +975,19 @@ function feedMsg(txt, color, team){   // team: poruku vidi samo taj tim (npr. bu
   feed.unshift({ txt, color: color || '#fff', t: 0, team: team == null ? -1 : team });
   if(feed.length > 10) feed.pop();   // prikazuje se najviše 6 (poruke drugog tima se ne broje)
 }
-function localBanner(txt, sub){ banner = txt ? { txt, sub: sub || '', t: 0, dur: 3 } : null; }
-function announce(txt, sub){   // najava za sve (domaćin je šalje i gostu)
-  localBanner(txt, sub);
-  netBanner = { id: ++bannerN, txt, sub: sub || '', t0: gameTime };
+/* 🎀 tone = boja trake: 'gold' (dobra vijest), 'red' (loša), 'blue' (obična) ili broj tima kojem je vijest loša
+   (taj tim vidi crvenu traku, drugi zlatnu) */
+function localBanner(txt, sub, tone){ banner = txt ? { txt, sub: sub || '', t: 0, dur: 3, tone: tone == null ? 'blue' : tone } : null; }
+function bannerKind(b){ return typeof b.tone === 'number' ? (b.tone === myTeam ? 'red' : 'gold') : BANNER_ART[b.tone] ? b.tone : 'blue'; }
+function announce(txt, sub, tone){   // najava za sve (domaćin je šalje i gostu)
+  localBanner(txt, sub, tone);
+  netBanner = { id: ++bannerN, txt, sub: sub || '', t0: gameTime, tone };
 }
 /* osobna najava ("Bravo!", "Ne brini!", ulti…): vidi je samo taj junak — igrač odmah, gost preko mreže; bez teksta = makni */
-function announceFor(h, txt, sub){
+function announceFor(h, txt, sub, tone){
   if(!h) return;
-  if(h.isPlayer) localBanner(txt, sub);
-  else if(h === remoteHero && net.mode === 'host') guestBanner = { id: ++bannerN, txt: txt || '', sub: sub || '', t0: gameTime };
+  if(h.isPlayer) localBanner(txt, sub, tone);
+  else if(h === remoteHero && net.mode === 'host') guestBanner = { id: ++bannerN, txt: txt || '', sub: sub || '', t0: gameTime, tone };
 }
 
 /* ================= Statusi ================= */
@@ -1416,7 +1437,7 @@ function kill(t, src){
           }
         }
         feedMsg(L('🐲 ' + src.emoji + ' ' + src.name + ' je porazio Velikog Zmaja!', '🐲 ' + src.emoji + ' ' + src.name + ' defeated the Great Dragon!'), '#fde047');
-        announce(L('🐲 Veliki Zmaj je poražen!', '🐲 The Great Dragon is defeated!'), L(src.emoji + ' ' + src.name + ' dobiva Zmajev blagoslov!', src.emoji + ' ' + src.name + ' gets the Dragon Blessing!'));
+        announce(L('🐲 Veliki Zmaj je poražen!', '🐲 The Great Dragon is defeated!'), L(src.emoji + ' ' + src.name + ' dobiva Zmajev blagoslov!', src.emoji + ' ' + src.name + ' gets the Dragon Blessing!'), 1 - src.team);
         annEvent('dragon', src.team);
         for(const h of units){
           if(h.kind === 'hero' && h.team === src.team) h.gold += CFG.bossGoldTeam;
@@ -1441,7 +1462,7 @@ function kill(t, src){
       t.aegis = false; t.aegisT = 0;
       t.reviveAt = { x: t.x, y: t.y };
       t.deadT = 3;
-      announce(L('🛡️ Zmajev štit!', '🛡️ Dragon Shield!'), L(t.emoji + ' ' + t.name + ' se vraća za 3 sekunde!', t.emoji + ' ' + t.name + ' comes back in 3 seconds!'));
+      announce(L('🛡️ Zmajev štit!', '🛡️ Dragon Shield!'), L(t.emoji + ' ' + t.name + ' se vraća za 3 sekunde!', t.emoji + ' ' + t.name + ' comes back in 3 seconds!'), 1 - t.team);
     }
     t.moveTarget = null; t.attackTarget = null;
     t.tpChannel = 0; t.tpDest = null; t.danceT = 0; t.chan = null;
@@ -1490,8 +1511,8 @@ function kill(t, src){
       const STREAK_VO = { 3: 'killing_spree', 4: 'dominating', 5: 'mega_kill', 6: 'unstoppable', 7: 'incredible', 8: 'monster_kill', 9: 'godlike' };
       const mk = MULTI[Math.min(5, credit.multiN)];
       const st = credit.streak >= 10 ? ['👑', L('je IZNAD BOŽANSKOG!', 'is BEYOND GODLIKE!')] : STREAK[credit.streak];
-      if(mk && credit.multiN >= 2){ announce(mk, who + (st ? ' ' + st[1] : '')); annEvent(MULTI_VO[Math.min(5, credit.multiN)]); milestoneAnn = true; }
-      else if(st){ announce(st[0] + ' ' + who + ' ' + st[1], L(credit.streak + ' ubojstava zaredom!', credit.streak + ' kills in a row!')); annEvent(credit.streak >= 10 ? 'beyond_godlike' : STREAK_VO[credit.streak]); milestoneAnn = true; }
+      if(mk && credit.multiN >= 2){ announce(mk, who + (st ? ' ' + st[1] : ''), 1 - credit.team); annEvent(MULTI_VO[Math.min(5, credit.multiN)]); milestoneAnn = true; }
+      else if(st){ announce(st[0] + ' ' + who + ' ' + st[1], L(credit.streak + ' ubojstava zaredom!', credit.streak + ' kills in a row!'), 1 - credit.team); annEvent(credit.streak >= 10 ? 'beyond_godlike' : STREAK_VO[credit.streak]); milestoneAnn = true; }
       // 🛑 prekinut niz: ubojica dobiva dodatno zlato za tuđi niz
       if(victimStreak >= 3){
         const bonus = CFG.shutdownGold * (victimStreak - 1);
@@ -1562,21 +1583,21 @@ function kill(t, src){
         giveXp(h, 70);
     }
     feedMsg(killerName + '  ⚔️  ' + t.emoji + ' ' + t.name, TEAM_COLOR[1 - t.team]);
-    if(!firstBlood){ firstBlood = true; announce(L('🩸 Prva krv!', '🩸 First Blood!'), killerName); annEvent('first_blood'); if(src && src.kind === 'hero') src.firstBlood = true; }
+    if(!firstBlood){ firstBlood = true; announce(L('🩸 Prva krv!', '🩸 First Blood!'), killerName, t.team); annEvent('first_blood'); if(src && src.kind === 'hero') src.firstBlood = true; }
     // 💀 ACE (kao u LoL-u): pao je cijeli tim
     else if(units.filter(h => h.kind === 'hero' && h.team === t.team).every(h => h.dead)){
-      announce(CYR ? '💀 ЕЈС!' : '💀 ACE!', L('Cijeli tim ' + TEAM_NAME[t.team] + ' je pao — sada guraj!', 'All of Team ' + TEAM_NAME[t.team] + ' fell — push now!'));
+      announce(CYR ? '💀 ЕЈС!' : '💀 ACE!', L('Cijeli tim ' + TEAM_NAME[t.team] + ' je pao — sada guraj!', 'All of Team ' + TEAM_NAME[t.team] + ' fell — push now!'), t.team);
       annEvent('ace');
       feedMsg(L((CYR ? '💀 ЕЈС! ' : '💀 ACE! ') + 'Tim ' + TEAM_NAME[t.team] + ' je pao', '💀 ACE! Team ' + TEAM_NAME[t.team] + ' fell'), TEAM_COLOR[1 - t.team]);
       milestoneAnn = true;
     }
     // osobne najave (i za gosta u mrežnoj igri — svatko vidi samo svoje)
-    if(src && isHuman(src) && !milestoneAnn) announceFor(src, L('Bravo! 🎉', 'Well done! 🎉'), L('Pobijedio si ' + t.emoji + ' ' + t.name + '!', 'You defeated ' + t.emoji + ' ' + t.name + '!'));
+    if(src && isHuman(src) && !milestoneAnn) announceFor(src, L('Bravo! 🎉', 'Well done! 🎉'), L('Pobijedio si ' + t.emoji + ' ' + t.name + '!', 'You defeated ' + t.emoji + ' ' + t.name + '!'), 'gold');
     if(src && src.kind === 'hero'){   // 🪙 3D: zlatnici polete od pobijeđenog do pobjednika (i kod gosta)
       src.killFxN = (src.killFxN || 0) + 1; src.killAt = { x: Math.round(t.x), y: Math.round(t.y) };
       if(src.isPlayer && net.mode !== 'host' && net.mode !== 'guest') slowMo = 0.5;   // ⏱️ tren usporenja (samo protiv botova)
     }
-    if(isHuman(t)) announceFor(t, L('Ne brini! ⏳', "Don't worry! ⏳"), '');   // odbrojavanje do oživljavanja je odmah ispod (HUD)
+    if(isHuman(t)) announceFor(t, L('Ne brini! ⏳', "Don't worry! ⏳"), '', 'red');   // odbrojavanje do oživljavanja je odmah ispod (HUD)
     if(t.isPlayer) sfx('death');
     else if(src && src.isPlayer) sfx('kill');
     else sfxAt('kill', t.x, t.y);
@@ -1596,7 +1617,7 @@ function kill(t, src){
       if(src.kind === 'hero') src.denies++;
     } else {
       feedMsg(L('🏰 Srušen toranj tima ' + TEAM_NAME[t.team] + '!', '🏰 Team ' + TEAM_NAME[t.team] + ' lost a tower!'), TEAM_COLOR[1 - t.team]);
-      announce(L('🏰 BUM!', '🏰 BOOM!'), L('Toranj tima ' + TEAM_NAME[t.team] + ' je srušen!', 'Team ' + TEAM_NAME[t.team] + "'s tower is destroyed!"));
+      announce(L('🏰 BUM!', '🏰 BOOM!'), L('Toranj tima ' + TEAM_NAME[t.team] + ' je srušen!', 'Team ' + TEAM_NAME[t.team] + "'s tower is destroyed!"), t.team);
       annEvent('tower', t.team);
     }
     const tg = Math.round(CFG.towerGoldTeam * (denied ? 0.5 : 1));
@@ -1611,7 +1632,7 @@ function kill(t, src){
       const stillGuarded = units.some(x => x.kind === 'tower' && x.isGuard && x.team === t.team && !x.removeMe && x !== t);
       if(!stillGuarded && ancients[t.team]){
         ancients[t.team].invuln = false;
-        announce(L('⚠️ Prijestol tima ' + TEAM_NAME[t.team] + ' je ranjiv!', '⚠️ Team ' + TEAM_NAME[t.team] + "'s throne is vulnerable!"), L('Napadnite ga!', 'Attack it!'));
+        announce(L('⚠️ Prijestol tima ' + TEAM_NAME[t.team] + ' je ranjiv!', '⚠️ Team ' + TEAM_NAME[t.team] + "'s throne is vulnerable!"), L('Napadnite ga!', 'Attack it!'), t.team);
         annEvent('throne', t.team);
       }
     }
@@ -1640,7 +1661,7 @@ function kill(t, src){
     const all = LANE_LIST.every(l => superCreeps[enemy][l]);
     feedMsg(L('🏚️ Srušena vojarna tima ' + TEAM_NAME[t.team] + ' (' + LANE_NAME[t.lane] + ')!', '🏚️ Team ' + TEAM_NAME[t.team] + "'s barracks (" + LANE_NAME[t.lane] + ') destroyed!'), TEAM_COLOR[enemy]);
     announce(all ? L('💪💪 MEGA VOJNICI!', '💪💪 MEGA CREEPS!') : L('💪 Super vojnici!', '💪 Super creeps!'),
-      L('Vojnici tima ' + TEAM_NAME[enemy] + ' na stazi ' + LANE_NAME[t.lane] + ' su sada jači!', 'Team ' + TEAM_NAME[enemy] + "'s creeps in the " + LANE_NAME[t.lane] + ' lane are now stronger!'));
+      L('Vojnici tima ' + TEAM_NAME[enemy] + ' na stazi ' + LANE_NAME[t.lane] + ' su sada jači!', 'Team ' + TEAM_NAME[enemy] + "'s creeps in the " + LANE_NAME[t.lane] + ' lane are now stronger!'), t.team);
     annEvent('barracks', t.team);
     for(const h of units){
       if(h.kind === 'hero' && h.team === enemy){
@@ -1683,9 +1704,9 @@ function levelUp(h){
   }
   if(isHuman(h)){   // i gost u mrežnoj igri dobiva svoje najave
     if(h.isPlayer) sfx('levelup');
-    if(h.level === CFG.ultLevels[0]) announceFor(h, L('🌟 ULTI dostupan!', '🌟 ULTIMATE ready!'), L('Pritisni R ili klikni + da ga naučiš!', 'Press R or click + to learn it!'));
+    if(h.level === CFG.ultLevels[0]) announceFor(h, L('🌟 ULTI dostupan!', '🌟 ULTIMATE ready!'), L('Pritisni R ili klikni + da ga naučiš!', 'Press R or click + to learn it!'), 'gold');
     if(pendingTalent(h) && !(h.isPlayer && VH < 520)) announceFor(h, LS('🎓 Talent!'),   // 📱 na mobitelu ploča talenata sama to kaže
-      L('Odaberi jedan od dva bonusa (gumbi gore)', 'Pick one of two bonuses (buttons at the top)'));
+      L('Odaberi jedan od dva bonusa (gumbi gore)', 'Pick one of two bonuses (buttons at the top)'), 'gold');
   }
 }
 
@@ -1901,7 +1922,7 @@ function takeDrake(src, el){
   }
   const n = drakeN(team, el);
   feedMsg(L('🐉 ' + (src.emoji || '') + ' ' + (src.name || '') + ' — tim ' + TEAM_NAME[team] + ' je ubio ' + d.acc + '!', '🐉 ' + (src.emoji || '') + ' ' + (src.name || '') + ' — Team ' + TEAM_NAME[team] + ' killed the ' + d.name + '!'), d.color);
-  announce(d.emoji + ' ' + d.name + (n > 1 ? ' ×' + n : '') + '!', L('Tim ' + TEAM_NAME[team] + ' zauvijek dobiva: ' + d.desc, 'Team ' + TEAM_NAME[team] + ' gets forever: ' + d.desc));
+  announce(d.emoji + ' ' + d.name + (n > 1 ? ' ×' + n : '') + '!', L('Tim ' + TEAM_NAME[team] + ' zauvijek dobiva: ' + d.desc, 'Team ' + TEAM_NAME[team] + ' gets forever: ' + d.desc), 1 - team);
   annEvent('drake', team);
   if(team === myTeam) sfx('levelup');
 }
@@ -4225,7 +4246,7 @@ function spawnWave(){
       if(waveCount % CFG.siegeEveryNthWave === 0) makeCreepOnLane(team, lane, false, true);
     }
   }
-  if(waveCount === 1){ announce(L('⚔️ Bitka počinje!', '⚔️ The battle begins!'), L('Vojnici kreću na staze — prati ih!', 'Creeps march down the lanes — follow them!')); annEvent('battle'); }
+  if(waveCount === 1){ announce(L('⚔️ Bitka počinje!', '⚔️ The battle begins!'), L('Vojnici kreću na staze — prati ih!', 'Creeps march down the lanes — follow them!'), 'gold'); annEvent('battle'); }
   if(waveCount === CFG.siegeEveryNthWave)   // samo prvi put (poslije su stalni dio vala)
     feedMsg(L('💪 Stigli su veliki vojnici!', '💪 Big creeps have arrived!'), '#fde047');
 }
@@ -4264,7 +4285,7 @@ function update(dt){
     const b = makeBarracks(br.team, br.lane, br.x, br.y);
     b.invuln = false;   // unutarnja kula te staze je već pala
     superCreeps[1 - br.team][br.lane] = false;
-    announce(L('🏚️ Vojarna obnovljena!', '🏚️ Barracks rebuilt!'), L('Tim ' + TEAM_NAME[br.team] + ' (' + LANE_NAME[br.lane] + ') — nema više super vojnika na toj stazi', 'Team ' + TEAM_NAME[br.team] + ' (' + LANE_NAME[br.lane] + ') — no more super creeps in that lane'));
+    announce(L('🏚️ Vojarna obnovljena!', '🏚️ Barracks rebuilt!'), L('Tim ' + TEAM_NAME[br.team] + ' (' + LANE_NAME[br.lane] + ') — nema više super vojnika na toj stazi', 'Team ' + TEAM_NAME[br.team] + ' (' + LANE_NAME[br.lane] + ') — no more super creeps in that lane'), 1 - br.team);
     feedMsg(L('🏚️ Obnovljena vojarna tima ' + TEAM_NAME[br.team] + ' (' + LANE_NAME[br.lane] + ')', '🏚️ Team ' + TEAM_NAME[br.team] + "'s barracks rebuilt (" + LANE_NAME[br.lane] + ')'), TEAM_COLOR[br.team]);
   }
 
@@ -4862,7 +4883,7 @@ function endGameView(winTeam){
   hoverUi = null; invDrag = null;
   if(typeof hideItemTip === 'function') hideItemTip();   // opis predmeta ne smije ostati preko završnog ekrana
   if(shopOpen) toggleShop();
-  localBanner(won ? L('🏆 POBJEDA!', '🏆 VICTORY!') : L('💔 PORAZ...', '💔 DEFEAT...'), won ? L('Neprijateljski prijestol se raspada!', 'The enemy throne is crumbling!') : L('Naš prijestol je pao...', 'Our throne has fallen...'));   // svatko svoju
+  localBanner(won ? L('🏆 POBJEDA!', '🏆 VICTORY!') : L('💔 PORAZ...', '💔 DEFEAT...'), won ? L('Neprijateljski prijestol se raspada!', 'The enemy throne is crumbling!') : L('Naš prijestol je pao...', 'Our throne has fallen...'), won ? 'gold' : 'red');   // svatko svoju
   voxSay('ann', won ? 'victory' : 'defeat');   // i kod gosta (svatko iz svoje perspektive)
   startCinematic(ANCIENT_POS[1 - winTeam]);   // kamera leti do prijestola koji se raspada
   sfx(won ? 'win' : 'lose');
@@ -6296,7 +6317,7 @@ function selectHero(i){
     const tt = HERO_TALENTS[h.id] || DEFAULT_TALENTS;
     tiles.push({ k: '🎓', cls: 'tal', e: spellIconHtml(h.id, 'T', '🌳', 'ab-img'), name: L('Talenti', 'Talents'), tag: '<span class="pasTag">🎓 LEVEL 10 / 15 / 20 / 25</span>',
       desc: '<div class="talTree">' + tt.map((tier, j) => `<div class="talRow"><span class="talL">${TALENT_LVLS[j]}</span>` +
-        `<span class="talO">${tier[0].emoji} ${tier[0].txt}</span><i>${L('ili', 'or')}</i><span class="talO">${tier[1].emoji} ${tier[1].txt}</span></div>`).reverse().join('') + '</div>' });
+        tier.map(t => `<span class="talO"><img class="talIc" src="${talentIconSrc(h.id, t)}" alt="${t.emoji}" draggable="false" onerror="this.replaceWith(document.createTextNode(this.alt))">${t.txt}</span>`).join(`<i>${L('ili', 'or')}</i>`) + '</div>').reverse().join('') + '</div>' });
   }
   const det = document.getElementById('heroDetail');
   det.innerHTML = `<div class="d-top">
@@ -7154,21 +7175,60 @@ function drawHud(){
     const f = banner.t < 0.25 ? banner.t / 0.25 : (banner.t > banner.dur ? 1 - (banner.t - banner.dur) / 0.4 : 1);
     ctx.globalAlpha = clamp(f, 0, 1);
     ctx.textAlign = 'center';
-    ctx.font = fontTxt(34, true);
-    ctx.strokeStyle = 'rgba(0,0,0,0.75)';
-    ctx.lineWidth = 6;
-    ctx.strokeText(banner.txt, VW / 2, VH * 0.26);
-    ctx.fillStyle = '#fde047';
-    ctx.fillText(banner.txt, VW / 2, VH * 0.26);
-    if(banner.sub){
-      ctx.font = fontTxt(17, true);
-      ctx.strokeStyle = 'rgba(0,0,0,0.7)';
-      ctx.lineWidth = 4;
-      ctx.strokeText(banner.sub, VW / 2, VH * 0.26 + 34);
-      ctx.fillStyle = '#fff';
-      ctx.fillText(banner.sub, VW / 2, VH * 0.26 + 34);
+    const kind = bannerKind(banner), art = BANNER_ART[kind], bim = artImg('assets/ui/banner_' + kind + '.webp');
+    if(bim){   // 🎀 v0.56: naslov i podnaslov na naslikanoj traci (plava vijest, zlatna dobra, crvena loša)
+      const k = clamp(Math.min(VH / 720, VW / 900), 0.6, 1);
+      let fs = 32 * k, ss = 15 * k;
+      ctx.font = fontTxt(fs, true);
+      const tw = ctx.measureText(banner.txt).width;
+      ctx.font = fontTxt(ss, true);
+      const sw = banner.sub ? ctx.measureText(banner.sub).width : 0;
+      const maxW = VW * 0.96;
+      let bw = Math.max(440 * k, Math.max(tw, sw) / art.tw);
+      if(bw > maxW){ fs *= maxW / bw; ss *= maxW / bw; bw = maxW; }   // predug tekst: manja slova
+      const pop = banner.t < 0.25 ? 0.82 + 0.18 * Math.sin(banner.t / 0.25 * Math.PI / 2) : 1;   // traka "iskoči"
+      const bh = bw * bim.naturalHeight / bim.naturalWidth;
+      const top = player && !player.dead && pendingTalent(player) ? TAL_PANEL_Y + TAL_PANEL_H + 6   // ne preko ploče talenata,
+        : gameTime < 0 && !gameOver && !shopOpen ? 148 : 70;                                       // okvira pripreme ni gornje trake
+      const cy = Math.max(VH * 0.24, top + bh * art.cy);
+      ctx.save();
+      ctx.translate(VW / 2, cy);
+      ctx.scale(pop, pop);
+      ctx.drawImage(bim, -bw / 2, -bh * art.cy, bw, bh);
+      ctx.textBaseline = 'middle';
+      ctx.lineJoin = 'round';
+      const ty = banner.sub ? -ss * 0.72 : 0;
+      ctx.font = fontTxt(Math.round(fs), true);
+      ctx.strokeStyle = art.stroke; ctx.lineWidth = Math.max(3, fs * 0.17);
+      ctx.strokeText(banner.txt, 0, ty);
+      ctx.fillStyle = art.title;
+      ctx.fillText(banner.txt, 0, ty);
+      if(banner.sub){
+        ctx.font = fontTxt(Math.round(ss), true);
+        ctx.lineWidth = Math.max(2.5, ss * 0.22);
+        ctx.strokeText(banner.sub, 0, ty + fs * 0.5 + ss * 0.85);
+        ctx.fillStyle = art.sub;
+        ctx.fillText(banner.sub, 0, ty + fs * 0.5 + ss * 0.85);
+      }
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    } else {   // traka se još učitava: samo tekst
+      ctx.font = fontTxt(34, true);
+      ctx.strokeStyle = 'rgba(0,0,0,0.75)';
+      ctx.lineWidth = 6;
+      ctx.strokeText(banner.txt, VW / 2, VH * 0.26);
+      ctx.fillStyle = '#fde047';
+      ctx.fillText(banner.txt, VW / 2, VH * 0.26);
+      if(banner.sub){
+        ctx.font = fontTxt(17, true);
+        ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+        ctx.lineWidth = 4;
+        ctx.strokeText(banner.sub, VW / 2, VH * 0.26 + 34);
+        ctx.fillStyle = '#fff';
+        ctx.fillText(banner.sub, VW / 2, VH * 0.26 + 34);
+      }
+      ctx.globalAlpha = 1;
     }
-    ctx.globalAlpha = 1;
   }
 
   // ----- donja ploča igrača -----
@@ -7551,26 +7611,39 @@ function drawHud(){
     // 🎓 talent: izbor jednog od dva bonusa (level 10 / 15)
     uiRects.talent = null;
     const ptal = !player.dead ? pendingTalent(player) : null;
-    if(ptal){
-      const pw = 470, ph = 62, px0 = VW / 2 - pw / 2, py0 = 76;
+    if(ptal){   // 🎨 v0.56: svaki izbor ima naslikanu ikonu (moć koju jača ili opći bonus) i tekst u dva retka
+      const pw = Math.min(560, VW - 16), ph = TAL_PANEL_H, px0 = VW / 2 - pw / 2, py0 = TAL_PANEL_Y;
       ctx.fillStyle = 'rgba(30,27,75,0.94)';
       ctx.beginPath(); ctx.roundRect(px0, py0, pw, ph, 14); ctx.fill();
       ctx.strokeStyle = '#c4b5fd'; ctx.lineWidth = 2.5;
       ctx.beginPath(); ctx.roundRect(px0, py0, pw, ph, 14); ctx.stroke();
       ctx.font = fontTxt(13, true); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillStyle = '#e9d5ff';
-      ctx.fillText(L('🎓 Talent (level ' + ptal.lvl + ') — odaberi jedan bonus:', '🎓 Talent (level ' + ptal.lvl + ') — pick one bonus:'), px0 + pw / 2, py0 + 14);
-      const bw = 215, bh = 30, by = py0 + 27;
+      ctx.fillText(L('🎓 Talent (level ' + ptal.lvl + ') — odaberi jedan bonus:', '🎓 Talent (level ' + ptal.lvl + ') — pick one bonus:'), px0 + pw / 2, py0 + 15);
+      const bw = (pw - 40) / 2, bh = 64, by = py0 + 30;
       const ra = { x: px0 + 14, y: by, w: bw, h: bh }, rb = { x: px0 + pw - 14 - bw, y: by, w: bw, h: bh };
       uiRects.talent = { lvl: ptal.lvl, a: ra, b: rb };
       for(const [r, t] of [[ra, ptal.a], [rb, ptal.b]]){
         const hov = inRect(mouse.sx, mouse.sy, r);
         ctx.fillStyle = hov ? '#7c3aed' : '#4c1d95';
-        ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 9); ctx.fill();
+        ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 11); ctx.fill();
         ctx.strokeStyle = hov ? '#fde047' : '#a78bfa'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 9); ctx.stroke();
-        ctx.fillStyle = '#fff'; ctx.font = fontTxt(13, true);
-        ctx.fillText(t.emoji + ' ' + t.txt, r.x + r.w / 2, r.y + r.h / 2);
+        ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 11); ctx.stroke();
+        const ic = bh - 12, ix = r.x + 6, iy = r.y + 6;
+        const tim = artImg(talentIconSrc(player.hero.id, t));
+        ctx.save();
+        ctx.beginPath(); ctx.roundRect(ix, iy, ic, ic, 8); ctx.clip();
+        if(tim) ctx.drawImage(tim, ix, iy, ic, ic);
+        else { ctx.fillStyle = '#2e1065'; ctx.fillRect(ix, iy, ic, ic); ctx.fillStyle = '#fff'; ctx.font = fontTxt(26, true); ctx.fillText(t.emoji, ix + ic / 2, iy + ic / 2 + 1); }
+        ctx.restore();
+        ctx.strokeStyle = hov ? '#fde047' : '#fcd34d'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.roundRect(ix, iy, ic, ic, 8); ctx.stroke();
+        const tx = ix + ic + 9, tw = r.x + r.w - 8 - tx;
+        let fsz = 14, lines;
+        do { ctx.font = fontTxt(fsz, true); lines = wrapLines(t.txt, tw); } while(lines.length > 2 && --fsz > 10);
+        ctx.textAlign = 'left'; ctx.fillStyle = '#fff';
+        lines.forEach((ln, i) => ctx.fillText(ln, tx, r.y + r.h / 2 + (i - (lines.length - 1) / 2) * (fsz + 3)));
+        ctx.textAlign = 'center';
       }
     }
     uiRects.buyback = null;

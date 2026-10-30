@@ -310,8 +310,8 @@ function buildSnapshot(){
     fl: floats.map(f => { const o = { x: Math.round(f.x), y: Math.round(f.y), hh: Math.round(f.h), tx: netTx(f.txt), cl: f.color, sz: f.size, t: +f.t.toFixed(2) }; if(f.team >= 0) o.tm = f.team; if(f.st){ o.st = f.st; o.ro = +f.rot.toFixed(2); } if(f.who) o.wh = f.who; return o; }),
     fd: feed.map(f => f.team >= 0 ? { tx: netTx(f.txt), cl: f.color, t: +f.t.toFixed(2), tm: f.team } : { tx: netTx(f.txt), cl: f.color, t: +f.t.toFixed(2) }),
     // najave: zajednička (za sve) i gostova osobna (Bravo!, Ne brini!, ulti…) — gost prikaže svaku novu (po id-u)
-    bn: netBanner && gameTime - netBanner.t0 < 3 ? [netBanner.id, netTx(netBanner.txt), netTx(netBanner.sub)] : 0,
-    gb: guestBanner && gameTime - guestBanner.t0 < 3 ? [guestBanner.id, netTx(guestBanner.txt), netTx(guestBanner.sub)] : 0,
+    bn: netBanner && gameTime - netBanner.t0 < 3 ? [netBanner.id, netTx(netBanner.txt), netTx(netBanner.sub), netBanner.tone] : 0,
+    gb: guestBanner && gameTime - guestBanner.t0 < 3 ? [guestBanner.id, netTx(guestBanner.txt), netTx(guestBanner.sub), guestBanner.tone] : 0,   // 🎀 + boja trake
     av: annLog.filter(a => gameTime - a.t < 3).map(a => [a.n, a.key, a.team]),   // 📣 najave iz zadnje 3 s
     me: remoteHero ? heroExtras(remoteHero) : 0,
     nf: +nightForceT.toFixed(1),
@@ -512,7 +512,7 @@ function applySnapshot(d){
   feed = d.fd.map(f => ({ txt: locTx(f.tx), color: f.cl, t: f.t, team: f.tm == null ? -1 : f.tm }));
   {   // nova najava (zajednička ili moja osobna); lokalne (pobjeda/poraz) domaćin ne prepisuje
     const nb = [d.bn, d.gb].filter(b => Array.isArray(b) && b[0] > (net.bannerSeen || 0)).sort((a, b) => a[0] - b[0]).pop();
-    if(nb){ net.bannerSeen = nb[0]; banner = nb[1] ? { txt: locTx(nb[1]), sub: locTx(nb[2]) || '', t: 0, dur: 3 } : null; }
+    if(nb){ net.bannerSeen = nb[0]; banner = nb[1] ? { txt: locTx(nb[1]), sub: locTx(nb[2]) || '', t: 0, dur: 3, tone: nb[3] == null ? 'blue' : nb[3] } : null; }
   }
   for(const a of d.av || []) if(a[0] > VOX.annSeen){ VOX.annSeen = a[0]; annPlay(a[1], a[2]); }   // 📣 iz perspektive gosta
   nightForceT = d.nf || 0;

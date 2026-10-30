@@ -18,6 +18,7 @@ const SR_PHRASES = [
 ];
 const SR_WORDS = {
   // v0.56 (džungla, predmeti; nova imena predmeta)
+  "vijest":"vest", "vijesti":"vesti",
   "medvjeđe":"medveđe", "medvjeđa":"medveđa", "medvjeđi":"medveđi", "vjetrova":"vetrova", "drvosječina":"drvosečina", "drvosječa":"drvoseča",
   "bijesa":"besa", "stijeg":"steg", "krijesnica":"svitaca", "iscjeliteljske":"isceliteljske", "šalica":"šolja", "šalicu":"šolju",
   "krijesnice":"svici", "tenisice":"patike", "hrvački":"rvački", "željezni":"gvozdeni", "željezna":"gvozdena", "željezo":"gvožđe",
