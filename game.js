@@ -7115,8 +7115,9 @@ function drawBanner(){
     if(bw > maxW){ fs *= maxW / bw; ss *= maxW / bw; bw = maxW; }   // predug tekst: manja slova
     const pop = banner.t < 0.25 ? 0.82 + 0.18 * Math.sin(banner.t / 0.25 * Math.PI / 2) : 1;   // traka "iskoči"
     const bh = bw * bim.naturalHeight / bim.naturalWidth;
-    const top = player && !player.dead && pendingTalent(player) ? TAL_PANEL_Y + TAL_PANEL_H + 6   // ne preko ploče talenata,
-      : gameTime < 0 && !gameOver && !shopOpen ? 148 : 70;                                       // okvira pripreme ni gornje trake
+    const top = VH < 520 ? 70   // 📱 nizak zaslon: nema mjesta ispod okvira — traka je gore (ploče se crtaju preko nje)
+      : player && !player.dead && pendingTalent(player) ? TAL_PANEL_Y + TAL_PANEL_H + 6   // ne preko ploče talenata,
+      : gameTime < 0 && !gameOver && !shopOpen ? 148 : 70;                                // okvira pripreme ni gornje trake
     const cy = Math.max(VH * 0.24, top + bh * art.cy);
     ctx.save();
     ctx.translate(VW / 2, cy);
