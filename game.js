@@ -986,7 +986,7 @@ function applyPoison(t, dps, dur, src, label){
   st.poisonSrc = src || null;
   if(t.kind === 'hero') addFloat(t.x, t.y, label || L('🤢 Otrovan!', '🤢 Poisoned!'), label ? '#fca5a5' : '#86efac', 13);
 }
-// Kraljevski oklov (BKB): kratko ništa ne omamljuje, usporava, truje...
+// Kraljevski oklop: kratko ništa ne omamljuje, usporava, truje...
 function applyImmune(h, dur){
   const st = h.status;
   st.immuneT = Math.max(st.immuneT, dur);
@@ -1162,7 +1162,7 @@ function updateCharge(u, dt){
   if(c.left <= 0.5 || u.x <= 40 || u.x >= WORLD - 40 || u.y <= 40 || u.y >= WORLD - 40) u.charge = null;
   return true;
 }
-/* predmeti s gutljajima / punjenjima (Boca, Prašina, Oko) */
+/* predmeti s gutljajima / punjenjima (Čutura, Prah otkrića, Čarobno oko) */
 function itemCharges(h, id){
   const v = h.itemCharges[id];
   return v == null ? (ITEM_BY_ID[id].charges || 0) : v;
@@ -1249,16 +1249,16 @@ function applyDamage(t, amount, src, kind){
       addFloat(t.x, t.y, L('🛡️ Bez vojnika kula prima pola štete!', '🛡️ Without creeps, towers take half damage!'), '#93c5fd', 13);
     }
   }
-  if(t.clarityT > 0 && src && src.kind === 'hero' && src.team !== t.team){   // 💧 udarac prekida Bistrinu
+  if(t.clarityT > 0 && src && src.kind === 'hero' && src.team !== t.team){   // 💧 udarac prekida Plavu kap
     t.clarityT = 0;
-    if(isHuman(t)) addFloat(t.x, t.y, L('💧 Bistrina prekinuta!', '💧 Clarity interrupted!'), '#7dd3fc', 13, t.team);
+    if(isHuman(t)) addFloat(t.x, t.y, L('💧 Plava kap prekinuta!', '💧 Blue Drop interrupted!'), '#7dd3fc', 13, t.team);
   }
   if(kind !== 'atk' && src && src.kind === 'hero'){
     if(abCtx && abCtx.src === src){ const b = abBonus(src, abCtx.key, 'dmg'); if(b) amount += b; }   // 🎓 talent: jača moć
-    if(src.spellAmp || src.itemAmp) amount *= 1 + (src.spellAmp || 0) + (src.itemAmp || 0);          // 🎓 jačina magija (📘 Kaja)
+    if(src.spellAmp || src.itemAmp) amount *= 1 + (src.spellAmp || 0) + (src.itemAmp || 0);          // 🎓 jačina magija (📘 Knjiga čarolija)
     amount *= 1 + (src.int + (src.itemAttr ? src.itemAttr.int : 0)) * CFG.intSpellAmp;              // 🧠 inteligencija jača moći
   }
-  if(kind !== 'atk' && t.mres) amount *= 1 - t.mres;   // 🧥 v0.56 otpor magiji (Ogrtač, Kapuljača, Lula…)
+  if(kind !== 'atk' && t.mres) amount *= 1 - t.mres;   // 🧥 v0.56 otpor magiji (Vuneni ogrtač, Kapa protiv čarolija, Truba zaštite…)
   if(kind === 'atk' && t.staticT > 0 && src && !isStructure(src) && src.team !== t.team && Math.random() < 0.2){   // 🌩️ statički štit
     addLine(t.x, t.y, src.x, src.y, '#fde047', 4, 0.2); applyDamage(src, 200, t, true);
   }
@@ -1411,7 +1411,7 @@ function kill(t, src){
             .find(h => h.items.length < CFG.inventorySlots || (h.backpack || []).length < BACKPACK_SLOTS);
           if(taker){
             giveItem(taker, cheese); delete taker.itemCharges.cheese; recomputeItemStats(taker);
-            feedMsg(L('🧀 ' + taker.emoji + ' ' + taker.name + ' je dobio Zmajev sir!', '🧀 ' + taker.emoji + ' ' + taker.name + ' got the Dragon Cheese!'), '#fde047');
+            feedMsg(L('🧀 ' + taker.emoji + ' ' + taker.name + ' je dobio Zmajevu poslasticu!', '🧀 ' + taker.emoji + ' ' + taker.name + ' got the Dragon Treat!'), '#fde047');
             if(taker.isPlayer) refreshShop();
           }
         }
@@ -1425,9 +1425,9 @@ function kill(t, src){
         src.status.dmgMulF = Math.max(src.status.dmgMulF, 1.3);
         applyHaste(src, 1.15, 60);
         addFloat(src.x, src.y, L('🐲 Zmajev blagoslov!', '🐲 Dragon Blessing!'), '#fde047', 17);
-        // 🛡️ Zmajev štit (Aegis): ubojica se nakon pogibije vraća na mjestu
+        // 🛡️ Zmajev štit: ubojica se nakon pogibije vraća na mjestu
         src.aegis = true; src.aegisT = CFG.aegisDuration;
-        feedMsg(L('🛡️ ' + src.emoji + ' ' + src.name + ' ima Zmajev štit!', '🛡️ ' + src.emoji + ' ' + src.name + ' has the Aegis!'), '#fde047');
+        feedMsg(L('🛡️ ' + src.emoji + ' ' + src.name + ' ima Zmajev štit!', '🛡️ ' + src.emoji + ' ' + src.name + ' has the Dragon Shield!'), '#fde047');
         sfx('kill');
       }
     }
@@ -1441,7 +1441,7 @@ function kill(t, src){
       t.aegis = false; t.aegisT = 0;
       t.reviveAt = { x: t.x, y: t.y };
       t.deadT = 3;
-      announce(L('🛡️ Zmajev štit!', '🛡️ Aegis!'), L(t.emoji + ' ' + t.name + ' se vraća za 3 sekunde!', t.emoji + ' ' + t.name + ' comes back in 3 seconds!'));
+      announce(L('🛡️ Zmajev štit!', '🛡️ Dragon Shield!'), L(t.emoji + ' ' + t.name + ' se vraća za 3 sekunde!', t.emoji + ' ' + t.name + ' comes back in 3 seconds!'));
     }
     t.moveTarget = null; t.attackTarget = null;
     t.tpChannel = 0; t.tpDest = null; t.danceT = 0; t.chan = null;
@@ -2003,7 +2003,7 @@ function botUseSummoners(u, eh){
     }
   });
 }
-/* 🩸🪖 aure predmeta (Vladimirov dar, Napadački oklop): računaju se jednom po otkucaju za sve junake */
+/* 🩸🪖 aure predmeta (Vučji stijeg, Generalov oklop, Okrugli štitić, Iscjeliteljske čarape): računaju se jednom po otkucaju za sve junake */
 function updateItemAuras(){
   const heroes = units.filter(u => u.kind === 'hero');
   for(const h of heroes){ h.auraArmor = 0; h.auraAspd = 0; h.auraLs = 0; h.auraMp = 0; }
@@ -2018,7 +2018,7 @@ function updateItemAuras(){
     }
   }
 }
-/* 🎇 Čarobni štapić: puni se kad neprijateljski junak u blizini baci magiju */
+/* 🎇 Iskričavi štapić: puni se kad neprijateljski junak u blizini baci magiju */
 function chargeWands(caster){
   for(const h of units){
     if(h.kind !== 'hero' || h.team === caster.team || h.dead || !h.ifx || !h.ifx.wand || dist(h, caster) > 1200) continue;
@@ -2081,7 +2081,7 @@ function castAbility(u, i, aim){
   }
   u.mp -= abMana(u, ab);
   if(u.isPlayer) u.qCasts = (u.qCasts || 0) + 1;   // 🎯 zadaci
-  ab.cd = Math.max(0.5, ab.def.cd * (1 - Math.min(0.5, (u.cdr || 0) + (u.itemCdr || 0)) - (u.jbuff && u.jbuff.blue > 0 ? 0.15 : 0)) + abBonus(u, ab.def.key, 'cd'));   // 🎓 talent / ⚛️ Oktarinska jezgra / 🔵 plavi buff: kraće hlađenje
+  ab.cd = Math.max(0.5, ab.def.cd * (1 - Math.min(0.5, (u.cdr || 0) + (u.itemCdr || 0)) - (u.jbuff && u.jbuff.blue > 0 ? 0.15 : 0)) + abBonus(u, ab.def.key, 'cd'));   // 🎓 talent / ⚛️ Čarobna jezgra / 🔵 plavi buff: kraće hlađenje
   if(u.cullRefresh){ ab.cd = 0; u.cullRefresh = false; }   // 🪓 Smrtni udarac: pobjeda nad junakom = ulti odmah spreman
   if(u.windup){ u.windup = null; u.atkTimer = 0; }   // čaranje prekida zamah — napad nije potrošen
   u.castAim = aim ? { x: aim.x, y: aim.y } : null;   // 3D: efekt na mjestu cilja
@@ -2343,7 +2343,7 @@ function separation(){
 
 /* ================= Borba ================= */
 function performAttack(u, t){
-  if(u.status.disarmT > 0){   // ⚜️ Nebeska helebarda: razoružan ne može udarati
+  if(u.status.disarmT > 0){   // ⚜️ Gardijska helebarda: razoružan ne može udarati
     u.atkTimer = 0.25;
     if(isHuman(u) && gameTime - (u.disarmMsgT || -9) > 1.5){ u.disarmMsgT = gameTime; addFloat(u.x, u.y - 20, L('⚜️ Razoružan!', '⚜️ Disarmed!'), '#fde68a', 13, u.team); }
     return;
@@ -2360,7 +2360,7 @@ function performAttack(u, t){
   if(u.status.invisT > 0){
     const sj = passiveRank(u, 'sjena');
     if(sj) shadowBonus = 40 + 30 * sj;
-    if(u.sbBonus) shadowBonus += u.sbBonus;   // 🌒 Sjenovita oštrica
+    if(u.sbBonus) shadowBonus += u.sbBonus;   // 🌒 Nevidljivi bodež
     u.sbBonus = 0;
     u.status.invisT = 0;   // napad prekida nevidljivost
   }
@@ -2414,9 +2414,9 @@ function performAttack(u, t){
   const ifx = u.ifx || {};
   for(const c of ifx.crit || []) if(Math.random() < c.c) critM = Math.max(critM, c.m);   // 💥 Kristalni nož / Dedal: najjači krit
   if(critM > 1){ dmg *= critM; crit = true; }
-  if(ifx.creepDmg && (t.kind === 'creep' || t.kind === 'neutral')) dmg += ifx.creepDmg * (u.projSpeed > 0 ? 0.5 : 1);   // ⛏️ Sjekirica
+  if(ifx.creepDmg && (t.kind === 'creep' || t.kind === 'neutral')) dmg += ifx.creepDmg * (u.projSpeed > 0 ? 0.5 : 1);   // ⛏️ Drvosječina sjekirica
   if(ifx.hunt && t.kind === 'neutral') dmg += ifx.hunt.dmg * (u.projSpeed > 0 ? 0.7 : 1);                              // 🐾 Lovački nož
-  // 🔨 Lubanjolomac: tresak (najviše jednom u 2 s)
+  // 🔨 Kameni malj: tresak (najviše jednom u 2 s)
   const bashProc = !!(ifx.bash && gameTime >= (u.bashT || 0) && t.kind !== 'tower' && Math.random() < (u.projSpeed > 0 ? ifx.bash.cr : ifx.bash.c));
   if(bashProc) u.bashT = gameTime + 2;
   const mkbProc = !!(ifx.proc && Math.random() < ifx.proc.c);
@@ -2458,8 +2458,8 @@ function performAttack(u, t){
     // ---- predmeti ----
     if(bashProc && !tt.dead && !isStructure(tt)){ applyStun(tt, ifx.bash.t); applyDamage(tt, ifx.bash.dmg, u); addFloat(tt.x, tt.y, L('🔨 Tresak!', '🔨 Bash!'), '#e5e7eb', 15); }
     if(mkbProc && !tt.dead) applyDamage(tt, ifx.proc.dmg, u);                     // 🐒 čarobna šteta
-    if(ifx.cold && !isStructure(tt)) applySlow(tt, ifx.cold.f, ifx.cold.t);       // 🧊 Oko mraza
-    if(ifx.mburn && tt.maxmp > 0 && tt.mp > 0 && !tt.dead){                       // 🪀 Raspršna oštrica: pali manu
+    if(ifx.cold && !isStructure(tt)) applySlow(tt, ifx.cold.f, ifx.cold.t);       // 🧊 Ledeno srce
+    if(ifx.mburn && tt.maxmp > 0 && tt.mp > 0 && !tt.dead){                       // 🪀 Oštrica ispijanja: pali manu
       const b = Math.min(tt.mp, ifx.mburn.mp * (u.projSpeed > 0 ? 0.6 : 1));
       tt.mp -= b; applyDamage(tt, b * ifx.mburn.f, u, true);
     }
@@ -2479,11 +2479,11 @@ function performAttack(u, t){
     }
   };
   // pucanje uzbrdo zna promašiti — visinska prednost kao u DotA!
-  const ts = !!ifx.trueStrike;   // 🐒 Majmunova šipka: nikad ne promašuje
+  const ts = !!ifx.trueStrike;   // 🐒 Nepromašivi štap: nikad ne promašuje
   const miss = (!ts && (groundHeight(t.x, t.y) - groundHeight(u.x, u.y) > 25) && Math.random() < CFG.uphillMissChance) ||
     (u.status.blindT > 0 && Math.random() < u.status.blindF) ||   // 😵 tinta / vrtoglavica
     (!ts && t.dodgeT > 0 && Math.random() < t.dodgeF) ||          // 🥴 Pijani korak
-    (!ts && (t.evasion > 0 || t.talEva > 0) && Math.random() < 1 - (1 - (t.evasion || 0)) * (1 - (t.talEva || 0)));   // 🦋 Leptir / 🎓 talent: izbjegavanje
+    (!ts && (t.evasion > 0 || t.talEva > 0) && Math.random() < 1 - (1 - (t.evasion || 0)) * (1 - (t.talEva || 0)));   // 🦋 Plesna krila / 🎓 talent: izbjegavanje
   u.atkHeavy = crit || komboHit || jinProc || clawProc || shadowBonus > 0 || bashProc || hsProc || mkProc;   // 3D: jači zamah (attack2)
   u.atkCrit = crit && !miss;   // 3D: bljesak oružja prije kritičnog udarca
   // kao u DotA: zamah traje do "kadra udarca" animacije, tek tada šteta / projektil (kula puca odmah)
@@ -2492,7 +2492,7 @@ function performAttack(u, t){
   if(wind > 0) u.windup = { t: gameTime + wind, target: t, deliver };
   else deliver();
 }
-/* ⛈️ v0.56 munja u lancu (Vrtlog munja, Gromovnik): pogodi metu, pa skače na najbliže neprijatelje koje još nije pogodila */
+/* ⛈️ v0.56 munja u lancu (Olujni čekić, Gromovnik): pogodi metu, pa skače na najbliže neprijatelje koje još nije pogodila */
 function itemChain(u, first, ch){
   const hit = new Set();
   let cur = first, px = u.x, py = u.y;
@@ -3610,9 +3610,9 @@ function recomputeItemStats(h){
     ls = Math.max(ls, s.lifesteal || 0);                       // krađa života se ne zbraja (kao u DotA)
     ev = 1 - (1 - ev) * (1 - (s.evasion || 0));
     mres = 1 - (1 - mres) * (1 - (s.mres || 0)); cdr = Math.max(cdr, s.cdr || 0); amp += s.amp || 0;
-    if(it.chain && (!fx.chain || it.chain.dmg > fx.chain.dmg)) fx.chain = it.chain;   // ⛈️ Vrtlog munja / 🌩️ Gromovnik
-    if(it.cold) fx.cold = it.cold;      // 🧊 Oko mraza
-    if(it.mburn) fx.mburn = it.mburn;   // 🪀 Raspršna oštrica
+    if(it.chain && (!fx.chain || it.chain.dmg > fx.chain.dmg)) fx.chain = it.chain;   // ⛈️ Olujni čekić / 🌩️ Gromovnik
+    if(it.cold) fx.cold = it.cold;      // 🧊 Ledeno srce
+    if(it.mburn) fx.mburn = it.mburn;   // 🪀 Oštrica ispijanja
     // pasivni efekti (DotA pravila: najjači krit, jedan tresak, zbrojeni sjekirica-bonus…)
     if(it.crit) fx.crit.push(it.crit);
     if(it.bash && !fx.bash) fx.bash = it.bash;
@@ -3882,7 +3882,7 @@ function updateUnit(u, dt){
     if(u.buybackCd > 0) u.buybackCd -= dt;
     if(u.aegis){
       u.aegisT -= dt;
-      if(u.aegisT <= 0){ u.aegis = false; if(isHuman(u)) addFloat(u.x, u.y, L('🛡️ Zmajev štit je istekao', '🛡️ The Aegis expired'), '#e5e7eb', 13, u.team); }
+      if(u.aegisT <= 0){ u.aegis = false; if(isHuman(u)) addFloat(u.x, u.y, L('🛡️ Zmajev štit je istekao', '🛡️ The Dragon Shield expired'), '#e5e7eb', 13, u.team); }
     }
     const med = passiveRank(u, 'med');   // Med (Zuja E): aura liječenja
     if(med) for(const e of units){
@@ -3950,13 +3950,13 @@ function updateUnit(u, dt){
     if(distXY(u.x, u.y, f.x, f.y) < CFG.fountainRadius){
       u.hp = Math.min(u.maxhp, u.hp + u.maxhp * CFG.fountainHeal * dt);
       u.mp = Math.min(u.maxmp, u.mp + u.maxmp * CFG.fountainHeal * dt);
-      for(const it of u.items) if(it.charges && !it.consume && itemCharges(u, it.id) < it.charges){   // 🍼 Boca se puni
+      for(const it of u.items) if(it.charges && !it.consume && itemCharges(u, it.id) < it.charges){   // 🍼 Čutura se puni
         u.itemCharges[it.id] = it.charges;
         if(isHuman(u)) addFloat(u.x, u.y, it.emoji + L(' Napunjeno!', ' Refilled!'), '#7dd3fc', 13, u.team);
       }
     }
-    if(u.tangoT > 0){ u.tangoT -= dt; u.hp = Math.min(u.maxhp, u.hp + 7.2 * dt); }        // 🌿 Tango
-    if(u.clarityT > 0){ u.clarityT -= dt; u.mp = Math.min(u.maxmp, u.mp + 7.5 * dt); }    // 💧 Bistrina
+    if(u.tangoT > 0){ u.tangoT -= dt; u.hp = Math.min(u.maxhp, u.hp + 7.2 * dt); }        // 🌿 Šumska grickalica
+    if(u.clarityT > 0){ u.clarityT -= dt; u.mp = Math.min(u.maxmp, u.mp + 7.5 * dt); }    // 💧 Plava kap
     if(u.runeRegenT > 0){
       u.runeRegenT -= dt;
       u.hp = Math.min(u.maxhp, u.hp + u.maxhp * 0.06 * dt);
@@ -6428,7 +6428,7 @@ const TIPS = [
     test: p => { const it = tipNextBuy(p); if(!it) return false; tip.buyName = it.emoji + ' ' + it.name; return true; } },
   { k: 'jungle', txt: L('🌲 U džungli si! Udari 🦎 guštera u malom kampu (označen na mapi) — kad mu je malo života, baci 🌩️ Kaznu (D ili F)', '🌲 You are the jungler! Hit a 🦎 lizard at the small camp (marked on the map) — when it is low, cast 🌩️ Smite (D or F)'),   // v0.56
     test: p => p.jungler && gameTime > 3 && gameTime < 90 && (p.lastHits || 0) < 2 },
-  { k: 'tango', txt: L('🌿 Klikni Tango pa DRVO — junak pojede drvo i polako se liječi', '🌿 Click Tango, then a TREE — your hero eats it and slowly heals'),
+  { k: 'tango', txt: L('🌿 Klikni Šumsku grickalicu pa DRVO — junak pojede drvo i polako se liječi', '🌿 Click the Forest Snack, then a TREE — your hero eats it and slowly heals'),
     test: p => itemCharges(p, 'tango') > 0 && p.items.some(i => i.id === 'tango') && p.hp < p.maxhp * 0.65 && gameTime - tip.combatT > 3 },
   { k: 'ult', txt: L('🌟 Level 6 — otključaj ULTI! Klikni + iznad tipke R', '🌟 Level 6 — unlock your ULT! Click + above the R key'),
     test: p => p.level >= 6 && p.skillPoints > 0 && p.abilities[3] && p.abilities[3].rank === 0 },
@@ -6804,7 +6804,7 @@ function buffList(h){
   }
   if(h.jbuff){ add('🔵', JUNGLE_BUFFS.blue.name, h.jbuff.blue, true, JUNGLE_BUFFS.blue.desc); add('🔴', JUNGLE_BUFFS.red.name, h.jbuff.red, true, JUNGLE_BUFFS.red.desc); }
   // (ovdje je L lokalni popis, pa se tekst bira s EN ? 'English' : 'hrvatski')
-  if(h.aegis) add('🛡️', EN ? 'Aegis' : LS('Zmajev štit'), h.aegisT, true, EN ? 'one free respawn where you fell' : LS('jedno besplatno oživljavanje na mjestu smrti'));
+  if(h.aegis) add('🛡️', EN ? 'Dragon Shield' : LS('Zmajev štit'), h.aegisT, true, EN ? 'one free respawn where you fell' : LS('jedno besplatno oživljavanje na mjestu smrti'));
   if(st.dmgMulT > 0 && st.dmgMulF > 1) add('⚔️', EN ? 'Stronger attacks' : LS('Jači udarci'), st.dmgMulT, true, EN ? '+' + Math.round((st.dmgMulF - 1) * 100) + '% attack damage' : LS('+' + Math.round((st.dmgMulF - 1) * 100) + '% štete udarcima'));
   add('🫧', EN ? 'Barrier' : LS('Barijera'), h.barrierT, true, EN ? 'shield that blocks ' + Math.round(h.barrierHp || 0) + ' damage' : LS('štit od ' + Math.round(h.barrierHp || 0) + ' štete'));
   add('👑', EN ? 'Unstoppable' : LS('Nepokolebljiv'), st.immuneT, true, EN ? 'nothing can stun or slow you' : LS('ništa te ne može omamiti ni usporiti'));

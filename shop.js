@@ -276,7 +276,7 @@ function quickBuyList(h, id){
   if(!target) return [];
   const inv = h.items.concat(h.backpack || []).map(it => it.id);
   const need = [];
-  // dijelovi koji fale; podrecept (npr. Kristalni nož za Dedalovu oštricu) tek kad su mu svi dijelovi tu
+  // dijelovi koji fale; podrecept (npr. Kristalni nož za Oštricu pogotka) tek kad su mu svi dijelovi tu
   function walk(it){
     const k = inv.indexOf(it.id);
     if(k >= 0){ inv.splice(k, 1); return; }

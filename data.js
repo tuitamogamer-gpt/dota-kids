@@ -66,7 +66,7 @@ const CFG = {
   heroVsStructure: 0.5,     // junaci udaraju građevine slabije (utvrđeni oklop kao u Allstarsu)
   lateSiege: 0.6,           // 🏰 v0.54: od 25. do 40. min junaci sve jače udaraju građevine (do ×1.6) — izjednačena igra ne zapne pred bazom
   siegeVsStructure: 1.25,   // opsadni vojnici jače
-  towerArmor: 8,            // 🛡️ oklop građevina (smanjuje štetu udaraca; Oštrica pustoši ga skida)
+  towerArmor: 8,            // 🛡️ oklop građevina (smanjuje štetu udaraca; Mač sumraka ga skida)
   barracksArmor: 6,
   barracksGoldTeam: 100,    // bilo 150
   superCreepHp: 1.6,        // vojnici postaju "super" kad padne vojarna
@@ -74,7 +74,7 @@ const CFG = {
   buybackBase: 100,         // otkup (buyback): cijena = base + level * perLvl
   buybackPerLvl: 20,
   buybackCd: 180,
-  aegisDuration: 300,       // Zmajev štit (Aegis) traje 5 min
+  aegisDuration: 300,       // Zmajev štit traje 5 min
   glyphCd: 300,             // Glif utvrde (F): sve građevine tima neranjive 5 s
   glyphDur: 5,
   denyHp: 0.5,              // vlastiti vojnik ispod 50% života može se uskratiti (deny)
@@ -1962,7 +1962,7 @@ function itemTarget(h, aim, range, heroOnly){
 const ITEMS = [
   // ======================= OSNOVNI =======================
   // ----- 🧪 potrošno -----
-  { id:'tango',  emoji:'🌿', name:LS('Tango'), cat:'cons', cost:90, charges:3, consume:true, stats:{},
+  { id:'tango',  emoji:'🌿', name:L('Šumska grickalica', 'Forest Snack'), cat:'cons', cost:90, charges:3, consume:true, stats:{},
     act:L('Klikni na DRVO i pojedi ga: 16 s polako vraćaš 115 života (drvo nestane, izraste za 3 min)', 'Click a TREE and eat it: slowly restore 115 HP over 16 s (the tree disappears and grows back in 3 min)'), lore:L('Svježi listovi drveća — omiljena užina svakog junaka.', 'Fresh tree leaves — every hero\'s favorite snack.'),
     active:{ cd:1, mana:0, target:'tree', castRange:165,
       use(h, aim){
@@ -1976,12 +1976,12 @@ const ITEMS = [
         burst(h.x, h.y, '#86efac', 10, 120, 4);
         return true;
       } } },
-  { id:'potion', emoji:'🧪', name:L('Ljekoviti melem', 'Healing Salve'), cat:'cons', cost:120, instant:true, heal:320, stats:{},
+  { id:'potion', emoji:'🧪', name:L('Biljni napitak', 'Herbal Potion'), cat:'cons', cost:120, instant:true, heal:320, stats:{},
     act:L('Odmah vrati 320 života (ne zauzima torbu)', 'Instantly restores 320 HP (takes no inventory slot)'), lore:L('Gorko je, ali radi!', 'It\'s bitter, but it works!') },
-  { id:'clarity', emoji:'💧', name:L('Bistrina', 'Clarity'), cat:'cons', cost:60, charges:1, consume:true, stats:{},
+  { id:'clarity', emoji:'💧', name:L('Plava kap', 'Blue Drop'), cat:'cons', cost:60, charges:1, consume:true, stats:{},
     act:L('Popij: 20 s polako vraćaš 150 mane — prekida je udarac neprijateljskog junaka', 'Drink: slowly restore 150 mana over 20 s — a hit from an enemy hero stops it'), lore:L('Kristalno čista voda iz planinskog izvora.', 'Crystal-clear water from a mountain spring.'),
     active:{ cd:1, mana:0, use(h){ h.clarityT = 20; useCharge(h, 'clarity'); burst(h.x, h.y, '#7dd3fc', 10, 120, 4); return true; } } },
-  { id:'dust',   emoji:'🌫️', name:L('Prašina otkrivanja', 'Dust of Appearance'), cat:'cons', cost:90, charges:2, consume:true, stats:{},
+  { id:'dust',   emoji:'🌫️', name:L('Prah otkrića', 'Reveal Powder'), cat:'cons', cost:90, charges:2, consume:true, stats:{},
     act:L('Otkrij nevidljive neprijatelje oko sebe (650) na 8 s', 'Reveal invisible enemies around you (650) for 8 s'), lore:L('Puhni i sve se vidi!', 'Blow it and everything shows up!'),
     active:{ cd:8, mana:0,
       use(h){
@@ -1996,7 +1996,7 @@ const ITEMS = [
         if(n === 0 && isHuman(h)) addFloat(h.x, h.y, L('🌫️ Nikoga skrivenog…', '🌫️ Nobody hiding…'), '#e5e7eb', 13);
         return true;
       } } },
-  { id:'eye',    emoji:'👁️', name:L('Oko promatrač', 'Watcher Ward'), cat:'cons', cost:150, charges:2, consume:true, stats:{},
+  { id:'eye',    emoji:'👁️', name:L('Čarobno oko', 'Magic Eye'), cat:'cons', cost:150, charges:2, consume:true, stats:{},
     act:L('Postavi oko koje 2 min gleda kroz maglu rata (domet 500)', 'Place a ward that sees through the fog of war for 2 min (range 500)'), lore:L('Nikad ne trepće.', 'It never blinks.'),
     active:{ cd:2, mana:0, target:'point', castRange:500,
       use(h, aim){
@@ -2006,25 +2006,25 @@ const ITEMS = [
         ring(p.x, p.y, 400, '#c4b5fd');
         return true;
       } } },
-  { id:'bottle', emoji:'🍼', name:L('Boca', 'Bottle'), cat:'cons', cost:340, charges:3, stats:{},
+  { id:'bottle', emoji:'🍼', name:L('Izvorska čutura', 'Spring Flask'), cat:'cons', cost:340, charges:3, stats:{},
     act:L('Gutljaj: +130 života i +70 mane (3 gutljaja, puni se kod fontane)', 'Sip: +130 HP and +70 mana (3 sips, refills at the fountain)'), lore:L('Nikad je ne zaboravi napuniti!', 'Never forget to refill it!'),
     active:{ cd:3, mana:0,
       use(h){
-        if(itemCharges(h, 'bottle') <= 0){ if(isHuman(h)) addFloat(h.x, h.y, L('🍼 Boca je prazna — napuni je kod fontane!', '🍼 The bottle is empty — refill it at the fountain!'), '#e5e7eb', 13); return false; }
+        if(itemCharges(h, 'bottle') <= 0){ if(isHuman(h)) addFloat(h.x, h.y, L('🍼 Čutura je prazna — napuni je kod fontane!', '🍼 The flask is empty — refill it at the fountain!'), '#e5e7eb', 13); return false; }
         useCharge(h, 'bottle'); heal(h, 130); h.mp = Math.min(h.maxmp, h.mp + 70);
         return true;
       } } },
-  { id:'cheese', emoji:'🧀', name:L('Zmajev sir', 'Dragon\'s Cheese'), cat:'cons', cost:500, noShop:true, charges:1, consume:true, stats:{},
+  { id:'cheese', emoji:'🧀', name:L('Zmajeva poslastica', 'Dragon Treat'), cat:'cons', cost:500, noShop:true, charges:1, consume:true, stats:{},
     act:L('Odmah +1500 života i +800 mane', 'Instantly +1500 HP and +800 mana'), lore:L('Dar Velikog Zmaja.', 'A gift from the Great Dragon.'),
     active:{ cd:1, mana:0, use(h){ heal(h, 1500); h.mp = Math.min(h.maxmp, h.mp + 800); useCharge(h, 'cheese'); burst(h.x, h.y, '#fde047', 26, 240, 6); return true; } } },
   // v0.56 ----- novo potrošno -----
-  { id:'fairy',  emoji:'🧚', name:L('Vilinska vatra', 'Faerie Fire'), cat:'cons', cost:70, charges:1, consume:true, stats:{dmg:2},
+  { id:'fairy',  emoji:'🧚', name:L('Vilinska iskra', 'Fairy Spark'), cat:'cons', cost:70, charges:1, consume:true, stats:{dmg:2},
     act:L('Odmah vrati 85 života (dok je u torbi: +2 štete)', 'Instantly restores 85 HP (while in your bag: +2 damage)'), lore:L('Mala vila koja te spasi u zadnji tren.', 'A tiny fairy that saves you at the last second.'),
     active:{ cd:1, mana:0, use(h){ heal(h, 85); useCharge(h, 'fairy'); burst(h.x, h.y, '#f9a8d4', 14, 150, 4); return true; } } },
-  { id:'mango',  emoji:'🥭', name:L('Čarobni mango', 'Enchanted Mango'), cat:'cons', cost:65, charges:1, consume:true, stats:{hpRegen:0.6},
+  { id:'mango',  emoji:'🥭', name:L('Sunčani mango', 'Sunny Mango'), cat:'cons', cost:65, charges:1, consume:true, stats:{hpRegen:0.6},
     act:L('Pojedi: odmah +100 mane', 'Eat it: instantly +100 mana'), lore:L('Sočan i pun čarolije.', 'Juicy and full of magic.'),
     active:{ cd:1, mana:0, use(h){ h.mp = Math.min(h.maxmp, h.mp + 100); useCharge(h, 'mango'); burst(h.x, h.y, '#fbbf24', 12, 140, 4); return true; } } },
-  { id:'smoke',  emoji:'💨', name:L('Dimna bomba', 'Smoke Bomb'), cat:'cons', cost:50, charges:1, consume:true, stats:{},
+  { id:'smoke',  emoji:'💨', name:L('Maglena kugla', 'Fog Ball'), cat:'cons', cost:50, charges:1, consume:true, stats:{},
     act:L('Ti i saveznički junaci u krugu 900 postanete nevidljivi na 12 s (+10% brzine) — za iznenadni napad; napad otkriva', 'You and allied heroes within 900 turn invisible for 12 s (+10% speed) — for a surprise attack; attacking reveals you'),
     lore:L('Puf! I nikoga nema.', 'Poof! And nobody is there.'),
     active:{ cd:1, mana:0,
@@ -2033,66 +2033,66 @@ const ITEMS = [
         useCharge(h, 'smoke'); ring(h.x, h.y, 900, '#a1a1aa'); burst(h.x, h.y, '#d4d4d8', 30, 260, 8); return true;
       } } },
   // ----- 💪 atributi -----
-  { id:'branch',    emoji:'🌱', name:L('Grančica', 'Branch'),          cat:'attr', cost:25,  stats:{all:1}, lore:L('Mala, ali korisna. Svaki junak kupi par na početku.', 'Small but useful. Every hero buys a couple at the start.') },
-  { id:'gauntlets', emoji:'🧤', name:L('Rukavice snage', 'Gauntlets of Strength'),    cat:'attr', cost:70,  stats:{str:3}, lore:L('Teške kožne rukavice za jake šape.', 'Heavy leather gloves for strong paws.') },
-  { id:'slippers',  emoji:'🥿', name:L('Papuče okretnosti', 'Slippers of Agility'), cat:'attr', cost:70,  stats:{agi:3}, lore:L('U njima se trči na prstima.', 'You run on tiptoe in them.') },
-  { id:'mantle',    emoji:'🧣', name:L('Šal mudrosti', 'Scarf of Wisdom'),      cat:'attr', cost:70,  stats:{int:3}, lore:L('Grije glavu dok razmišljaš.', 'Keeps your head warm while you think.') },
-  { id:'circlet',   emoji:'📿', name:L('Ogrlica', 'Necklace'),           cat:'attr', cost:80,  stats:{all:2}, lore:L('Sitne perle, mala čarolija.', 'Tiny beads, a little magic.') },
-  { id:'belt',      emoji:'🎗️', name:L('Pojas snage', 'Belt of Strength'),       cat:'attr', cost:225, stats:{str:6}, lore:L('Steže trbuh i jača mišiće.', 'Hugs your tummy and builds muscles.') },
-  { id:'band',      emoji:'🎀', name:L('Vilinska vrpca', 'Fairy Band'),    cat:'attr', cost:225, stats:{agi:6}, lore:L('Vile je pletu od paukove svile.', 'Fairies weave it from spider silk.') },
-  { id:'robe',      emoji:'👘', name:L('Halja čarobnjaka', 'Wizard Robe'),  cat:'attr', cost:225, stats:{int:6}, lore:L('Puna zvjezdica i tajnih džepova.', 'Full of little stars and secret pockets.') },
-  { id:'ogre',      emoji:'👹', name:L('Divovska sjekira', 'Giant Axe'),  cat:'attr', cost:500, stats:{str:10}, lore:L('Div ju je zaboravio pod mostom.', 'A giant forgot it under a bridge.') },
-  { id:'alacrity',  emoji:'🍃', name:L('Oštrica hitrine', 'Blade of Alacrity'),   cat:'attr', cost:500, stats:{agi:10}, lore:L('Laka kao list na vjetru.', 'Light as a leaf in the wind.') },
-  { id:'wizstaff',  emoji:'🔮', name:L('Štap čarobnjaka', 'Wizard\'s Staff'),   cat:'attr', cost:500, stats:{int:10}, lore:L('Kugla na vrhu šapuće čarolije.', 'The orb on top whispers spells.') },
+  { id:'branch',    emoji:'🌱', name:L('Mladica', 'Sprout'),          cat:'attr', cost:25,  stats:{all:1}, lore:L('Mala, ali korisna. Svaki junak kupi par na početku.', 'Small but useful. Every hero buys a couple at the start.') },
+  { id:'gauntlets', emoji:'🧤', name:L('Medvjeđe rukavice', 'Bear Mitts'),    cat:'attr', cost:70,  stats:{str:3}, lore:L('Teške kožne rukavice za jake šape.', 'Heavy leather gloves for strong paws.') },
+  { id:'slippers',  emoji:'🥿', name:L('Mačje papuče', 'Cat Slippers'), cat:'attr', cost:70,  stats:{agi:3}, lore:L('U njima se trči na prstima.', 'You run on tiptoe in them.') },
+  { id:'mantle',    emoji:'🧣', name:L('Sovin šal', 'Owl Scarf'),      cat:'attr', cost:70,  stats:{int:3}, lore:L('Grije glavu dok razmišljaš.', 'Keeps your head warm while you think.') },
+  { id:'circlet',   emoji:'📿', name:L('Ogrlica od perli', 'Bead Necklace'),           cat:'attr', cost:80,  stats:{all:2}, lore:L('Sitne perle, mala čarolija.', 'Tiny beads, a little magic.') },
+  { id:'belt',      emoji:'🎗️', name:L('Hrvački pojas', 'Wrestler\'s Belt'),       cat:'attr', cost:225, stats:{str:6}, lore:L('Steže trbuh i jača mišiće.', 'Hugs your tummy and builds muscles.') },
+  { id:'band',      emoji:'🎀', name:L('Vjetrova vrpca', 'Breeze Ribbon'),    cat:'attr', cost:225, stats:{agi:6}, lore:L('Vile je pletu od paukove svile.', 'Fairies weave it from spider silk.') },
+  { id:'robe',      emoji:'👘', name:L('Zvjezdana halja', 'Starry Robe'),  cat:'attr', cost:225, stats:{int:6}, lore:L('Puna zvjezdica i tajnih džepova.', 'Full of little stars and secret pockets.') },
+  { id:'ogre',      emoji:'👹', name:L('Trolov malj', 'Troll Club'),  cat:'attr', cost:500, stats:{str:10}, lore:L('Div ju je zaboravio pod mostom.', 'A giant forgot it under a bridge.') },
+  { id:'alacrity',  emoji:'🍃', name:L('Lisičja oštrica', 'Fox Blade'),   cat:'attr', cost:500, stats:{agi:10}, lore:L('Laka kao list na vjetru.', 'Light as a leaf in the wind.') },
+  { id:'wizstaff',  emoji:'🔮', name:L('Vilenjački štap', 'Elfwood Staff'),   cat:'attr', cost:500, stats:{int:10}, lore:L('Kugla na vrhu šapuće čarolije.', 'The orb on top whispers spells.') },
   // ----- ⚔️ oprema -----
-  { id:'quelling',  emoji:'⛏️', name:L('Sjekirica', 'Hatchet'),         cat:'equip', cost:50,  stats:{}, creepDmg:12, pas:L('+12 štete protiv vojnika i čudovišta', '+12 damage against creeps and monsters'), lore:L('Za drva — i za vojnike.', 'For wood — and for creeps.'),
+  { id:'quelling',  emoji:'⛏️', name:L('Drvosječina sjekirica', 'Woodcutter\'s Hatchet'),         cat:'equip', cost:50,  stats:{}, creepDmg:12, pas:L('+12 štete protiv vojnika i čudovišta', '+12 damage against creeps and monsters'), lore:L('Za drva — i za vojnike.', 'For wood — and for creeps.'),
     act:L('Posijeci drvo (domet 350) — otvori prolaz i pogled', 'Chop down a tree (range 350) — opens a path and a view'), active:{ cd:4, mana:0, target:'tree', castRange:350,
       use(h, aim){ const t = treeForUse(h, aim, 350, '⛏️'); if(!t) return false; cutTree(t, h); h.castAim = { x: t.x, y: t.y }; return true; } } },
   // 🐾 v0.56: prvi predmet junaka u džungli — jači protiv čudovišta, svaki udarac po čudovištu liječi, više zlata iz kampova
   { id:'hunter',    emoji:'🐾', name:L('Lovački nož', 'Hunter\'s Knife'),  cat:'equip', cost:200, stats:{hpRegen:1}, hunt:{ dmg:22, heal:9, gold:3 },
     pas:L('Protiv čudovišta iz džungle: +22 štete, svaki udarac te liječi 9 života i +3 zlata za svako ubijeno čudovište', 'Against jungle monsters: +22 damage, every hit heals you 9 HP and +3 gold for each monster killed'),
     lore:L('Prvi predmet junaka u džungli — s njim i Kaznom gušteri padaju već na levelu 1.', 'The jungler\'s first item — with it and Smite, lizards fall at level 1.') },
-  { id:'sword',     emoji:'⚔️', name:L('Oštrice napada', 'Blades of Attack'),    cat:'equip', cost:225, stats:{dmg:9},  lore:L('Par malih, oštrih noževa.', 'A pair of small, sharp knives.') },
-  { id:'broadsword',emoji:'🗡️', name:L('Široki mač', 'Broadsword'),        cat:'equip', cost:500, stats:{dmg:15}, lore:L('Vitezov vjerni drug.', 'A knight\'s loyal friend.') },
-  { id:'claymore',  emoji:'🔪', name:L('Dvoručni mač', 'Claymore'),      cat:'equip', cost:675, stats:{dmg:20}, lore:L('Treba ga držati objema rukama.', 'You need both hands to hold it.') },
-  { id:'mithril',   emoji:'⚒️', name:L('Mitrilni čekić', 'Mithril Hammer'),    cat:'equip', cost:800, stats:{dmg:24}, lore:L('Patuljci ga kuju tisuću godina.', 'Dwarves have been forging it for a thousand years.') },
-  { id:'demonedge', emoji:'😈', name:L('Demonska oštrica', 'Demon Edge'),  cat:'equip', cost:1100, stats:{dmg:40}, lore:L('Reže i sjene.', 'It even cuts shadows.') },
-  { id:'gloves',    emoji:'🥊', name:L('Rukavice brzine', 'Gloves of Haste'),   cat:'equip', cost:225, stats:{aspd:20}, lore:L('Udaraš brže nego što trepćeš.', 'You hit faster than you blink.') },
-  { id:'ringprot',  emoji:'🔘', name:L('Prsten zaštite', 'Ring of Protection'),    cat:'equip', cost:90,  stats:{armor:2}, lore:L('Mali štit za prst.', 'A tiny shield for your finger.') },
-  { id:'chainmail', emoji:'⛓️', name:L('Verižnjača', 'Chainmail'),        cat:'equip', cost:275, stats:{armor:4}, lore:L('Zvecka pri svakom koraku.', 'It jingles with every step.') },
-  { id:'platemail', emoji:'🛡️', name:L('Oklop od ploča', 'Platemail'),    cat:'equip', cost:700, stats:{armor:10}, lore:L('Težak, ali ništa ne prolazi.', 'Heavy, but nothing gets through.') },
-  { id:'morbid',    emoji:'👺', name:L('Vampirska maska', 'Vampire Mask'),   cat:'equip', cost:450, stats:{lifesteal:0.10}, lore:L('Svaki udarac te malo izliječi.', 'Every hit heals you a little.') },
-  { id:'hyperstone',emoji:'💎', name:L('Hiperkamen', 'Hyperstone'),        cat:'equip', cost:1000, stats:{aspd:60}, lore:L('Kamen koji ne može mirovati.', 'A stone that can\'t sit still.') },
-  { id:'staff',     emoji:'🦯', name:L('Borbeni štap', 'Quarterstaff'),   cat:'equip', cost:350, stats:{dmg:10, aspd:10}, lore:L('Lagan štap za brze udarce.', 'A light staff for quick hits.') },   // v0.56
-  { id:'cloak',     emoji:'🧥', name:L('Ogrtač', 'Cloak'),                 cat:'equip', cost:400, stats:{mres:0.15}, lore:L('Debela tkanina koju magija teško probije.', 'Thick cloth that magic barely gets through.') },   // v0.56
+  { id:'sword',     emoji:'⚔️', name:L('Dvostruki bodeži', 'Twin Daggers'),    cat:'equip', cost:225, stats:{dmg:9},  lore:L('Par malih, oštrih noževa.', 'A pair of small, sharp knives.') },
+  { id:'broadsword',emoji:'🗡️', name:L('Viteški mač', 'Knight\'s Sword'),        cat:'equip', cost:500, stats:{dmg:15}, lore:L('Vitezov vjerni drug.', 'A knight\'s loyal friend.') },
+  { id:'claymore',  emoji:'🔪', name:L('Gorski mač', 'Highland Sword'),      cat:'equip', cost:675, stats:{dmg:20}, lore:L('Treba ga držati objema rukama.', 'You need both hands to hold it.') },
+  { id:'mithril',   emoji:'⚒️', name:L('Patuljasti čekić', 'Dwarf Hammer'),    cat:'equip', cost:800, stats:{dmg:24}, lore:L('Patuljci ga kuju tisuću godina.', 'Dwarves have been forging it for a thousand years.') },
+  { id:'demonedge', emoji:'😈', name:L('Vražji zub', 'Imp Fang'),  cat:'equip', cost:1100, stats:{dmg:40}, lore:L('Reže i sjene.', 'It even cuts shadows.') },
+  { id:'gloves',    emoji:'🥊', name:L('Boksačke rukavice', 'Boxing Gloves'),   cat:'equip', cost:225, stats:{aspd:20}, lore:L('Udaraš brže nego što trepćeš.', 'You hit faster than you blink.') },
+  { id:'ringprot',  emoji:'🔘', name:L('Kornjačin prsten', 'Turtle Ring'),    cat:'equip', cost:90,  stats:{armor:2}, lore:L('Mali štit za prst.', 'A tiny shield for your finger.') },
+  { id:'chainmail', emoji:'⛓️', name:L('Pancir od karika', 'Link Armor'),        cat:'equip', cost:275, stats:{armor:4}, lore:L('Zvecka pri svakom koraku.', 'It jingles with every step.') },
+  { id:'platemail', emoji:'🛡️', name:L('Željezni oklop', 'Iron Armor'),    cat:'equip', cost:700, stats:{armor:10}, lore:L('Težak, ali ništa ne prolazi.', 'Heavy, but nothing gets through.') },
+  { id:'morbid',    emoji:'👺', name:L('Šišmišja maska', 'Bat Mask'),   cat:'equip', cost:450, stats:{lifesteal:0.10}, lore:L('Svaki udarac te malo izliječi.', 'Every hit heals you a little.') },
+  { id:'hyperstone',emoji:'💎', name:L('Brzi dragulj', 'Swift Gem'),        cat:'equip', cost:1000, stats:{aspd:60}, lore:L('Kamen koji ne može mirovati.', 'A stone that can\'t sit still.') },
+  { id:'staff',     emoji:'🦯', name:L('Pastirski štap', 'Shepherd\'s Staff'),   cat:'equip', cost:350, stats:{dmg:10, aspd:10}, lore:L('Lagan štap za brze udarce.', 'A light staff for quick hits.') },   // v0.56
+  { id:'cloak',     emoji:'🧥', name:L('Vuneni ogrtač', 'Wool Cloak'),                 cat:'equip', cost:400, stats:{mres:0.15}, lore:L('Debela tkanina koju magija teško probije.', 'Thick cloth that magic barely gets through.') },   // v0.56
   // ----- 🎒 razno -----
-  { id:'boots',     emoji:'👟', name:L('Brze čizme', 'Speed Boots'),        cat:'misc', cost:250, stats:{speed:45}, tag:'boots', lore:L('Prve čizme svakog junaka.', 'Every hero\'s first boots.') },
-  { id:'ringregen', emoji:'💚', name:L('Prsten obnove', 'Ring of Regen'),     cat:'misc', cost:90,  stats:{hpRegen:2}, lore:L('Rane zacjeljuju same.', 'Wounds heal by themselves.') },
-  { id:'sage',      emoji:'🍵', name:L('Mudračev čaj', 'Sage\'s Tea'),      cat:'misc', cost:90,  stats:{mpRegen:1}, lore:L('Gutljaj čaja, i mana se vraća.', 'A sip of tea, and your mana comes back.') },
-  { id:'heart',     emoji:'❤️', name:L('Kamen života', 'Vitality Stone'),      cat:'misc', cost:500, stats:{hp:250}, lore:L('Kuca kao pravo srce.', 'It beats like a real heart.') },
-  { id:'orb',       emoji:'🔋', name:L('Kamen energije', 'Energy Stone'),    cat:'misc', cost:400, stats:{mp:250}, lore:L('Pun čarobne struje.', 'Full of magic power.') },
+  { id:'boots',     emoji:'👟', name:L('Tenisice', 'Sneakers'),        cat:'misc', cost:250, stats:{speed:45}, tag:'boots', lore:L('Prve čizme svakog junaka.', 'Every hero\'s first boots.') },
+  { id:'ringregen', emoji:'💚', name:L('Biljni prsten', 'Herb Ring'),     cat:'misc', cost:90,  stats:{hpRegen:2}, lore:L('Rane zacjeljuju same.', 'Wounds heal by themselves.') },
+  { id:'sage',      emoji:'🍵', name:L('Šalica čaja', 'Cup of Tea'),      cat:'misc', cost:90,  stats:{mpRegen:1}, lore:L('Gutljaj čaja, i mana se vraća.', 'A sip of tea, and your mana comes back.') },
+  { id:'heart',     emoji:'❤️', name:L('Rubin srca', 'Heart Ruby'),      cat:'misc', cost:500, stats:{hp:250}, lore:L('Kuca kao pravo srce.', 'It beats like a real heart.') },
+  { id:'orb',       emoji:'🔋', name:L('Plavi safir', 'Blue Sapphire'),    cat:'misc', cost:400, stats:{mp:250}, lore:L('Pun čarobne struje.', 'Full of magic power.') },
   { id:'pointbooster', emoji:'✨', name:L('Zvjezdani kristal', 'Star Crystal'), cat:'misc', cost:600, stats:{hp:175, mp:175}, lore:L('Pola život, pola mana.', 'Half health, half mana.') },
-  { id:'windlace',   emoji:'🪶', name:L('Pero vjetra', 'Wind Lace'),      cat:'misc', cost:250, stats:{speed:20}, lore:L('Vjetar ti gura leđa.', 'The wind pushes your back.') },   // v0.56
-  { id:'ringhealth', emoji:'💗', name:L('Prsten zdravlja', 'Ring of Health'), cat:'misc', cost:300, stats:{hpRegen:5}, lore:L('Rane zacijele dok trepneš.', 'Wounds heal in the blink of an eye.') },   // v0.56
-  { id:'voidstone',  emoji:'🌌', name:L('Kamen praznine', 'Void Stone'),   cat:'misc', cost:300, stats:{mpRegen:2.5}, lore:L('Iz praznine stalno dotječe mana.', 'Mana keeps trickling in from the void.') },   // v0.56
-  { id:'blink',     emoji:'⚡', name:L('Bodež treptaja', 'Blink Dagger'),    cat:'misc', cost:1125, stats:{},
-    act:L('Treptaj: skoči do 1000 daleko • ne radi 3 s nakon udarca neprijateljskog junaka', 'Blink: jump up to 1000 away • doesn\'t work for 3 s after an enemy hero hits you'), lore:L('Trepneš — i već si tamo.', 'Blink — and you\'re already there.'),
+  { id:'windlace',   emoji:'🪶', name:L('Galebovo pero', 'Seagull Feather'),      cat:'misc', cost:250, stats:{speed:20}, lore:L('Vjetar ti gura leđa.', 'The wind pushes your back.') },   // v0.56
+  { id:'ringhealth', emoji:'💗', name:L('Prsten jednoroga', 'Unicorn Ring'), cat:'misc', cost:300, stats:{hpRegen:5}, lore:L('Rane zacijele dok trepneš.', 'Wounds heal in the blink of an eye.') },   // v0.56
+  { id:'voidstone',  emoji:'🌌', name:L('Noćni kamen', 'Night Stone'),   cat:'misc', cost:300, stats:{mpRegen:2.5}, lore:L('Iz praznine stalno dotječe mana.', 'Mana keeps trickling in from the void.') },   // v0.56
+  { id:'blink',     emoji:'⚡', name:L('Amulet skoka', 'Leap Amulet'),    cat:'misc', cost:1125, stats:{},
+    act:L('Skok: skoči do 1000 daleko • ne radi 3 s nakon udarca neprijateljskog junaka', 'Leap: jump up to 1000 away • doesn\'t work for 3 s after an enemy hero hits you'), lore:L('Hop — i već si tamo.', 'Hop — and you\'re already there.'),
     active:{ cd:13, mana:0, target:'point', castRange:1000,
       use(h, aim){
         if(gameTime - (h.lastHitT || -99) < 3){ if(isHuman(h)) addFloat(h.x, h.y, L('⚡ Bodež je zaključan — netko te udara!', '⚡ The dagger is locked — someone is hitting you!'), '#fca5a5', 13); return false; }
         leapTo(h, aim, 1000); burst(h.x, h.y, '#bae6fd', 16, 200, 5); return true;
       } } },
   // ----- 🔆 rijetko (kao tajna trgovina) -----
-  { id:'reaver',    emoji:'☠️', name:L('Kosac', 'Reaver'),             cat:'secret', cost:1400, stats:{str:25}, lore:L('Golema kosa iz Tajne trgovine.', 'A huge scythe from the Secret Shop.') },
-  { id:'eaglesong', emoji:'🦅', name:L('Orlova pjesma', 'Eaglesong'),     cat:'secret', cost:1400, stats:{agi:25}, lore:L('Pjesma koju samo orlovi znaju.', 'A song only eagles know.') },
-  { id:'mystic',    emoji:'🌟', name:L('Mistični štap', 'Mystic Staff'),     cat:'secret', cost:1400, stats:{int:25}, lore:L('U njemu spava cijela galaksija.', 'A whole galaxy sleeps inside it.') },
-  { id:'relic',     emoji:'🔆', name:L('Sveta relikvija', 'Sacred Relic'),   cat:'secret', cost:1700, stats:{dmg:60}, lore:L('Drevno blago čuvara hrama.', 'Ancient treasure of the temple guards.') },
+  { id:'reaver',    emoji:'☠️', name:L('Snaga planine', 'Mountain Might'),             cat:'secret', cost:1400, stats:{str:25}, lore:L('Golema kosa iz Tajne trgovine.', 'A huge scythe from the Secret Shop.') },
+  { id:'eaglesong', emoji:'🦅', name:L('Orlovo pero', 'Eagle Plume'),     cat:'secret', cost:1400, stats:{agi:25}, lore:L('Pjesma koju samo orlovi znaju.', 'A song only eagles know.') },
+  { id:'mystic',    emoji:'🌟', name:L('Štap zvijezda', 'Star Staff'),     cat:'secret', cost:1400, stats:{int:25}, lore:L('U njemu spava cijela galaksija.', 'A whole galaxy sleeps inside it.') },
+  { id:'relic',     emoji:'🔆', name:L('Sunčev ulomak', 'Sun Shard'),   cat:'secret', cost:1700, stats:{dmg:60}, lore:L('Drevno blago čuvara hrama.', 'Ancient treasure of the temple guards.') },
 
-  { id:'javelin',   emoji:'🏹', name:L('Koplje', 'Javelin'), cat:'secret', cost:700, stats:{dmg:20}, proc:{ c:0.25, dmg:40 },   // v0.56
+  { id:'javelin',   emoji:'🏹', name:L('Lovačko koplje', 'Hunting Spear'), cat:'secret', cost:700, stats:{dmg:20}, proc:{ c:0.25, dmg:40 },   // v0.56
     pas:L('25% šanse da udarac napravi još 40 čarobne štete', '25% chance for an attack to deal 40 extra magic damage'), lore:L('Uvijek pogodi tamo gdje boli.', 'Always hits where it hurts.') },
   // ======================= NADOGRADNJE =======================
   // ----- 🎒 pribor -----
-  { id:'wand', emoji:'🎇', name:L('Čarobni štapić', 'Magic Wand'), cat:'acc', cost:175, components:['branch', 'branch'], stats:{all:3}, wand:true,
+  { id:'wand', emoji:'🎇', name:L('Iskričavi štapić', 'Sparkle Wand'), cat:'acc', cost:175, components:['branch', 'branch'], stats:{all:3}, wand:true,
     pas:L('Skuplja naboj (do 20) kad neprijateljski junak u blizini baci magiju', 'Gains a charge (up to 20) when a nearby enemy hero casts a spell'),
     act:L('Isprazni: +15 života i +15 mane po naboju', 'Release: +15 HP and +15 mana per charge'), lore:L('Svaka tuđa čarolija ga napuni.', 'Other heroes\' spells fill it up.'),
     active:{ cd:13, mana:0,
@@ -2102,22 +2102,22 @@ const ITEMS = [
         heal(h, 15 * n); h.mp = Math.min(h.maxmp, h.mp + 15 * n); h.itemCharges.wand = 0;
         burst(h.x, h.y, '#c4b5fd', 14, 160, 5); return true;
       } } },
-  { id:'bracer',  emoji:'💪', name:L('Narukvica snage', 'Bracer'),  cat:'acc', cost:105, components:['circlet', 'gauntlets'], stats:{str:5, agi:2, int:2, dmg:3, hpRegen:1}, lore:L('Za junake koji vole biti naprijed.', 'For heroes who like to be in front.') },
-  { id:'wraith',  emoji:'👻', name:L('Sablasna vrpca', 'Wraith Band'),   cat:'acc', cost:105, components:['circlet', 'slippers'],  stats:{agi:5, str:2, int:2, armor:1.5, aspd:5}, lore:L('Lagana kao duh.', 'Light as a ghost.') },
-  { id:'nulltal', emoji:'🔵', name:L('Talisman mudrosti', 'Talisman of Wisdom'),cat:'acc', cost:105, components:['circlet', 'mantle'],    stats:{int:5, str:2, agi:2, mpRegen:1}, lore:L('Plavi kamen pun mira.', 'A blue stone full of calm.') },
-  { id:'phase',   emoji:'🥾', name:L('Fazne čizme', 'Phase Boots'), cat:'acc', cost:0, components:['boots', 'chainmail', 'sword'], tag:'boots', stats:{speed:45, armor:4, dmg:12},
-    act:L('Faza: +25% brzine kretanja na 3 s', 'Phase: +25% move speed for 3 s'), lore:L('Kroz neprijatelje kao kroz maglu.', 'Through enemies like through fog.'),
+  { id:'bracer',  emoji:'💪', name:L('Medvjeđa narukvica', 'Bear Bracelet'),  cat:'acc', cost:105, components:['circlet', 'gauntlets'], stats:{str:5, agi:2, int:2, dmg:3, hpRegen:1}, lore:L('Za junake koji vole biti naprijed.', 'For heroes who like to be in front.') },
+  { id:'wraith',  emoji:'👻', name:L('Lisičja vrpca', 'Fox Ribbon'),   cat:'acc', cost:105, components:['circlet', 'slippers'],  stats:{agi:5, str:2, int:2, armor:1.5, aspd:5}, lore:L('Lagana kao duh.', 'Light as a ghost.') },
+  { id:'nulltal', emoji:'🔵', name:L('Sovin talisman', 'Owl Charm'),cat:'acc', cost:105, components:['circlet', 'mantle'],    stats:{int:5, str:2, agi:2, mpRegen:1}, lore:L('Plavi kamen pun mira.', 'A blue stone full of calm.') },
+  { id:'phase',   emoji:'🥾', name:L('Ratničke čizme', 'Warrior Boots'), cat:'acc', cost:0, components:['boots', 'chainmail', 'sword'], tag:'boots', stats:{speed:45, armor:4, dmg:12},
+    act:L('Juriš: +25% brzine kretanja na 3 s', 'Dash: +25% move speed for 3 s'), lore:L('Kroz neprijatelje kao kroz maglu.', 'Through enemies like through fog.'),
     active:{ cd:8, mana:0, use(h){ applyHaste(h, 1.25, 3); burst(h.x, h.y, '#93c5fd', 10, 140, 4); return true; } } },
-  { id:'treads',  emoji:'👢', name:L('Čizme moći', 'Power Treads'), cat:'acc', cost:0, components:['boots', 'gloves', 'belt'], tag:'boots', stats:{speed:45, aspd:25, primary:10},
+  { id:'treads',  emoji:'👢', name:L('Trostruke čizme', 'Triple Boots'), cat:'acc', cost:0, components:['boots', 'gloves', 'belt'], tag:'boots', stats:{speed:45, aspd:25, primary:10},
     pas:L('+10 glavnom atributu junaka', '+10 to the hero\'s main attribute'), lore:L('Svaki korak te čini jačim.', 'Every step makes you stronger.') },
-  { id:'arcane',  emoji:'💠', name:L('Tajanstvene čizme', 'Arcane Boots'), cat:'acc', cost:0, components:['boots', 'orb'], tag:'boots', stats:{speed:45, mp:250},
+  { id:'arcane',  emoji:'💠', name:L('Čarobnjačke čizme', 'Wizard Boots'), cat:'acc', cost:0, components:['boots', 'orb'], tag:'boots', stats:{speed:45, mp:250},
     act:L('Val mane: ti i saveznici u krugu 1200 dobivate 160 mane', 'Mana wave: you and allies within 1200 get 160 mana'), lore:L('Mana teče iz potplata.', 'Mana flows from the soles.'),
     active:{ cd:55, mana:0,
       use(h){
         for(const e of units) if(e.kind === 'hero' && e.team === h.team && !e.dead && dist(h, e) <= 1200){ e.mp = Math.min(e.maxmp, e.mp + 160); addFloat(e.x, e.y, '+160 💧', '#7dd3fc', 13); }
         ring(h.x, h.y, 1200, '#7dd3fc'); burst(h.x, h.y, '#7dd3fc', 20, 220, 5); return true;
       } } },
-  { id:'midas',   emoji:'✋', name:L('Midasova ruka', 'Hand of Midas'), cat:'acc', cost:875, components:['gloves'], stats:{aspd:40},
+  { id:'midas',   emoji:'✋', name:L('Zlatna rukavica', 'Golden Glove'), cat:'acc', cost:875, components:['gloves'], stats:{aspd:40},
     act:L('Zlatni dodir: pretvori vojnika ili čudovište (ne zmaja) u zlato — +90 zlata i puno iskustva (domet 600)', 'Golden touch: turn a creep or monster (not a dragon) into gold — +90 gold and lots of XP (range 600)'), lore:L('Sve što dotakne postane zlato.', 'Everything it touches turns to gold.'),
     active:{ cd:90, mana:0, target:'point', castRange:600,
       use(h, aim){
@@ -2134,11 +2134,11 @@ const ITEMS = [
         if(isHuman(h)) addFloat(best.x, best.y, '✋ +90 💰', '#fde047', 16);
         return true;
       } } },
-  { id:'soulring',emoji:'💍', name:L('Prsten duše', 'Soul Ring'), cat:'acc', cost:125, components:['ringregen', 'gauntlets', 'gauntlets'], stats:{str:6, hpRegen:2},
-    act:L('Žrtva: daj 170 života i dobij 150 mane', 'Sacrifice: give 170 HP and get 150 mana'), lore:L('Malo boli, ali mana je tu!', 'It hurts a little, but here comes the mana!'),
+  { id:'soulring',emoji:'💍', name:L('Mjesečev prsten', 'Moon Ring'), cat:'acc', cost:125, components:['ringregen', 'gauntlets', 'gauntlets'], stats:{str:6, hpRegen:2},
+    act:L('Mjesečeva zamjena: daj 170 života i dobij 150 mane', 'Moon trade: give 170 HP and get 150 mana'), lore:L('Malo boli, ali mana je tu!', 'It hurts a little, but here comes the mana!'),
     active:{ cd:25, mana:0,
       use(h){ h.hp = Math.max(1, h.hp - 170); h.mp = Math.min(h.maxmp, h.mp + 150); addFloat(h.x, h.y, '💍 +150 💧', '#c4b5fd', 14); burst(h.x, h.y, '#a855f7', 12, 140, 4); return true; } } },
-  { id:'mom',     emoji:'🎭', name:L('Maska ludila', 'Mask of Madness'), cat:'acc', cost:0, components:['morbid', 'gloves'], stats:{dmg:10, aspd:20, lifesteal:0.15},
+  { id:'mom',     emoji:'🎭', name:L('Maska bijesa', 'Rage Mask'), cat:'acc', cost:0, components:['morbid', 'gloves'], stats:{dmg:10, aspd:20, lifesteal:0.15},
     act:L('Bijes: 6 s +100% brzine napada i +20% kretanja, ali primaš +25% štete', 'Rage: +100% attack speed and +20% move speed for 6 s, but you take +25% damage'), lore:L('Kad je staviš, ne možeš prestati udarati.', 'Once you put it on, you can\'t stop hitting.'),
     active:{ cd:16, mana:25,
       use(h){ applyAtkSpeed(h, 1.0, 6); applyHaste(h, 1.2, 6); applyCurse(h, 0.25, 6); burst(h.x, h.y, '#ef4444', 14, 160, 5); addFloat(h.x, h.y, L('🎭 Bijes!', '🎭 Rage!'), '#fca5a5', 15); return true; } } },
@@ -2154,18 +2154,18 @@ const ITEMS = [
         for(const e of units) if(e.team === h.team && !e.dead && !e.removeMe && (e.kind === 'hero' || e.kind === 'creep') && dist(h, e) <= 1200) heal(e, 275);
         ring(h.x, h.y, 1200, '#4ade80'); burst(h.x, h.y, '#4ade80', 24, 240, 6); return true;
       } } },
-  { id:'drum', emoji:'🥁', name:L('Bubanj izdržljivosti', 'Drum of Endurance'), cat:'sup', cost:325, components:['circlet', 'belt'], stats:{str:8, agi:2, int:2, speed:10},
+  { id:'drum', emoji:'🥁', name:L('Ratni bubanj', 'War Drum'), cat:'sup', cost:325, components:['circlet', 'belt'], stats:{str:8, agi:2, int:2, speed:10},
     act:L('Ratni bubanj: ti i saveznici u krugu 1200 dobivate +25% brzine kretanja i +30% brzine napada na 6 s', 'War drum: you and allies within 1200 get +25% move speed and +30% attack speed for 6 s'), lore:L('Bum! Bum! Svi trče brže!', 'Boom! Boom! Everyone runs faster!'),
     active:{ cd:30, mana:0,
       use(h){
         for(const e of units) if(e.kind === 'hero' && e.team === h.team && !e.dead && dist(h, e) <= 1200){ applyHaste(e, 1.25, 6); applyAtkSpeed(e, 0.3, 6); }
         ring(h.x, h.y, 1200, '#fb923c'); burst(h.x, h.y, '#fb923c', 18, 220, 5); return true;
       } } },
-  { id:'vlad', emoji:'🩸', name:L('Vladimirov dar', 'Vladmir\'s Offering'), cat:'sup', cost:175, components:['morbid', 'ringprot', 'sage'], stats:{armor:2, mpRegen:1},
+  { id:'vlad', emoji:'🩸', name:L('Vučji stijeg', 'Pack Banner'), cat:'sup', cost:175, components:['morbid', 'ringprot', 'sage'], stats:{armor:2, mpRegen:1},
     aura:{ ls:0.15, armor:3, mpRegen:1, r:900 }, pas:L('Aura (900): saveznički junaci kradu 15% života udarcima, +3 oklopa, +1 obnova mane', 'Aura (900): allied heroes get 15% lifesteal, +3 armor, +1 mana regen'), lore:L('Stari knez dijeli snagu sa svojom vojskom.', 'An old prince shares his strength with his army.') },
-  { id:'buckler', emoji:'🥏', name:L('Štitić', 'Buckler'), cat:'sup', cost:150, components:['ringprot', 'branch', 'branch'], stats:{armor:3, all:2},   // v0.56
+  { id:'buckler', emoji:'🥏', name:L('Okrugli štitić', 'Round Shield'), cat:'sup', cost:150, components:['ringprot', 'branch', 'branch'], stats:{armor:3, all:2},   // v0.56
     aura:{ armor:2, r:900 }, pas:L('Aura: saveznici u krugu 900 dobivaju +2 oklopa', 'Aura: allies within 900 get +2 armor'), lore:L('Mali štit, velika pomoć.', 'Small shield, big help.') },
-  { id:'glimmer', emoji:'💫', name:L('Svjetlucavi plašt', 'Glimmer Cape'), cat:'sup', cost:250, components:['cloak', 'gloves'], stats:{mres:0.15, aspd:20},   // v0.56
+  { id:'glimmer', emoji:'💫', name:L('Plašt krijesnica', 'Firefly Cloak'), cat:'sup', cost:250, components:['cloak', 'gloves'], stats:{mres:0.15, aspd:20},   // v0.56
     act:L('Klikni saveznika (ili sebe): 5 s je nevidljiv i ima štit od 250 štete', 'Click an ally (or yourself): invisible for 5 s and a shield that absorbs 250 damage'), lore:L('Svjetluca — i nestaneš.', 'It glimmers — and you vanish.'),
     active:{ cd:16, mana:90, target:'point', castRange:600,
       use(h, aim){
@@ -2175,16 +2175,16 @@ const ITEMS = [
           const d = distXY(aim.x, aim.y, e.x, e.y); if(d < bd){ bd = d; t = e; }
         }
         t.status.invisT = Math.max(t.status.invisT, 5); t.barrierHp = Math.max(t.barrierHp || 0, 250); t.barrierT = 5;
-        addFloat(t.x, t.y, L('✨ Svjetlucanje!', '✨ Glimmer!'), '#c4b5fd', 15); burst(t.x, t.y, '#ddd6fe', 18, 180, 5); return true;
+        addFloat(t.x, t.y, L('✨ Krijesnice!', '✨ Fireflies!'), '#c4b5fd', 15); burst(t.x, t.y, '#ddd6fe', 18, 180, 5); return true;
       } } },
-  { id:'pipe', emoji:'🎺', name:L('Lula uvida', 'Pipe of Insight'), cat:'sup', cost:350, components:['hood', 'sage', 'ringprot'], stats:{hpRegen:9, mpRegen:1, armor:2, mres:0.3},   // v0.56
+  { id:'pipe', emoji:'🎺', name:L('Truba zaštite', 'Guardian Horn'), cat:'sup', cost:350, components:['hood', 'sage', 'ringprot'], stats:{hpRegen:9, mpRegen:1, armor:2, mres:0.3},   // v0.56
     act:L('Ti i saveznički junaci u krugu 1200 dobivate štit od 300 štete na 10 s', 'You and allied heroes within 1200 get a shield that absorbs 300 damage for 10 s'), lore:L('Jedna pjesma — i cijeli tim je zaštićen.', 'One tune — and the whole team is protected.'),
     active:{ cd:60, mana:100,
       use(h){
         for(const e of units) if(e.kind === 'hero' && e.team === h.team && !e.dead && dist(h, e) <= 1200){ e.barrierHp = Math.max(e.barrierHp || 0, 300); e.barrierT = 10; }
         ring(h.x, h.y, 1200, '#93c5fd'); burst(h.x, h.y, '#bfdbfe', 24, 240, 6); return true;
       } } },
-  { id:'greaves', emoji:'🧦', name:L('Čuvarske čizme', 'Guardian Greaves'), cat:'sup', cost:450, components:['arcane', 'mek'], stats:{speed:50, mp:250, armor:4, hpRegen:3},   // v0.56
+  { id:'greaves', emoji:'🧦', name:L('Iscjeliteljske čarape', 'Healer\'s Socks'), cat:'sup', cost:450, components:['arcane', 'mek'], stats:{speed:50, mp:250, armor:4, hpRegen:3},   // v0.56
     aura:{ armor:3, mpRegen:1.5, r:900 }, pas:L('Aura: saveznici u krugu 900 dobivaju +3 oklopa i +1.5 obnove mane', 'Aura: allies within 900 get +3 armor and +1.5 mana regen'),
     act:L('Izliječi sebe i saveznike u krugu 1200 za 300 života i 150 mane i skini im usporenja', 'Heal yourself and allies within 1200 for 300 HP and 150 mana and remove their slows'), lore:L('Čizme koje čuvaju cijeli tim.', 'Boots that guard the whole team.'),
     active:{ cd:45, mana:0,
@@ -2195,7 +2195,7 @@ const ITEMS = [
         ring(h.x, h.y, 1200, '#86efac'); burst(h.x, h.y, '#bbf7d0', 26, 260, 6); return true;
       } } },
   // ----- 🔮 čarolije -----
-  { id:'force', emoji:'🌬️', name:L('Štap sile', 'Force Staff'), cat:'magic', cost:450, components:['wizstaff', 'ringregen'], stats:{int:10, hpRegen:2.5},
+  { id:'force', emoji:'🌬️', name:L('Štap vjetra', 'Gust Staff'), cat:'magic', cost:450, components:['wizstaff', 'ringregen'], stats:{int:10, hpRegen:2.5},
     act:L('Silovit vjetar: odgurne te 600 u smjeru klika', 'Mighty wind: pushes you 600 toward where you click'), lore:L('Vjetar u leđa — doslovno.', 'Wind at your back — for real.'),
     active:{ cd:19, mana:50, target:'point', castRange:600,
       use(h, aim){
@@ -2203,8 +2203,8 @@ const ITEMS = [
         leapTo(h, { x: h.x + Math.cos(a) * 600, y: h.y + Math.sin(a) * 600 }, 600);
         burst(h.x, h.y, '#bae6fd', 14, 180, 5); return true;
       } } },
-  { id:'euls', emoji:'🌪️', name:L('Vjetrovita palica', 'Wind Scepter'), cat:'magic', cost:375, components:['wizstaff', 'sage'], stats:{int:10, mpRegen:2.5, speed:20},
-    act:L('Vihor: podigne neprijatelja u zrak na 2.5 s (ne može ništa, ali ni primati štetu) • klik na sebe = očisti usporenja i otrove (domet 575)', 'Cyclone: lifts an enemy into the air for 2.5 s (can\'t do anything, but can\'t take damage either) • click yourself = clear slows and poisons (range 575)'), lore:L('Mali tornado u boci.', 'A little tornado in a bottle.'),
+  { id:'euls', emoji:'🌪️', name:L('Tornado u boci', 'Bottled Tornado'), cat:'magic', cost:375, components:['wizstaff', 'sage'], stats:{int:10, mpRegen:2.5, speed:20},
+    act:L('Vihor: podigne neprijatelja u zrak na 2.5 s (ne može ništa, ali ni primati štetu) • klik na sebe = očisti usporenja i otrove (domet 575)', 'Twister: lifts an enemy into the air for 2.5 s (can\'t do anything, but can\'t take damage either) • click yourself = clear slows and poisons (range 575)'), lore:L('Mali tornado u boci.', 'A little tornado in a bottle.'),
     active:{ cd:23, mana:75, target:'point', castRange:575,
       use(h, aim){
         if(distXY(aim.x, aim.y, h.x, h.y) < 90){   // na sebe: očisti loše stanje
@@ -2222,8 +2222,8 @@ const ITEMS = [
         if(best.kind === 'hero') addFloat(best.x, best.y, L('🌪️ U zraku!', '🌪️ In the air!'), '#e0f2fe', 15);
         burst(best.x, best.y, '#e0f2fe', 16, 180, 5); return true;
       } } },
-  { id:'dagon', emoji:'🔱', name:LS('Dagon'), cat:'magic', cost:625, components:['wizstaff', 'nulltal'], stats:{int:15, str:2, agi:2, mpRegen:1},
-    act:L('Energetski udar: 400 štete neprijatelju kod klika (domet 700)', 'Energy burst: 400 damage to the enemy you click (range 700)'), lore:L('Zraka čiste energije — ZAP!', 'A beam of pure energy — ZAP!'),
+  { id:'dagon', emoji:'🔱', name:L('Zraka trozuba', 'Trident Beam'), cat:'magic', cost:625, components:['wizstaff', 'nulltal'], stats:{int:15, str:2, agi:2, mpRegen:1},
+    act:L('Zraka trozuba: 400 štete neprijatelju kod klika (domet 700)', 'Trident beam: 400 damage to the enemy you click (range 700)'), lore:L('Zraka čiste energije — ZAP!', 'A beam of pure energy — ZAP!'),
     active:{ cd:35, mana:120, target:'point', castRange:700,
       use(h, aim){
         let best = null, bd = 240;
@@ -2236,7 +2236,7 @@ const ITEMS = [
         applyDamage(best, 400, h, true);
         burst(best.x, best.y, '#f87171', 16, 180, 6); sfxAt('zap', h.x, h.y); return true;
       } } },
-  { id:'refresher', emoji:'🔄', name:L('Kugla osvježenja', 'Refresher Orb'), cat:'magic', cost:900, components:['pointbooster', 'ringregen', 'sage'], stats:{hp:175, mp:175, hpRegen:5, mpRegen:3},
+  { id:'refresher', emoji:'🔄', name:L('Kugla ponavljanja', 'Repeat Orb'), cat:'magic', cost:900, components:['pointbooster', 'ringregen', 'sage'], stats:{hp:175, mp:175, hpRegen:5, mpRegen:3},
     act:L('Osvježi: sve tvoje moći su odmah spremne', 'Refresh: all your abilities are ready right away'), lore:L('Kao da počinješ ispočetka!', 'It\'s like starting over!'),
     active:{ cd:180, mana:250,
       use(h){ for(const ab of h.abilities) ab.cd = 0; burst(h.x, h.y, '#a5f3fc', 24, 220, 6); addFloat(h.x, h.y, L('🔄 Moći spremne!', '🔄 Abilities ready!'), '#a5f3fc', 15); return true; } } },
@@ -2250,11 +2250,11 @@ const ITEMS = [
         }
         ring(h.x, h.y, 700, '#bae6fd'); burst(h.x, h.y, '#e0f2fe', 30, 320, 6); return true;
       } } },
-  { id:'kaya', emoji:'📘', name:L('Kaja', 'Kaya'), cat:'magic', cost:300, components:['wizstaff', 'robe'], stats:{int:16, mpRegen:1, amp:0.1},   // v0.56
+  { id:'kaya', emoji:'📘', name:L('Knjiga čarolija', 'Spellbook'), cat:'magic', cost:300, components:['wizstaff', 'robe'], stats:{int:16, mpRegen:1, amp:0.1},   // v0.56
     lore:L('Knjiga koja pojačava svaku čaroliju.', 'A book that makes every spell stronger.') },
-  { id:'octarine', emoji:'⚛️', name:L('Oktarinska jezgra', 'Octarine Core'), cat:'magic', cost:500, components:['mystic', 'pointbooster'], stats:{int:25, hp:175, mp:175, cdr:0.25},   // v0.56
+  { id:'octarine', emoji:'⚛️', name:L('Čarobna jezgra', 'Magic Core'), cat:'magic', cost:500, components:['mystic', 'pointbooster'], stats:{int:25, hp:175, mp:175, cdr:0.25},   // v0.56
     lore:L('Srce čarobnjaka: moći se brže vraćaju.', 'A wizard\'s heart: abilities come back faster.') },
-  { id:'orchid', emoji:'🌺', name:L('Orhideja zloće', 'Orchid Malevolence'), cat:'magic', cost:425, components:['wizstaff', 'gloves', 'voidstone'], stats:{int:12, aspd:30, mpRegen:3, dmg:10},   // v0.56
+  { id:'orchid', emoji:'🌺', name:L('Cvijet tišine', 'Hush Flower'), cat:'magic', cost:425, components:['wizstaff', 'gloves', 'voidstone'], stats:{int:12, aspd:30, mpRegen:3, dmg:10},   // v0.56
     act:L('Tišina: neprijateljski junak 4 s ne može bacati moći (domet 900)', 'Silence: an enemy hero can\'t cast abilities for 4 s (range 900)'), lore:L('Lijep cvijet — opasan miris.', 'A pretty flower — a dangerous scent.'),
     active:{ cd:18, mana:100, target:'point', castRange:900,
       use(h, aim){
@@ -2263,7 +2263,7 @@ const ITEMS = [
         applySilence(t, 4); applyDamage(t, 60, h, true);
         addFloat(t.x, t.y, L('🤐 Tišina!', '🤐 Silenced!'), '#d8b4fe', 15); burst(t.x, t.y, '#c084fc', 16, 170, 5); return true;
       } } },
-  { id:'atos', emoji:'🔗', name:L('Atosov štap', 'Rod of Atos'), cat:'magic', cost:300, components:['wizstaff', 'heart'], stats:{int:12, hp:250},   // v0.56
+  { id:'atos', emoji:'🔗', name:L('Štap okova', 'Chain Rod'), cat:'magic', cost:300, components:['wizstaff', 'heart'], stats:{int:12, hp:250},   // v0.56
     act:L('Lanci: neprijatelj je 2 s ukorijenjen (ne može hodati) — domet 1100', 'Chains: an enemy is rooted for 2 s (can\'t move) — range 1100'), lore:L('Lanci iz zemlje drže bjegunca.', 'Chains from the ground hold the runaway.'),
     active:{ cd:18, mana:50, target:'point', castRange:1100,
       use(h, aim){
@@ -2274,19 +2274,19 @@ const ITEMS = [
         burst(t.x, t.y, '#d4d4d4', 14, 150, 5); return true;
       } } },
   // ----- 🛡️ oklop -----
-  { id:'vanguard', emoji:'🔰', name:L('Avangarda', 'Vanguard'), cat:'armor', cost:250, components:['heart', 'ringregen'], stats:{hp:250, hpRegen:5},
+  { id:'vanguard', emoji:'🔰', name:L('Hrastov štit', 'Oak Shield'), cat:'armor', cost:250, components:['heart', 'ringregen'], stats:{hp:250, hpRegen:5},
     block:{ c:0.6, a:40 }, pas:L('60% šanse da blokira 40 štete od udarca', '60% chance to block 40 damage from a hit'), lore:L('Prvi u boj, zadnji iz boja.', 'First into battle, last out of it.') },
   { id:'bkb', emoji:'👑', name:L('Kraljevski oklop', 'Royal Armor'), cat:'armor', cost:700, components:['ogre', 'mithril'], stats:{str:10, dmg:24},
     act:L('Nepokolebljiv: 5 s ništa te ne može omamiti, usporiti ni ušutkati', 'Unstoppable: for 5 s nothing can stun, slow or silence you'), lore:L('Kralj ne pada na koljena.', 'A king never kneels.'),
     active:{ cd:70, mana:0, use(h){ applyImmune(h, 5); burst(h.x, h.y, '#fde047', 20, 220, 6); return true; } } },
-  { id:'assault', emoji:'🪖', name:L('Napadački oklop', 'Assault Cuirass'), cat:'armor', cost:650, components:['platemail', 'hyperstone', 'chainmail'], stats:{armor:15, aspd:30},
+  { id:'assault', emoji:'🪖', name:L('Generalov oklop', 'General\'s Armor'), cat:'armor', cost:650, components:['platemail', 'hyperstone', 'chainmail'], stats:{armor:15, aspd:30},
     aura:{ armor:4, aspd:20, r:900 }, pas:L('Aura (900): saveznici +4 oklopa i +20% brzine napada', 'Aura (900): allies get +4 armor and +20% attack speed'), lore:L('Oklop generala koji vodi vojsku.', 'The armor of a general who leads the army.') },
   { id:'titanheart', emoji:'🧡', name:L('Srce titana', 'Titan Heart'), cat:'armor', cost:650, components:['reaver', 'heart'], stats:{str:45, hp:250, hpRegen:12},
     lore:L('Kuca kao bubanj divova.', 'It beats like a giant\'s drum.') },
-  { id:'hood', emoji:'🧢', name:L('Kapuljača prkosa', 'Hood of Defiance'), cat:'armor', cost:200, components:['cloak', 'ringhealth', 'ringregen'], stats:{hpRegen:8, mres:0.25},   // v0.56
+  { id:'hood', emoji:'🧢', name:L('Kapa protiv čarolija', 'Spellproof Cap'), cat:'armor', cost:200, components:['cloak', 'ringhealth', 'ringregen'], stats:{hpRegen:8, mres:0.25},   // v0.56
     act:L('Štit protiv magije: upije 350 štete na 12 s', 'Spell shield: absorbs 350 damage for 12 s'), lore:L('Magije se odbijaju od nje.', 'Spells bounce off it.'),
     active:{ cd:60, mana:0, use(h){ h.barrierHp = Math.max(h.barrierHp || 0, 350); h.barrierT = 12; burst(h.x, h.y, '#93c5fd', 16, 170, 5); return true; } } },
-  { id:'halberd', emoji:'⚜️', name:L('Nebeska helebarda', 'Heaven\'s Halberd'), cat:'armor', cost:300, components:['ogre', 'staff', 'ringhealth'], stats:{str:16, dmg:10, hpRegen:5, evasion:0.2},   // v0.56
+  { id:'halberd', emoji:'⚜️', name:L('Gardijska helebarda', 'Guard\'s Halberd'), cat:'armor', cost:300, components:['ogre', 'staff', 'ringhealth'], stats:{str:16, dmg:10, hpRegen:5, evasion:0.2},   // v0.56
     act:L('Razoružaj: neprijatelj 3 s ne može udarati (domet 600)', 'Disarm: an enemy can\'t attack for 3 s (range 600)'), lore:L('Jedan zamah — i oružje padne iz ruke.', 'One swing — and the weapon drops from their hand.'),
     active:{ cd:18, mana:100, target:'point', castRange:600,
       use(h, aim){
@@ -2298,17 +2298,17 @@ const ITEMS = [
   // ----- ⚔️ oružje -----
   { id:'crystalys', emoji:'💥', name:L('Kristalni nož', 'Crystal Knife'), cat:'weapon', cost:250, components:['broadsword', 'sword'], stats:{dmg:32},
     crit:{ c:0.3, m:1.6 }, pas:L('30% šanse za kritični udarac (160% štete)', '30% chance for a critical hit (160% damage)'), lore:L('Oštar kao led.', 'Sharp as ice.') },
-  { id:'daedalus', emoji:'🎯', name:L('Dedalova oštrica', 'Daedalus'), cat:'weapon', cost:500, components:['crystalys', 'demonedge'], stats:{dmg:88},
+  { id:'daedalus', emoji:'🎯', name:L('Oštrica pogotka', 'Bullseye Blade'), cat:'weapon', cost:500, components:['crystalys', 'demonedge'], stats:{dmg:88},
     crit:{ c:0.3, m:2.25 }, pas:L('30% šanse za kritični udarac (225% štete)', '30% chance for a critical hit (225% damage)'), lore:L('Ne promašuje slabe točke.', 'It never misses a weak spot.') },
-  { id:'bfury', emoji:'🪓', name:L('Bojna sjekira', 'Battle Fury'), cat:'weapon', cost:600, components:['broadsword', 'claymore', 'quelling', 'ringregen', 'sage'], stats:{dmg:50, hpRegen:5, mpRegen:2.5},
+  { id:'bfury', emoji:'🪓', name:L('Sjekira oluje', 'Storm Axe'), cat:'weapon', cost:600, components:['broadsword', 'claymore', 'quelling', 'ringregen', 'sage'], stats:{dmg:50, hpRegen:5, mpRegen:2.5},
     cleave:0.5, creepDmg:15, pas:L('Zamah (samo izbliza): 50% štete svima oko mete • +15 štete protiv vojnika', 'Cleave (melee only): 50% damage to everyone around the target • +15 damage against creeps'), lore:L('Jedan zamah — cijela skupina.', 'One swing — the whole group.') },
-  { id:'deso', emoji:'🌘', name:L('Oštrica pustoši', 'Desolator'), cat:'weapon', cost:150, components:['mithril', 'mithril'], stats:{dmg:50},
+  { id:'deso', emoji:'🌘', name:L('Mač sumraka', 'Dusk Sword'), cat:'weapon', cost:150, components:['mithril', 'mithril'], stats:{dmg:50},
     corrupt:{ a:6, t:7 }, pas:L('Udarac skida 6 oklopa meti na 7 s', 'Hits remove 6 armor from the target for 7 s'), lore:L('Gdje udari, ostaje pustoš.', 'Where it strikes, nothing is left.') },
-  { id:'basher', emoji:'🔨', name:L('Lubanjolomac', 'Skull Basher'), cat:'weapon', cost:450, components:['mithril', 'belt'], stats:{dmg:25, str:6},
+  { id:'basher', emoji:'🔨', name:L('Kameni malj', 'Stone Mallet'), cat:'weapon', cost:450, components:['mithril', 'belt'], stats:{dmg:25, str:6},
     bash:{ c:0.25, cr:0.1, t:1.4, dmg:80 }, pas:L('Tresak: 25% šanse (daljinski 10%) da omami metu 1.4 s i doda 80 štete', 'Bash: 25% chance (ranged 10%) to stun the target for 1.4 s and add 80 damage'), lore:L('BUM! Zvijezde oko glave.', 'BOOM! Stars around your head.') },
-  { id:'abyssal', emoji:'🌀', name:L('Ponorna oštrica', 'Abyssal Blade'), cat:'weapon', cost:800, components:['basher', 'vanguard'], stats:{dmg:25, str:10, hp:250, hpRegen:6},
+  { id:'abyssal', emoji:'🌀', name:L('Vrtložni mač', 'Whirlpool Sword'), cat:'weapon', cost:800, components:['basher', 'vanguard'], stats:{dmg:25, str:10, hp:250, hpRegen:6},
     bash:{ c:0.25, cr:0.1, t:1.4, dmg:80 }, block:{ c:0.6, a:50 },
-    pas:L('Tresak kao Lubanjolomac + 60% šanse da blokira 50 štete', 'Bash like Skull Basher + 60% chance to block 50 damage'),
+    pas:L('Tresak kao Kameni malj + 60% šanse da blokira 50 štete', 'Bash like the Stone Mallet + 60% chance to block 50 damage'),
     act:L('Ponor: omami neprijatelja ispred sebe na 2 s (domet 200)', 'Abyss: stun the enemy in front of you for 2 s (range 200)'), lore:L('Iz ponora nema bijega.', 'There is no escape from the abyss.'),
     active:{ cd:35, mana:75, target:'point', castRange:200,
       use(h, aim){
@@ -2321,16 +2321,16 @@ const ITEMS = [
         applyStun(best, 2); applyDamage(best, 100, h, true);
         burst(best.x, best.y, '#a78bfa', 16, 160, 6); return true;
       } } },
-  { id:'mkb', emoji:'🐒', name:L('Majmunova šipka', 'Monkey King Bar'), cat:'weapon', cost:325, components:['demonedge', 'gloves'], stats:{dmg:40, aspd:45},
-    trueStrike:true, proc:{ c:0.7, dmg:70 }, pas:L('Udarci nikad ne promašuju • 70% šanse za +70 čarobne štete', 'Hits never miss • 70% chance for +70 magic damage'), lore:L('Majmun kralj nikad ne promaši.', 'The Monkey King never misses.') },
-  { id:'maelstrom', emoji:'⛈️', name:L('Vrtlog munja', 'Maelstrom'), cat:'weapon', cost:300, components:['javelin', 'mithril'], stats:{dmg:44},   // v0.56
+  { id:'mkb', emoji:'🐒', name:L('Nepromašivi štap', 'Never-Miss Staff'), cat:'weapon', cost:325, components:['demonedge', 'gloves'], stats:{dmg:40, aspd:45},
+    trueStrike:true, proc:{ c:0.7, dmg:70 }, pas:L('Udarci nikad ne promašuju • 70% šanse za +70 čarobne štete', 'Hits never miss • 70% chance for +70 magic damage'), lore:L('S njim ni najnespretniji majmun ne promaši.', 'With it, even the clumsiest monkey never misses.') },
+  { id:'maelstrom', emoji:'⛈️', name:L('Olujni čekić', 'Storm Hammer'), cat:'weapon', cost:300, components:['javelin', 'mithril'], stats:{dmg:44},   // v0.56
     chain:{ c:0.25, dmg:120, n:4, r:500 }, pas:L('25% šanse da udarac pusti munju koja skače na 4 neprijatelja (120 štete)', '25% chance for an attack to release lightning that jumps to 4 enemies (120 damage)'),
     lore:L('Oluja u čekiću.', 'A storm in a hammer.') },
-  { id:'mjollnir', emoji:'🌩️', name:L('Gromovnik', 'Mjollnir'), cat:'weapon', cost:600, components:['maelstrom', 'hyperstone'], stats:{dmg:44, aspd:70},   // v0.56
+  { id:'mjollnir', emoji:'🌩️', name:L('Gromovnik', 'Thunderer'), cat:'weapon', cost:600, components:['maelstrom', 'hyperstone'], stats:{dmg:44, aspd:70},   // v0.56
     chain:{ c:0.3, dmg:170, n:8, r:600 }, pas:L('30% šanse da udarac pusti munju koja skače na 8 neprijatelja (170 štete)', '30% chance for an attack to release lightning that jumps to 8 enemies (170 damage)'),
     act:L('Statički štit (15 s): tko te udari, 20% šanse da ga pogodi munja (200 štete)', 'Static shield (15 s): whoever hits you has a 20% chance to get struck by lightning (200 damage)'), lore:L('Gromovi slušaju samo njega.', 'Thunder obeys only him.'),
     active:{ cd:35, mana:50, use(h){ h.staticT = 15; burst(h.x, h.y, '#fde047', 18, 180, 5); addFloat(h.x, h.y, L('🌩️ Statički štit!', '🌩️ Static shield!'), '#fde047', 15); return true; } } },
-  { id:'diffusal', emoji:'🪀', name:L('Raspršna oštrica', 'Diffusal Blade'), cat:'weapon', cost:350, components:['band', 'band', 'robe'], stats:{agi:20, int:8},   // v0.56
+  { id:'diffusal', emoji:'🪀', name:L('Oštrica ispijanja', 'Drain Blade'), cat:'weapon', cost:350, components:['band', 'band', 'robe'], stats:{agi:20, int:8},   // v0.56
     mburn:{ mp:35, f:0.8 }, pas:L('Svaki udarac sagori 35 mane neprijatelju i napravi 80% toga kao štetu', 'Every attack burns 35 enemy mana and deals 80% of it as damage'),
     act:L('Raspršivanje: neprijatelj je 4 s usporen 60% (domet 600)', 'Diffuse: an enemy is slowed by 60% for 4 s (range 600)'), lore:L('Oštrica koja ispija čaroliju.', 'A blade that drinks magic.'),
     active:{ cd:15, mana:0, target:'point', castRange:600,
@@ -2340,9 +2340,9 @@ const ITEMS = [
         applySlow(t, 0.6, 4); burst(t.x, t.y, '#a78bfa', 14, 150, 5); return true;
       } } },
   // ----- 💎 artefakti -----
-  { id:'butterfly', emoji:'🦋', name:L('Leptir', 'Butterfly'), cat:'art', cost:450, components:['eaglesong', 'gloves'], stats:{agi:35, dmg:25, aspd:30, evasion:0.35},
+  { id:'butterfly', emoji:'🦋', name:L('Plesna krila', 'Dancing Wings'), cat:'art', cost:450, components:['eaglesong', 'gloves'], stats:{agi:35, dmg:25, aspd:30, evasion:0.35},
     pas:L('35% šanse da izbjegneš udarac', '35% chance to dodge a hit'), lore:L('Lepršaš — i nitko te ne može pogoditi.', 'You flutter — and nobody can hit you.') },
-  { id:'shadowblade', emoji:'🌒', name:L('Sjenovita oštrica', 'Shadow Blade'), cat:'art', cost:400, components:['broadsword', 'gloves'], stats:{dmg:25, aspd:30},
+  { id:'shadowblade', emoji:'🌒', name:L('Nevidljivi bodež', 'Ghost Dagger'), cat:'art', cost:400, components:['broadsword', 'gloves'], stats:{dmg:25, aspd:30},
     act:L('Sjena: 14 s nevidljiv i brži 20%; prvi udarac iz sjene +175 štete', 'Shadow: invisible and 20% faster for 14 s; first hit from the shadows +175 damage'), lore:L('Sjena koja reže.', 'A shadow that cuts.'),
     active:{ cd:28, mana:75,
       use(h){ h.status.invisT = Math.max(h.status.invisT, 14); h.sbBonus = 175; applyHaste(h, 1.2, 14); burst(h.x, h.y, '#6b7280', 16, 160, 5); return true; } } },
@@ -2351,7 +2351,7 @@ const ITEMS = [
     active:{ cd:35, mana:0, use(h){ h.lsBoostT = 6; burst(h.x, h.y, '#dc2626', 18, 180, 5); addFloat(h.x, h.y, L('🦇 Žeđ!', '🦇 Thirst!'), '#fca5a5', 15); return true; } } },
   { id:'sun', emoji:'☀️', name:L('Sunčev kamen', 'Sun Stone'), cat:'art', cost:650, components:['relic'], stats:{dmg:65},
     burn:40, burnR:320, pas:L('Žar: sve neprijatelje u krugu 320 peče 40 štete/s', 'Blaze: burns all enemies within 320 for 40 damage/s'), lore:L('Mali komadić Sunca.', 'A tiny piece of the Sun.') },
-  { id:'skadi', emoji:'🧊', name:L('Oko mraza', 'Eye of Skadi'), cat:'art', cost:300, components:['ogre', 'alacrity', 'wizstaff', 'pointbooster'], stats:{all:22, hp:225, mp:225},   // v0.56
+  { id:'skadi', emoji:'🧊', name:L('Ledeno srce', 'Frost Heart'), cat:'art', cost:300, components:['ogre', 'alacrity', 'wizstaff', 'pointbooster'], stats:{all:22, hp:225, mp:225},   // v0.56
     cold:{ f:0.35, t:2.5 }, pas:L('Udarci usporavaju neprijatelja 35% na 2.5 s', 'Attacks slow the enemy by 35% for 2.5 s'), lore:L('Ledeno oko koje sve vidi i sve smrzne.', 'An icy eye that sees everything and freezes everything.') },
 ];
 const ITEM_BY_ID = {};
@@ -2421,7 +2421,7 @@ const HERO_BUILDS = {
   listko: BUILD_SUPPORT, jednorog: BUILD_SUPPORT,
   strijela: BUILD_RANGED, orlina: BUILD_RANGED, luna: ['wraith', 'treads', 'deso', 'mkb', 'butterfly', 'satanic'],
   munja: BUILD_MELEE, majmun: ['wraith', 'phase', 'bfury', 'deso', 'basher', 'butterfly'],
-  vuk: ['bracer', 'phase', 'bfury', 'mom', 'basher', 'satanic'],   // ⚖️ v0.45: Bojna sjekira — brže skuplja zlato (prije je zaostajao)
+  vuk: ['bracer', 'phase', 'bfury', 'mom', 'basher', 'satanic'],   // ⚖️ v0.45: Sjekira oluje — brže skuplja zlato (prije je zaostajao)
   tragac: ['wraith', 'phase', 'shadowblade', 'deso', 'daedalus', 'butterfly'],
   skokica: ['bracer', 'phase', 'blink', 'bkb', 'abyssal', 'satanic'],
   morskipas: ['wraith', 'phase', 'mom', 'bfury', 'abyssal', 'satanic'],

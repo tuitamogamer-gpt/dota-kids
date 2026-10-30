@@ -17,7 +17,10 @@ const SR_PHRASES = [
   ["kratke upute", "kratka uputstva"]
 ];
 const SR_WORDS = {
-  // v0.56 (džungla, predmeti)
+  // v0.56 (džungla, predmeti; nova imena predmeta)
+  "medvjeđe":"medveđe", "medvjeđa":"medveđa", "medvjeđi":"medveđi", "vjetrova":"vetrova", "drvosječina":"drvosečina", "drvosječa":"drvoseča",
+  "bijesa":"besa", "stijeg":"steg", "krijesnica":"svitaca", "iscjeliteljske":"isceliteljske", "šalica":"šolja", "šalicu":"šolju",
+  "krijesnice":"svici", "tenisice":"patike", "hrvački":"rvački", "željezni":"gvozdeni", "željezna":"gvozdena", "željezo":"gvožđe",
   "bjegunca":"begunca", "cvijet":"cvet", "dotječe":"dotiče", "lijep":"lep", "svjetluca":"svetluca", "svjetlucanje":"svetlucanje",
   "svjetlucavi":"svetlucavi", "ukorijenjen":"ukorenjen", "dvije":"dve", "pobjegneš":"pobegneš", "drukčije":"drugačije", "unutarnje":"unutrašnje",
   "unutarnju":"unutrašnju", "unutarnja":"unutrašnja", "pobijeđenog":"pobeđenog", "pobijeđen":"pobeđen", "pobijeđena":"pobeđena", "pobijeđeni":"pobeđeni",

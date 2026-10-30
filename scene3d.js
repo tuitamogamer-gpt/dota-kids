@@ -4440,7 +4440,7 @@ function syncScene(tAnim){
         }
       }
       ud.lastX = u.x; ud.lastY = u.y;
-      if(u.cycloneT > 0) cycloneFx(u, g, tAnim, dt);   // 🌪️ Vjetrovita palica
+      if(u.cycloneT > 0) cycloneFx(u, g, tAnim, dt);   // 🌪️ Tornado u boci
       syncHeroExtras(u, g, gh, tAnim, dt, seen);
       if(!seen) continue;
       ud.yaw = angleLerp(ud.yaw, -(u.dir || 0), Math.min(1, dt * 14));
