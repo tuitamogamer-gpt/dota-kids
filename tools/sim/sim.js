@@ -87,6 +87,8 @@ function runGame(gi){
   const G = ctx.__G;
   G.SETTINGS.diff = DIFF;
   if(args.includes('--turbo')) G.SETTINGS.mode = 'turbo';   // ⚡ brza igra
+  const LANE = (args.find(a => a.startsWith('--lane=')) || '').slice(7);   // 🛣️ tvoja staza: top / mid / bot / jungle (v0.56)
+  if(LANE) G.SETTINGS.lane = LANE;
   const hi = HERO ? G.HEROES.findIndex(h => h.id === HERO) : Math.floor(Math.random() * G.HEROES.length);
   if(VS){   // zadani junaci prvi u ostatku (crveni tim kreće od 5. mjesta: prvo popuni crvene)
     const want = VS.split(',').map(id => G.HEROES.findIndex(h => h.id === id)).filter(i => i >= 0 && i !== hi);
@@ -96,6 +98,7 @@ function runGame(gi){
   G.startGame(hi);
   const p = G.player;
   p.bot = { state: 'lane', thinkT: 0.3 };   // i tvog junaka vodi bot
+  if(p.jungler) p.summoners = ['flash', 'smite'];
   const dt = 0.05;
   const stat = { nearSum: 0, nearN: 0, crowd: 0, crowdN: 0, fightT: 0, towerKills: [0, 0], heroDeaths: 0, tDeath: [], spread: 0 };
   let tLog = 0;
@@ -138,7 +141,7 @@ function runGame(gi){
     ai: G.teamAI ? G.teamAI.map(a => a.stats) : null,
     deaths: heroes.reduce((a, h) => a + h.deaths, 0),
   };
-  if(JSON_OUT) fs.appendFileSync(JSON_OUT, JSON.stringify({ min: res.min, win: res.win, heroes: heroes.map(h => ({ id: h.hero.id, t: h.team, k: h.kills, d: h.deaths, a: h.assists, nw: G.netWorth(h), lv: h.level, hd: Math.round(h.heroDmg || 0), c: h.casts || {}, it: h.items.filter(Boolean).map(i => i.id) })) }) + '\n');
+  if(JSON_OUT) fs.appendFileSync(JSON_OUT, JSON.stringify({ min: res.min, win: res.win, heroes: heroes.map(h => ({ id: h.hero.id, t: h.team, jg: h.jungler ? 1 : 0, k: h.kills, d: h.deaths, a: h.assists, nw: G.netWorth(h), lv: h.level, hd: Math.round(h.heroDmg || 0), c: h.casts || {}, it: h.items.filter(Boolean).map(i => i.id) })) }) + '\n');
   if(CHECK) for(const h of heroes){
     const tl = Object.keys(h.talents).map(l => l + (h.talents[l])).join(' ');
     console.log(`   ${h.team ? '🔴' : '🔵'} ${h.hero.id.padEnd(10)} lvl ${String(h.level).padStart(2)} K/D/A ${h.kills}/${h.deaths}/${h.assists}  talenti [${tl}]` +

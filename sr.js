@@ -17,6 +17,10 @@ const SR_PHRASES = [
   ["kratke upute", "kratka uputstva"]
 ];
 const SR_WORDS = {
+  // v0.56 (džungla, predmeti)
+  "bjegunca":"begunca", "cvijet":"cvet", "dotječe":"dotiče", "lijep":"lep", "svjetluca":"svetluca", "svjetlucanje":"svetlucanje",
+  "svjetlucavi":"svetlucavi", "ukorijenjen":"ukorenjen", "dvije":"dve", "pobjegneš":"pobegneš", "drukčije":"drugačije", "unutarnje":"unutrašnje",
+  "unutarnju":"unutrašnju", "unutarnja":"unutrašnja",
   // v0.55 (Pecko, Inja, Škorpo)
   "snježni":"snežni", "vjetra":"vetra", "pijesak":"pesak", "pijeska":"peska", "pješčanu":"peščanu", "pješčana":"peščana",
   "valovi":"talasi", "strijelkinja":"strelkinja", "izliječiš":"izlečiš", "valu":"talasu", "vala":"talasa", "pješčanoj":"peščanoj",

@@ -1478,7 +1478,7 @@ function buildTrees3D(){
     }
     // 🏮 v0.47: baklje uz sve staze (svakih ~720, naizmjence s obje strane) — noću osvijetle put
     const towerSpots = [];
-    for(let tm = 0; tm < 2; tm++) for(const l of LANE_LIST) for(const f of TOWER_FRACS[tm]) towerSpots.push(pointAt(LANE_PTS[l], f));
+    for(let tm = 0; tm < 2; tm++) for(const l of LANE_LIST) for(let i = 0; i < TOWER_FRACS[l].length; i++) towerSpots.push(pointAt(LANE_PTS[l], towerFrac(tm, l, i)));   // v0.56: T1–T3 po stazi
     for(const l of LANE_LIST){
       const pts = LANE_PTS[l], Ltot = pathLength(pts);
       let side = 1;

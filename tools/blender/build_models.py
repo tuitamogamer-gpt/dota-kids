@@ -2887,6 +2887,16 @@ def build_neutrals():
     quad('mob_boars', dict(fur='#8b5a3c', belly='#b98a63', dark='#4a2c18', snoutC='#e9a3a0'),
          dict(len=1.1, legH=0.22, wid=0.3, bodyR=0.28, snout='pig', ears='pointy', tail='thin', bristle=True,
               headR=0.22, legR=0.07))
+    def lizard_crest(m, g):   # 🦎 v0.56: šarena krijesta na leđima i podbradak
+        b, h = m['body'], m['head']
+        for i in range(6):
+            x = 0.34 * g['L'] - i * 0.13 * g['L']
+            b.cyl((x, 0, g['bz'] + g['br'] * 0.8), (x - 0.04, 0, g['bz'] + g['br'] * 0.8 + 0.12 - abs(i - 2) * 0.015),
+                  0.05, 0.0, '#f97316' if i % 2 else '#facc15', seg=4)
+        h.sphere((g['hx'] + 0.12, 0, g['hz'] - g['hr'] * 0.75), (g['hr'] * 0.55, g['hr'] * 0.45, g['hr'] * 0.3), '#fb923c')
+    quad('mob_lizard', dict(fur='#4d9a3a', belly='#d9f99d', dark='#1f4d1a', paw='#2f5f22'),
+         dict(len=1.2, legH=0.12, wid=0.3, bodyR=0.19, snout='dragon', ears='none', tail='dragon',
+              headR=0.19, legR=0.06, eyeColor='#fde047', claws=True, extra=lizard_crest))
     quad('mob_wolves', dict(fur='#6b7280', belly='#c5cad3', dark='#374151', tip='#e5e7eb'),
          dict(len=1.25, legH=0.34, wid=0.26, bodyR=0.25, snout='wolf', ears='pointy', tail='bushy',
               headR=0.2, legR=0.065, eyeColor='#f6c945', glowEyes=False, fangs=True, ruff=True))
@@ -4712,6 +4722,12 @@ def main():
         bake_ao(do_ao='--ao' in argv)
         preview(arg('out', os.path.join(HERE, 'preview_v55.png')), only=['hero_nilski', 'hero_irbis', 'hero_skorpion', 'proj_hook', 'proj_gust'],
                 cols=int(arg('cols', '5')), zoom=float(arg('zoom', '2.0')))
+        return
+    if '--dev-v56' in argv:   # v0.56 gušter iz malog kampa uz veprića (bez izvoza):  --out=put.png
+        arg = lambda k, d: next((a[len(k) + 3:] for a in argv if a.startswith('--' + k + '=')), d)
+        build_neutrals()
+        bake_ao(do_ao=False)
+        preview(arg('out', os.path.join(HERE, 'preview_v56.png')), only=['mob_lizard', 'mob_boars'], cols=2, zoom=2.4)
         return
     if '--dev-v14' in argv:   # brza provjera novih modela (bez izvoza)
         build_courier()

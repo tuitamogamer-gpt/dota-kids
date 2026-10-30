@@ -160,7 +160,7 @@ function onNetData(d){
     case 'ready':
       net.otherReady = true;
       if(Array.isArray(d.sm) && d.sm.length === 2 && d.sm.every(id => SUMMONER_BY_ID[id])) net.otherSum = d.sm;
-      net.otherLane = LANES.includes(d.ln) ? d.ln : 'mid';
+      net.otherLane = LANE_CHOICES.includes(d.ln) ? d.ln : 'mid';   // v0.56: i 🌲 džungla
       syncLobbyText();
       if(net.mode === 'host') tryStartMatch();
       break;
@@ -172,7 +172,7 @@ function onNetData(d){
     // --- ulazi gosta (obrađuje domaćin) ---
     case 'cmd':
       if(net.mode === 'host' && remoteHero && !remoteHero.dead){
-        if(d.stop){ remoteHero.moveTarget = null; remoteHero.attackTarget = null; cancelTeleport(remoteHero); }
+        if(d.stop) stopHero(remoteHero);   // ✋ v0.56: i otkazuje zamah udarca
         else {   // v0.31: gost šalje i jedinicu pod mišem (tid), napad u hodu (am) i držanje miša (hm)
           const tgt = d.tid === undefined ? undefined : (d.tid === null ? null : (units.find(u => u.id === d.tid) || null));
           playerCommandFor(remoteHero, d.x, d.y, tgt, { amove: !!d.am, silent: !!d.hm });
@@ -230,6 +230,7 @@ function heroExtras(h){
     as: h.assists, bb: +h.buybackCd.toFixed(1), ag: h.aegis ? 1 : 0, at: Math.round(h.aegisT), ic: h.itemCd, ich: h.itemCharges,
     tal: h.talents, cdr: h.cdr || 0, rg: Math.round(h.atkRange),
     sm: h.summoners, smc: (h.sumCd || [0, 0]).map(v => +v.toFixed(1)),
+    jg: h.jungler ? 1 : 0,   // 🌲 v0.56: junak u džungli (vodič u dućanu)
     ab: h.abilities.map(a => [a.rank, +a.cd.toFixed(1)]),
     it: h.items.map(i => i.id),
     ip: h.items.reduce((a, it, k) => (it.pending && a.push(k), a), []),   // 🫏 čekaju kurira
@@ -292,7 +293,7 @@ function buildSnapshot(){
     else if(u.kind === 'barracks'){ b.iv = u.invuln ? 1 : 0; b.ln = u.lane; }
     if(u.bdT != null && gameTime - u.bdT < 0.5) b.bd = 1;   // 🛡️ backdoor zaštita upravo radi
     if(u.kind === 'neutral'){ b.ct = CAMP_KEYS.indexOf(u.camp.type); if(u.drake) b.dk = DRAKE_KEYS.indexOf(u.drake); if(u.nlvl > 1) b.nl = u.nlvl; }   // 🐲 level čudovišta
-    else if(u.kind === 'tower'){ if(u.isGuard) b.gd = 1; }
+    else if(u.kind === 'tower'){ if(u.isGuard) b.gd = 1; b.iv = u.invuln ? 1 : 0; if(u.tier) b.tr = u.tier; }
     else if(u.kind === 'ancient'){ b.iv = u.invuln ? 1 : 0; }
     us.push(b);
   }
@@ -443,7 +444,8 @@ function applySnapshot(d){
       u.neutral = b.nt ? ITEM_BY_ID[b.nt] || null : null;
       if(b.pl === 2 && !u.isPlayer){ u.isPlayer = true; }
     }
-    if(u.kind === 'ancient' || u.kind === 'barracks') u.invuln = !!b.iv;
+    if(u.kind === 'ancient' || u.kind === 'barracks' || u.kind === 'tower') u.invuln = !!b.iv;
+    if(b.tr) u.tier = b.tr;
     if(b.bd) u.bdT = gameTime;
   }
   for(const id of [...net.guestUnits.keys()]){
@@ -470,6 +472,7 @@ function applySnapshot(d){
     if(e.rg) player.atkRange = e.rg;
     player.cdr = e.cdr || 0;
     if(e.sm) player.summoners = e.sm;
+    player.jungler = !!e.jg;
     if(e.smc) player.sumCd = e.smc;
     e.ab.forEach((a, j) => {
       if(player.abilities[j]){ player.abilities[j].rank = a[0]; player.abilities[j].cd = a[1]; }
@@ -636,11 +639,12 @@ function startMatchHost(hostIdx, guestIdx, botIdcs, hostLane, guestLane){
   buildTrees3D();
   buildStatic3D();
   makeWorld();
-  const bl = lanesFor(hostLane), rl = lanesFor(guestLane);   // 🛣️ svaki igrač na svojoj stazi, botovi popune ostatak
+  const jg = hostLane === 'jungle' || guestLane === 'jungle';   // 🌲 v0.56: netko je u džungli → oba tima imaju junaka u džungli
+  const bl = lanesFor(hostLane, jg), rl = lanesFor(guestLane, jg);   // 🛣️ svaki igrač na svojoj stazi, botovi popune ostatak
   makeHero(HEROES[hostIdx], TEAM_BLUE, true, bl[0]);
-  player.summoners = pickedSummoners.slice();
+  player.summoners = player.jungler ? jungleSummoners(pickedSummoners) : pickedSummoners.slice();
   remoteHero = makeHero(HEROES[guestIdx], TEAM_RED, false, rl[0]);
-  if(net.otherSum) remoteHero.summoners = net.otherSum.slice();
+  if(net.otherSum) remoteHero.summoners = remoteHero.jungler ? jungleSummoners(net.otherSum) : net.otherSum.slice();
   remoteHero.human = true;
   remoteHero.bot = null;
   const nb = CFG.teamSize - 1;   // 👥 botovi: prvo plavi, pa crveni (staze po LANE_PLAN)

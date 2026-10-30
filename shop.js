@@ -63,8 +63,10 @@ const STAT_LABEL = {
   armor: n => L('+' + n + ' oklopa', '+' + n + ' armor'), hp: n => L('+' + n + ' života', '+' + n + ' HP'), mp: n => L('+' + n + ' mane', '+' + n + ' mana'),
   hpRegen: n => L('+' + n + ' obnove života', '+' + n + ' HP regen'), mpRegen: n => L('+' + n + ' obnove mane', '+' + n + ' mana regen'), speed: n => L('+' + n + ' brzine kretanja', '+' + n + ' move speed'),
   lifesteal: n => L(Math.round(n * 100) + '% krađe života', Math.round(n * 100) + '% lifesteal'), evasion: n => L(Math.round(n * 100) + '% izbjegavanja', Math.round(n * 100) + '% evasion'),
+  mres: n => L(Math.round(n * 100) + '% otpora magiji', Math.round(n * 100) + '% magic resistance'), cdr: n => L('−' + Math.round(n * 100) + '% hlađenja moći', '−' + Math.round(n * 100) + '% ability cooldowns'),
+  amp: n => L('+' + Math.round(n * 100) + '% jačine magija', '+' + Math.round(n * 100) + '% spell damage'),   // v0.56
 };
-const STAT_ORDER = ['all', 'str', 'agi', 'int', 'primary', 'dmg', 'aspd', 'armor', 'hp', 'mp', 'hpRegen', 'mpRegen', 'speed', 'lifesteal', 'evasion'];
+const STAT_ORDER = ['all', 'str', 'agi', 'int', 'primary', 'dmg', 'aspd', 'armor', 'hp', 'mp', 'hpRegen', 'mpRegen', 'speed', 'lifesteal', 'evasion', 'mres', 'cdr', 'amp'];
 function statLines(it){
   const s = it.stats || {}, out = [];
   if(it.instant) out.push(L('+' + it.heal + ' života odmah', '+' + it.heal + ' HP instantly'));
@@ -365,8 +367,8 @@ function renderShopBody(){
       statLines(it).some(l => normTxt(l).includes(q)) || normTxt(it.pas || '').includes(q) || normTxt(it.act || '').includes(q)));
     html = `<div class="sbHead">${L('🔍 Pronađeno', '🔍 Found')}: ${hits.length}</div><div class="scards">${hits.map(it => shopCell(it)).join('') || '<span class="sempty">' + L('Ništa — probaj drugu riječ 🙂', 'Nothing — try another word 🙂') + '</span>'}</div>`;
   } else if(shopTab === 'guide'){
-    const b = (player && player.hero.build) || BOT_BUILD;
-    const rows = [[L('🌅 Za početak', '🌅 Starting items'), START_ITEMS], [L('🌱 Rano', '🌱 Early game'), b.slice(0, 2)], [L('⚔️ Sredina igre', '⚔️ Mid game'), b.slice(2, 4)], [L('🏆 Kraj igre', '🏆 Late game'), b.slice(4)]];
+    const b = guideBuild(player);
+    const rows = [[L('🌅 Za početak', '🌅 Starting items'), (player && player.jungler) || SETTINGS.lane === 'jungle' ? START_JUNGLE : START_ITEMS], [L('🌱 Rano', '🌱 Early game'), b.slice(0, 2)], [L('⚔️ Sredina igre', '⚔️ Mid game'), b.slice(2, 4)], [L('🏆 Kraj igre', '🏆 Late game'), b.slice(4)]];
     html = '<div id="sgNext"></div>' +
       rows.map(([lbl, ids]) => `<div class="sbHead">${lbl}</div><div class="scards">${ids.map(id => shopCell(ITEM_BY_ID[id], 'g')).join('')}</div>`).join('');
   } else if(shopTab === 'afford'){
@@ -472,8 +474,7 @@ function refreshShop(){
   gEl.textContent = '🪙 ' + Math.floor(player.gold);
   if(!shopOpen) return;
   if(shopTab === 'afford' && !shopQuery && affordableItems().map(it => it.id).join(',') !== shopAffordKey){ renderShopBody(); return; }
-  const build = (player.hero && player.hero.build) || BOT_BUILD;
-  const nextId = build.find(id => !ownsOrUsed(player, id)) || null;
+  const nextId = guideNextId(player);
   document.querySelectorAll('#shopBody .sit').forEach(el => {
     const it = ITEM_BY_ID[el.dataset.id];
     const plan = itemPlan(it);
