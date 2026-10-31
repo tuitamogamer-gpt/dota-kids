@@ -3525,6 +3525,10 @@ function botFightPlan(u, eh, bd){
   const engage = dive && (killable || (u.hp > u.maxhp * 0.45 && fs.mine >= fs.theirs * bd.brave));
   return { engage, weaker: !engage && fs.theirs > fs.mine * bd.back, risky: !engage && fs.theirs > fs.mine * 0.9, fs };
 }
+/* ⚖️ v0.56 rana igra na stazi (prvih 5 min sata igre): bot koji nije ranjen ni puno slabiji ostaje uz svoj val */
+function laneEarly(u, fs){
+  return !u.jungler && u.lane && gameClock() < 300 && u.hp > u.maxhp * 0.5 && !(fs && fs.theirs > fs.mine * 1.8);
+}
 /* kamo se povući kad smo slabiji: do najbližeg suigrača koji je dalje od opasnosti, inače iza svoje kule, inače kući */
 function regroupPoint(u, eh){
   const f = FOUNTAIN[u.team];
@@ -3667,7 +3671,9 @@ function botThink(u){
     if(plan.weaker){
       b.fear = { h: eh, until: gameTime + 4 };
       u.attackTarget = null;
-      u.moveTarget = regroupPoint(u, eh);
+      // ⚖️ v0.56: na početku igre slabiji ne bježi do kule (tada ostaje bez iskustva, a protivnik raste — u brzoj igri jedna
+      //   staza bi tako izgubila igru za 6–10 min), nego stane iza svojih vojnika, izvan dometa protivnika
+      u.moveTarget = laneEarly(u, plan.fs) ? stepToward(laneFront(u.team, u.lane), FOUNTAIN[u.team], Math.min(560, eh.atkRange + 260)) : regroupPoint(u, eh);
       return;
     }
     if(plan.risky && dist(u, eh) < eh.atkRange + eh.r + 160){   // izjednačeno: izvan dometa njegovih udaraca
@@ -3714,7 +3720,8 @@ function botThink(u){
   // stani IZA svojih vojnika (kao pravi DotA igrač), ne ispred njih
   const fp = laneFront(u.team, u.lane);
   let dest = stepToward(fp, FOUNTAIN[u.team], 90 + u.atkRange * 0.45);
-  if(fear && dist(dest, fear) < fear.atkRange + 420) dest = regroupPoint(u, fear);   // ne vraćaj se sam pred jačeg
+  if(fear && dist(dest, fear) < fear.atkRange + 420)   // ne vraćaj se sam pred jačeg — na početku ipak blizu vala (iskustvo)
+    dest = laneEarly(u) ? stepToward(fp, FOUNTAIN[u.team], Math.min(560, fear.atkRange + 260)) : regroupPoint(u, fear);
   if(dist(u, dest) > 130) u.moveTarget = dest;
   else u.moveTarget = null;
 }
@@ -4853,7 +4860,7 @@ function makeWorld(){
    Svaka igra kreće od izvornih vrijednosti (CFG_BASE), pa brza igra pomnoži tempo i iskustvo (TURBO) i postavi svoje zlato (TURBO_GOLD). */
 const CFG_BASE = Object.assign({}, CFG);
 const TURBO = { heroKillXp: 1.7, creepXpMul: 2,
-  creepXp: 2, towerXp: 1.5, respawnBase: 0.75, respawnPerLvl: 0.7, towerHp: 0.6, waveEvery: 0.85, timeScale: 0.6, barracksHp: 0.7, ancientHp: 0.7,
+  creepXp: 2, towerXp: 1.5, respawnBase: 0.75, respawnPerLvl: 0.7, towerHp: 0.8, waveEvery: 0.85, timeScale: 0.6, barracksHp: 0.85, ancientHp: 0.85,   // ⚖️ v0.56: kule 0.6 → 0.8 (T1 je padala u 1.–2. min)
   campRespawn: 0.7, bossRespawn: 0.6, drakeRespawn: 0.6, barracksRespawn: 0.7, buybackCd: 0.5, startGold: 1.3, prepTime: 0.5, creepScaleEvery: 0.6 };
 /* 💰 zlato u brzoj igri — zadane vrijednosti (ne množe se): brza igra zadržava svoju brzu ekonomiju i kad se mijenja normalna (data.js) */
 /* ⚖️ v0.56: ubojstvo junaka je u brzoj igri nosilo 300 + 18/lvl (≈550 na levelu 14) i 80 SVAKOM pomagaču — jedna dobivena borba

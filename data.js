@@ -27,7 +27,7 @@ const CFG = {
   rangedPerWave: 1,
   siegeEveryNthWave: 3,
   creepXp: 46,
-  xpRadius: 720,
+  xpRadius: 1000,           // ⚖️ v0.56: bilo 720 — junak koji izgubi prvu razmjenu na stazi i stoji malo dalje (800–1000) i dalje dobiva iskustvo (u DotA 1500); prije bi jedna staza tako bez iskustva izgubila igru
   // 💰 v0.54: sporija ekonomija u normalnoj igri. Predmeti ovdje koštaju otprilike pola cijene iz DotA 2, a vojnici su davali
   //   puno DotA zlato i ubojstvo junaka i više od DotA — predmeti su stizali ~2× brže, a tko bi rano pobijedio par puta brzo bi
   //   pobjegao svima. Sada ~30% manje zlata (ubojstva ~55% manje, više ide pomagačima); brza igra zadržava staro (TURBO_GOLD u game.js)
