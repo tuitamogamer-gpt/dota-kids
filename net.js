@@ -632,6 +632,7 @@ function resetMatchState(){
   net.ringBuilt = false;
 }
 function startMatchHost(hostIdx, guestIdx, botIdcs, hostLane, guestLane){
+  applyMode();   // v0.56: mrežna igra je uvijek normalna — i cijene predmeta (prije je ostajalo stanje zadnje igre, npr. brze)
   resetMatchState();
   myTeam = TEAM_BLUE;
   clearScene3D();
@@ -667,6 +668,7 @@ function startMatchHost(hostIdx, guestIdx, botIdcs, hostLane, guestLane){
   sfx('levelup');
 }
 function startMatchGuest(d){
+  applyMode();   // iste postavke i cijene kao kod domaćina (dućan gosta pokazuje prave cijene)
   resetMatchState();
   myTeam = TEAM_RED;
   trees = d.trees;          // ista šuma kao kod domaćina!

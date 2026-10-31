@@ -166,7 +166,7 @@ const ANNOUNCER = { voice: '92e3ee13d7524fee904324e350a532a0',   // Epic Game An
 const ANN_KEYS = Object.keys(ANNOUNCER).filter(k => k !== 'voice');
 /* @remote — Fish Audio linkovi (tools/voice/gen.py iz urls.json); redom kao VOICE_KEYS (datum/id).
    Kad su datoteke preuzete u assets/voice/ (tools/voice/dl.py), VOICE_LOCAL = true. */
-const VOICE_LOCAL = false;
+const VOICE_LOCAL = true;
 const VOICE_REMOTE_BASE = 'https://platform.r2.fish.audio/tasks/';
 const VOICE_REMOTE = {
   vitez: '2026-10-25/0c852e8374f3443bbe1a9a6b36276d31 2026-10-25/a17272087220481b9d83f7eb46deca44 2026-10-25/6b58b1071b104d4baaa4d19dbdec6bd0 2026-10-25/12bf3ec1b7464a32bf3c7076e875ae5d 2026-10-25/93cf77f7e88a4aae9a8af0caaf2bc31f 2026-10-25/d63f35ea40ff4a8d8597d48bdf876d6c 2026-10-25/fe86de5c103c4afea23efe449551199b 2026-10-25/9f9d01a5b28b4cd6b946afaefa304152 2026-10-25/1025f17312704bfca1f6b097fa1e1781',
