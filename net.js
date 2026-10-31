@@ -32,7 +32,7 @@ function makeRoomCode(){
   return s;
 }
 function initNetUI(){
-  document.getElementById('mpHost').addEventListener('click', netCreateRoom);
+  document.getElementById('mpHost').addEventListener('click', () => netCreateRoom(0));
   document.getElementById('mpJoin').addEventListener('click', () => {
     const code = document.getElementById('mpCode').value.trim().toUpperCase();
     if(code.length === 4) netJoinRoom(code);
@@ -40,13 +40,32 @@ function initNetUI(){
   });
 }
 
-function netCreateRoom(){
+/* 🌐 v0.56 jasne poruke kad spajanje ne uspije (PeerJS vrste grešaka) — djeca i roditelji znaju što napraviti */
+function netErrMsg(type){
+  switch(type){
+    case 'peer-unavailable': return L('Nema sobe s tim kodom — provjeri 4 slova i je li prijatelj još u sobi', 'No room with that code — check the 4 letters and that your friend is still in the room');
+    case 'browser-incompatible': return L('Ovaj preglednik ne podržava igru preko interneta — probaj Chrome, Edge ili Safari', 'This browser can\'t play online — try Chrome, Edge or Safari');
+    case 'webrtc': case 'negotiation-failed': return L('Uređaji se ne mogu povezati (mreža ih možda blokira) — probajte na istoj Wi-Fi mreži', 'The devices can\'t connect (the network may block it) — try on the same Wi-Fi');
+    case 'timeout': return L('Server za spajanje ne odgovara — provjeri internet i pokušaj ponovno za minutu', 'The connection server isn\'t answering — check the internet and try again in a minute');
+    case 'host-timeout': return L('Prijatelj se ne javlja — provjeri kod sobe i pokušaj ponovno', 'Your friend isn\'t answering — check the room code and try again');
+    case 'network': case 'server-error': case 'socket-error': case 'socket-closed': case 'disconnected':
+      return L('Ne mogu do servera za spajanje — provjeri internet ili pokušaj za minutu', 'Can\'t reach the connection server — check the internet or try again in a minute');
+  }
+  return L('Greška veze (' + type + ') — pokušaj ponovno', 'Connection error (' + type + ') — try again');
+}
+/* ⏱️ čekanje na server / prijatelja: bez odgovora → jasna poruka i povratak u izbornik (prije je samo pisalo "Spajam se...") */
+function netWait(ms, ok, type){
+  clearTimeout(net.waitT);
+  net.waitT = setTimeout(() => { if(net.peer && !ok()){ netStatus('⚠️ ' + netErrMsg(type)); netResetLobby(); } }, ms);
+}
+function netCreateRoom(tries){
   if(net.peer) return;
   net.mode = 'host';
   L_TRACK = true;   // 🌐 poruke gostu idu kao par (hr, en) — vidi ih na svom jeziku
   net.code = makeRoomCode();
   netStatus(L('Stvaram sobu...', 'Creating a room...'));
   net.peer = new Peer('dotakids-' + net.code);
+  netWait(12000, () => net.peer && net.peer.open, 'timeout');
   net.peer.on('open', () => {
     const big = document.getElementById('mpCodeBig');
     big.textContent = '🔑 ' + net.code;
@@ -59,7 +78,9 @@ function netCreateRoom(){
     bindConn();
   });
   net.peer.on('error', (e) => {
-    netStatus(L('⚠️ Greška veze: ', '⚠️ Connection error: ') + e.type);
+    if(e.type === 'unavailable-id' && (tries || 0) < 3){ netResetLobby(); netCreateRoom((tries || 0) + 1); return; }   // kod je zauzet: novi kod
+    if(net.conn && net.conn.open) return;   // greška nakon spajanja (npr. server) — igra ide izravno između uređaja
+    netStatus('⚠️ ' + netErrMsg(e.type));
     netResetLobby();
   });
 }
@@ -70,16 +91,20 @@ function netJoinRoom(code){
   myTeam = TEAM_RED;
   netStatus(L('Spajam se na sobu ' + code + '...', 'Joining room ' + code + '...'));
   net.peer = new Peer();
+  netWait(12000, () => net.peer && net.peer.open, 'timeout');
   net.peer.on('open', () => {
     net.conn = net.peer.connect('dotakids-' + code, { reliable: true });
     bindConn();
+    netWait(15000, () => net.conn && net.conn.open, 'host-timeout');   // server radi, ali soba / prijatelj se ne javlja
   });
   net.peer.on('error', (e) => {
-    netStatus(L('⚠️ Ne mogu se spojiti (' + e.type + ') — provjeri kod!', '⚠️ Can\'t connect (' + e.type + ') — check the code!'));
+    if(net.conn && net.conn.open) return;
+    netStatus('⚠️ ' + netErrMsg(e.type));
     netResetLobby();
   });
 }
 function netResetLobby(){
+  clearTimeout(net.waitT);
   try { if(net.peer) net.peer.destroy(); } catch(err){}
   net.peer = null; net.conn = null;
   net.mode = 'local';

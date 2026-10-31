@@ -4858,7 +4858,7 @@ function makeWorld(){
 }
 
 /* ================= Početak / kraj igre ================= */
-/* ⚡ BRZA IGRA (v0.45, kao Turbo u DotA): više zlata i iskustva, brže oživljavanje, slabije kule — igra traje ~12–15 min (v0.46: sporiji junaci).
+/* ⚡ BRZA IGRA (v0.45, kao Turbo u DotA): više zlata i iskustva, brže oživljavanje, slabije kule — igra traje ~15–20 min (v0.46: sporiji junaci; v0.56 izmjereno u simulacijama: medijan ~18 min).
    Svaka igra kreće od izvornih vrijednosti (CFG_BASE), pa brza igra pomnoži tempo i iskustvo (TURBO) i postavi svoje zlato (TURBO_GOLD). */
 const CFG_BASE = Object.assign({}, CFG);
 const TURBO = { heroKillXp: 1.7, creepXpMul: 2,

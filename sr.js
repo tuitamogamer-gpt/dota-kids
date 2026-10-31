@@ -4,6 +4,7 @@
    Ćirilicu radi i18n.js iz ovog (latiničnog) teksta. Novi tekst u igri: ako ima jat (ije/je) ili
    hrvatsku riječ, dodaj je ovdje. */
 const SR_PHRASES = [
+  ["i je li prijatelj", "i da li je prijatelj"],
   ["Oživjet ćeš", "Oživećeš"],
   ["dobit ćeš", "dobićeš"], ["Dobit ćeš", "Dobićeš"], ["Vidjet ćeš", "Videćeš"],
   ["vidjet ćeš što radi", "videćeš šta radi"],
@@ -19,6 +20,7 @@ const SR_PHRASES = [
 const SR_WORDS = {
   // v0.56 (džungla, predmeti; nova imena predmeta)
   "vijest":"vest", "vijesti":"vesti", "cijele":"cele", "pobijeđeno":"pobeđeno", "bježi":"beži",
+  "ponovno":"ponovo", "spajanje":"povezivanje", "spajanja":"povezivanja", "spajam":"povezujem",
   "medvjeđe":"medveđe", "medvjeđa":"medveđa", "medvjeđi":"medveđi", "vjetrova":"vetrova", "drvosječina":"drvosečina", "drvosječa":"drvoseča",
   "bijesa":"besa", "stijeg":"steg", "krijesnica":"svitaca", "iscjeliteljske":"isceliteljske", "šalica":"šolja", "šalicu":"šolju",
   "krijesnice":"svici", "tenisice":"patike", "hrvački":"rvački", "željezni":"gvozdeni", "željezna":"gvozdena", "željezo":"gvožđe",
