@@ -1,0 +1,22 @@
+# ✅ Provjera prije objave: sintaksa, kratke simulacije (tools/check.sh) i probna igra u pregledniku (tools/smoke.js).
+#   Vercel objavljuje main sam — na main ide samo kad je ova provjera zelena.
+name: Provjera
+on:
+  push:
+    branches: [main, 'claude/**']
+  pull_request:
+jobs:
+  provjera:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Sintaksa i simulacija
+        run: sh tools/check.sh
+      - name: Playwright
+        run: npm i --no-save playwright@1.47.2 && npx playwright install --with-deps chromium
+      - name: Probna igra u pregledniku
+        run: node tools/smoke.js
