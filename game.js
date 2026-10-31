@@ -3522,7 +3522,10 @@ function botFightPlan(u, eh, bd){
   const dive = !ehTower || (eh.hp < eh.maxhp * 0.2 && u.hp > u.maxhp * 0.6 && ehTower.attackTarget && ehTower.attackTarget.kind === 'creep');
   const burst = (u.dmg * 3 + 40 * u.level) * fs.allies;   // otprilike što mi (i suigrači uz mene) napravimo u par sekundi
   const killable = eh.hp < eh.maxhp * bd.chase && eh.hp < burst && fs.mine >= fs.theirs * 0.6;
-  const engage = dive && (killable || (u.hp > u.maxhp * 0.45 && fs.mine >= fs.theirs * bd.brave));
+  // ⚖️ v0.56: na početku staze (laneEarly) junaka napadni samo s jasnom prednošću ili kad pada — inače zadnji udarci po vojnicima;
+  //   prije su se botovi tukli već na levelu 1 i tko dobije prvu razmjenu, dobio je cijelu stazu (trećina igara jednostrana)
+  const early = laneEarly(u);
+  const engage = dive && (killable || (u.hp > u.maxhp * 0.45 && fs.mine >= fs.theirs * bd.brave * (early ? 1.4 : 1)));
   return { engage, weaker: !engage && fs.theirs > fs.mine * bd.back, risky: !engage && fs.theirs > fs.mine * 0.9, fs };
 }
 /* ⚖️ v0.56 rana igra na stazi (prvih 5 min sata igre): bot koji nije ranjen ni puno slabiji ostaje uz svoj val */
