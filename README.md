@@ -65,9 +65,12 @@ P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz persp
   - 🐼 Bambus: Grom-pljesak 75 + 50 i 45 % usporenja (bilo 60 + 45, 35 %), Pijani korak i +15 % brzine, Tri pande 420 + 200 života i 36 + 22 štete
   - 🦉 Mudra: Huk 85 + 55 (bilo 70 + 50), Vječna noć timu +20 % + 6 %/rang štete 10 s (bilo +15 % + 5 %, 8 s)
   - nakon promjena (32 igre): Luna 60 %, Mrak 69 %, Mudra 41 %, Bambus 36 % (uz ~15 igara po junaku razlike od ±20 % su još šum)
+- ⚖️ **Druga runda balansa: 88 + 60 simuliranih igara** (v0.56; strane 43 : 38 i 28 : 30) — uz ~30 igara po junaku mijenjani su samo jasni izuzeci:
+  - slabiji: 🦂 Škorpo 80 → 61 % (omama Podzemnog juriša 0,8 + 0,12/rang, Epicentar 30 + 17 po udaru), 🐿️ Nišan 75 → 67 % (Savršen hitac 230 + 105, Durbin +90 + 35 dometa), 🦅 Orlina 73 → 56 % (Pero-oštrica 7 s i 60 + 40, Kralj neba 100 + 50)
+  - jači: 🦛 Pecko 20 → 44 % (Udica 12 s i 100 + 70, Veliki zalogaj 70 + 40/s), 🐸 Skokica 27 → 47 % (omama Jezičine 0,8 + 0,1, Žablji skok 55 + 30), 🦉 Mudra 26 → 32 % i 🦏 Rogo 27 → 30 % (oboje još jednom pojačani nakon provjere: Mudra domet 390 i Huk 100 + 65, Rogo 800 života i Udarac rogom 70 + 45)
+- 📈 **Iskustvo za zaostale** (v0.56) — junak ispod prosječnog levela svih junaka dobiva +20 % iskustva po levelu zaostatka (najviše +50 %), isto za oba tima: tko izgubi prvu razmjenu na stazi, sustigne. (Probno „oprezniji botovi na početku staze” izbačeno je jer je u simulacijama davalo prednost crvenima: plavi je vodio u 9 od 30 igara, bez toga u 14–16 od 30)
 - ⚡ **Brza igra bez „gotovo za 6 minuta”** (v0.56) — simulacija je pokazala zašto je ponekad završila za 5–10 min: na bočnoj stazi junak koji izgubi prvu razmjenu (level 1) odmakne se 800–1500 od vala, izvan dometa iskustva od vojnika (720), ostane na levelu 1, a s kulama od 60 % života T1 padne u 1.–2. minuti i krene lavina. Sada:
   - domet iskustva od vojnika **1000** (bilo 720; u DotA 1500) — u obje igre
-  - u prvih 5 minuta (sat igre) bot koji nije ranjen ni puno slabiji stoji iza svojih vojnika izvan protivnikova dometa, umjesto da bježi do kule (`laneEarly`)
   - brza igra: kule 80 % života (bilo 60 %), vojarne i prijestol 85 % (bilo 70 %); ubojstvo junaka 220 + 9 po levelu (bilo 300 + 18), asistencija se dijeli (220 na sve, svakom do 70), veći bonus „povratak” za tim koji zaostaje
   - u 24 simulirane brze igre: najkraća 9,9 min (bilo 5,2), ispod 12 min 2 od 24, medijan 18,5 min
 - 🔊 **Glasovi su u igri** (v0.56) — svih 275 replika (27 junaka × 9 + 32 najavljivača) preuzeto je u `assets/voice/` (~3,4 MB, učitavaju se tek kad zatrebaju): igra više ne ovisi o Fish Audio poslužitelju

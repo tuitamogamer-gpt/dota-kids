@@ -975,7 +975,7 @@ const HEROES = [
     role:L('🌙 Sova — gospodarica noći', '🌙 Owl — queen of the night'),
     hp:660, mp:300, dmg:66,
     attrs:{ str:18, agi:19, int:23, strG:3.6, agiG:3.2, intG:5.6, primary:'int' },
-    range:350, speed:170, atkCd:1.1, projSpeed:650, shot:'feather',
+    range:390, speed:170, atkCd:1.1, projSpeed:650, shot:'feather',
     passive:{ name:L('Noćna ptica', 'Night Bird'), emoji:'🌙', color:'#a78bfa', pid:'noc',
       desc:L('PASIVNO: noću si brža i jača!', 'PASSIVE: at night you are faster and stronger!'),
       tip:rk => L('🌙 noću +' + Math.round((0.15 + 0.08*rk) * 100) + '% brzine i +' + (12 + 10*rk) + ' štete', '🌙 at night +' + Math.round((0.15 + 0.08*rk) * 100) + '% speed and +' + (12 + 10*rk) + ' damage') },
@@ -983,10 +983,10 @@ const HEROES = [
       { key:'Q', name:L('Huk', 'Hoot'), emoji:'📣', cd:9, mana:55, color:'#e9d5ff',
         desc:L('Glasni huk — neprijatelji oko tebe su ušutkani i ne mogu bacati moći', 'A loud hoot — enemies around you are silenced and can\'t use abilities'),
         selfAoe:300,
-        tip:rk => L('⚔️ ' + (95 + 60*rk) + ' štete + 🤐 ušutkani ' + (2 + 0.5*rk).toFixed(1) + ' s', '⚔️ ' + (95 + 60*rk) + ' damage + 🤐 silenced ' + (2 + 0.5*rk).toFixed(1) + ' s'),
+        tip:rk => L('⚔️ ' + (100 + 65*rk) + ' štete + 🤐 ušutkani ' + (2 + 0.5*rk).toFixed(1) + ' s', '⚔️ ' + (100 + 65*rk) + ' damage + 🤐 silenced ' + (2 + 0.5*rk).toFixed(1) + ' s'),
         bot:{type:'aoe-self', range:300},
         cast(u, aim, rk){
-          damageCircle(u, u.x, u.y, 300, 95 + 60*rk, {silence:2 + 0.5*rk, color:'#e9d5ff'});   // ⚖️ v0.56: bilo 70 + 50
+          damageCircle(u, u.x, u.y, 300, 100 + 65*rk, {silence:2 + 0.5*rk, color:'#e9d5ff'});   // ⚖️ v0.56: bilo 70 + 50
           ring(u.x, u.y, 180, '#e9d5ff'); ring(u.x, u.y, 300, '#e9d5ff');
           return true;
         }},
@@ -1308,7 +1308,7 @@ const HEROES = [
   {
     id:'nosorog', name:LS('Rogo'), emoji:'🦏',
     role:L('💥 Nosorog — nezaustavljivi jurišnik', '💥 Rhino — unstoppable charger'),
-    hp:760, mp:220, dmg:72,
+    hp:800, mp:220, dmg:72,
     attrs:{ str:27, agi:15, int:11, strG:6.4, agiG:2.0, intG:1.5, primary:'str' },
     range:86, speed:172, atkCd:1.15, projSpeed:0,
     passive:{ name:L('Debeli oklop', 'Thick Armor'), emoji:'🛡️', color:'#fde68a', pid:'tvrd',
@@ -1327,13 +1327,13 @@ const HEROES = [
       { key:'W', name:L('Udarac rogom', 'Horn Hit'), emoji:'🦏', cd:8, mana:40, color:'#f59e0b',
         desc:L('Zamahni rogom — neprijatelji oko tebe odlete unatrag', 'Swing your horn — enemies around you fly back'),
         selfAoe:180,
-        tip:rk => L('⚔️ ' + (60 + 40*rk) + ' štete + odbačaj ' + (150 + 20*rk), '⚔️ ' + (60 + 40*rk) + ' damage + knockback ' + (150 + 20*rk)),
+        tip:rk => L('⚔️ ' + (70 + 45*rk) + ' štete + odbačaj ' + (150 + 20*rk), '⚔️ ' + (70 + 45*rk) + ' damage + knockback ' + (150 + 20*rk)),
         bot:{type:'aoe-self', range:180},
         cast(u, aim, rk){
           for(const e of units){
             if(e.team === u.team || e.dead || e.removeMe || e.invuln || !isSpellTarget(e)) continue;
             if(dist(u, e) > 180 + e.r * 0.5) continue;
-            applyDamage(e, 60 + 40*rk, u);
+            applyDamage(e, 70 + 45*rk, u);   // ⚖️ v0.56: bilo 60 + 40
             knockback(e, u.x, u.y, 150 + 20*rk);
           }
           ring(u.x, u.y, 180, '#f59e0b');
