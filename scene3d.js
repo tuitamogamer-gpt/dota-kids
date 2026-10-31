@@ -158,7 +158,7 @@ function loadModels3D(){
     loader.load('assets/models.glb', done, xhr => {
       const el = document.getElementById('loadBar');
       if(!el) return;
-      const total = xhr.total || 3600000;
+      const total = xhr.total > 0 && xhr.total >= xhr.loaded ? xhr.total : 7500000;   // Vercel šalje sažeto (br) bez duljine: ~7,5 MB raspakirano (tools/compress)
       const pct = Math.min(99, Math.round(xhr.loaded / total * 100));
       el.textContent = L('⏳ Učitavam 3D modele… ', '⏳ Loading 3D models… ') + pct + '%';
       el.style.display = 'block';
