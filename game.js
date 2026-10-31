@@ -341,6 +341,11 @@ function imgReady(im){ return !!(im && im.complete && im.naturalWidth > 0); }
 /* ================= Globalno stanje ================= */
 let glCanvas, hudCv, ctx, terrainCanvas;
 let VW = 800, VH = 600, DPR = 1;
+/* 📱 v0.56 sučelje na malom zaslonu (mobitel): ploče HUD-a crtaju se u logičkoj veličini od barem ~1000×560 pa se umanje (UI_K < 1),
+   da manje zaklanjaju igru; svijet (trake života nad jedinicama, brojevi štete) ostaje u pravoj veličini. Za vrijeme crtanja ploča
+   (uiLogical) VW / VH su logične mjere; uiRects su u logičnim mjerama, a inRect preračuna dodir / miš (CSS piksele) */
+let UI_K = 1, uiLogical = false;
+function uiScale(){ return clamp(Math.min(VW / 1000, VH / 560), 0.72, 1); }
 let units = [], projectiles = [], zones = [], particles = [], lines = [], floats = [], markers = [], feed = [];
 let trees = [];
 let camps = [];
@@ -5870,7 +5875,7 @@ function playerCommand(wx, wy, tgt, opts){
   playerCommandFor(player, wx, wy, tgt, opts);
   return isMove;
 }
-function inRect(sx, sy, r){ return r && sx >= r.x && sx <= r.x + r.w && sy >= r.y && sy <= r.y + r.h; }
+function inRect(sx, sy, r){ sx /= UI_K; sy /= UI_K; return r && sx >= r.x && sx <= r.x + r.w && sy >= r.y && sy <= r.y + r.h; }   // sx, sy: CSS pikseli
 /* ploče HUD-a: donja ploča junaka, naredbena kartica, gornja ploča s rezultatom */
 function hudPanelAt(sx, sy){
   if(!running || !player) return false;
@@ -5890,6 +5895,7 @@ function hudHit(sx, sy){
 }
 function miniToWorld(sx, sy){
   const m = uiRects.mini;
+  sx /= UI_K; sy /= UI_K;   // 📱
   return { x: (sx - m.x) / m.w * WORLD, y: (sy - m.y) / m.h * WORLD };
 }
 function aimFallback(u){
@@ -7129,7 +7135,7 @@ function drawInventory(HL, py, ph){
   // predmet koji se povlači prati miš
   if(invDrag && invDrag.moved){
     const it = invItemAt(player, invDrag.from);
-    if(it){ ctx.globalAlpha = 0.85; ctx.drawImage(itemIconCanvas(it), mouse.sx - INV_SW / 2, mouse.sy - INV_SH / 2, INV_SW, INV_SH); ctx.globalAlpha = 1; }
+    if(it){ ctx.globalAlpha = 0.85; ctx.drawImage(itemIconCanvas(it), mouse.sx / UI_K - INV_SW / 2, mouse.sy / UI_K - INV_SH / 2, INV_SW, INV_SH); ctx.globalAlpha = 1; }
   }
 }
 /* 📌 brza kupnja: iznad naredbene kartice — što još fali za prikvačeni predmet */
@@ -7202,14 +7208,15 @@ function drawQuickBuy(HL){
   }
 }   // mjesto u torbi (omjer slike predmeta kao u DotA)
 function hudLayout(){
-  const ms = VW < 1000 ? 140 : 170;
+  const W = uiLogical ? VW : VW / UI_K, H = uiLogical ? VH : VH / UI_K;   // 📱 uvijek logične mjere ploča
+  const ms = W < 1000 ? 140 : 170;
   const as = 52, gap = 6, cardW = 5 * as + 4 * gap + 24, cardH = 2 * as + gap + 24;   // 5. stupac: čarolije prizivača D / F
-  const cardX = VW - cardW - 10, cardY = VH - cardH - 10;
+  const cardX = W - cardW - 10, cardY = H - cardH - 10;
   const left = 14 + ms + 22, right = cardX - 10;
   const pw = Math.min(482, Math.max(420, right - left)), ph = 124;
-  const px = left + Math.max(0, (right - left - pw) / 2), py = VH - ph - 10;
+  const px = left + Math.max(0, (right - left - pw) / 2), py = H - ph - 10;
   const invW = 3 * INV_SW + 2 * INV_G;   // torba 3×2 (kao u DotA) + ruksak ispod
-  return { ms, mx: 21, my: VH - ms - 21, as, gap, cardX, cardY, cardW, cardH, pw, ph, px, py, invX: px + pw - invW - 12, invW };
+  return { ms, mx: 21, my: H - ms - 21, as, gap, cardX, cardY, cardW, cardH, pw, ph, px, py, invX: px + pw - invW - 12, invW };
 }
 /* 🏛️ okvir u stilu Allstarsa: tamna ploča, dvostruki rub i zakovice
    (Sentinel = tamno drvo i zlato, Scourge = tamni kamen i kost s ljubičastim) */
@@ -8048,9 +8055,10 @@ function drawMinimap(ms, mx, my){
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('🫏', mx + c.x * sc, my + c.y * sc);
   }
+  const sw = uiLogical ? VW * UI_K : VW, sh = uiLogical ? VH * UI_K : VH;   // 📱 okvir pogleda: pravi zaslon (CSS pikseli)
   const corners = [
-    screenToWorld(0, 0, true), screenToWorld(VW, 0, true),
-    screenToWorld(VW, VH, true), screenToWorld(0, VH, true),
+    screenToWorld(0, 0, true), screenToWorld(sw, 0, true),
+    screenToWorld(sw, sh, true), screenToWorld(0, sh, true),
   ];
   ctx.strokeStyle = 'rgba(255,255,255,0.85)';
   ctx.lineWidth = 1.5;
@@ -8215,10 +8223,20 @@ function frame(now){
     if(!paused){ updateTips(dt); updateAutoSkill(); updateQuests(dt); }
     drawWorldOverlay();
     drawScreenFx(dt);
-    drawHud();
-    drawTip();
-    drawQuest();
-    drawChatWheel();
+    // 📱 ploče u logičnim mjerama (na malom zaslonu umanjene)
+    UI_K = uiScale();
+    const cw = VW, chh = VH;
+    VW = cw / UI_K; VH = chh / UI_K; uiLogical = true;
+    ctx.setTransform(DPR * UI_K, 0, 0, DPR * UI_K, 0, 0);
+    try {
+      drawHud();
+      drawTip();
+      drawQuest();
+      drawChatWheel();
+    } finally {
+      VW = cw; VH = chh; uiLogical = false;
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    }
   }
   watchMouseLock();
   drawLockedCursor();

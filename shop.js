@@ -105,6 +105,7 @@ function showItemTip(html, rect, side){
   if(!el) return;
   el.innerHTML = html;
   el.classList.remove('hidden');
+  if(side !== 'left' && UI_K !== 1) rect = { x: rect.x * UI_K, y: rect.y * UI_K, w: rect.w * UI_K, h: rect.h * UI_K };   // 📱 gumb HUD-a (logične mjere) → zaslon
   const w = el.offsetWidth, hh = el.offsetHeight;
   let x, y;
   if(side === 'left'){ x = rect.x - w - 10; y = rect.y + rect.h / 2 - hh / 2; }
