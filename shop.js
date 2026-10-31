@@ -414,7 +414,13 @@ function renderShopDetail(){
   const box = document.getElementById('shopDetail');
   if(!box) return;
   const it = shopSel && ITEM_BY_ID[shopSel];
-  if(!it || !player){ box.innerHTML = '<div class="sdEmpty">' + L('👆 Klikni predmet — vidjet ćeš što radi i od čega se slaže<br>🖱️ Desni klik ili dvoklik = kupi odmah', '👆 Click an item — see what it does and what it is made of<br>🖱️ Right-click or double-click = buy now') + '</div>'; return; }
+  box.classList.toggle('empty', !it || !player);   // 📱 v0.56: na niskom zaslonu prazan opis ne zauzima mjesto predmetima
+  if(!it || !player){
+    box.innerHTML = '<div class="sdEmpty">' + (touchMode   // dodirni zaslon: bez uputa za miš
+      ? L('👆 Dodirni predmet — vidjet ćeš što radi, od čega se slaže i gumb za kupnju', '👆 Tap an item — see what it does, what it is made of and a buy button')
+      : L('👆 Klikni predmet — vidjet ćeš što radi i od čega se slaže<br>🖱️ Desni klik ili dvoklik = kupi odmah', '👆 Click an item — see what it does and what it is made of<br>🖱️ Right-click or double-click = buy now')) + '</div>';
+    return;
+  }
   const inv = player.items.concat(player.backpack || []).map(x => x.id);
   let comps = '';
   if(it.components){
