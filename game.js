@@ -695,7 +695,7 @@ let touchMode = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches)
 let scoreOpen = false;      // 📋 tablica otvorena gumbom (na tabletu nema tipke Tab)
 let mouseIn = false;        // miš je iznad igre (za rubno pomicanje kamere)
 /* ⚙️ postavke (pamte se u pregledniku) */
-const SETTINGS = { vol: 0.8, quality: touchMode ? 'med' : 'high', edgePan: true, dmgNums: true, quickCast: false, voices: true, announcer: true, diff: 'normal',
+const SETTINGS = { vol: 0.8, quality: touchMode ? 'med' : 'high', edgePan: true, dmgNums: true, quickCast: false, wrCtl: true, voices: true, announcer: true, diff: 'normal',
   fullscreen: true, lockMouse: true, lastHit: true, tips: true, autoSkill: false, nature: true, quests: true, mode: 'normal', music: true, lane: 'mid' };   // 🛣️ lane: tvoja staza (top / mid / bot)   // 🎶 glazba   // ⚡ mode: 'normal' / 'turbo'   // 🎯 zadaci za početnike   // 🌲 zvukovi prirode   // ⬆️ vještine se mogu učiti same   // 🪙 pomoć za zadnji udarac, 💡 savjeti   // 🖥️ cijeli zaslon pri početku igre, 🔒 miš ne može izaći iz igre
 try {
   const s = JSON.parse(localStorage.getItem('dk_settings') || '{}');
@@ -704,6 +704,7 @@ try {
   if(typeof s.edgePan === 'boolean') SETTINGS.edgePan = s.edgePan;
   if(typeof s.dmgNums === 'boolean') SETTINGS.dmgNums = s.dmgNums;
   if(typeof s.quickCast === 'boolean') SETTINGS.quickCast = s.quickCast;
+  if(typeof s.wrCtl === 'boolean') SETTINGS.wrCtl = s.wrCtl;   // 📱 kontrole kao u Wild Riftu
   if(typeof s.voices === 'boolean') SETTINGS.voices = s.voices;
   if(typeof s.announcer === 'boolean') SETTINGS.announcer = s.announcer;
   if(['easy', 'normal', 'hard'].includes(s.diff)) SETTINGS.diff = s.diff;
@@ -2317,6 +2318,10 @@ function passiveRank(h, pid){
 /* 🖱️ kamo cilja miš: na jedinicu pod mišem (njeno mjesto na tlu) ili na točku na tlu ispod miša;
    v0.56: dok ciljaš strijelom / kuglom, pomoć pri ciljanju (assistAim) */
 function aimPoint(){
+  if(pendingCast && pendingCast.touch && player){   // 📱 Wild Rift: nišan iz povlačenja prsta (ili kamo bi otišao kratki dodir)
+    const w = WR.aim && WR.aim.moved ? wrAimWorld(WR.aim) : wrQuickAim();
+    if(w) return assistAim(player, pendingAbDef(), w);
+  }
   const raw = hoverUnit && !hoverUnit.dead && !hoverUnit.removeMe ? { x: hoverUnit.x, y: hoverUnit.y } : { x: mouse.wx, y: mouse.wy };
   return assistAim(player, pendingAbDef(), raw);
 }
@@ -5901,7 +5906,7 @@ function hudHit(sx, sy){
   const R = uiRects;
   for(const L of [R.learn, R.abil, R.sum, R.inv, R.qb, R.buff, chatOpen ? R.chat : null])
     for(const r of L || []) if(r && inRect(sx, sy, r)) return true;
-  for(const r of [R.prepSkip, R.buyback, R.statBtn, R.glyph, R.tp, R.shop, R.mute, R.help, R.opts, R.score, R.center, R.mini,
+  for(const r of [R.prepSkip, R.buyback, R.statBtn, R.glyph, R.tp, R.shop, R.mute, R.help, R.opts, R.score, R.center, R.mini, R.atk, R.atkCreep, R.atkTower, R.gold,
     R.neutral, R.passive, R.talent && R.talent.a, R.talent && R.talent.b]) if(r && inRect(sx, sy, r)) return true;
   return hudPanelAt(sx, sy);
 }
@@ -6004,6 +6009,7 @@ function setupInput(){
         return;
       }
       if(inRect(sx, sy, uiRects.tp)){ pressTeleport(); return; }
+      for(const [k, mode] of [['atk', 'auto'], ['atkCreep', 'creep'], ['atkTower', 'tower']]) if(uiRects[k] && inRect(sx, sy, uiRects[k])){ wrAttack({ mode, tid: null }, true); return; }   // 📱
       if(inRect(sx, sy, uiRects.shop) || inRect(sx, sy, uiRects.gold)){ toggleShop(); return; }   // 💰 klik na zlato = dućan
       if(inRect(sx, sy, uiRects.mute)){ muted = !muted; sfx('click'); return; }
       if(inRect(sx, sy, uiRects.help)){ toggleHelp(); return; }
@@ -6118,10 +6124,131 @@ function setupInput(){
     let pinch = null;   // dva prsta: { d0, z0 }
     let holdT = 0;      // kad je prst stao na predmet u torbi
     const T = (e, i) => ({ id: e.touches[i].identifier, x: e.touches[i].clientX, y: e.touches[i].clientY });
+    /* 📱 Wild Rift: svaki prst ima svoju ulogu (palica, nišanjenje moći, napad, gumb HUD-a, svijet) — više prstiju odjednom */
+    const roles = new Map();
+    let wrPinch = null;   // dva prsta u svijetu (ne na palici ni gumbima): zum
+    const abDown = (id, sx, sy, i) => {
+      const ab = player.abilities[i];
+      if(!ab) return;
+      const def = ab.def;
+      if(ab.rank <= 0 || def.passive || ab.cd > 0 || player.mp < abMana(player, ab) || (def.target !== 'point' && !def.selfAoe)){
+        pressAbility(i, aimFallback(player));   // učenje, poruke (hlađenje, mana) ili trenutna moć
+        return;
+      }
+      pendingCast = { i, touch: true };
+      WR.aim = { id, ox: sx, oy: sy, x: sx, y: sy, moved: false, over: false };
+      roles.set(id, { role: 'aim' });
+      sfx('click');
+    };
+    const sumDown = (id, sx, sy, k) => {
+      const sp = player.summoners && SUMMONER_BY_ID[player.summoners[k]];
+      if(!sp) return;
+      if(!sp.target || player.sumCd[k] > 0){ pressSummoner(k); return; }
+      pendingCast = { sum: k, i: -1, touch: true };
+      WR.aim = { id, ox: sx, oy: sy, x: sx, y: sy, moved: false, over: false };
+      roles.set(id, { role: 'aim' });
+      sfx('click');
+    };
+    const wrDown = t => {
+      const id = t.identifier, sx = t.clientX, sy = t.clientY, R = uiRects, alive = player && !player.dead;
+      if(alive && !(R.learn || []).some(r => inRect(sx, sy, r))){
+        for(let i = 0; i < R.abil.length; i++) if(inRect(sx, sy, R.abil[i])){ abDown(id, sx, sy, i); return; }
+        for(let k = 0; k < (R.sum || []).length; k++) if(R.sum[k] && inRect(sx, sy, R.sum[k])){ sumDown(id, sx, sy, k); return; }
+        for(const [key, mode] of [['atk', 'auto'], ['atkCreep', 'creep'], ['atkTower', 'tower']]) if(R[key] && inRect(sx, sy, R[key])){
+          WR.atk = { id, mode, tid: null, next: performance.now() + 250 };
+          roles.set(id, { role: 'atk' });
+          wrAttack(WR.atk, true);
+          return;
+        }
+      }
+      if(hudHit(sx, sy)){   // ostali gumbi, torba, minimapa
+        pointerMove(sx, sy); pointerDown(sx, sy, 0);
+        roles.set(id, { role: 'hud', holdT: invDrag ? performance.now() : 0, mini: miniDrag });
+        return;
+      }
+      const HL = hudLayout();
+      if(alive && !(pendingCast && !pendingCast.touch) && sx / UI_K < HL.joyR && !WR.stick){   // lijevi palac: palica (osim dok predmet čeka cilj)
+        WR.stick = { id, ox: sx, oy: sy, x: sx, y: sy, next: 0 };
+        roles.set(id, { role: 'stick' });
+        return;
+      }
+      const other = [...roles].find(([, r]) => r.role === 'world');
+      if(other){   // drugi prst u svijetu: zum
+        const o = other[1];
+        wrPinch = { a: other[0], b: id, d0: Math.hypot(sx - o.lx, sy - o.ly) || 1, z0: cam.zoom, pa: { x: o.lx, y: o.ly }, pb: { x: sx, y: sy } };
+        o.role = 'pinch'; roles.set(id, { role: 'pinch' });
+        return;
+      }
+      roles.set(id, { role: 'world', sx, sy, lx: sx, ly: sy, pan: false });
+    };
+    const wrMove = t => {
+      const r = roles.get(t.identifier), sx = t.clientX, sy = t.clientY;
+      if(!r) return;
+      if(r.role === 'stick' && WR.stick){
+        const s = WR.stick, M = 62 * 1.35 * UI_K, dx = sx - s.ox, dy = sy - s.oy, l = Math.hypot(dx, dy);
+        if(l > M){ s.ox = sx - dx / l * M; s.oy = sy - dy / l * M; }   // palac otišao dalje: osnova ga slijedi
+        s.x = sx; s.y = sy;
+      } else if(r.role === 'aim' && WR.aim){
+        const a = WR.aim;
+        a.x = sx; a.y = sy;
+        if(!a.moved && Math.hypot(sx - a.ox, sy - a.oy) > 16) a.moved = true;
+        a.over = a.moved && wrOverCancel(sx, sy);
+      } else if(r.role === 'hud') pointerMove(sx, sy);
+      else if(r.role === 'pinch' && wrPinch){
+        const P = wrPinch;
+        if(t.identifier === P.a) P.pa = { x: sx, y: sy }; else P.pb = { x: sx, y: sy };
+        const mx = (P.pa.x + P.pb.x) / 2, my = (P.pa.y + P.pb.y) / 2, before = screenToWorld(mx, my, true);
+        cam.zoom = clamp(P.z0 * Math.hypot(P.pa.x - P.pb.x, P.pa.y - P.pb.y) / P.d0, 0.5, 1.7);
+        const after = screenToWorld(mx, my, true);
+        cam.x += before.x - after.x; cam.y += before.y - after.y;
+      } else if(r.role === 'world'){
+        if(!r.pan && Math.hypot(sx - r.sx, sy - r.sy) > 14) r.pan = true;
+        if(r.pan){
+          const a = screenToWorld(r.lx, r.ly, true), b = screenToWorld(sx, sy, true);
+          cam.x += a.x - b.x; cam.y += a.y - b.y;
+          cam.follow = false;
+        }
+        r.lx = sx; r.ly = sy;
+      }
+    };
+    const wrUp = (t, cancel) => {
+      const id = t.identifier, r = roles.get(id), sx = t.clientX, sy = t.clientY;
+      roles.delete(id);
+      if(!r) return;
+      if(r.role === 'stick'){ const w = WR.stick && WR.stick.walking; WR.stick = null; if(w) wrStopMove(); }
+      else if(r.role === 'atk'){ if(WR.atk && WR.atk.id === id) WR.atk = null; }
+      else if(r.role === 'aim'){
+        const a = WR.aim;
+        if(!a || a.id !== id) return;
+        WR.aim = null;
+        if(!pendingCast || !pendingCast.touch) return;
+        a.x = sx; a.y = sy;
+        if(cancel || (a.moved && wrOverCancel(sx, sy))){ pendingCast = null; sfx('click'); return; }   // ✖ odustao
+        if(!a.moved) castPending(wrQuickAim());   // kratki dodir: najbliži neprijatelj (ili naprijed)
+        else castPending(wrAimWorld(a) || wrQuickAim());
+      }
+      else if(r.role === 'hud'){
+        if(r.holdT && invDrag && !invDrag.moved && performance.now() - r.holdT > 900){   // 💰 držao prst na predmetu: prodaj?
+          const i = invDrag.from, it = invItemAt(player, i);
+          invDrag = null;
+          if(it && confirm(L('Prodati ' + it.name + ' za ' + Math.floor(itemFullCost(it) / 2) + ' zlata?', 'Sell ' + it.name + ' for ' + Math.floor(itemFullCost(it) / 2) + ' gold?'))){
+            if(net.mode === 'guest') netSell(i); else sellItem(player, i);
+          }
+        } else pointerUp(sx, sy);
+        if(r.mini) cam.follow = true;   // pustio minimapu: kamera se vrati na junaka (kao u Wild Riftu)
+        hoverUi = null; hideItemTip();
+      }
+      else if(r.role === 'pinch'){
+        wrPinch = null;
+        for(const [, o] of roles) if(o.role === 'pinch') Object.assign(o, { role: 'world', pan: true, sx: -1e4, sy: -1e4, lx: sx, ly: sy });
+      }
+      else if(r.role === 'world' && !r.pan && !cancel && running){ pointerMove(r.sx, r.sy); pointerDown(r.sx, r.sy, 0); }   // kratki dodir = naredba
+    };
     hudCv.addEventListener('touchstart', e => {
       e.preventDefault();
       touchMode = true;   // tablet: gumbi 📋 🎯, bez rubnog pomicanja kamere
       if(!running) return;
+      if(wrOn()){ for(const t of e.changedTouches) wrDown(t); return; }
       if(e.touches.length >= 2){   // drugi prst: zum (poništi dodir u svijetu)
         const a = T(e, 0), b = T(e, 1);
         pinch = { d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, z0: cam.zoom, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 };
@@ -6140,6 +6267,7 @@ function setupInput(){
     hudCv.addEventListener('touchmove', e => {
       e.preventDefault();
       if(!running) return;
+      if(wrOn() || roles.size){ for(const t of e.changedTouches) wrMove(t); return; }
       if(pinch && e.touches.length >= 2){
         const a = T(e, 0), b = T(e, 1);
         const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
@@ -6166,6 +6294,7 @@ function setupInput(){
     }, { passive: false });
     const end = e => {
       e.preventDefault();
+      if(roles.size){ for(const t of e.changedTouches) wrUp(t, e.type === 'touchcancel'); if(!roles.size){ WR.stick = null; WR.atk = null; } return; }
       if(pinch){ if(e.touches.length < 2) pinch = null; tw = null; return; }
       const t = e.changedTouches[0];
       if(tw && t.identifier === tw.id){
@@ -6299,6 +6428,7 @@ function syncOptionsDom(){
   if($('optFs')){ tog('optFs', SETTINGS.fullscreen); tog('optLock', SETTINGS.lockMouse); $('optFsRow').classList.toggle('hidden', touchMode); $('optLockRow').classList.toggle('hidden', touchMode); }
   $('optEdgeRow').classList.toggle('hidden', touchMode);   // na tabletu nema miša
   $('optQuickRow').classList.toggle('hidden', touchMode);   // ni tipkovnice
+  if($('optWr')){ tog('optWr', SETTINGS.wrCtl !== false); $('optWrRow').classList.toggle('hidden', !touchMode); }   // 📱 samo na dodirnom zaslonu
   $('optQuit').classList.toggle('hidden', !running);
 }
 function buildOptionsDom(){
@@ -6326,6 +6456,7 @@ function buildOptionsDom(){
     $('optLock').addEventListener('click', () => { SETTINGS.lockMouse = !SETTINGS.lockMouse; saveSettings(); if(!SETTINGS.lockMouse) unlockMouse(); syncOptionsDom(); sfx('click'); });
   }
   $('optQuick').addEventListener('click', () => { SETTINGS.quickCast = !SETTINGS.quickCast; saveSettings(); syncOptionsDom(); sfx('click'); });
+  if($('optWr')) $('optWr').addEventListener('click', () => { SETTINGS.wrCtl = SETTINGS.wrCtl === false; wrReset(); saveSettings(); syncOptionsDom(); sfx('click'); });
   $('optDmg').addEventListener('click', () => { SETTINGS.dmgNums = !SETTINGS.dmgNums; saveSettings(); syncOptionsDom(); sfx('click'); });
   if($('optMusic')) $('optMusic').addEventListener('click', () => { SETTINGS.music = !SETTINGS.music; saveSettings(); syncOptionsDom(); sfx('click'); });
   if($('optQuests')) $('optQuests').addEventListener('click', () => { SETTINGS.quests = !SETTINGS.quests; saveSettings(); syncOptionsDom(); sfx('click'); });
@@ -6719,7 +6850,7 @@ function drawQuest(){
   const all = quest.i >= QUESTS.length;
   if(all && quest.allT > 7) return;
   const done = quest.doneT > 0, q = done ? quest.last : QUESTS[Math.min(quest.i, QUESTS.length - 1)];
-  const w = 318, h = 62, x = 14, y = HL.my - h - 16;
+  const w = 318, h = 62, x = 14, y = HL.wr ? HL.my + HL.ms + 12 : HL.my - h - 16;   // 📱 Wild Rift: ispod minimape
   const pop = done ? 1 + Math.max(0, quest.doneT - 2.3) * 0.25 : 1;
   ctx.save();
   ctx.translate(x + w / 2, y + h / 2); ctx.scale(pop, pop); ctx.translate(-(x + w / 2), -(y + h / 2));
@@ -7198,7 +7329,7 @@ function drawQuickBuy(HL){
   const list = quickBuyNext(player);
   if(!list || !list.length) return;
   const w = 40, h = 29, g = 4, n = Math.min(list.length, 6);
-  const x0 = HL.cardX + HL.cardW - n * (w + g) - 6, y0 = HL.cardY - h - 36;
+  const x0 = HL.cardX + HL.cardW - (HL.wr ? 56 : 0) - n * (w + g) - 6, y0 = HL.cardY - h - 36;   // 📱 Wild Rift: lijevo od stupca gumba
   ctx.font = fontTxt(10, true); ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
   ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.lineWidth = 3;
   ctx.strokeText(L('📌 Brza kupnja', '📌 Quick buy'), x0 - 6, y0 + h); ctx.fillStyle = '#fde68a'; ctx.fillText(L('📌 Brza kupnja', '📌 Quick buy'), x0 - 6, y0 + h);
@@ -7219,8 +7350,192 @@ function drawQuickBuy(HL){
     ctx.strokeText(Math.ceil(cost), x + w / 2, y0 + h + 1); ctx.fillStyle = can ? '#fde047' : '#f87171'; ctx.fillText(Math.ceil(cost), x + w / 2, y0 + h + 1);
   }
 }   // mjesto u torbi (omjer slike predmeta kao u DotA)
+/* 📱 v0.56 KONTROLE KAO U WILD RIFTU (dodirni zaslon, postavka "wrCtl"): lijevi palac vodi palicu za kretanje (pojavi se gdje
+   dodirneš lijevu stranu), desni palac veliki gumb za napad (🪙 zadnji udarac po vojniku, 🏰 kula) i moći u luku oko njega —
+   povuci iz gumba = nišani (isti indikator kao mišem), pusti = baci, kratki dodir = baci na najbližeg neprijatelja, ✖ = odustani.
+   Minimapa je gore lijevo, dolje lijevo je mjesto za palac. */
+function wrOn(){ return touchMode && SETTINGS.wrCtl !== false; }
+function wrLayout(W, H){
+  const cx = W - 86, cy = H - 86, R1 = 112, R2 = 182;
+  const at = (deg, r, sz) => ({ x: cx + Math.cos(deg * Math.PI / 180) * r - sz / 2, y: cy + Math.sin(deg * Math.PI / 180) * r - sz / 2, s: sz });
+  const col = k => ({ x: W - 52, y: cy - 206 - k * 50, s: 42 });   // stupac uz desni rub: dućan, teleport, glif, atributi
+  return { cx, cy, r: 50,
+    slots: { ab: [at(182, R1, 56), at(222, R1, 56), at(262, R1, 56), at(226, R2, 62)], sum: [at(168, R2, 46), at(196, R2 + 6, 46)],
+      shop: col(0), tp: col(1), glyph: col(2), stat: col(3) },
+    creep: { x: cx - 96, y: cy + 26, w: 40, h: 40 }, tower: { x: cx + 26, y: cy - 100, w: 40, h: 40 },
+    cancel: { x: cx - 100, y: cy - 330, w: 64, h: 64 } };
+}
+const WR = { stick: null, atk: null, aim: null };   // 📱 prsti koji su sada na zaslonu (CSS pikseli): palica, napad, nišanjenje moći
+function wrReset(){ WR.stick = WR.atk = WR.aim = null; if(pendingCast && pendingCast.touch) pendingCast = null; }
+/* smjer na ekranu (jedinični) → smjer u svijetu oko junaka (kamera je nagnuta, pa gore na ekranu nije točno "sjever") */
+function wrDir(ux, uy){
+  const ps = (player && typeof worldToScreen === 'function' && worldToScreen(player.x, typeof groundHeight === 'function' ? groundHeight(player.x, player.y) : 0, player.y)) || { x: VW / 2, y: VH / 2 };
+  const a = screenToWorld(ps.x, ps.y, true), b = screenToWorld(ps.x + ux * 120, ps.y + uy * 120, true);
+  const dx = b.x - a.x, dy = b.y - a.y, l = Math.hypot(dx, dy);
+  return l > 1e-3 ? { x: dx / l, y: dy / l } : { x: ux, y: uy };
+}
+function wrPendingDef(){ return typeof pendingDef === 'function' ? pendingDef() : pendingAbDef(); }
+function wrFacing(){
+  const s = WR.stick, l = s ? Math.hypot(s.x - s.ox, s.y - s.oy) : 0;
+  return l > 10 ? wrDir((s.x - s.ox) / l, (s.y - s.oy) / l) : { x: Math.cos(player.dir || 0), y: Math.sin(player.dir || 0) };
+}
+/* povlačenje iz gumba moći: smjer povlačenja = smjer bacanja, duljina = udaljenost (strijela / bljesak uvijek do kraja) */
+function wrAimWorld(a){
+  if(!a || !player) return null;
+  const dx = a.x - a.ox, dy = a.y - a.oy, l = Math.hypot(dx, dy);
+  if(l < 1) return null;
+  const d = wrDir(dx / l, dy / l), def = wrPendingDef(), cr = (def && def.castRange) || 600;
+  const f = def && (def.lineFull || def.line) ? 1 : clamp(l / (95 * UI_K), 0.12, 1);
+  return { x: player.x + d.x * cr * f, y: player.y + d.y * cr * f };
+}
+/* kratki dodir moći (bez povlačenja): na najbližeg neprijateljskog junaka u dometu, pa vojnika; inače naprijed — kao u Wild Riftu */
+function wrQuickAim(){
+  if(!player) return null;
+  const def = wrPendingDef(), cr = (def && def.castRange) || 600, pc = pendingCast;
+  const sp = pc && pc.sum != null && player.summoners ? SUMMONER_BY_ID[player.summoners[pc.sum]] : null;
+  const fw = wrFacing(), ahead = k => ({ x: player.x + fw.x * cr * k, y: player.y + fw.y * cr * k });
+  if(sp && sp.id === 'flash') return ahead(1);
+  const foe = e => canAttackTarget(player, e) && e.team !== player.team;
+  const t = sp && sp.id === 'smite' ? nearestEnemyOf(player, cr + 120, e => (e.kind === 'neutral' || e.kind === 'creep') && foe(e)) :
+    (nearestEnemyOf(player, cr + 120, e => e.kind === 'hero' && foe(e)) || (sp ? null : nearestEnemyOf(player, cr, e => (e.kind === 'creep' || e.kind === 'neutral') && foe(e))));
+  return t ? { x: t.x, y: t.y } : ahead(0.7);
+}
+function wrOverCancel(sx, sy){
+  const HL = hudLayout(), c = HL.wr && HL.wr.cancel;
+  return !!c && inRect(sx, sy, { x: c.x - 14, y: c.y - 14, w: c.w + 28, h: c.h + 28 });
+}
+/* ⚔️ gumb za napad: 'auto' = junak > vojnik > kula, 'creep' = vojnik s najmanje života (zadnji udarac), 'tower' = građevina.
+   Dok držiš, svakih 0,25 s provjeri metu (ne mijenja je usred udarca — samo kad padne ili kad se pojavi junak). */
+function wrAttack(a, first){
+  if(!player || player.dead || gameOver) return;
+  const R = player.atkRange + 300, foe = e => e.team !== player.team && canAttackTarget(player, e);
+  const cur = a.tid != null ? units.find(u => u.id === a.tid) : null;
+  const valid = !!cur && foe(cur) && dist(player, cur) < R + 250 && (net.mode === 'guest' || player.attackTarget === cur);
+  let t = null;
+  if(a.mode === 'creep'){
+    if(valid && !first) return;
+    let bh = 1e9;
+    for(const e of units) if((e.kind === 'creep' || e.kind === 'neutral') && foe(e) && dist(player, e) < R && e.hp < bh){ bh = e.hp; t = e; }
+    if(!t) for(const e of units) if(e.kind === 'creep' && e.team === player.team && canDeny(e) && dist(player, e) < R && e.hp < bh){ bh = e.hp; t = e; }   // ili uskrati svog
+  } else if(a.mode === 'tower'){
+    if(valid && !first) return;
+    t = nearestEnemyOf(player, R + 300, e => isStructure(e) && foe(e));
+  } else {
+    const hero = nearestEnemyOf(player, R, e => e.kind === 'hero' && foe(e));
+    if(valid && !first && (cur.kind === 'hero' || !hero)) return;
+    t = hero || nearestEnemyOf(player, R, e => (e.kind === 'creep' || e.kind === 'neutral') && foe(e)) || nearestEnemyOf(player, R, e => isStructure(e) && foe(e));
+  }
+  if(t){ a.tid = t.id; playerCommand(t.x, t.y, t, first ? null : { silent: true }); }
+  else if(first){ addFloat(player.x, player.y - 24, a.mode === 'creep' ? L('🪙 Nema vojnika blizu', '🪙 No creep nearby') : a.mode === 'tower' ? L('🏰 Nema kule blizu', '🏰 No tower nearby') : L('⚔️ Nema mete blizu', '⚔️ No target nearby'), '#e5e7eb', 12); sfx('click'); }
+}
+function wrStopMove(){
+  if(!player || player.dead) return;
+  if(net.mode === 'guest') netHalt(player.x, player.y);
+  else if(!player.attackTarget) player.moveTarget = null;
+}
+/* svaki kadar: palica vodi junaka (naredba malo ispred njega), držani ⚔️ prati metu; palica ima prednost */
+function wrTick(){
+  if(!WR.stick && !WR.atk) return;
+  if(!running || paused || gameOver || !player || player.dead || !wrOn()) return;
+  const now = performance.now(), s = WR.stick;
+  if(s){
+    const dx = s.x - s.ox, dy = s.y - s.oy, l = Math.hypot(dx, dy);
+    if(l > 12 * UI_K){
+      if(now >= s.next){
+        s.next = now + (net.mode === 'guest' ? 150 : 110);
+        const d = wrDir(dx / l, dy / l);
+        playerCommand(player.x + d.x * 240, player.y + d.y * 240, null, { silent: true });
+        s.walking = true;
+        if(!miniDrag) cam.follow = true;
+      }
+      return;
+    }
+    if(s.walking){ s.walking = false; wrStopMove(); }   // palac vraćen u sredinu: stani
+  }
+  const a = WR.atk;
+  if(a && now >= a.next){ a.next = now + 250; wrAttack(a, false); }
+}
+/* 🎨 desni palac: ⚔️ veliki napad, 🪙 vojnik, 🏰 kula; lijevo palica; dok nišaniš: krug povlačenja i ✖ za odustajanje */
+function drawWrAttack(wr){
+  const K = UI_K, st = WR.stick;
+  const circ = (x, y, r, fill, stroke, lw) => {
+    ctx.beginPath(); ctx.arc(x, y, r, 0, TAU);
+    if(fill){ ctx.fillStyle = fill; ctx.fill(); }
+    if(stroke){ ctx.strokeStyle = stroke; ctx.lineWidth = lw || 2; ctx.stroke(); }
+  };
+  ctx.save();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  // 🕹️ palica: osnova gdje je palac dotaknuo zaslon (bez dodira blijedo na stalnom mjestu)
+  {
+    const R = 62, bx = st ? st.ox / K : 122, by = st ? st.oy / K : VH - 122;
+    let kx = bx, ky = by;
+    if(st){ const dx = (st.x - st.ox) / K, dy = (st.y - st.oy) / K, l = Math.hypot(dx, dy), m = l > R ? R / l : 1; kx = bx + dx * m; ky = by + dy * m; }
+    ctx.globalAlpha = st ? 0.95 : 0.4;
+    circ(bx, by, R, 'rgba(15,23,42,0.42)', 'rgba(226,232,240,0.75)', 3);
+    circ(kx, ky, 27, st ? 'rgba(226,232,240,0.9)' : 'rgba(226,232,240,0.55)', 'rgba(15,23,42,0.6)', 2);
+    if(!st && gameTime < 45){
+      ctx.globalAlpha = 0.9; ctx.font = fontTxt(12, true); ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.lineWidth = 3;
+      const tx = L('👈 Palac: hodanje', '👈 Thumb: walk');
+      ctx.strokeText(tx, bx, by - R - 12); ctx.fillStyle = '#e5e7eb'; ctx.fillText(tx, bx, by - R - 12);
+    }
+    ctx.globalAlpha = 1;
+  }
+  // ⚔️ napad
+  const held = WR.atk && WR.atk.mode;
+  uiRects.atk = { x: wr.cx - wr.r, y: wr.cy - wr.r, w: wr.r * 2, h: wr.r * 2 };
+  {
+    const g = ctx.createRadialGradient(wr.cx, wr.cy - 16, 6, wr.cx, wr.cy, wr.r);
+    g.addColorStop(0, held === 'auto' ? '#b91c1c' : '#7f1d1d'); g.addColorStop(1, '#1c0a0a');
+    circ(wr.cx, wr.cy, wr.r, g, held === 'auto' ? '#fde047' : '#f59e0b', held === 'auto' ? 5 : 3.5);
+    circ(wr.cx, wr.cy, wr.r - 6, null, 'rgba(253,224,71,0.35)', 1.5);
+    ctx.font = fontEmoji(held === 'auto' ? 36 : 40); ctx.fillText('⚔️', wr.cx, wr.cy + 2);
+  }
+  for(const [key, r, em, mode] of [['atkCreep', wr.creep, '🪙', 'creep'], ['atkTower', wr.tower, '🏰', 'tower']]){
+    uiRects[key] = r;
+    const on = held === mode, cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+    circ(cx, cy, r.w / 2, on ? '#4a3510' : 'rgba(30,25,15,0.85)', on ? '#fde047' : '#b45309', on ? 3.5 : 2.5);
+    ctx.font = fontEmoji(19); ctx.fillText(em, cx, cy + 1);
+  }
+  ctx.restore();
+}
+/* 🎯 nišanjenje moći povlačenjem (crta se iznad gumba): krug i kvačica pod prstom, ✖ za odustajanje */
+function drawWrAim(wr){
+  const K = UI_K, am = WR.aim;
+  if(!am) return;
+  const circ = (x, y, r, fill, stroke, lw) => {
+    ctx.beginPath(); ctx.arc(x, y, r, 0, TAU);
+    if(fill){ ctx.fillStyle = fill; ctx.fill(); }
+    if(stroke){ ctx.strokeStyle = stroke; ctx.lineWidth = lw || 2; ctx.stroke(); }
+  };
+  ctx.save();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  {
+    const ox = am.ox / K, oy = am.oy / K, R = 78;
+    const dx = (am.x - am.ox) / K, dy = (am.y - am.oy) / K, l = Math.hypot(dx, dy), m = l > R ? R / l : 1;
+    circ(ox, oy, R, 'rgba(15,23,42,0.35)', am.over ? 'rgba(248,113,113,0.8)' : 'rgba(253,224,71,0.7)', 3);
+    circ(ox + dx * m, oy + dy * m, 20, am.over ? 'rgba(248,113,113,0.9)' : 'rgba(253,224,71,0.9)', 'rgba(0,0,0,0.5)', 2);
+    if(am.moved){
+      const c = wr.cancel, cx = c.x + c.w / 2, cy = c.y + c.h / 2;
+      circ(cx, cy, c.w / 2 + (am.over ? 6 : 0), am.over ? 'rgba(220,38,38,0.85)' : 'rgba(30,41,59,0.8)', am.over ? '#fff' : '#f87171', 3);
+      ctx.font = fontTxt(30, true); ctx.fillStyle = '#fff'; ctx.fillText('✖', cx, cy + 1);
+      ctx.font = fontTxt(11, true); ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.lineWidth = 3;
+      const tx = L('odustani', 'cancel');
+      ctx.strokeText(tx, cx, cy + c.h / 2 + 12); ctx.fillStyle = '#fecaca'; ctx.fillText(tx, cx, cy + c.h / 2 + 12);
+    }
+  }
+  ctx.restore();
+}
 function hudLayout(){
   const W = uiLogical ? VW : VW / UI_K, H = uiLogical ? VH : VH / UI_K;   // 📱 uvijek logične mjere ploča
+  if(wrOn()){
+    const wr = wrLayout(W, H), ms = 130, as = 52, gap = 6;
+    const cardX = W - 312, cardY = H - 270, cardW = 312, cardH = 270;
+    const left = Math.round(W * 0.34), right = cardX - 6;
+    const pw = Math.min(460, Math.max(380, right - left)), ph = 124;
+    const px = left + Math.max(0, (right - left - pw) / 2), py = H - ph - 10;
+    const invW = 3 * INV_SW + 2 * INV_G;
+    return { ms, mx: 14, my: 56, as, gap, cardX, cardY, cardW, cardH, pw, ph, px, py, invX: px + pw - invW - 12, invW, wr, joyR: left };
+  }
   const ms = W < 1000 ? 140 : 170;
   const as = 52, gap = 6, cardW = 5 * as + 4 * gap + 24, cardH = 2 * as + gap + 24;   // 5. stupac: čarolije prizivača D / F
   const cardX = W - cardW - 10, cardY = H - cardH - 10;
@@ -7361,12 +7676,12 @@ function drawHud(){
     const f = feedMine[i];
     ctx.globalAlpha = f.t > 6 ? 1 - (f.t - 6) : 1;
     ctx.font = fontTxt(14, true);
-    const y = 90 + i * 24;
+    const fx = wrOn() ? 158 : 12, y = 90 + i * 24;   // 📱 Wild Rift: minimapa je gore lijevo, poruke desno od nje
     ctx.strokeStyle = 'rgba(0,0,0,0.7)';
     ctx.lineWidth = 3;
-    ctx.strokeText(f.txt, 12, y);
+    ctx.strokeText(f.txt, fx, y);
     ctx.fillStyle = f.color;
-    ctx.fillText(f.txt, 12, y);
+    ctx.fillText(f.txt, fx, y);
     ctx.globalAlpha = 1;
   }
 
@@ -7527,23 +7842,29 @@ function drawHud(){
 
     // moći (Q W E R) + atributi (📊) + teleport (T)
     uiRects.abil = [];
-    const as = HL.as, gap = HL.gap;
-    drawFrame(HL.cardX, HL.cardY, HL.cardW, HL.cardH, 10);   // naredbena kartica (Warcraft 3)
+    const as = HL.as, gap = HL.gap, wr = HL.wr;
+    if(!wr) drawFrame(HL.cardX, HL.cardY, HL.cardW, HL.cardH, 10);   // naredbena kartica (Warcraft 3)
     const ax0 = HL.cardX + 12, ay = HL.cardY + 12, ay2 = ay + as + gap;
+    const SL = wr ? wr.slots : { ab: [0, 1, 2, 3].map(i => ({ x: ax0 + i * (as + gap), y: ay, s: as })),
+      stat: { x: ax0, y: ay2, s: as }, tp: { x: ax0 + (as + gap), y: ay2, s: as }, glyph: { x: ax0 + 2 * (as + gap), y: ay2, s: as },
+      shop: { x: ax0 + 3 * (as + gap), y: ay2, s: as }, sum: [{ x: ax0 + 4 * (as + gap), y: ay, s: as }, { x: ax0 + 4 * (as + gap), y: ay2, s: as }] };
+    uiRects.atk = uiRects.atkCreep = uiRects.atkTower = null;
+    if(wr) drawWrAttack(wr);   // 📱 ⚔️ napad, 🪙 vojnik, 🏰 kula
     if(pendingCast || amovePending){
       ctx.font = fontTxt(13, true);
       ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
       ctx.fillStyle = amovePending && !pendingCast ? '#fca5a5' : '#fde047';
       ctx.strokeStyle = 'rgba(0,0,0,0.7)';
       ctx.lineWidth = 3;
-      const txt = !pendingCast ? L('⚔️ A: klik na vojnika = JEDAN udarac (zadnji udarac) • klik na tlo = napad u hodu • S = stani', '⚔️ A: click a creep = ONE hit (last hit) • click the ground = attack-move • S = stop') :
+      const txt = wr && pendingCast && pendingCast.touch ? L('🎯 Povuci = nišani • pusti = baci • na ✖ = odustani', '🎯 Drag = aim • release = cast • onto ✖ = cancel') :
+        !pendingCast ? L('⚔️ A: klik na vojnika = JEDAN udarac (zadnji udarac) • klik na tlo = napad u hodu • S = stani', '⚔️ A: click a creep = ONE hit (last hit) • click the ground = attack-move • S = stop') :
         pendingCast.tp ? L('🌀 Klikni svoju kulu ili minimapu • T = kući • desni klik = odustani', '🌀 Click your tower or the minimap • T = home • right-click = cancel') :
         (pendingCast.quick && pendingCast.key ? L('⚡ Pusti tipku za bacanje • desni klik = odustani', '⚡ Release the key to cast • right-click = cancel') :
           (touchMode ? L('🎯 Dodirni cilj', '🎯 Tap a target') : L('🎯 Klikni cilj (ili junaka) • desni klik = odustani', '🎯 Click a target (or a hero) • right-click = cancel')));
       const tw = ctx.measureText(txt).width;   // ne izlazi preko ruba ekrana
-      const tx = Math.min(ax0 + (5 * (as + gap) - gap) / 2, VW - 8 - tw / 2);
-      ctx.strokeText(txt, tx, ay - 4);
-      ctx.fillText(txt, tx, ay - 4);
+      const tx = Math.min(wr ? wr.cx - 150 : ax0 + (5 * (as + gap) - gap) / 2, VW - 8 - tw / 2), ty = wr ? HL.cardY - 6 : ay - 4;
+      ctx.strokeText(txt, tx, ty);
+      ctx.fillText(txt, tx, ty);
     }
     else if(player.skillPoints > 0 && !player.dead){
       ctx.font = fontTxt(13, true);
@@ -7552,14 +7873,15 @@ function drawHud(){
       const bob = Math.sin(gameTime * 5) * 2;
       ctx.strokeStyle = 'rgba(0,0,0,0.7)';
       ctx.lineWidth = 3;
-      const txt = L('⬆️ Poen vještine! Klikni +', '⬆️ Skill point! Click +');
-      ctx.strokeText(txt, ax0 + (5 * (as + gap) - gap) / 2, ay - 4 + bob);
-      ctx.fillText(txt, ax0 + (5 * (as + gap) - gap) / 2, ay - 4 + bob);
+      const txt = wr ? L('⬆️ Poen vještine! Dodirni +', '⬆️ Skill point! Tap +') : L('⬆️ Poen vještine! Klikni +', '⬆️ Skill point! Click +');
+      const tx = wr ? wr.cx - 150 : ax0 + (5 * (as + gap) - gap) / 2, ty = wr ? HL.cardY - 6 : ay - 4;
+      ctx.strokeText(txt, tx, ty + bob);
+      ctx.fillText(txt, tx, ty + bob);
     }
     for(let i = 0; i < 4; i++){
       const ab = player.abilities[i];
       if(!ab) continue;
-      const ax = ax0 + i * (as + gap);
+      const sl = SL.ab[i], ax = sl.x, ay = sl.y, as = sl.s, rr = wr ? as / 2 : 6, rr2 = wr ? (as - 6) / 2 : 4;   // 📱 Wild Rift: okrugli gumbi u luku
       uiRects.abil.push({ x: ax, y: ay, w: as, h: as });
       const mxR = abilityMaxRank(ab);
       const unlearned = ab.rank === 0;
@@ -7568,18 +7890,18 @@ function drawHud(){
       const canL = player.skillPoints > 0 && canLearn(player, i);
       const isPending = pendingCast && pendingCast.i === i;
       ctx.fillStyle = ab.def.ult ? '#3b2a4d' : '#1e293b';
-      ctx.beginPath(); ctx.roundRect(ax, ay, as, as, 6); ctx.fill();
+      ctx.beginPath(); ctx.roundRect(ax, ay, as, as, rr); ctx.fill();
       ctx.strokeStyle = isPending ? '#fde047' : (ab.def.ult ? '#c084fc' : (!unlearned && noMana ? '#38bdf8' : hudTheme().rim2));
       ctx.lineWidth = isPending ? 4 : 3;
-      ctx.beginPath(); ctx.roundRect(ax, ay, as, as, 6); ctx.stroke();
+      ctx.beginPath(); ctx.roundRect(ax, ay, as, as, rr); ctx.stroke();
       ctx.strokeStyle = isPending ? '#fef9c3' : hudTheme().rim; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.roundRect(ax + 3, ay + 3, as - 6, as - 6, 4); ctx.stroke();
+      ctx.beginPath(); ctx.roundRect(ax + 3, ay + 3, as - 6, as - 6, rr2); ctx.stroke();
       ctx.font = fontEmoji(26);
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.globalAlpha = unlearned ? 0.3 : ((ab.cd > 0 || noMana) ? 0.45 : 1);
       const sim = spellIconImg(player.hero.id, ab.def.key);   // 🎨 v0.55: naslikana ikona moći
       if(sim){
-        ctx.save(); ctx.beginPath(); ctx.roundRect(ax + 3, ay + 3, as - 6, as - 6, 4); ctx.clip();
+        ctx.save(); ctx.beginPath(); ctx.roundRect(ax + 3, ay + 3, as - 6, as - 6, rr2); ctx.clip();
         ctx.drawImage(sim, ax + 3, ay + 3, as - 6, as - 6);
         const sh = ctx.createLinearGradient(0, ay + as * 0.55, 0, ay + as);   // tamni rub dolje: točkice ranga i tipka se vide
         sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,0,0.6)');
@@ -7590,7 +7912,7 @@ function drawHud(){
       ctx.globalAlpha = 1;
       if(ultLocked){
         ctx.fillStyle = 'rgba(0,0,0,0.55)';
-        ctx.beginPath(); ctx.roundRect(ax, ay, as, as, 6); ctx.fill();
+        ctx.beginPath(); ctx.roundRect(ax, ay, as, as, rr); ctx.fill();
         ctx.font = fontEmoji(18);
         ctx.fillText('🔒', ax + as / 2, ay + as / 2 - 8);
         ctx.fillStyle = '#e9d5ff';
@@ -7607,7 +7929,7 @@ function drawHud(){
         const stunned = player.status.stun > 0, silenced = player.status.silenceT > 0;
         if(!ab.def.passive && (stunned || silenced)){   // 💫 v0.56: omamljen / ušutkan — moć se sada ne može baciti
           ctx.fillStyle = stunned ? 'rgba(113,63,18,0.6)' : 'rgba(30,41,59,0.65)';
-          ctx.beginPath(); ctx.roundRect(ax, ay, as, as, 6); ctx.fill();
+          ctx.beginPath(); ctx.roundRect(ax, ay, as, as, rr); ctx.fill();
           ctx.font = fontEmoji(ab.cd > 0 ? 14 : 22);
           ctx.fillText(stunned ? '💫' : '🤐', ax + (ab.cd > 0 ? as - 12 : as / 2), ay + (ab.cd > 0 ? as - 14 : as / 2));
         }
@@ -7657,7 +7979,7 @@ function drawHud(){
 
     // ATRIBUTI gumb (📊 = +2 sve, kao DotA "Attribute Bonus")
     {
-      const sb = { x: ax0, y: ay2, w: as, h: as };
+      const sb = { x: SL.stat.x, y: SL.stat.y, w: SL.stat.s, h: SL.stat.s };
       uiRects.statBtn = sb;
       const canS = player.skillPoints > 0 && canLearnStats(player);
       ctx.fillStyle = '#1e3a2f';
@@ -7668,22 +7990,22 @@ function drawHud(){
       ctx.font = fontEmoji(17);
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.globalAlpha = player.statRanks >= CFG.statMaxRanks ? 0.45 : 1;
-      ctx.fillText('📊', sb.x + sb.w / 2, sb.y + 16);
+      ctx.fillText('📊', sb.x + sb.w / 2, sb.y + sb.h * 0.31);
       ctx.globalAlpha = 1;
       if(canS){
         const pulse = 1 + Math.sin(gameTime * 6) * 0.15;
         ctx.fillStyle = '#4ade80';
         ctx.font = fontTxt(15 * pulse, true);
-        ctx.fillText('+', sb.x + sb.w / 2, sb.y + 32);
+        ctx.fillText('+', sb.x + sb.w / 2, sb.y + sb.h * 0.62);
       }
       ctx.fillStyle = '#a7f3d0';
       ctx.font = fontTxt(9.5, true);
-      ctx.fillText(player.statRanks + '/' + CFG.statMaxRanks, sb.x + sb.w / 2, sb.y + as - 8);
+      ctx.fillText(player.statRanks + '/' + CFG.statMaxRanks, sb.x + sb.w / 2, sb.y + sb.h - 8);
     }
 
     // teleport kući (T)
     {
-      const tr = { x: ax0 + (as + gap), y: ay2, w: as, h: as };
+      const tr = { x: SL.tp.x, y: SL.tp.y, w: SL.tp.s, h: SL.tp.s };
       uiRects.tp = tr;
       const channeling = player.tpChannel > 0;
       ctx.fillStyle = channeling ? '#1e3a5f' : '#16243a';
@@ -7710,7 +8032,7 @@ function drawHud(){
         ctx.fillText(Math.ceil(player.tpCd), tr.x + tr.w / 2, tr.y + tr.h / 2);
       }
       // 🛡️ Glif utvrde (F): kule i vojarne tima 5 s neranjive
-      const gr = { x: ax0 + 2 * (as + gap), y: ay2, w: as, h: as };
+      const gr = { x: SL.glyph.x, y: SL.glyph.y, w: SL.glyph.s, h: SL.glyph.s };
       uiRects.glyph = gr;
       const gl = glyph[player.team];
       ctx.fillStyle = gl.t > 0 ? '#3f2a0a' : '#2a2214';
@@ -7743,10 +8065,11 @@ function drawHud(){
 
     // ✨ čarolije prizivača (LoL): D gore, F dolje u petom stupcu
     uiRects.sum = [];
-    for(let k = 0; k < 2; k++) drawSummonerBtn(k, ax0 + 4 * (as + gap), k ? ay2 : ay, as);
+    for(let k = 0; k < 2; k++) drawSummonerBtn(k, SL.sum[k].x, SL.sum[k].y, SL.sum[k].s);
+    if(wr) drawWrAim(wr);   // 📱 iznad gumba moći
 
     // 🛒 dućan: zadnji gumb naredbene kartice; zvuk i pomoć gore desno
-    uiRects.shop = { x: ax0 + 3 * (as + gap), y: ay2, w: as, h: as };
+    uiRects.shop = { x: SL.shop.x, y: SL.shop.y, w: SL.shop.s, h: SL.shop.s };
     {
       const r = uiRects.shop, hov = hoverUi && hoverUi.type === 'shop';
       ctx.fillStyle = shopOpen ? '#4a3510' : '#2a2214';
@@ -8226,6 +8549,7 @@ function frame(now){
   updateCamera3();
   refreshPointer();
   updateHoldMove();
+  wrTick();   // 📱 palica i držani napad
   if(running) syncScene(now / 1000);
   render3D();
 

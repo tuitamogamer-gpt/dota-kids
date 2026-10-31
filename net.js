@@ -198,6 +198,7 @@ function onNetData(d){
     case 'cmd':
       if(net.mode === 'host' && remoteHero && !remoteHero.dead){
         if(d.stop) stopHero(remoteHero);   // ✋ v0.56: i otkazuje zamah udarca
+        else if(d.halt){ if(!remoteHero.attackTarget) remoteHero.moveTarget = null; }   // 📱 pustio palicu: stani (bez "✋ Stojiš", auto-napad radi)
         else {   // v0.31: gost šalje i jedinicu pod mišem (tid), napad u hodu (am) i držanje miša (hm)
           const tgt = d.tid === undefined ? undefined : (d.tid === null ? null : (units.find(u => u.id === d.tid) || null));
           playerCommandFor(remoteHero, d.x, d.y, tgt, { amove: !!d.am, silent: !!d.hm });
@@ -225,6 +226,7 @@ function onNetData(d){
 /* gost → domaćin */
 function netCmd(wx, wy, tid, am, hm){ sendNet({ c: 'cmd', x: Math.round(wx), y: Math.round(wy), tid, am: am ? 1 : 0, hm: hm ? 1 : 0 }); }
 function netStop(){ sendNet({ c: 'cmd', stop: 1 }); }
+function netHalt(x, y){ sendNet({ c: 'cmd', halt: 1, x: Math.round(x), y: Math.round(y), tid: null, am: 0, hm: 1 }); }   // 📱 palica puštena
 function netCast(i, aim){ sendNet({ c: 'cast', i, x: Math.round(aim.x), y: Math.round(aim.y) }); }
 function netLearn(i){ sendNet({ c: 'learn', i }); }
 function netStats(){ sendNet({ c: 'stats' }); }
