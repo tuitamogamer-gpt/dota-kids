@@ -1729,8 +1729,17 @@ function kill(t, src){
 }
 
 /* ================= Levelovanje i poeni vještina ================= */
+/* ⚖️ v0.56 iskustvo za zaostale (isto za oba tima): junak ispod prosječnog levela svih junaka dobiva +20% iskustva po levelu
+   zaostatka (najviše +50%) — tko izgubi prvu razmjenu na stazi i ostane bez iskustva, sustigne, pa jedna staza ne odluči igru */
+function xpCatchUp(h){
+  let sum = 0, n = 0;
+  for(const u of units) if(u.kind === 'hero' && !u.removeMe){ sum += u.level; n++; }
+  const gap = n ? sum / n - h.level : 0;
+  return gap > 0.5 ? 1 + Math.min(0.5, gap * 0.2) : 1;
+}
 function giveXp(h, amt){
   if(h.level >= CFG.maxLevel) return;
+  if(h.kind === 'hero') amt *= xpCatchUp(h);
   h.xp += amt;
   while(h.level < CFG.maxLevel && h.xp >= xpNeed(h.level)){
     h.xp -= xpNeed(h.level);
@@ -3522,15 +3531,8 @@ function botFightPlan(u, eh, bd){
   const dive = !ehTower || (eh.hp < eh.maxhp * 0.2 && u.hp > u.maxhp * 0.6 && ehTower.attackTarget && ehTower.attackTarget.kind === 'creep');
   const burst = (u.dmg * 3 + 40 * u.level) * fs.allies;   // otprilike što mi (i suigrači uz mene) napravimo u par sekundi
   const killable = eh.hp < eh.maxhp * bd.chase && eh.hp < burst && fs.mine >= fs.theirs * 0.6;
-  // ⚖️ v0.56: na početku staze (laneEarly) junaka napadni samo s jasnom prednošću ili kad pada — inače zadnji udarci po vojnicima;
-  //   prije su se botovi tukli već na levelu 1 i tko dobije prvu razmjenu, dobio je cijelu stazu (trećina igara jednostrana)
-  const early = laneEarly(u);
-  const engage = dive && (killable || (u.hp > u.maxhp * 0.45 && fs.mine >= fs.theirs * bd.brave * (early ? 1.4 : 1)));
+  const engage = dive && (killable || (u.hp > u.maxhp * 0.45 && fs.mine >= fs.theirs * bd.brave));
   return { engage, weaker: !engage && fs.theirs > fs.mine * bd.back, risky: !engage && fs.theirs > fs.mine * 0.9, fs };
-}
-/* ⚖️ v0.56 rana igra na stazi (prvih 5 min sata igre): bot koji nije ranjen ni puno slabiji ostaje uz svoj val */
-function laneEarly(u, fs){
-  return !u.jungler && u.lane && gameClock() < 300 && u.hp > u.maxhp * 0.5 && !(fs && fs.theirs > fs.mine * 1.8);
 }
 /* kamo se povući kad smo slabiji: do najbližeg suigrača koji je dalje od opasnosti, inače iza svoje kule, inače kući */
 function regroupPoint(u, eh){
@@ -3674,9 +3676,7 @@ function botThink(u){
     if(plan.weaker){
       b.fear = { h: eh, until: gameTime + 4 };
       u.attackTarget = null;
-      // ⚖️ v0.56: na početku igre slabiji ne bježi do kule (tada ostaje bez iskustva, a protivnik raste — u brzoj igri jedna
-      //   staza bi tako izgubila igru za 6–10 min), nego stane iza svojih vojnika, izvan dometa protivnika
-      u.moveTarget = laneEarly(u, plan.fs) ? stepToward(laneFront(u.team, u.lane), FOUNTAIN[u.team], Math.min(560, eh.atkRange + 260)) : regroupPoint(u, eh);
+      u.moveTarget = regroupPoint(u, eh);
       return;
     }
     if(plan.risky && dist(u, eh) < eh.atkRange + eh.r + 160){   // izjednačeno: izvan dometa njegovih udaraca
@@ -3723,8 +3723,7 @@ function botThink(u){
   // stani IZA svojih vojnika (kao pravi DotA igrač), ne ispred njih
   const fp = laneFront(u.team, u.lane);
   let dest = stepToward(fp, FOUNTAIN[u.team], 90 + u.atkRange * 0.45);
-  if(fear && dist(dest, fear) < fear.atkRange + 420)   // ne vraćaj se sam pred jačeg — na početku ipak blizu vala (iskustvo)
-    dest = laneEarly(u) ? stepToward(fp, FOUNTAIN[u.team], Math.min(560, fear.atkRange + 260)) : regroupPoint(u, fear);
+  if(fear && dist(dest, fear) < fear.atkRange + 420) dest = regroupPoint(u, fear);   // ne vraćaj se sam pred jačeg
   if(dist(u, dest) > 130) u.moveTarget = dest;
   else u.moveTarget = null;
 }
