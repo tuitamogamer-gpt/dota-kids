@@ -4856,8 +4856,11 @@ const TURBO = { heroKillXp: 1.7, creepXpMul: 2,
   creepXp: 2, towerXp: 1.5, respawnBase: 0.75, respawnPerLvl: 0.7, towerHp: 0.6, waveEvery: 0.85, timeScale: 0.6, barracksHp: 0.7, ancientHp: 0.7,
   campRespawn: 0.7, bossRespawn: 0.6, drakeRespawn: 0.6, barracksRespawn: 0.7, buybackCd: 0.5, startGold: 1.3, prepTime: 0.5, creepScaleEvery: 0.6 };
 /* 💰 zlato u brzoj igri — zadane vrijednosti (ne množe se): brza igra zadržava svoju brzu ekonomiju i kad se mijenja normalna (data.js) */
-const TURBO_GOLD = { passiveGold: 2.25, heroKillGold: 300, heroKillGoldPerLvl: 18, assistGold: 80, assistPool: 400, creepGoldMul: 2, towerGoldTeam: 180,
-  barracksGoldTeam: 225, bountyGold: 40, bountyGoldMin: 3, bossGoldTeam: 200, shutdownGold: 60, comebackFrom: 500, comebackMax: 400, richMax: 500, richPct: 0.15 };
+/* ⚖️ v0.56: ubojstvo junaka je u brzoj igri nosilo 300 + 18/lvl (≈550 na levelu 14) i 80 SVAKOM pomagaču — jedna dobivena borba
+   odlučila je igru (u simulaciji 1 od 8 igara gotova za 5–10 min, 4:17 u ubojstvima u 5 minuta). Sada 220 + 9/lvl, asistencija se dijeli
+   (220 na sve, svakom do 70), a tim koji zaostaje dobiva veći bonus „povratak” */
+const TURBO_GOLD = { passiveGold: 2.25, heroKillGold: 220, heroKillGoldPerLvl: 9, assistGold: 70, assistPool: 220, creepGoldMul: 2, towerGoldTeam: 180,
+  barracksGoldTeam: 225, bountyGold: 40, bountyGoldMin: 3, bossGoldTeam: 200, shutdownGold: 80, comebackFrom: 350, comebackPct: 0.08, comebackMax: 500, richMax: 500, richPct: 0.15 };
 /* ⏱️ „sat igre” za odluke koje ovise o vremenu (kada botovi guraju, jačina kula, rune): u brzoj igri teče brže */
 function gameClock(){ return gameTime / (CFG.timeScale || 1); }
 function gameMode(){ return net.mode === 'host' || net.mode === 'guest' ? 'normal' : (SETTINGS.mode === 'turbo' ? 'turbo' : 'normal'); }
