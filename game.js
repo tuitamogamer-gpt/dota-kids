@@ -695,7 +695,7 @@ let touchMode = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches)
 let scoreOpen = false;      // 📋 tablica otvorena gumbom (na tabletu nema tipke Tab)
 let mouseIn = false;        // miš je iznad igre (za rubno pomicanje kamere)
 /* ⚙️ postavke (pamte se u pregledniku) */
-const SETTINGS = { vol: 0.8, quality: touchMode ? 'med' : 'high', edgePan: true, dmgNums: true, quickCast: false, wrCtl: true, voices: true, announcer: true, diff: 'normal',
+const SETTINGS = { vol: 0.8, quality: touchMode ? 'med' : 'high', edgePan: true, dmgNums: true, quickCast: false, wrCtl: true, fsTouch: true, voices: true, announcer: true, diff: 'normal',
   fullscreen: true, lockMouse: true, lastHit: true, tips: true, autoSkill: false, nature: true, quests: true, mode: 'normal', music: true, lane: 'mid' };   // 🛣️ lane: tvoja staza (top / mid / bot)   // 🎶 glazba   // ⚡ mode: 'normal' / 'turbo'   // 🎯 zadaci za početnike   // 🌲 zvukovi prirode   // ⬆️ vještine se mogu učiti same   // 🪙 pomoć za zadnji udarac, 💡 savjeti   // 🖥️ cijeli zaslon pri početku igre, 🔒 miš ne može izaći iz igre
 try {
   const s = JSON.parse(localStorage.getItem('dk_settings') || '{}');
@@ -704,7 +704,8 @@ try {
   if(typeof s.edgePan === 'boolean') SETTINGS.edgePan = s.edgePan;
   if(typeof s.dmgNums === 'boolean') SETTINGS.dmgNums = s.dmgNums;
   if(typeof s.quickCast === 'boolean') SETTINGS.quickCast = s.quickCast;
-  if(typeof s.wrCtl === 'boolean') SETTINGS.wrCtl = s.wrCtl;   // 📱 kontrole kao u Wild Riftu
+  if(typeof s.wrCtl === 'boolean') SETTINGS.wrCtl = s.wrCtl;
+  if(typeof s.fsTouch === 'boolean') SETTINGS.fsTouch = s.fsTouch;   // 📱 cijeli zaslon na mobitelu (posebno od računala)   // 📱 kontrole kao u Wild Riftu
   if(typeof s.voices === 'boolean') SETTINGS.voices = s.voices;
   if(typeof s.announcer === 'boolean') SETTINGS.announcer = s.announcer;
   if(['easy', 'normal', 'hard'].includes(s.diff)) SETTINGS.diff = s.diff;
@@ -6425,7 +6426,7 @@ function syncOptionsDom(){
   tog('optMute', !muted);
   tog('optVoices', SETTINGS.voices);
   tog('optAnn', SETTINGS.announcer);
-  if($('optFs')){ tog('optFs', SETTINGS.fullscreen); tog('optLock', SETTINGS.lockMouse); $('optFsRow').classList.toggle('hidden', touchMode); $('optLockRow').classList.toggle('hidden', touchMode); }
+  if($('optFs')){ tog('optFs', fsWanted()); tog('optLock', SETTINGS.lockMouse); $('optFsRow').classList.toggle('hidden', touchMode && (!fsSupported() || standaloneApp())); $('optLockRow').classList.toggle('hidden', touchMode); }
   $('optEdgeRow').classList.toggle('hidden', touchMode);   // na tabletu nema miša
   $('optQuickRow').classList.toggle('hidden', touchMode);   // ni tipkovnice
   if($('optWr')){ tog('optWr', SETTINGS.wrCtl !== false); $('optWrRow').classList.toggle('hidden', !touchMode); }   // 📱 samo na dodirnom zaslonu
@@ -6449,8 +6450,9 @@ function buildOptionsDom(){
   $('optEdge').addEventListener('click', () => { SETTINGS.edgePan = !SETTINGS.edgePan; saveSettings(); syncOptionsDom(); sfx('click'); });
   if($('optFs')){
     $('optFs').addEventListener('click', () => {   // 🖥️ odmah uđi / izađi iz cijelog zaslona i zapamti
-      SETTINGS.fullscreen = !SETTINGS.fullscreen; saveSettings();
-      if(SETTINGS.fullscreen !== isFullscreen()) toggleFullscreen();
+      if(touchMode) SETTINGS.fsTouch = !SETTINGS.fsTouch; else SETTINGS.fullscreen = !SETTINGS.fullscreen;
+      saveSettings();
+      if(fsWanted() !== isFullscreen()) toggleFullscreen();
       syncOptionsDom(); sfx('click');
     });
     $('optLock').addEventListener('click', () => { SETTINGS.lockMouse = !SETTINGS.lockMouse; saveSettings(); if(!SETTINGS.lockMouse) unlockMouse(); syncOptionsDom(); sfx('click'); });
@@ -6508,7 +6510,7 @@ function buildSelectScreen(){
   }));
   { const fb = document.getElementById('fsBtn');   // ⛶ cijeli zaslon na ekranu odabira
     if(fb){
-      if(touchMode || !(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen)) fb.classList.add('hidden');
+      if(!fsSupported()) fb.classList.add('hidden');
       fb.addEventListener('click', () => { toggleFullscreen(); sfx('click'); });
       document.addEventListener('fullscreenchange', () => { fb.textContent = isFullscreen() ? '🗗' : '⛶'; });
     } }
@@ -6537,7 +6539,7 @@ function buildSelectScreen(){
   }));
   syncMode();
   document.getElementById('startBtn').addEventListener('click', () => {
-    if(SETTINGS.fullscreen) enterFullscreen();   // 🖥️ igra preko cijelog ekrana (klik je korisnikova radnja — preglednik to dopušta)
+    if(fsWanted() && fsSupported()) enterFullscreen();   // 🖥️ igra preko cijelog ekrana (klik je korisnikova radnja — preglednik to dopušta; i na mobitelu)
     if(net.conn){ netReady(); return; }   // multiplayer: čekaj oba igrača
     if(selectedHero >= 0) startGame(selectedHero);
   });
@@ -6793,6 +6795,7 @@ function updateTips(dt){
 }
 function drawTip(){
   if(!tip.cur || !SETTINGS.tips || gameOver || keys['tab'] || scoreOpen) return;
+  if(wrOn() && hudLayout().compact) return;   // 📱 mobitel: bez savjeta (spominju tipke, a zaklanjaju igru)
   if(VH < 520 && player && player.dead) return;   // 📱 ne zaklanjaj gumb za otkup
   const HL = hudLayout();
   const a = tip.t < 0.25 ? tip.t / 0.25 : (tip.t > 6.4 ? Math.max(0, (7 - tip.t) / 0.6) : 1);
@@ -6900,11 +6903,12 @@ function drawWorldOverlay(){
     const s = worldToScreen(u.x, gh + barHeight(u), u.y);
     if(!s || s.x < -80 || s.x > VW + 80 || s.y < -60 || s.y > VH + 60) continue;
     if(u.kind === 'hero'){
-      ctx.font = fontTxt(13, true);
+      const phone = touchMode && VH < 450;   // 📱 mobitel: manja imena (svoj junak samo ⭐)
+      ctx.font = fontTxt(phone ? 10.5 : 13, true);
       ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
       ctx.strokeStyle = 'rgba(0,0,0,0.6)';
       ctx.lineWidth = 3;
-      const nm = (u.streak >= 3 ? '🔥 ' : '') + u.name + (u.isPlayer ? ' ⭐' : '');   // 🔥 niz pobjeda (3+)
+      const nm = (u.streak >= 3 ? '🔥 ' : '') + (phone && u.isPlayer ? '⭐' : u.name + (u.isPlayer ? ' ⭐' : ''));   // 🔥 niz pobjeda (3+)
       ctx.strokeText(nm, s.x + 8, s.y - 13);
       ctx.fillStyle = '#fff';
       ctx.fillText(nm, s.x + 8, s.y - 13);
@@ -7243,10 +7247,46 @@ function drawItemSlot(it, x, y, w, h, i, opt){
   ctx.lineWidth = hov ? 2 : 1.2;
   ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
 }
+/* 📱 mobitel: portret s levelom, prsten iskustva oko njega i tanka traka života ispod (sve ostalo je u dućanu i iznad junaka) */
+function drawCompactHero(HL){
+  const cx = HL.px + 27, cy = HL.py + HL.ph / 2, r = 19;
+  uiRects.passive = null;
+  ctx.fillStyle = player.dead ? '#475569' : TEAM_LIGHT[0];
+  ctx.beginPath(); ctx.arc(cx, cy, r + 2, 0, TAU); ctx.fill();
+  const pim = GFX.heroes[player.hero.id];
+  ctx.globalAlpha = player.dead ? 0.5 : 1;
+  if(imgReady(pim)){ ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.clip(); ctx.drawImage(pim, cx - r, cy - r, r * 2, r * 2); ctx.restore(); }
+  else { ctx.font = fontEmoji(24); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(player.emoji, cx, cy); }
+  ctx.globalAlpha = 1;
+  const xf = player.level >= CFG.maxLevel ? 1 : clamp(player.xp / xpNeed(player.level), 0, 1);
+  ctx.strokeStyle = 'rgba(15,23,42,0.9)'; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.arc(cx, cy, r + 3, 0, TAU); ctx.stroke();
+  ctx.strokeStyle = '#fde047'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(cx, cy, r + 3, -Math.PI / 2, -Math.PI / 2 + TAU * xf); ctx.stroke();
+  ctx.fillStyle = '#1f2937';
+  ctx.beginPath(); ctx.arc(cx + 15, cy + 13, 9, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#fde047'; ctx.font = fontTxt(11, true); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(player.level, cx + 15, cy + 14);
+}
 function drawInventory(HL, py, ph){
   const N = CFG.inventorySlots, bp = player.backpack || [];
   const x0 = HL.invX, y0 = py + 10;
   uiRects.inv = [];
+  if(HL.compact){   // 📱 jedan red od 6 predmeta (ruksak se vidi u dućanu)
+    const sw = HL.isw || INV_SW, sh = HL.ish || INV_SH, yc = py + (ph - sh) / 2;
+    for(let i = 0; i < N; i++){
+      const x = x0 + i * (sw + INV_G);
+      uiRects.inv[i] = { x, y: yc, w: sw, h: sh };
+      drawItemSlot(player.items[i], x, yc, sw, sh, i, {});
+    }
+    const nr = 13, ncx = x0 + N * (sw + INV_G) + nr + 2, ncy = py + ph / 2;
+    uiRects.neutral = { x: ncx - nr, y: ncy - nr, w: nr * 2, h: nr * 2 };
+    ctx.fillStyle = '#1a2e05'; ctx.strokeStyle = player.neutral ? '#bef264' : '#3f6212'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(ncx, ncy, nr, 0, TAU); ctx.fill(); ctx.stroke();
+    if(player.neutral){ ctx.save(); ctx.beginPath(); ctx.arc(ncx, ncy, nr - 1, 0, TAU); ctx.clip(); ctx.drawImage(itemIconCanvas(player.neutral), ncx - nr * 1.4, ncy - nr, nr * 2.8, nr * 2); ctx.restore(); }
+    else { ctx.globalAlpha = 0.35; ctx.font = fontEmoji(11); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('🌰', ncx, ncy + 1); ctx.globalAlpha = 1; }
+    return;
+  }
   for(let i = 0; i < N; i++){
     const x = x0 + (i % 3) * (INV_SW + INV_G), y = y0 + Math.floor(i / 3) * (INV_SH + INV_G);
     uiRects.inv[i] = { x, y, w: INV_SW, h: INV_SH };
@@ -7295,13 +7335,13 @@ function drawGoldBox(HL){
   goldHud.shown += (g - goldHud.shown) * Math.min(1, frameDt * 9);
   if(Math.abs(g - goldHud.shown) < 1) goldHud.shown = g;
   goldHud.flash = Math.max(0, goldHud.flash - frameDt * 2.5); goldHud.spend = Math.max(0, goldHud.spend - frameDt * 3);
-  const w = 158, h = 40, x = HL.px + HL.pw - w, y = HL.py - h - 6;
+  const w = HL.compact ? 128 : 158, h = HL.compact ? 32 : 40, x = HL.px + HL.pw - w, y = HL.py - h - 6;   // 📱 manja na mobitelu
   uiRects.gold = { x, y, w, h };
   drawFrame(x, y, w, h, 8);
   if(goldHud.flash > 0){ ctx.save(); ctx.globalAlpha = goldHud.flash * 0.5; ctx.fillStyle = '#fde047'; ctx.beginPath(); ctx.roundRect(x, y, w, h, 8); ctx.fill(); ctx.restore(); }
   ctx.font = fontEmoji(24); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText('🪙', x + 22, y + h / 2 + 1);
-  ctx.font = fontTxt(22, true); ctx.textAlign = 'left';
+  ctx.font = fontTxt(HL.compact ? 18 : 22, true); ctx.textAlign = 'left';
   ctx.strokeStyle = 'rgba(0,0,0,0.75)'; ctx.lineWidth = 3;
   const txt = String(Math.round(goldHud.shown));
   ctx.strokeText(txt, x + 40, y + h / 2 + 1);
@@ -7309,9 +7349,9 @@ function drawGoldBox(HL){
   ctx.fillText(txt, x + 40, y + h / 2 + 1);
   const gpm = gameTime > 30 ? Math.round(goldHud.earned / (gameTime / 60)) : 0;
   ctx.font = fontTxt(10, true); ctx.textAlign = 'right'; ctx.fillStyle = '#d6b37a';
-  ctx.fillText(L('zlato', 'gold'), x + w - 8, y + 12);
+  if(!HL.compact) ctx.fillText(L('zlato', 'gold'), x + w - 8, y + 12);
   ctx.fillStyle = '#86efac';
-  ctx.fillText(gpm ? '+' + gpm + L('/min', '/min') : '', x + w - 8, y + h - 11);
+  ctx.fillText(gpm ? '+' + gpm + L('/min', '/min') : '', x + w - 8, HL.compact ? y + h / 2 + 1 : y + h - 11);
   for(let i = goldHud.pops.length - 1; i >= 0; i--){   // "+N" iskoči iznad ploče
     const p = goldHud.pops[i];
     p.t += frameDt;
@@ -7358,7 +7398,7 @@ function wrOn(){ return touchMode && SETTINGS.wrCtl !== false; }
 function wrLayout(W, H){
   const cx = W - 86, cy = H - 86, R1 = 112, R2 = 182;
   const at = (deg, r, sz) => ({ x: cx + Math.cos(deg * Math.PI / 180) * r - sz / 2, y: cy + Math.sin(deg * Math.PI / 180) * r - sz / 2, s: sz });
-  const col = k => ({ x: W - 52, y: cy - 206 - k * 50, s: 42 });   // stupac uz desni rub: dućan, teleport, glif, atributi
+  const col = k => ({ x: W - 52, y: Math.max(56 + (3 - k) * 48, cy - 206 - k * 50), s: 42 });   // stupac uz desni rub: dućan, teleport, glif, atributi (ispod gornjih gumba)
   return { cx, cy, r: 50,
     slots: { ab: [at(182, R1, 56), at(222, R1, 56), at(262, R1, 56), at(226, R2, 62)], sum: [at(168, R2, 46), at(196, R2 + 6, 46)],
       shop: col(0), tp: col(1), glyph: col(2), stat: col(3) },
@@ -7530,7 +7570,15 @@ function hudLayout(){
   if(wrOn()){
     const wr = wrLayout(W, H), ms = 130, as = 52, gap = 6;
     const cardX = W - 312, cardY = H - 270, cardW = 312, cardH = 270;
-    const left = Math.round(W * 0.34), right = cardX - 6;
+    let left = Math.round(W * 0.34);
+    const right = cardX - 6;
+    if(H < 600){   // 📱 mobitel (nizak zaslon): samo uska traka — portret s levelom i 6 predmeta; život i mana su iznad junaka
+      left = Math.round(Math.max(200, W * 0.27));
+      const isw = clamp(Math.floor((right - left - 96 - 5 * INV_G) / 6), 30, INV_SW), ish = Math.round(isw * INV_SH / INV_SW);   // uži mobitel: manji predmeti
+      const invW = 6 * isw + 5 * INV_G, pw = 56 + invW + 40, ph = 48;
+      const px = left + Math.max(0, (right - left - pw) / 2), py = H - ph - 8;
+      return { ms: 120, mx: 12, my: 52, as, gap, cardX, cardY, cardW, cardH, pw, ph, px, py, invX: px + 54, invW, isw, ish, wr, joyR: left, compact: true };
+    }
     const pw = Math.min(460, Math.max(380, right - left)), ph = 124;
     const px = left + Math.max(0, (right - left - pw) / 2), py = H - ph - 10;
     const invW = 3 * INV_SW + 2 * INV_G;
@@ -7671,12 +7719,13 @@ function drawHud(){
 
   // ----- kill feed -----
   ctx.textAlign = 'left';
-  const feedMine = feed.filter(f => f.team == null || f.team < 0 || f.team === myTeam).slice(0, 6);   // poruke za tim vidi samo taj tim
+  const phone = wrOn() && hudLayout().compact;   // 📱 mobitel: najviše 3 kraće poruke, manja slova
+  const feedMine = feed.filter(f => f.team == null || f.team < 0 || f.team === myTeam).slice(0, phone ? 3 : 6);   // poruke za tim vidi samo taj tim
   for(let i = 0; i < feedMine.length; i++){
     const f = feedMine[i];
     ctx.globalAlpha = f.t > 6 ? 1 - (f.t - 6) : 1;
-    ctx.font = fontTxt(14, true);
-    const fx = wrOn() ? 158 : 12, y = 90 + i * 24;   // 📱 Wild Rift: minimapa je gore lijevo, poruke desno od nje
+    ctx.font = fontTxt(phone ? 12 : 14, true);
+    const fx = wrOn() ? (phone ? 142 : 158) : 12, y = (phone ? 84 : 90) + i * (phone ? 19 : 24);   // 📱 Wild Rift: minimapa je gore lijevo, poruke desno od nje
     ctx.strokeStyle = 'rgba(0,0,0,0.7)';
     ctx.lineWidth = 3;
     ctx.strokeText(f.txt, fx, y);
@@ -7724,6 +7773,8 @@ function drawHud(){
     const pw = HL.pw, ph = HL.ph, px = HL.px, py = HL.py;
     drawFrame(px, py, pw, ph, 10);
     if(player.dead){ ctx.fillStyle = 'rgba(30,30,40,0.35)'; ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 10); ctx.fill(); }
+    if(HL.compact) drawCompactHero(HL);
+    else {
 
     // portret (AI slika junaka, emoji kao rezerva)
     ctx.fillStyle = player.dead ? '#475569' : TEAM_LIGHT[0];
@@ -7833,6 +7884,7 @@ function drawHud(){
       put('♥ +' + (player.hpRegen + 3 * wd).toFixed(1) + '/' + U_SEC, '#4ade80', py + 101);
       put('💧 +' + (player.mpRegen + 1.5 * wd).toFixed(1) + '/' + U_SEC, '#7dd3fc', py + 101);
     }
+    }   // kraj velike ploče junaka
 
     // 🎒 torba 3×2 + ruksak 3 (kao u DotA): slika predmeta, hlađenje, punjenja, tipka; povuci = premjesti, desni klik = prodaj
     drawInventory(HL, py, ph);
@@ -7850,7 +7902,7 @@ function drawHud(){
       shop: { x: ax0 + 3 * (as + gap), y: ay2, s: as }, sum: [{ x: ax0 + 4 * (as + gap), y: ay, s: as }, { x: ax0 + 4 * (as + gap), y: ay2, s: as }] };
     uiRects.atk = uiRects.atkCreep = uiRects.atkTower = null;
     if(wr) drawWrAttack(wr);   // 📱 ⚔️ napad, 🪙 vojnik, 🏰 kula
-    if(pendingCast || amovePending){
+    if((pendingCast || amovePending) && !(wr && HL.compact && pendingCast && pendingCast.touch)){   // 📱 mobitel: krug i ✖ su dovoljni, bez teksta
       ctx.font = fontTxt(13, true);
       ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
       ctx.fillStyle = amovePending && !pendingCast ? '#fca5a5' : '#fde047';
@@ -7866,7 +7918,7 @@ function drawHud(){
       ctx.strokeText(txt, tx, ty);
       ctx.fillText(txt, tx, ty);
     }
-    else if(player.skillPoints > 0 && !player.dead){
+    else if(player.skillPoints > 0 && !player.dead && !(wr && HL.compact)){   // 📱 mobitel: zeleni + na gumbu je dovoljan
       ctx.font = fontTxt(13, true);
       ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
       ctx.fillStyle = '#4ade80';
@@ -8417,16 +8469,31 @@ function drawMinimap(ms, mx, my){
    pokazivač, igra crta svoj i drži ga unutar prozora — rubno pomicanje kamere uvijek radi.
    Kad se otvori izbornik (dućan, postavke, pomoć, kraj), miš se otpusti; klik na igru ga opet zaključa. */
 function isFullscreen(){ return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+function fsSupported(){ const el = document.documentElement; return !!(el.requestFullscreen || el.webkitRequestFullscreen); }
+function standaloneApp(){ try { return navigator.standalone === true || matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches; } catch(e){ return false; } }
+/* 📱 v0.56: i na mobitelu (treba "pravi" dodir — touchend ili klik, ne touchstart); na mobitelu se zaslon zaključa vodoravno.
+   iPhone nema cijeli zaslon u pregledniku: kaže kako igru dodati na početni zaslon (tada se otvara bez trake preglednika). */
 function enterFullscreen(){
-  if(touchMode || isFullscreen()) return;
+  if(isFullscreen()) return;
   const el = document.documentElement;
   const req = el.requestFullscreen || el.webkitRequestFullscreen;
-  if(!req) return;
+  if(!req){ if(touchMode && !standaloneApp()) fsHintIos(); return; }
   try {
     const p = req.call(el, { navigationUI: 'hide' });
-    const kb = () => { try { if(navigator.keyboard && navigator.keyboard.lock) navigator.keyboard.lock(['Escape']).catch(() => {}); } catch(e){} };   // Esc otvara postavke, ne izbacuje iz zaslona
+    const kb = () => {
+      try { if(!touchMode && navigator.keyboard && navigator.keyboard.lock) navigator.keyboard.lock(['Escape']).catch(() => {}); } catch(e){}   // Esc otvara postavke, ne izbacuje iz zaslona
+      try { if(touchMode && screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); } catch(e){}   // 📱 vodoravno
+    };
     if(p && p.then) p.then(kb).catch(() => {}); else kb();
   } catch(e){}
+}
+let fsHintT = 0;
+function fsHintIos(){
+  if(performance.now() - fsHintT < 8000) return;
+  fsHintT = performance.now();
+  const msg = L('📱 iPhone ne dopušta cijeli zaslon u pregledniku. Dodirni Dijeli ⬆️ → „Dodaj na početni zaslon” i otvori igru odande — bez trake preglednika.',
+    '📱 iPhone does not allow fullscreen in the browser. Tap Share ⬆️ → “Add to Home Screen” and open the game from there — no browser bar.');
+  alert(msg);   // dugačka poruka: u traci poruka ne bi stala
 }
 function exitFullscreen(){
   try { if(navigator.keyboard && navigator.keyboard.unlock) navigator.keyboard.unlock(); } catch(e){}
@@ -8434,6 +8501,7 @@ function exitFullscreen(){
   if(ex && isFullscreen()) try { const p = ex.call(document); if(p && p.catch) p.catch(() => {}); } catch(e){}
 }
 function toggleFullscreen(){ if(isFullscreen()) exitFullscreen(); else enterFullscreen(); }
+function fsWanted(){ return touchMode ? SETTINGS.fsTouch !== false : !!SETTINGS.fullscreen; }   // igra se otvori preko cijelog zaslona
 function domOverlayOpen(){
   for(const id of ['shop', 'options', 'help', 'end', 'pause', 'select']){
     const el = document.getElementById(id);

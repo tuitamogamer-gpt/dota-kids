@@ -40,7 +40,10 @@
   if(!LANG_CHOSEN && !skip) $('lgPick').classList.remove('hidden');   // prvo pokretanje: pitaj za jezik
 
   /* ▶️ glavni gumbi */
-  $('lgPlay').addEventListener('click', () => { click(); hide(); });
+  $('lgPlay').addEventListener('click', () => {
+    if(typeof touchMode !== 'undefined' && touchMode && typeof fsWanted === 'function' && fsWanted() && fsSupported()) enterFullscreen();   // 📱 mobitel: odmah preko cijelog zaslona (klik smije)
+    click(); hide();
+  });
   $('lgFriend').addEventListener('click', () => {
     click(); hide();
     if($('mpBox').classList.contains('hidden')) $('mpToggle').click();
