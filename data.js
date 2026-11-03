@@ -660,14 +660,14 @@ const HEROES = [
       tip:rk => L('🌙 odskok: ' + (25 + 10*rk) + '% štete drugom neprijatelju', '🌙 bounce: ' + (25 + 10*rk) + '% damage to a second enemy') },
     abilities:[
       { key:'Q', name:L('Sveta strijela', 'Sacred Arrow'), emoji:'🌠', cd:12, mana:60, color:'#e9d5ff',
-        desc:L('Mjesečeva strijela leti PREKO POLA MAPE i zabije se u PRVOGA koga pogodi (i vojnik je zaustavi — gađaj pametno!). Što dulje leti, dulje omami (do 3,6 s) i jače rani. Čudovište iz džungle odmah pobijedi!',
-          'A moon arrow that flies ACROSS HALF THE MAP and sticks into the FIRST unit it hits (a creep stops it too — aim smart!). The farther it flies, the longer it stuns (up to 3.6 s) and the more it hurts. A jungle monster is defeated instantly!'),
-        target:'point', castRange:2000, line:true, lineFull:true, lineW:56, shotSpeed:950,
+        desc:L('Mjesečeva strijela leti PREKO POLA MAPE (domet 2000) i zabije se u PRVOGA koga pogodi (i vojnik je zaustavi). Leti polako — gađaj ISPRED junaka koji hoda, a on joj se može izmaknuti! Što dulje leti, dulje omami (do 3,6 s) i jače rani. Čudovište iz džungle odmah pobijedi!',
+          'A moon arrow that flies ACROSS HALF THE MAP (range 2000) and sticks into the FIRST unit it hits (a creep stops it too). It flies slowly — aim AHEAD of a walking hero, who can also dodge it! The farther it flies, the longer it stuns (up to 3.6 s) and the more it hurts. A jungle monster is defeated instantly!'),
+        target:'point', castRange:2000, line:true, lineFull:true, lineW:60, shotSpeed:700, skill:true,
         tip:rk => L('⚔️ ' + (55 + 27*rk) + '–' + (95 + 52*rk) + ' štete, omama ' + 0.6 + '–' + (1.8 + 0.45*rk).toFixed(1) + ' s (najjače nakon 1500 puta) • čudovište iz džungle: odmah pobijeđeno',
           '⚔️ ' + (55 + 27*rk) + '–' + (95 + 52*rk) + ' damage, stun ' + 0.6 + '–' + (1.8 + 0.45*rk).toFixed(1) + ' s (strongest after 1500 distance) • jungle monster: defeated instantly'),
-        bot:{type:'shot', range:1300, clear:true},
-        cast(u, aim, rk){   // 🌠 v0.56 kao Miranina Sveta strijela (DotA 2): daleko, brzo, staje na prvoj jedinici, omama raste s putem
-          return spawnSkillshot(u, aim, {speed:950, r:22, range:2000, model:'proj_arrow', scale:74,
+        bot:{type:'shot', range:1200, clear:true},
+        cast(u, aim, rk){   // 🌠 v0.56 kao Miranina Sveta strijela (DotA 2): daleko, staje na prvoj jedinici, omama raste s putem; sporija (950 → 700) — treba vještine
+          return spawnSkillshot(u, aim, {speed:700, r:26, range:2000, model:'proj_arrow', scale:74,
             dmg:55 + 27*rk, color:'#e9d5ff', emoji:'🌠',
             onHit(e, p){
               if(e.kind === 'neutral' && !e.boss && !e.drake){   // čudovište iz džungle (ne Zmaj ni zmajčići): odmah pobijeđeno
@@ -1746,27 +1746,35 @@ const HEROES = [
       tip:rk => L('🍉 +' + (1 + 0.5*rk).toFixed(1) + ' snage za svakog pobijeđenog junaka u blizini • ✨ −' + (4 + 3*rk) + '% štete od magija', '🍉 +' + (1 + 0.5*rk).toFixed(1) + ' strength for every enemy hero defeated near you • ✨ −' + (4 + 3*rk) + '% magic damage') },
     abilities:[
       { key:'Q', name:L('Udica', 'Hook'), emoji:'🪝', cd:12, mana:100, color:'#cbd5e1',
-        desc:L('Baci udicu na lancu — prvog pogođenog neprijatelja dovuče skroz do tebe!', 'Throw a hook on a chain — the first enemy it hits gets reeled all the way to you!'),
-        target:'point', castRange:1000, line:true, lineFull:true, shotSpeed:1300, lineW:56,
-        tip:rk => L('⚔️ ' + (100 + 70*rk) + ' štete + 🪝 dovlačenje do tebe (domet 1000)', '⚔️ ' + (100 + 70*rk) + ' damage + 🪝 pulled all the way to you (range 1000)'),
-        bot:{type:'hook', range:950},
-        cast(u, aim, rk){
-          const R = 1000 + (hasTal(u, 'nilski_q_far') ? 250 : 0);
-          return spawnSkillshot(u, aim, {speed:1300, r:22, range:R, dmg:100 + 70*rk, color:'#cbd5e1', emoji:'🪝',
+        desc:L('Baci udicu na lancu (domet 1400) — prvog pogođenog neprijatelja dovuče skroz do tebe! Udica ne leti u tren: gađaj ISPRED junaka koji hoda, a i vojnik na putu je zaustavi.', 'Throw a hook on a chain (range 1400) — the first enemy it hits gets reeled all the way to you! The hook is not instant: aim AHEAD of a walking hero, and a creep in the way stops it too.'),
+        target:'point', castRange:1400, line:true, lineFull:true, shotSpeed:1000, lineW:56, skill:true,
+        tip:rk => L('⚔️ ' + (100 + 70*rk) + ' štete + 🪝 dovlačenje do tebe (domet 1400)', '⚔️ ' + (100 + 70*rk) + ' damage + 🪝 pulled all the way to you (range 1400)'),
+        bot:{type:'hook', range:1100},
+        cast(u, aim, rk){   // ⚖️ v0.56: domet 1000 → 1400, brzina 1300 → 1000 (talent: +25 % brzine)
+          const V = 1000 * (hasTal(u, 'nilski_q_fast') ? 1.25 : 1);
+          return spawnSkillshot(u, aim, {speed:V, r:22, range:1400, dmg:100 + 70*rk, color:'#cbd5e1', emoji:'🪝',
             onHit(e){
               dragTo(e, u, 1500);
               addFloat(e.x, e.y, L('🪝 Upecan!', '🪝 Hooked!'), '#e2e8f0', 16);
             }});
         }},
-      { key:'W', name:L('Smrdljivi oblak', 'Stinky Cloud'), emoji:'🤢', cd:10, mana:35, color:'#84cc16',
-        desc:L('Oko tebe se digne smrdljivi zeleni oblak — neprijatelji u njemu gube život i sporiji su (i tebi malo smrdi!)', 'A stinky green cloud rises around you — enemies in it lose health and slow down (it stinks a little for you too!)'),
+      { key:'W', name:L('Smrdljivi oblak', 'Stinky Cloud'), emoji:'🤢', cd:1, mana:0, color:'#84cc16', toggle:true,
+        desc:L('UKLJUČI / ISKLJUČI (kao Rot u DotA): dok je uključen, oko tebe je smrdljivi zeleni oblak — neprijatelji u njemu gube život i sporiji su, a i tebi smrdi (gubiš malo života, ali ne možeš sam sebe pobijediti). Radi dok ga ne isključiš.',
+          'ON / OFF (like Rot in DotA): while it is on, a stinky green cloud surrounds you — enemies in it lose health and slow down, and it stinks for you too (you lose a little health, but you can\'t defeat yourself). It works until you switch it off.'),
         selfAoe:250,
-        tip:rk => L('⚔️ ' + (18 + 12*rk) + ' štete/s + 🐌 ' + (20 + 5*rk) + '% usporenje u krugu 250 na 6 s • ti gubiš ' + (4 + rk) + '/s', '⚔️ ' + (18 + 12*rk) + ' damage/s + 🐌 ' + (20 + 5*rk) + '% slow within 250 for 6 s • you lose ' + (4 + rk) + '/s'),
-        bot:{type:'aoe-self', range:250},
-        cast(u, aim, rk){
-          startCloud(u, { kind:'rot', t:6, r:250, dps:18 + 12*rk, slow:0.2 + 0.05*rk, self:4 + rk, color:'#84cc16' });
+        tip:rk => L('🔁 uključi/isključi • ⚔️ ' + (18 + 12*rk) + ' štete/s + 🐌 ' + (20 + 5*rk) + '% usporenje u krugu 250 • ti gubiš ' + (6 + 2*rk) + '/s', '🔁 toggle • ⚔️ ' + (18 + 12*rk) + ' damage/s + 🐌 ' + (20 + 5*rk) + '% slow within 250 • you lose ' + (6 + 2*rk) + '/s'),
+        bot:{type:'toggle-aoe', range:250},
+        cast(u, aim, rk){   // 🔁 v0.56 prekidač: ponovno bacanje gasi oblak; jačina prati rang (i kad naučiš rang dok je uključen)
+          if(u.cloud && u.cloud.kind === 'rot'){
+            u.cloud = null;
+            addFloat(u.x, u.y - 30, L('🤢 Oblak isključen', '🤢 Cloud off'), '#d9f99d', 13, isHuman(u) ? undefined : u.team);
+            return true;
+          }
+          const ab = u.abilities.find(a => a.def.key === 'W');
+          startCloud(u, { kind:'rot', t:Infinity, toggle:true, r:250, color:'#84cc16',
+            lvl(){ const r = ab ? ab.rank : rk; return { dps:18 + 12*r, slow:0.2 + 0.05*r, self:6 + 2*r }; } });
           burst(u.x, u.y, '#a3e635', 18, 200, 6);
-          addFloat(u.x, u.y - 30, L('🤢 Fuj!', '🤢 Phew!'), '#bef264', 15);
+          addFloat(u.x, u.y - 30, L('🤢 Fuj! Oblak uključen', '🤢 Phew! Cloud on'), '#bef264', 15, isHuman(u) ? undefined : u.team);
           return true;
         }},
       { key:'E', name:L('Pojas za spas', 'Life Ring'), emoji:'🛟', cd:16, mana:60, color:'#fb923c',
@@ -2754,7 +2762,7 @@ const HERO_TALENTS = {
     [TAL('🪝', L('Udica +70 štete', 'Hook +70 damage'), { ab:{ Q:{ dmg:70 } } }), TAL('❤️', L('+250 života', '+250 HP'), { hp:250 })],
     [TAL('🤢', L('Smrdljivi oblak +10 štete/s', 'Stinky Cloud +10 damage/s'), { ab:{ W:{ dmg:5 } } }), TAL('🛡️', L('+5 oklopa', '+5 armor'), { armor:5 })],
     [TAL('🪝', L('Udica −4 s hlađenja', 'Hook −4 s cooldown'), { ab:{ Q:{ cd:-4 } } }), TAL('🍉', L('Gozba +1 rang', 'Feast +1 rank'), { pas:1 })],
-    [TAL('😋', L('Veliki zalogaj traje 1 s dulje', 'Big Gulp lasts 1 s longer'), { flag:'nilski_r_long' }), TAL('🪝', L('Udica +250 dometa', 'Hook +250 range'), { flag:'nilski_q_far' })],
+    [TAL('😋', L('Veliki zalogaj traje 1 s dulje', 'Big Gulp lasts 1 s longer'), { flag:'nilski_r_long' }), TAL('🪝', L('Udica leti 25 % brže', 'Hook flies 25% faster'), { flag:'nilski_q_fast' })],
   ],
   irbis: [
     [TAL('❄️', L('Ledene strijele +15 štete', 'Frost Arrows +15 damage'), { flag:'irbis_q_plus' }), TAL('⚡', L('+20% brzine napada', '+20% attack speed'), { aspd:0.2 })],

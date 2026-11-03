@@ -1124,6 +1124,7 @@ function updateDrag(u, dt){
   if(Math.random() < dt * 12) burst(u.x, u.y, '#cbd5e1', 2, 50, 3);
   return true;
 }
+function toggleOn(u){ return !!u && ((u.cloud && u.cloud.kind === 'rot' && u.cloud.toggle) || (net.mode === 'guest' && u.cloudK === 'rot')); }   // 🔁 gost: iz snapshota
 /* 🤢⏳ v0.55 oblak oko junaka (Smrdljivi oblak — Pecko W, Pješčana oluja — Škorpo W): ide s njim i svakih pola sekunde rani neprijatelje */
 function startCloud(u, o){
   u.cloud = Object.assign({ acc: 0, dur: o.t, key: abCtx && abCtx.src === u ? abCtx.key : null }, o);
@@ -1133,6 +1134,12 @@ function updateCloud(u, dt){
   c.t -= dt; c.acc += dt;
   if(c.acc >= 0.5){
     c.acc -= 0.5;
+    if(c.lvl) Object.assign(c, c.lvl());   // 🔁 prekidač (Pecko W): jačina po trenutnom rangu
+    if(c.toggle && u.bot){   // 🤖 bot sam ugasi oblak kad 2 s nema nikoga u blizini (i dok bježi)
+      const near = units.some(e => e.team !== u.team && !e.dead && !e.removeMe && (e.kind === 'hero' || e.kind === 'creep' || e.kind === 'neutral') && dist(u, e) < c.r + 220);
+      c.idle = near && u.bot.state !== 'retreat' ? 0 : (c.idle || 0) + 0.5;
+      if(c.idle >= 2){ u.cloud = null; return; }
+    }
     const prev = abCtx; abCtx = c.key ? { src: u, key: c.key } : null;
     for(const e of units){
       if(e.team === u.team || e.dead || e.removeMe || e.invuln || !isSpellTarget(e)) continue;
@@ -1181,6 +1188,15 @@ function leadAim(u, e, speed){
   const tt = dist(u, e) / speed, dx = e.moveTarget.x - e.x, dy = e.moveTarget.y - e.y, L = Math.hypot(dx, dy) || 1;
   const go = Math.min(L, unitSpeed(e) * tt * 0.8);
   return { x: e.x + dx / L * go, y: e.y + dy / L * go };
+}
+/* 🎯 v0.56 bot i udicu / Svetu strijelu gađa ispred mete, ali NE savršeno (kao čovjek): dio puta ispred i mali kut —
+   junak koji hoda u stranu ili promijeni smjer može se izmaknuti; na "Lako" bot više promašuje, na "Teško" manje */
+function botSkillAim(u, e, speed){
+  const err = botDiff(u).aimErr || 1, lead = leadAim(u, e, speed);
+  const k = clamp(0.75 + (Math.random() - 0.5) * 0.9 * err, 0, 1.3);
+  const px = e.x + (lead.x - e.x) * k, py = e.y + (lead.y - e.y) * k;
+  const a = (Math.random() - 0.5) * 0.07 * err, dx = px - u.x, dy = py - u.y;
+  return { x: u.x + dx * Math.cos(a) - dy * Math.sin(a), y: u.y + dx * Math.sin(a) + dy * Math.cos(a) };
 }
 /* zamjena mjesta (Gavran W) */
 function swapPositions(u, e){
@@ -2335,7 +2351,7 @@ function pendingAbDef(){   // moć koja čeka klik na cilj (ne predmet ni čarol
    (do 1,5 širine hica) pogodi njega — i gađa malo ispred ako hoda (kao botovi, leadAim). Djeca ne moraju sama
    pogađati kamo će junak otići; na tlu se meta vidi po krugu u boji moći (scene3d.js syncCastIndicator). */
 function assistTarget(u, def, raw){
-  if(!u || !def || !def.line || !def.lineFull) return null;
+  if(!u || !def || !def.line || !def.lineFull || def.skill) return null;   // 🎯 udica i Sveta strijela: bez pomoći — treba vještine
   const hu = hoverUnit;
   if(hu && hu.team !== u.team && !hu.dead && !hu.removeMe && isSpellTarget(hu) && canAttackTarget(u, hu)) return hu;
   let best = null, bd = Math.max(80, (def.lineW || 50) * 1.5);
@@ -2384,7 +2400,7 @@ function pressAbility(i, aimInstant, quick){
     }
     pendingCast = { i, quick: !!quick };
     sfx('click');
-  } else if(quick && ab.def.selfAoe && ab.cd <= 0 && player.mp >= abMana(player, ab) && !ab.def.passive){
+  } else if(quick && ab.def.selfAoe && !ab.def.toggle && ab.cd <= 0 && player.mp >= abMana(player, ab) && !ab.def.passive){
     pendingCast = { i, quick: true };   // brzo bacanje: dok držiš tipku vidiš krug djelovanja, otpuštanje baca
   } else {
     castAbility(player, i, aimInstant || aimPoint());
@@ -2925,6 +2941,15 @@ function botUseAbilities(u, eh, plan){
         if((eh && dEh < hint.range) || creepN >= 3 || (creepN >= 2 && jungleAim(u, hint.range))) castAbility(u, i, { x: u.x, y: u.y });
         break;
       }
+      case 'toggle-aoe': {   // 🔁 Smrdljivi oblak: uključi kad je neprijatelj blizu (gašenje: updateCloud)
+        if(u.cloud && u.cloud.toggle) break;
+        let creepN = 0;
+        for(const e of units){
+          if((e.kind === 'creep' || e.kind === 'neutral') && e.team !== u.team && !e.dead && !e.removeMe && dist(u, e) < hint.range) creepN++;
+        }
+        if((eh && dEh < hint.range + 40) || creepN >= 3 || (creepN >= 2 && jungleAim(u, hint.range))) castAbility(u, i, { x: u.x, y: u.y });
+        break;
+      }
       case 'ult-aoe':
         if(eh && dEh < hint.range) castAbility(u, i, { x: u.x, y: u.y });
         break;
@@ -2957,7 +2982,7 @@ function botUseAbilities(u, eh, plan){
         // 🌠 v0.56 dalekometna strijela (Sveta strijela): i na ranjenog junaka izvan blizine kojeg tim vidi
         const far = !eh && hint.type === 'shot' && hint.range > 700 ? weakestEnemyHero(u, hint.range) : null;
         const tg = eh && dEh < hint.range ? eh : (far && far.hp < far.maxhp * 0.7 ? far : null);
-        const aim = tg && (ab.def.shotSpeed ? leadAim(u, tg, ab.def.shotSpeed) : { x: tg.x, y: tg.y });   // 🎯 strijela ispred mete koja hoda
+        const aim = tg && (ab.def.skill ? botSkillAim(u, tg, ab.def.shotSpeed) : ab.def.shotSpeed ? leadAim(u, tg, ab.def.shotSpeed) : { x: tg.x, y: tg.y });   // 🎯 strijela ispred mete koja hoda
         if(aim && hint.clear){   // 🌠 Sveta strijela: ne troši je na vojnika koji stoji na putu
           const dx = aim.x - u.x, dy = aim.y - u.y, L = Math.hypot(dx, dy) || 1;
           const first = lineFirstHit(u, ab.def, dx / L, dy / L, Math.min(L + 60, ab.def.castRange || L + 60));
@@ -2990,7 +3015,7 @@ function botUseAbilities(u, eh, plan){
         else if(eh && plan && plan.engage && dEh < hint.range && dEh > 120 && u.hp > u.maxhp * 0.55) castAbility(u, i, { x: eh.x, y: eh.y });
         break;
       case 'hook':   // 🪝 Udica (v0.55): samo kad se tim bori ili je meta ranjena — ne vuci jačeg k sebi
-        if(eh && dEh < hint.range && dEh > 200 && ((plan && plan.engage) || eh.hp < eh.maxhp * 0.45)) castAbility(u, i, leadAim(u, eh, 1300));
+        if(eh && dEh < hint.range && dEh > 200 && ((plan && plan.engage) || eh.hp < eh.maxhp * 0.45)) castAbility(u, i, botSkillAim(u, eh, ab.def.shotSpeed || 1000));
         break;
       case 'grab':   // 😋 Veliki zalogaj: neprijateljski junak uz bota, kad se bori
         if(eh && dEh < hint.range + eh.r && ((plan && plan.engage) || eh.hp < eh.maxhp * 0.5)) castAbility(u, i, { x: eh.x, y: eh.y });
@@ -3508,9 +3533,9 @@ function botsAnswer(h, x, y){
    koriste predmete, oprezniji su, ne otkupljuju se i zarađuju manje zlata; na "Teško" brži su i hrabriji.
    Saveznici i botovi u mrežnoj igri su uvijek normalni. */
 const BOT_DIFF = {
-  easy:   { think: [0.9, 1.3], abil: 0.35, items: 0.5, sum: 0.4, brave: 1.35, back: 1.05, chase: 0.12, flee: 0.42, deny: 0.1, gold: 0.75, buyback: false },
+  easy:   { aimErr: 1.5, think: [0.9, 1.3], abil: 0.35, items: 0.5, sum: 0.4, brave: 1.35, back: 1.05, chase: 0.12, flee: 0.42, deny: 0.1, gold: 0.75, buyback: false },
   normal: { think: [0.4, 0.6], abil: 1, items: 1, sum: 1, brave: 1.0, back: 1.15, chase: 0.25, flee: 0.3, deny: 0.35, gold: 1, buyback: true },   // v0.49: brave 0.8 → 1.0
-  hard:   { think: [0.3, 0.42], abil: 1, items: 1, sum: 1, brave: 0.85, back: 1.3, chase: 0.32, flee: 0.25, deny: 0.5, gold: 1.25, buyback: true },  // v0.49: brave 0.65 → 0.85
+  hard:   { aimErr: 0.6, think: [0.3, 0.42], abil: 1, items: 1, sum: 1, brave: 0.85, back: 1.3, chase: 0.32, flee: 0.25, deny: 0.5, gold: 1.25, buyback: true },  // v0.49: brave 0.65 → 0.85
 };
 function botDiff(u){ return (u.team !== myTeam && net.mode !== 'host' && BOT_DIFF[SETTINGS.diff]) || BOT_DIFF.normal; }
 /* snaga junaka za procjenu borbe: level + vrijednost predmeta, puta koliko mu je ostalo života */
@@ -6132,7 +6157,7 @@ function setupInput(){
       const ab = player.abilities[i];
       if(!ab) return;
       const def = ab.def;
-      if(ab.rank <= 0 || def.passive || ab.cd > 0 || player.mp < abMana(player, ab) || (def.target !== 'point' && !def.selfAoe)){
+      if(ab.rank <= 0 || def.passive || def.toggle || ab.cd > 0 || player.mp < abMana(player, ab) || (def.target !== 'point' && !def.selfAoe)){
         pressAbility(i, aimFallback(player));   // učenje, poruke (hlađenje, mana) ili trenutna moć
         return;
       }
@@ -7941,10 +7966,11 @@ function drawHud(){
       const noMana = player.mp < abMana(player, ab);
       const canL = player.skillPoints > 0 && canLearn(player, i);
       const isPending = pendingCast && pendingCast.i === i;
+      const togOn = ab.def.toggle && toggleOn(player);   // 🔁 uključen prekidač (Smrdljivi oblak)
       ctx.fillStyle = ab.def.ult ? '#3b2a4d' : '#1e293b';
       ctx.beginPath(); ctx.roundRect(ax, ay, as, as, rr); ctx.fill();
-      ctx.strokeStyle = isPending ? '#fde047' : (ab.def.ult ? '#c084fc' : (!unlearned && noMana ? '#38bdf8' : hudTheme().rim2));
-      ctx.lineWidth = isPending ? 4 : 3;
+      ctx.strokeStyle = isPending ? '#fde047' : togOn ? '#a3e635' : (ab.def.ult ? '#c084fc' : (!unlearned && noMana ? '#38bdf8' : hudTheme().rim2));
+      ctx.lineWidth = isPending || togOn ? 4 : 3;
       ctx.beginPath(); ctx.roundRect(ax, ay, as, as, rr); ctx.stroke();
       ctx.strokeStyle = isPending ? '#fef9c3' : hudTheme().rim; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.roundRect(ax + 3, ay + 3, as - 6, as - 6, rr2); ctx.stroke();
@@ -7999,10 +8025,20 @@ function drawHud(){
           ctx.fillStyle = '#a7f3d0';
           ctx.font = fontTxt(9, true);
           ctx.fillText(L('✨ pasiv', '✨ passive'), ax + as / 2 + 6, ay + 10);
-        } else {
+        } else if(ab.def.mana > 0){
           ctx.fillStyle = '#7dd3fc';
           ctx.font = fontTxt(10, true);
           ctx.fillText(ab.def.mana, ax + as - 12, ay + 10);
+        }
+        if(togOn){   // 🔁 svjetli zeleni rub koji diše + oznaka UKLJ.
+          ctx.save();
+          ctx.globalAlpha = 0.55 + 0.35 * Math.sin(gameTime * 5);
+          ctx.strokeStyle = '#bef264'; ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.roundRect(ax - 3, ay - 3, as + 6, as + 6, rr + 3); ctx.stroke();
+          ctx.restore();
+          ctx.font = fontTxt(9, true); ctx.strokeStyle = 'rgba(0,0,0,0.9)'; ctx.lineWidth = 3;
+          const on = L('UKLJ.', 'ON');
+          ctx.strokeText(on, ax + as / 2, ay + as - 18); ctx.fillStyle = '#d9f99d'; ctx.fillText(on, ax + as / 2, ay + as - 18);
         }
         for(let p = 0; p < mxR; p++){
           ctx.fillStyle = p < ab.rank ? '#fde047' : '#475569';
