@@ -541,7 +541,7 @@ function applySnapshot(d){
   feed = d.fd.map(f => ({ txt: locTx(f.tx), color: f.cl, t: f.t, team: f.tm == null ? -1 : f.tm }));
   {   // nova najava (zajednička ili moja osobna); lokalne (pobjeda/poraz) domaćin ne prepisuje
     const nb = [d.bn, d.gb].filter(b => Array.isArray(b) && b[0] > (net.bannerSeen || 0)).sort((a, b) => a[0] - b[0]).pop();
-    if(nb){ net.bannerSeen = nb[0]; banner = nb[1] ? { txt: locTx(nb[1]), sub: locTx(nb[2]) || '', t: 0, dur: 3, tone: nb[3] == null ? 'blue' : nb[3] } : null; }
+    if(nb){ net.bannerSeen = nb[0]; banner = nb[1] ? { txt: locTx(nb[1]), sub: locTx(nb[2]) || '', t: 0, dur: 2.2, tone: nb[3] == null ? 'blue' : nb[3] } : null; }
   }
   for(const a of d.av || []) if(a[0] > VOX.annSeen){ VOX.annSeen = a[0]; annPlay(a[1], a[2]); }   // 📣 iz perspektive gosta
   nightForceT = d.nf || 0;

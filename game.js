@@ -1012,7 +1012,7 @@ function feedMsg(txt, color, team){   // team: poruku vidi samo taj tim (npr. bu
 }
 /* 🎀 tone = boja trake: 'gold' (dobra vijest), 'red' (loša), 'blue' (obična) ili broj tima kojem je vijest loša
    (taj tim vidi crvenu traku, drugi zlatnu) */
-function localBanner(txt, sub, tone){ banner = txt ? { txt, sub: sub || '', t: 0, dur: 3, tone: tone == null ? 'blue' : tone } : null; }
+function localBanner(txt, sub, tone){ banner = txt ? { txt, sub: sub || '', t: 0, dur: 2.2, tone: tone == null ? 'blue' : tone } : null; }
 function bannerKind(b){ return typeof b.tone === 'number' ? (b.tone === myTeam ? 'red' : 'gold') : BANNER_ART[b.tone] ? b.tone : 'blue'; }
 function announce(txt, sub, tone){   // najava za sve (domaćin je šalje i gostu)
   localBanner(txt, sub, tone);
@@ -7029,7 +7029,7 @@ function drawWorldOverlay(){
     if(!s) continue;
     ctx.globalAlpha = f.t < 0.7 ? 1 : 1 - (f.t - 0.7) / 0.4;
     if(f.st === 'crit'){ drawCritFloat(f, s); ctx.globalAlpha = 1; continue; }
-    ctx.font = fontTxt(f.size, true);
+    ctx.font = fontTxt(touchMode && VH < 450 ? Math.max(10, f.size * 0.78) : f.size, true);   // 📱 mobitel: manji natpisi nad junacima
     ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
     ctx.strokeStyle = 'rgba(0,0,0,0.7)';
     ctx.lineWidth = 3;
@@ -7657,21 +7657,21 @@ function drawBanner(){
   ctx.textAlign = 'center';
   const kind = bannerKind(banner), art = BANNER_ART[kind], bim = artImg('assets/ui/banner_' + kind + '.webp');
   if(bim){   // 🎀 v0.56: naslov i podnaslov na naslikanoj traci (plava vijest, zlatna dobra, crvena loša)
-    const k = clamp(Math.min(VH / 720, VW / 900), 0.6, 1);
-    let fs = 32 * k, ss = 15 * k;
+    const k = clamp(Math.min(VH / 720, VW / 900), 0.6, 1);   // ✂️ v0.56: manja traka (prije 32 / 15 px, širina 440) — vidi se što se događa
+    let fs = Math.max(18, 22 * k), ss = Math.max(12.5, 11.5 * k);   // 📱 na mobitelu ne presitno
     ctx.font = fontTxt(fs, true);
     const tw = ctx.measureText(banner.txt).width;
     ctx.font = fontTxt(ss, true);
     const sw = banner.sub ? ctx.measureText(banner.sub).width : 0;
-    const maxW = VW * 0.96;
-    let bw = Math.max(440 * k, Math.max(tw, sw) / art.tw);
+    const maxW = Math.min(VW * 0.6, 520);
+    let bw = Math.max(270 * k, Math.max(tw, sw) / art.tw);
     if(bw > maxW){ fs *= maxW / bw; ss *= maxW / bw; bw = maxW; }   // predug tekst: manja slova
     const pop = banner.t < 0.25 ? 0.82 + 0.18 * Math.sin(banner.t / 0.25 * Math.PI / 2) : 1;   // traka "iskoči"
     const bh = bw * bim.naturalHeight / bim.naturalWidth;
-    const top = VH < 520 ? 70   // 📱 nizak zaslon: nema mjesta ispod okvira — traka je gore (ploče se crtaju preko nje)
-      : player && !player.dead && pendingTalent(player) ? TAL_PANEL_Y + TAL_PANEL_H + 6   // ne preko ploče talenata,
-      : gameTime < 0 && !gameOver && !shopOpen ? 148 : 70;                                // okvira pripreme ni gornje trake
-    const cy = Math.max(VH * 0.24, top + bh * art.cy);
+    const top = player && !player.dead && pendingTalent(player) ? TAL_PANEL_Y + TAL_PANEL_H + 6   // ne preko ploče talenata,
+      : gameTime < 0 && !gameOver && !shopOpen ? 148                                              // okvira pripreme
+      : gameMode() === 'turbo' ? 92 : 74;                                                         // ni gornje trake (odmah ispod nje)
+    const cy = top + bh * art.cy;
     ctx.save();
     ctx.translate(VW / 2, cy);
     ctx.scale(pop, pop);
@@ -7694,19 +7694,20 @@ function drawBanner(){
     ctx.restore();
     ctx.globalAlpha = 1;
   } else {   // traka se još učitava: samo tekst
-    ctx.font = fontTxt(34, true);
+    const y0 = 100;
+    ctx.font = fontTxt(22, true);
     ctx.strokeStyle = 'rgba(0,0,0,0.75)';
-    ctx.lineWidth = 6;
-    ctx.strokeText(banner.txt, VW / 2, VH * 0.26);
+    ctx.lineWidth = 5;
+    ctx.strokeText(banner.txt, VW / 2, y0);
     ctx.fillStyle = '#fde047';
-    ctx.fillText(banner.txt, VW / 2, VH * 0.26);
+    ctx.fillText(banner.txt, VW / 2, y0);
     if(banner.sub){
-      ctx.font = fontTxt(17, true);
+      ctx.font = fontTxt(13, true);
       ctx.strokeStyle = 'rgba(0,0,0,0.7)';
-      ctx.lineWidth = 4;
-      ctx.strokeText(banner.sub, VW / 2, VH * 0.26 + 34);
+      ctx.lineWidth = 3.5;
+      ctx.strokeText(banner.sub, VW / 2, y0 + 22);
       ctx.fillStyle = '#fff';
-      ctx.fillText(banner.sub, VW / 2, VH * 0.26 + 34);
+      ctx.fillText(banner.sub, VW / 2, y0 + 22);
     }
     ctx.globalAlpha = 1;
   }
