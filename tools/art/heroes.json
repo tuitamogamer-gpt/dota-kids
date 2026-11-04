@@ -1314,5 +1314,52 @@
     "ult": true
    }
   ]
+ },
+ {
+  "id": "jazo",
+  "name": "Jazo",
+  "emoji": "🦡",
+  "role": "🗡️ Badger samurai — blade fury and lightning slashes",
+  "ranged": false,
+  "P": {
+   "name": "Blade Dance",
+   "emoji": "💥",
+   "desc": "PASSIVE: katana strikes are sometimes CRITICAL and hit hard",
+   "color": "#fb923c"
+  },
+  "ab": [
+   {
+    "key": "Q",
+    "name": "Blade Fury",
+    "emoji": "🌪️",
+    "desc": "Spin like a whirlwind with your katana — it hurts everyone around you, and spells barely touch you (no stuns or slows); while spinning you don't attack",
+    "color": "#fdba74",
+    "ult": false
+   },
+   {
+    "key": "W",
+    "name": "Healing Totem",
+    "emoji": "🗿",
+    "desc": "Plant a healing totem in the ground — every friend (and you) near it heals quickly",
+    "color": "#4ade80",
+    "ult": false
+   },
+   {
+    "key": "E",
+    "name": "Swift Slash",
+    "emoji": "⚡",
+    "desc": "Dash at an enemy like lightning and slash twice — while slashing, nobody can touch you",
+    "color": "#fde68a",
+    "ult": false
+   },
+   {
+    "key": "R",
+    "name": "Omnislash",
+    "emoji": "🗡️",
+    "desc": "ULT: Become lightning with a katana — you leap from enemy to enemy slashing them, and nobody can touch you while it lasts",
+    "color": "#fb923c",
+    "ult": true
+   }
+  ]
  }
 ]

@@ -1893,6 +1893,24 @@ def biped(name, c, opts):
         for k in range(3):
             R.cyl(hR - d * (0.07 - k * 0.05) * S, hR - d * (0.05 - k * 0.05) * S, 0.034 * S, 0.034 * S, '#3b2414', seg=6, caps=False)
         R.cyl(bl + d * 0.34 * S, bl + d * 0.45 * S, 0.046 * S, 0.0, '#dfe6ee', seg=4)
+    if wpn == 'katana':   # v0.56 Jazo: duga tanka katana, okrugli zlatni štitnik (tsuba) i crveno omotana drška
+        d = Vector((0.94, 0, 0.34)).normalized()
+        up = Vector((-0.34, 0, 0.94)).normalized()
+        R.cyl(hR - d * 0.17 * S, hR + d * 0.07 * S, 0.03 * S, 0.03 * S, '#1f2937', seg=6)   # drška
+        for k in range(4):
+            q = hR - d * (0.14 - k * 0.055) * S
+            R.cyl(q, q + d * 0.025 * S, 0.034 * S, 0.034 * S, '#b91c1c', seg=6, caps=False)
+        R.sphere(hR - d * 0.18 * S, 0.034 * S, '#f6c945', seg=(8, 6))
+        R.cyl(hR + d * 0.07 * S, hR + d * 0.095 * S, 0.075 * S, 0.075 * S, '#f6c945', seg=16)   # tsuba
+        p0, prev, Lb = hR + d * 0.095 * S, None, 0.82
+        prev = p0
+        for i in range(1, 5):   # blago zakrivljena oštrica
+            t_ = i / 4
+            pt = p0 + d * (Lb * t_) * S + up * (0.07 * t_ * t_) * S
+            R.cyl(prev, pt, 0.026 * S * (1 - 0.12 * t_), 0.026 * S * (1 - 0.12 * t_), '#e5e7eb', seg=6)
+            prev = pt
+        R.cyl(prev, prev + d * 0.1 * S + up * 0.03 * S, 0.023 * S, 0.0, '#f8fafc', seg=6)   # vrh
+        R.cyl(p0 + d * 0.05 * S + up * 0.018 * S, p0 + d * 0.7 * S + up * 0.05 * S, 0.008 * S, 0.008 * S, '#fdba74', mat='glow', seg=4)   # svjetleći brid
     if opts.get('shield'):
         n = Vector((0.55, 0.83, 0)).normalized()
         cc = hL + Vector((0.06, 0.06, 0.04))
@@ -2733,7 +2751,26 @@ def sig_zeka(k):
         t.sphere(V(-0.34, 0, 0.58), (0.11 * S, 0.11 * S, 0.1 * S), '#ffffff', seg=(12, 9))
 
 
-SIGS = {'zeka': sig_zeka, 'nilski': sig_nilski, 'irbis': sig_irbis, 'skorpion': sig_skorpion, 'nisan': sig_nisan, 'bikos': sig_bikos, 'vitez': sig_vitez, 'zarko': sig_zarko, 'ledena': sig_ledena, 'strijela': sig_strijela, 'listko': sig_listko,
+def sig_jazo(k):
+    """v0.56 Jazo (jazavac samuraj, kao Juggernaut): bijela pruga od nosa preko tjemena, samurajska punđa, oklopna ploča na prsima"""
+    m, h, b, R, L, V, S = k['m'], k['h'], k['b'], k['R'], k['L'], k['V'], k['S']
+    hc, rad = V(0, 0, k['hz']), (k['hr'][0] * S, k['hr'][1] * S, k['hr'][2] * S)
+    for ph in (18, 34, 50, 66, 82):   # bijela jazavčeva pruga
+        face_cap(h, hc, rad, 0, ph, (0.07 * S, 0.08 * S), '#f8fafc', out=0.006 * S)
+    for ph in (100, 120):
+        face_cap(h, hc, rad, 180, 180 - ph, (0.07 * S, 0.08 * S), '#f8fafc', out=0.006 * S)
+    # samurajska punđa na tjemenu (malo straga) s crvenom vrpcom
+    h.sphere(V(-0.16, 0, 1.72), (0.09 * S, 0.075 * S, 0.075 * S), '#111827', seg=(12, 9))
+    h.cyl(V(-0.12, 0, 1.68), V(-0.1, 0, 1.73), 0.05 * S, 0.05 * S, '#dc2626', seg=10)
+    # oklopna ploča na prsima (narančasta s tamnim rubom i zlatnim zakovicama)
+    b.sphere(V(0.24, 0, 0.82), (0.07 * S, 0.22 * S, 0.17 * S), '#ea580c', seg=(16, 10))
+    for zz in (0.74, 0.82, 0.9):
+        b.cyl(V(0.29, -0.2, zz), V(0.29, 0.2, zz), 0.008 * S, 0.008 * S, '#7c2d12', seg=4)
+    for sd in (1, -1):
+        b.sphere(V(0.3, sd * 0.15, 0.95), 0.016 * S, '#f6c945', seg=(6, 4))
+
+
+SIGS = {'jazo': sig_jazo, 'zeka': sig_zeka, 'nilski': sig_nilski, 'irbis': sig_irbis, 'skorpion': sig_skorpion, 'nisan': sig_nisan, 'bikos': sig_bikos, 'vitez': sig_vitez, 'zarko': sig_zarko, 'ledena': sig_ledena, 'strijela': sig_strijela, 'listko': sig_listko,
         'munja': sig_munja, 'skokica': sig_skokica, 'orlina': sig_orlina, 'luna': sig_luna, 'tragac': sig_tragac,
         'jez': sig_jez, 'slon': sig_slon, 'pcela': sig_pcela, 'sova': sig_sova, 'majmun': sig_majmun, 'vuk': sig_vuk,
         'gavran': sig_gavran, 'hobotnica': sig_hobotnica, 'nosorog': sig_nosorog, 'panda': sig_panda,
@@ -2742,6 +2779,12 @@ SIGS = {'zeka': sig_zeka, 'nilski': sig_nilski, 'irbis': sig_irbis, 'skorpion': 
 
 HEROES = {
     # ---- v0.56 ----
+    'jazo': (dict(fur='#6b7280', belly='#e5e7eb', muzzle='#f3f4f6', dark='#1f2937', inner='#9ca3af', limb='#4b5563',
+                  hand='#4b5563', feet='#374151', nose='#111111'),
+             dict(ears='round', earScale=0.6, snout='canine', snoutLen=0.17, snoutW=0.13, snoutLight=True, mask='#1f2937', tail='stub',
+                  weapon='katana', atk='melee', headband=True, bandColor='#dc2626', scale=1.04,
+                  eyes={'color': '#3b1d08', 'size': 1.0}, brows='#111827', browAngle=-16, blush=False, shoulders='#ea580c', boots='#3f2a14',
+                  outfit=dict(style='robe', cloth='#c2410c', lining='#7c2d12', trim='#fde68a', sleeves=True))),
     'zeka': (dict(fur='#e9e4ee', belly='#ffffff', muzzle='#ffffff', dark='#8b7f99', inner='#f9a8d4', limb='#e2dcea',
                   hand='#ded7e6', feet='#c9c0d4', nose='#f472b6'),
              dict(ears='bunny', snout='rodent', tail='stub', weapon='rifle', atk='rifle', strap=False, hat='tophat', hatColor='#4c1d95',
@@ -3884,7 +3927,7 @@ def _look_at(obj, frm, to):
 PORTRAIT_BG = [('jez', '#8a9a4a'), ('slon', '#5a6a8a'), ('pcela', '#b8860b'), ('sova', '#3b2f5c'), ('majmun', '#7a5a2a'),
                ('vuk', '#5a6270'), ('gavran', '#2e2a5c'), ('hobotnica', '#4a3a8a'), ('nosorog', '#6a7a6a'), ('panda', '#4a8a5a'),
                ('jednorog', '#7c3aed'), ('morskipas', '#0e7490'), ('nisan', '#b45309'), ('bikos', '#7f1d1d'),
-               ('nilski', '#6b5a8a'), ('irbis', '#1e5a7a'), ('skorpion', '#a16207'), ('zeka', '#5b3a8a')]
+               ('nilski', '#6b5a8a'), ('irbis', '#1e5a7a'), ('skorpion', '#a16207'), ('zeka', '#5b3a8a'), ('jazo', '#9a3412')]
 
 
 def render_portraits(ids, size=512, outdir=None, samples=128):
@@ -4461,6 +4504,24 @@ def build_trap():
             p.cyl(((q0[0] + q1[0]) / 2, (q0[1] + q1[1]) / 2, 0.08), tip, 0.03, 0.0, '#e7e5e4', seg=4)
     p.cyl((-0.42, 0, 0.05), (0.42, 0, 0.05), 0.03, 0.03, '#78716c', seg=6)   # osovina
     p.cyl((0, 0, 0.0), (0, 0, 0.012), 0.44, 0.44, '#ffffff', mat='team', seg=24, caps=False)   # rub u boji tima
+    m.finish()
+
+
+def build_totem():
+    """v0.56 Jazin ljekoviti totem: drveni stup s urezanim licem, listovima i zelenim kristalom na vrhu (svijetli)"""
+    m = Model('totem')
+    p = m.part('mesh')
+    p.cyl((0, 0, 0.0), (0, 0, 0.08), 0.26, 0.24, '#57534e', seg=14)              # kamena podloga
+    p.cyl((0, 0, 0.05), (0, 0, 0.95), 0.15, 0.12, '#92400e', seg=12, smooth=True)   # drveni stup
+    for zz, cc in ((0.3, '#78350f'), (0.62, '#78350f')):
+        p.cyl((0, 0, zz), (0, 0, zz + 0.05), 0.16, 0.155, cc, seg=12, caps=False)
+    for sd in (1, -1):   # oči i usta lica
+        p.sphere((0.14, sd * 0.05, 0.5), 0.03, '#fef3c7', mat='glow', seg=(8, 6))
+    p.box((0.13, 0, 0.4), (0.03, 0.09, 0.02), '#451a03')
+    for sd in (1, -1):   # listovi sa strane
+        p.sphere((0, sd * 0.17, 0.82), (0.05, 0.12, 0.03), '#16a34a', rot=(sd * 30, 0, 0), seg=(10, 6))
+    p.ico((0, 0, 1.08), 0.13, '#4ade80', mat='glow', sub=1)                         # kristal
+    p.cyl((0, 0, 0.0), (0, 0, 0.012), 0.27, 0.27, '#ffffff', mat='team', seg=14, caps=False)
     m.finish()
 
 
@@ -5149,6 +5210,13 @@ def main():
         preview(arg('out', os.path.join(HERE, 'preview_v55.png')), only=['hero_nilski', 'hero_irbis', 'hero_skorpion', 'proj_hook', 'proj_gust'],
                 cols=int(arg('cols', '5')), zoom=float(arg('zoom', '2.0')))
         return
+    if '--dev-jazo' in argv:   # v0.56 Jazo i njegov totem (bez izvoza):  --out=put.png
+        arg = lambda k, d: next((a[len(k) + 3:] for a in argv if a.startswith('--' + k + '=')), d)
+        build_heroes(['jazo', 'tragac'])
+        build_totem()
+        bake_ao(do_ao='--ao' in argv)
+        preview(arg('out', os.path.join(HERE, 'preview_jazo.png')), only=['hero_jazo', 'hero_tragac', 'totem'], cols=3, zoom=float(arg('zoom', '2.2')))
+        return
     if '--dev-zeka' in argv:   # v0.56 Zeka i njezina zamka (bez izvoza):  --out=put.png  --zoom=2.2
         arg = lambda k, d: next((a[len(k) + 3:] for a in argv if a.startswith('--' + k + '=')), d)
         build_heroes(['zeka', 'nisan'])
@@ -5180,6 +5248,7 @@ def main():
     build_courier()
     build_projectiles()
     build_trap()   # 🪤 v0.56
+    build_totem()   # 🗿 v0.56
     build_fx()
     build_runes()
     build_runes_v15()

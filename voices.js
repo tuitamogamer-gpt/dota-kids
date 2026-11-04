@@ -135,6 +135,11 @@ const VOICES = {
     death: '[sad, groaning] My tummy... so empty...', respawn: '[jolly and loud] Petsko is back, and still hungry!',
     taunt: '[playful, belly laugh] Ha! Look at this belly bounce!' },
   // ---- v0.56 ---- pending: replike su spremne, ali audio još nije generiran (Fish Audio krediti) — igra je dotad tiha za ovog junaka
+  jazo: { voice: '8ec9973300874562962bbcb300f82213', pending: true,   // Guyzo — dubok, smiren, samouvjeren samuraj
+    pick: '[calm and proud] Jazo. My blade is ready.', move1: '[calm] As the wind.', move2: '[steady] I walk the path.',
+    attack: '[fierce] Face my blade!', ult: '[shouting, intense] A thousand slashes!', kill: '[calm, satisfied] A clean cut.',
+    death: '[quiet, fading] My blade... rests...', respawn: '[determined] The samurai returns!',
+    taunt: '[playful, laughing] Spin, spin, spin! Try to catch me!' },
   zeka: { voice: 'e6c66fbaab8544d89460b95b36288958', pending: true,   // Energetic Young Female — vedra, samouvjerena šerifica
     pick: '[confident and cheerful] Sheriff Zeka, on duty! Nobody escapes my aim!', move1: '[brisk] On patrol!', move2: '[playful] Hop to it!',
     attack: '[focused, sharp] You are under arrest!', ult: '[calm, then triumphant] Got you in my sights... Ace in the hole!', kill: '[proud] Case closed!',

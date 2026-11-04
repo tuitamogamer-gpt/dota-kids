@@ -2034,6 +2034,54 @@ const HEROES = [
         }},
     ],
   },
+  {   // 🦡 v0.56 Jazo — jazavac samuraj (kao Juggernaut iz DotA 2): vihor oštrica, ljekoviti totem i tisuću rezova
+    id:'jazo', name:L('Jazo', 'Jazo'), emoji:'🦡',
+    role:L('🗡️ Jazavac samuraj — vihor oštrica i munjeviti rezovi', '🗡️ Badger samurai — blade fury and lightning slashes'),
+    hp:680, mp:220, dmg:54,   // ⚖️ simulacija: prvo 64/134 u 12 igara (najslabiji) — više života, snage i kritičnih udaraca
+    attrs:{ str:22, agi:23, int:14, strG:2.7, agiG:4.3, intG:1.4, primary:'agi' },
+    range:90, speed:172, atkCd:1.05, projSpeed:0,
+    passive:{ name:L('Ples oštrice', 'Blade Dance'), emoji:'💥', color:'#fb923c', pid:'ples',
+      desc:L('PASIVNO: udarci katanom ponekad su KRITIČNI i jako udare', 'PASSIVE: katana strikes are sometimes CRITICAL and hit hard'),
+      tip:rk => L('💥 ' + (20 + 5*rk) + '% šanse za kritični udarac (175% štete)', '💥 ' + (20 + 5*rk) + '% chance of a critical strike (175% damage)') },
+    abilities:[
+      { key:'Q', name:L('Vihor oštrica', 'Blade Fury'), emoji:'🌪️', cd:16, mana:90, color:'#fdba74',
+        desc:L('Zavrti se kao vihor s katanom — rani sve oko sebe, a magije te gotovo ne diraju (ni omama ni usporenje); dok se vrtiš, ne udaraš', 'Spin like a whirlwind with your katana — it hurts everyone around you, and spells barely touch you (no stuns or slows); while spinning you don\'t attack'),
+        selfAoe:250,
+        tip:rk => L('🌪️ ' + (3 + 0.5*rk).toFixed(1) + ' s: ⚔️ ' + (55 + 30*rk) + ' štete/s u krugu 250 • 🛡️ −75% štete od magija', '🌪️ ' + (3 + 0.5*rk).toFixed(1) + ' s: ⚔️ ' + (55 + 30*rk) + ' damage/s within 250 • 🛡️ −75% spell damage'),
+        bot:{type:'aoe-self', range:260},
+        cast(u, aim, rk){
+          const dur = 3 + 0.5*rk + abBonus(u, 'Q', 'dur');
+          u.furyT = dur;
+          u.status.immuneT = Math.max(u.status.immuneT, dur);   // kao u DotA: ni omama ni usporenje
+          u.status.stun = 0; u.status.slowT = 0; u.status.rootT = 0;   // i otrese one koje već ima
+          startCloud(u, { kind:'fury', t:dur, r:250, dps:55 + 30*rk + abBonus(u, 'Q', 'dmg'), color:'#fdba74' });
+          addFloat(u.x, u.y - 30, L('🌪️ Vihor!', '🌪️ Blade Fury!'), '#fdba74', 16);
+          return true;
+        }},
+      { key:'W', name:L('Ljekoviti totem', 'Healing Totem'), emoji:'🗿', cd:40, mana:100, color:'#4ade80',
+        desc:L('Zabij u tlo ljekoviti totem — svaki prijatelj (i ti) blizu njega se brzo liječi', 'Plant a healing totem in the ground — every friend (and you) near it heals quickly'),
+        target:'point', castRange:350, aoe:450,
+        tip:rk => L('💚 ' + (1.6 + 0.6*rk).toFixed(1) + '% života u sekundi junacima u krugu 450 • traje 15 s', '💚 ' + (1.6 + 0.6*rk).toFixed(1) + '% HP per second to heroes within 450 • lasts 15 s'),
+        bot:{type:'heal', range:300},
+        cast(u, aim, rk){
+          const p = clampRange(u, aim, 350);
+          placeTotem(u, p.x, p.y, { pct: (1.6 + 0.6*rk + (hasTal(u, 'jazo_w_plus') ? 0.6 : 0)) / 100 });
+          return true;
+        }},
+      { key:'E', name:L('Brzi rez', 'Swift Slash'), emoji:'⚡', cd:18, mana:70, color:'#fde68a',
+        desc:L('Munjevito skoči na neprijatelja i dvaput ga posijeci — dok sječeš, nitko te ne može dirnuti', 'Dash at an enemy like lightning and slash twice — while slashing, nobody can touch you'),
+        target:'point', castRange:350, aoe:120,
+        tip:rk => L('⚡ 2 reza po ' + (100 + 10*rk) + '% štete napada (domet 350)', '⚡ 2 slashes, ' + (100 + 10*rk) + '% attack damage each (range 350)'),
+        bot:{type:'gap', range:350},
+        cast(u, aim, rk){ return startOmni(u, aim, { n: 2, mul: 1 + 0.1*rk, range: 350, every: 0.25, bounce: 300 }); }},
+      { key:'R', name:L('Tisuću rezova', 'Omnislash'), emoji:'🗡️', cd:75, mana:150, ult:true, color:'#fb923c',
+        desc:L('ULTI: Postani munja s katanom — skačeš s neprijatelja na neprijatelja i siječeš ih, a nitko te ne može dirnuti dok traje', 'ULT: Become lightning with a katana — you leap from enemy to enemy slashing them, and nobody can touch you while it lasts'),
+        target:'point', castRange:350, aoe:150,
+        tip:rk => L('🗡️ ' + (3 + 1*rk) + ' rezova svakih 0.35 s (svaki kao udarac, može biti kritičan) • skače do 425', '🗡️ ' + (3 + 1*rk) + ' slashes every 0.35 s (each like an attack, can crit) • jumps up to 425'),
+        bot:{type:'omni', range:350},
+        cast(u, aim, rk){ return startOmni(u, aim, { n: 3 + rk + (hasTal(u, 'jazo_r_more') ? 3 : 0), mul: 1, range: 350, every: 0.35, bounce: 425, ult: true }); }},
+    ],
+  },
 ];
 
 /* 🎨 v0.55: ikone moći iz GPT Image 2.5 — assets/ab/<junak>_<P|Q|W|E|R|T>.jpg (P = urođena pasiva, T = talenti).
@@ -2535,6 +2583,7 @@ const HERO_BUILDS = {
   irbis: ['wraith', 'treads', 'mom', 'crystalys', 'butterfly', 'daedalus'],
   skorpion: ['bracer', 'arcane', 'blink', 'bkb', 'shiva', 'refresher'],
   zeka: ['wraith', 'phase', 'crystalys', 'maelstrom', 'daedalus', 'butterfly'],   // v0.56
+  jazo: ['wraith', 'phase', 'bfury', 'maelstrom', 'basher', 'butterfly'],   // v0.56
 };
 for(const h of HEROES) h.build = HERO_BUILDS[h.id] || BOT_BUILD;
 /* 🎲 v0.56 raznolikost: bot svaku igru odabere jednu od inačica gradnje (prva je ona iz vodiča u dućanu);
@@ -2847,6 +2896,12 @@ const HERO_TALENTS = {
     [TAL('🦂', L('Žalac −3 s hlađenja', 'Stinger −3 s cooldown'), { ab:{ E:{ cd:-3 } } }), TAL('🛡️', L('+5 oklopa', '+5 armor'), { armor:5 })],
     [TAL('🧪', L('Otrovni prasak +1 rang', 'Venom Burst +1 rank'), { pas:1 }), TAL('⏳', L('Pješčana oluja +10 štete/s', 'Sandstorm +10 damage/s'), { ab:{ W:{ dmg:5 } } })],
     [TAL('🌋', L('Epicentar +3 udara', 'Epicenter +3 pulses'), { flag:'skorpion_r_more' }), TAL('🕳️', L('Podzemni juriš +0.6 s omame', 'Burrow Strike +0.6 s stun'), { ab:{ Q:{ dur:0.6 } } })],
+  ],
+  jazo: [   // v0.56
+    [TAL('🌪️', L('Vihor oštrica +25 štete/s', 'Blade Fury +25 damage/s'), { ab:{ Q:{ dmg:25 } } }), TAL('❤️', L('+225 života', '+225 HP'), { hp:225 })],
+    [TAL('🗿', L('Ljekoviti totem +0.6% života/s', 'Healing Totem +0.6% HP/s'), { flag:'jazo_w_plus' }), TAL('⚡', L('+15% brzine napada', '+15% attack speed'), { aspd:0.15 })],
+    [TAL('💥', L('Ples oštrice +1 rang', 'Blade Dance +1 rank'), { pas:1 }), TAL('🌪️', L('Vihor oštrica traje 1 s dulje', 'Blade Fury lasts 1 s longer'), { ab:{ Q:{ dur:1 } } })],
+    [TAL('🗡️', L('Tisuću rezova: +3 reza', 'Omnislash: +3 slashes'), { flag:'jazo_r_more' }), TAL('👟', L('+30 brzine kretanja', '+30 move speed'), { spd:30 })],
   ],
   zeka: [   // v0.56
     [TAL('🔫', L('Mirotvorac +60 štete', 'Peacemaker +60 damage'), { ab:{ Q:{ dmg:60 } } }), TAL('👟', L('+20 brzine kretanja', '+20 move speed'), { spd:20 })],

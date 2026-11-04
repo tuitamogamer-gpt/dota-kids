@@ -94,6 +94,7 @@ const lineMeshes = new Map();
 const runeMeshes = new Map();
 const wardMeshes = new Map();
 const trapMeshes = new Map();   // 🪤 v0.56 Zekine zamke
+const totemMeshes = new Map();  // 🗿 v0.56 Jazini ljekoviti totemi
 const courierMeshes = new Map();   // 🫏 leteći kuriri
 const extraRuneMeshes = new Map(); // 💰📘 rune zlata i mudrosti
 const pingMeshes = new Map();      // 📍 pingovi suigrača
@@ -3225,6 +3226,27 @@ function buildTrapMesh(t){
   return g;
 }
 
+/* 🗿 v0.56 Jazin ljekoviti totem: drveni stup s licem i zelenim kristalom (Blender 'totem') i zeleni krug liječenja (450) */
+function buildTotemMesh(t){
+  const g = new THREE.Group();
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(t.r - 8, t.r, 64),
+    new THREE.MeshBasicMaterial({ color: '#4ade80', transparent: true, opacity: 0.25, side: THREE.DoubleSide, depthWrite: false }));
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 3;
+  g.add(ring);
+  const glow = new THREE.Sprite(glowMat('#4ade80'));
+  glow.scale.set(110, 110, 1);
+  glow.position.y = 70;
+  g.add(glow);
+  const m = MODELS.ready ? modelInstance('totem', t.team, 70) : null;
+  if(m){ g.add(m); g.userData.model = m; }
+  else { const spr = emojiSprite('🗿', 46); spr.position.y = 30; g.add(spr); g.userData.spr = spr; }
+  g.userData.ring = ring;
+  g.position.set(t.x, groundHeight(t.x, t.y), t.y);
+  return g;
+}
+
 /* 🫏 kurir: leteći magarac s krilima i sandukom (Blender model 'courier') */
 function buildCourierMesh(c){
   const g = new THREE.Group();
@@ -4048,6 +4070,9 @@ function castFx(u, g, key){
     case 'zeka:W': for(let i = 0; i < 10; i++) fxSpawn(u.x, u.y, gh + 40, '#d4d4d8', { spd: 90, up: 80, grav: 220, life: 0.6, size: 12 }); break;   // 🪤 baci zamku
     case 'zeka:E': muzzleFx(u, gh, '#e5e7eb'); for(let i = 0; i < 12; i++) fxSpawn(u.x, u.y, gh + 10, '#f5f5f4', { spd: 70, up: 30, grav: 0, life: 0.5, size: 16 }); break;   // 🕸️ mreža + trzaj
     case 'zeka:R': hitSpark(u.x, u.y, gh + 70, '#fca5a5', 120); break;   // 🎯 As iz rukava: laser i nišan crta syncHeroExtras
+    case 'jazo:Q': for(let i = 0; i < 24; i++){ const a = i / 24 * TAU; fxSpawn(u.x + Math.cos(a) * 60, u.y + Math.sin(a) * 60, gh + 30, i % 2 ? '#fdba74' : '#ffffff', { spd: 200, up: 20, grav: 0, life: 0.4, size: 16 }); } break;   // 🌪️ vihor
+    case 'jazo:W': for(let i = 0; i < 16; i++) fxSpawn(u.x, u.y, gh + 20, '#86efac', { spd: 90, up: 120, grav: 160, life: 0.8, size: 14 }); break;   // 🗿 totem
+    case 'jazo:E': case 'jazo:R': hitSpark(u.x, u.y, gh + 50, '#fdba74', 110); break;   // ⚡🗡️ rezovi: crte skokova crta addLine
     case 'bikos:Q': {   // 🗯️ Bojni zov: crveni valovi urlika i pukotine u tlu
       shakeAt(u.x, u.y, 0.8, 0.45);
       shockwave(u.x, u.y, 300, '#ef4444');
@@ -4200,15 +4225,15 @@ function syncHeroExtras(u, g, gh, tAnim, dt, seen){
   // 🤢⏳ v0.55: oblak oko junaka — zeleni smrad (Pecko) ili pješčana oluja (Škorpo); vidi ga i protivnik (kao u Doti)
   const ck = u.cloud ? u.cloud.kind : u.cloudK;
   if(ck && !u.dead && (u.team === myTeam || isVisibleTo(myTeam, { x: u.x, y: u.y, team: -1 }))){
-    const sand = ck === 'sand';
+    const sand = ck === 'sand', fury = ck === 'fury';   // 🌪️ v0.56 Vihor oštrica (Jazo): brzi narančasto-bijeli vrtlog oko njega
     if(!ud.cloudG || ud.cloudG.userData.k !== ck){
       if(ud.cloudG) scene3.remove(ud.cloudG);
-      const grp = new THREE.Group(), n = sand ? 16 : 11;
+      const grp = new THREE.Group(), n = sand ? 16 : (fury ? 14 : 11);
       grp.userData.k = ck;
       for(let i = 0; i < n; i++){
         const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: puffTexture(), transparent: true, opacity: 0.4, depthWrite: false,
-          color: sand ? (i % 2 ? '#e7c27d' : '#b8915a') : (i % 2 ? '#a3e635' : '#4d7c0f') }));
-        sp.userData.a = i / n * TAU; sp.userData.r = (sand ? 120 : 90) + (i % 3) * (sand ? 60 : 55); sp.userData.h = 18 + (i % 4) * 26;
+          color: fury ? (i % 2 ? '#fed7aa' : '#ffffff') : sand ? (i % 2 ? '#e7c27d' : '#b8915a') : (i % 2 ? '#a3e635' : '#4d7c0f') }));
+        sp.userData.a = i / n * TAU; sp.userData.r = fury ? 80 + (i % 3) * 60 : (sand ? 120 : 90) + (i % 3) * (sand ? 60 : 55); sp.userData.h = fury ? 14 + (i % 4) * 18 : 18 + (i % 4) * 26;
         grp.add(sp);
       }
       scene3.add(grp); ud.cloudG = grp;
@@ -4217,13 +4242,18 @@ function syncHeroExtras(u, g, gh, tAnim, dt, seen){
     grp.visible = true;
     grp.position.set(u.x, gh, u.y);
     for(const sp of grp.children){
-      const a = sp.userData.a + tAnim * (sand ? 2.4 : 0.5);
+      const a = sp.userData.a + tAnim * (fury ? 9 : sand ? 2.4 : 0.5);
       sp.position.set(Math.cos(a) * sp.userData.r, sp.userData.h + Math.sin(tAnim * 2 + sp.userData.a * 3) * 10, Math.sin(a) * sp.userData.r);
-      const sz = (sand ? 150 : 175) + Math.sin(tAnim * 3 + sp.userData.a) * 22;
-      sp.scale.set(sz, sz * 0.8, 1);
-      sp.material.opacity = sand ? 0.4 : 0.34;
+      const sz = (fury ? 90 : sand ? 150 : 175) + Math.sin(tAnim * 3 + sp.userData.a) * 22;
+      sp.scale.set(sz, sz * (fury ? 0.5 : 0.8), 1);
+      sp.material.opacity = fury ? 0.42 : sand ? 0.4 : 0.34;
     }
-    if(Math.random() < dt * (sand ? 26 : 10)){
+    if(fury){
+      if(!(ud.spin > 0.5)) ud.spin = TAU;   // model se vrti s katanom
+      if(Math.random() < dt * 30){ const a = Math.random() * TAU, r = 120 + Math.random() * 130;
+        fxSpawn(u.x + Math.cos(a) * r, u.y + Math.sin(a) * r, gh + 30 + Math.random() * 30, Math.random() < 0.5 ? '#fdba74' : '#ffffff', { spd: 160, up: 20, grav: 0, life: 0.3, size: 12 }); }
+    }
+    else if(Math.random() < dt * (sand ? 26 : 10)){
       const a = Math.random() * TAU, r = Math.random() * (sand ? 260 : 220);
       fxSpawn(u.x + Math.cos(a) * r, u.y + Math.sin(a) * r, gh + 10, sand ? '#f3d9a4' : '#d9f99d', { spd: sand ? 80 : 10, up: sand ? 30 : 50, grav: 0, life: 0.7, size: sand ? 14 : 18 });
     }
@@ -4769,6 +4799,14 @@ function syncScene(tAnim){
     if(units.some(h => h.kind === 'hero' && !h.dead && distXY(h.x, h.y, rn.x, rn.y) < 110)) beamFx(rn.x, rn.y, '#fde047', 0.8);
   });
 
+  syncMapped(totems, totemMeshes, buildTotemMesh, (t, g) => {
+    g.visible = t.team === myTeam || isVisibleTo(myTeam, { x: t.x, y: t.y, team: -1 });
+    const ud = g.userData;
+    ud.ring.material.opacity = 0.16 + 0.1 * Math.sin(tAnim * 2.5);
+    if(Math.random() < dt * 10){ const a = Math.random() * TAU, r = Math.random() * 400;
+      fxSpawn(t.x + Math.cos(a) * r, t.y + Math.sin(a) * r, groundHeight(t.x, t.y) + 8, '#86efac', { spd: 4, up: 60, grav: 0, life: 0.9, size: 14 }); }
+  }, (t, g) => { burst(g.position.x, g.position.z, '#86efac', 12, 140, 5); });
+
   syncMapped(traps, trapMeshes, buildTrapMesh, (t, g) => {
     const mine = t.team === myTeam;
     g.visible = mine || isVisibleTo(myTeam, { x: t.x, y: t.y, team: -1 });   // tuđa zamka: samo u vidu
@@ -5075,7 +5113,7 @@ function clearScene3D(){
   meshByUnit.clear();
   for(const d of dying){ scene3.remove(d.g); disposeGroup(d.g); }
   dying.length = 0;
-  for(const map of [zoneMeshes, projMeshes, markerMeshes, lineMeshes, runeMeshes, wardMeshes, trapMeshes, courierMeshes, extraRuneMeshes, pingMeshes]){
+  for(const map of [zoneMeshes, projMeshes, markerMeshes, lineMeshes, runeMeshes, wardMeshes, trapMeshes, totemMeshes, courierMeshes, extraRuneMeshes, pingMeshes]){
     for(const [k, m] of map){ if(m.userData && m.userData.trail) scene3.remove(m.userData.trail.mesh); scene3.remove(m); if(m.traverse) disposeGroup(m); }
     map.clear();
   }

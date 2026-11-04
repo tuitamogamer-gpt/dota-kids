@@ -288,7 +288,7 @@ function buildSnapshot(){
     if(u.tpChannel > 0 && u.tpDest) b.td = [Math.round(u.tpDest.x), Math.round(u.tpDest.y), +(u.tpChannel / (u.tpDur || 3)).toFixed(2)];   // 🌀 TP do kule
     if(u.chan && u.chan.target && !u.chan.o) b.cz = [u.chan.target.id, +(1 - u.chan.t / u.chan.dur).toFixed(2)];   // 🎯 nišanjenje
     else if(u.chan) b.cq = 1;              // kanaliziranje (Veliki zalogaj, Lepeza strijela, Epicentar — v0.55)
-    if(u.cloud) b.cl = u.cloud.kind === 'sand' ? 2 : 1;   // 🤢⏳ oblak oko junaka
+    if(u.cloud) b.cl = u.cloud.kind === 'sand' ? 2 : (u.cloud.kind === 'fury' ? 3 : 1);   // 🤢⏳🌪️ oblak / vihor oko junaka
     if(u.drag && u.drag.src) b.dg = u.drag.src.id;        // 🪝 vuče ga Udica
     if(u.epiN){ b.ep = u.epiN % 1000; b.er = Math.round(u.epiR || 300); }   // 🌋 val Epicentra
     if(u.frostT > 0) b.fr = 1;             // ❄️ Ledene strijele
@@ -350,6 +350,7 @@ function buildSnapshot(){
     cu: couriers.map(c => [Math.round(c.x), Math.round(c.y), +c.dir.toFixed(2), ['home', 'go', 'back'].indexOf(c.state), c.carry]),
     wd: wards.map(w => ({ x: Math.round(w.x), y: Math.round(w.y), r: w.r, t: +w.t.toFixed(1), tm: w.team })),
     tr: traps.map(t => [t.id, Math.round(t.x), Math.round(t.y), t.team, t.arm > 0 ? 1 : 0]),   // 🪤 Zekine zamke
+    tt: totems.map(t => [t.id, Math.round(t.x), Math.round(t.y), t.team, Math.round(t.t)]),       // 🗿 Jazini totemi
     tc: treesCut.slice(),   // 🌳 pojedena / posječena stabla
   };
 }
@@ -459,7 +460,7 @@ function applySnapshot(d){
     u.danceN = b.dz || 0; u.danceT = b.dc ? 1 : 0;   // 💃
     u.tpDest = b.td ? { x: b.td[0], y: b.td[1] } : null; u.tpFrac = b.td ? b.td[2] : 0;
     u.chanFx = b.cz ? { id: b.cz[0], f: b.cz[1] } : null;
-    u.chanK = b.cq ? 1 : 0; u.cloudK = b.cl === 2 ? 'sand' : (b.cl ? 'rot' : null); u.dragId = b.dg || 0;
+    u.chanK = b.cq ? 1 : 0; u.cloudK = b.cl === 2 ? 'sand' : (b.cl === 3 ? 'fury' : (b.cl ? 'rot' : null)); u.dragId = b.dg || 0;
     u.epiN = b.ep || 0; u.epiR = b.er || 300; u.frostT = b.fr ? 1 : 0; u.causticT = b.cs ? 1 : 0;
     u.hungerT = b.hg ? 1 : 0; u.helixN = b.hx || 0; u.talN = b.tn || 0; u.travel = b.tv || 0; u.streak = b.sk || 0; u.richBounty = b.rb || 0;
     u.killFxN = b.kf || 0; u.killAt = b.ka ? { x: b.ka[0], y: b.ka[1] } : null;
@@ -569,6 +570,14 @@ function applySnapshot(d){
     for(const i of treesCut){ if(!now.has(i) && trees[i]){ trees[i].cut = false; changed = true; if(typeof treeGrow3D === 'function') treeGrow3D(i); } }
     if(changed){ treesCut = [...now]; buildTreeGrid(); markTreesDirty(); }
   }
+  {   // 🗿 totemi (po id-u)
+    const old = totems;
+    totems = (d.tt || []).map(a => {
+      const ex = old.find(o => o.id === a[0]);
+      if(ex){ ex.t = a[4]; return ex; }
+      return { id: a[0], x: a[1], y: a[2], team: a[3], t: a[4], r: 450 };
+    });
+  }
   {   // 🪤 zamke: isti objekti (po id-u) da 3D prikaz ne gradi mrežu iznova
     const old = traps;
     traps = (d.tr || []).map(a => {
@@ -651,7 +660,7 @@ function resetMatchState(){
   kills = [0, 0];
   camps = []; runes = [];
   runeTimer = CFG.runeEvery; runeSpotI = 0; isNight = false;
-  wards = []; traps = []; nightForceT = 0; superCreeps = [{}, {}]; winnerTeam = null; barracksRespawn = [];
+  wards = []; traps = []; totems = []; nightForceT = 0; superCreeps = [{}, {}]; winnerTeam = null; barracksRespawn = [];
   glyph = [{ t: 0, cd: 0 }, { t: 0, cd: 0 }];
   makeShrines(); makeCouriers(); creepTier = 0; bossKills = 0; coinDrops = [];
   teamDrakes = [[], []]; nextDrake = null; scoreOpen = false;
