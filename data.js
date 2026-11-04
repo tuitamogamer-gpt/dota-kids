@@ -667,7 +667,7 @@ const HEROES = [
           '⚔️ ' + (55 + 27*rk) + '–' + (95 + 52*rk) + ' damage, stun ' + 0.6 + '–' + (1.8 + 0.45*rk).toFixed(1) + ' s (strongest after 1500 distance) • jungle monster: defeated instantly'),
         bot:{type:'shot', range:1200, clear:true},
         cast(u, aim, rk){   // 🌠 v0.56 kao Miranina Sveta strijela (DotA 2): daleko, staje na prvoj jedinici, omama raste s putem; sporija (950 → 700) — treba vještine
-          return spawnSkillshot(u, aim, {speed:700, r:26, range:2000, model:'proj_arrow', scale:74,
+          return spawnSkillshot(u, aim, {speed:700, r:26, range:2000, model:'proj_arrow', scale:74, skill:true,
             dmg:55 + 27*rk, color:'#e9d5ff', emoji:'🌠',
             onHit(e, p){
               if(e.kind === 'neutral' && !e.boss && !e.drake){   // čudovište iz džungle (ne Zmaj ni zmajčići): odmah pobijeđeno
@@ -1752,7 +1752,7 @@ const HEROES = [
         bot:{type:'hook', range:1100},
         cast(u, aim, rk){   // ⚖️ v0.56: domet 1000 → 1400, brzina 1300 → 1000 (talent: +25 % brzine)
           const V = 1000 * (hasTal(u, 'nilski_q_fast') ? 1.25 : 1);
-          return spawnSkillshot(u, aim, {speed:V, r:22, range:1400, dmg:100 + 70*rk, color:'#cbd5e1', emoji:'🪝',
+          return spawnSkillshot(u, aim, {speed:V, r:22, range:1400, dmg:100 + 70*rk, color:'#cbd5e1', emoji:'🪝', skill:true,
             onHit(e){
               dragTo(e, u, 1500);
               addFloat(e.x, e.y, L('🪝 Upecan!', '🪝 Hooked!'), '#e2e8f0', 16);
@@ -2553,7 +2553,9 @@ const CAMP_SPOTS = [
   { x:800,  y:800,  type:'boss'   },
   { x:2100, y:2100, type:'drake'  },
   // v0.47: kampovi su DALEKO od kula (najmanje ~630 izvan dometa kule na mapi 2.22), da se čudovišta ne mogu navući
-  //   pod kulu; po jedan kamp uz svaku bočnu stazu (P) i dalje se može povući do vojnika. Crveni = 180° okret plavih.
+  //   pod kulu; po jedan kamp uz svaku bočnu stazu (P) i dalje se može povući do vojnika.
+  // ⚖️ v0.56: crveni kampovi su ZRCALO plavih preko rijeke (x ↔ y), kao i staze, kule, rune, Zmaj i boss — prije su bili
+  //   okret za 180°, pa je uz istu stazu svaki tim imao druge kampove (crveni buff crvenih uz gornju stazu i bossa)
   { x:525,  y:1375, type:'boars'  },   // plavi, uz gornju stazu (P)
   { x:825,  y:1350, type:'wolves' },
   { x:700,  y:1075, type:'stones' },
@@ -2562,20 +2564,11 @@ const CAMP_SPOTS = [
   { x:1300, y:2250, type:'bears'  },
   { x:1550, y:2100, type:'redbuff' },  // 🔴 crveni buff
   { x:1900, y:2275, type:'boars'  },
-  { x:2475, y:1625, type:'boars'  },   // crveni, uz donju stazu (P)
-  { x:2175, y:1650, type:'wolves' },
-  { x:2300, y:1925, type:'stones' },
-  { x:2250, y:1300, type:'golem'  },
-  { x:1325, y:550,  type:'wolves' },   // crveni, uz gornju stazu (P)
-  { x:1700, y:750,  type:'bears'  },
-  { x:1450, y:900,  type:'redbuff' },
-  { x:1100, y:725,  type:'boars'  },
-  // 🦎 v0.56: mali kampovi bliže bazi (prvi kampovi junaka u džungli), po dva za svaki tim
+  // 🦎 v0.56: mali kampovi bliže bazi (prvi kampovi junaka u džungli)
   { x:600,  y:1950, type:'lizards' },   // plavi, između gornje staze i sredine
   { x:1050, y:2400, type:'lizards' },   // plavi, između sredine i donje staze
-  { x:2400, y:1050, type:'lizards' },   // crveni
-  { x:1950, y:600,  type:'lizards' },
 ];
+for(const c of CAMP_SPOTS.slice(2)) CAMP_SPOTS.push({ x: c.y, y: c.x, type: c.type });   // crveni = zrcalo plavih
 
 /* ---------------- RUNE ZLATA I MUDROSTI (u džungli) ---------------- */
 const BOUNTY_SPOTS = [{ x:700, y:1500 }, { x:1500, y:2300 }, { x:1500, y:700 }, { x:2300, y:1500 }];
@@ -2586,7 +2579,7 @@ const CHAT_LINES = [L('👍 Bravo!', '👍 Well done!'), L('🆘 Pomoć!', '🆘
 const BOT_BRAG = [L('😎 Hehe, lako!', '😎 Hehe, easy!'), L('💪 Jesam ga!', '💪 Got \'em!'), L('🎉 Juhu!', '🎉 Woohoo!'), L('⭐ Super smo!', '⭐ We\'re awesome!')];
 
 /* ---------------- SVETIŠTA (liječe tim, kao u DotA 7) ---------------- */
-const SHRINE_SPOTS = [{ x:1150, y:2250, team:0 }, { x:1850, y:750, team:1 }];
+const SHRINE_SPOTS = [{ x:1150, y:2250, team:0 }, { x:2250, y:1150, team:1 }];   // ⚖️ v0.56: zrcalo (prije 1850, 750)
 
 /* ---------------- 🎓 TALENTI (kao u DotA 2): na levelima 10, 15, 20 i 25 biraš jedan od dva ----------------
    v0.38: svaki junak ima SVOJE talente — vezane uz njegove moći (jača moć, kraće hlađenje, dulja omama…) i

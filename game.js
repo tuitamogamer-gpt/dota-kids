@@ -1884,7 +1884,7 @@ function spawnSkillshot(u, aim, o){
     speed: o.speed, r: o.r, range: o.range, traveled: 0,
     dmg: o.dmg, src: u, team: u.team,
     color: o.color, emoji: o.emoji || null,
-    pierce: !!o.pierce, slow: o.slow || null, hitIds: o.hitIds || {},   // v0.55: zajednički hitIds = val strijela pogodi svakoga samo jednom
+    pierce: !!o.pierce, slow: o.slow || null, hitIds: o.hitIds || {}, skill: !!o.skill,   // skill = udica / Sveta strijela (botovi se izmiču)   // v0.55: zajednički hitIds = val strijela pogodi svakoga samo jednom
     model: o.model || null, scale: o.scale || 0,   // 3D model projektila mimo emojija (Sveta strijela = velika strijela)
     onHitFn: o.onHit || null,
     abKey: abCtx && abCtx.src === u ? abCtx.key : null,   // 🎓 talenti moći djeluju i kad projektil pogodi kasnije
@@ -3533,9 +3533,9 @@ function botsAnswer(h, x, y){
    koriste predmete, oprezniji su, ne otkupljuju se i zarađuju manje zlata; na "Teško" brži su i hrabriji.
    Saveznici i botovi u mrežnoj igri su uvijek normalni. */
 const BOT_DIFF = {
-  easy:   { aimErr: 1.5, think: [0.9, 1.3], abil: 0.35, items: 0.5, sum: 0.4, brave: 1.35, back: 1.05, chase: 0.12, flee: 0.42, deny: 0.1, gold: 0.75, buyback: false },
-  normal: { think: [0.4, 0.6], abil: 1, items: 1, sum: 1, brave: 1.0, back: 1.15, chase: 0.25, flee: 0.3, deny: 0.35, gold: 1, buyback: true },   // v0.49: brave 0.8 → 1.0
-  hard:   { aimErr: 0.6, think: [0.3, 0.42], abil: 1, items: 1, sum: 1, brave: 0.85, back: 1.3, chase: 0.32, flee: 0.25, deny: 0.5, gold: 1.25, buyback: true },  // v0.49: brave 0.65 → 0.85
+  easy:   { aimErr: 1.5, dodge: 0.15, react: 0.45, think: [0.9, 1.3], abil: 0.35, items: 0.5, sum: 0.4, brave: 1.35, back: 1.05, chase: 0.12, flee: 0.42, deny: 0.1, gold: 0.75, buyback: false },
+  normal: { dodge: 0.35, react: 0.3, think: [0.4, 0.6], abil: 1, items: 1, sum: 1, brave: 1.0, back: 1.15, chase: 0.25, flee: 0.3, deny: 0.35, gold: 1, buyback: true },   // v0.49: brave 0.8 → 1.0
+  hard:   { aimErr: 0.6, dodge: 0.55, react: 0.2, think: [0.3, 0.42], abil: 1, items: 1, sum: 1, brave: 0.85, back: 1.3, chase: 0.32, flee: 0.25, deny: 0.5, gold: 1.25, buyback: true },  // v0.49: brave 0.65 → 0.85
 };
 function botDiff(u){ return (u.team !== myTeam && net.mode !== 'host' && BOT_DIFF[SETTINGS.diff]) || BOT_DIFF.normal; }
 /* snaga junaka za procjenu borbe: level + vrijednost predmeta, puta koliko mu je ostalo života */
@@ -4223,8 +4223,9 @@ function updateUnit(u, dt){
     if(u.scanT <= 0){ u.scanT = 0.4; neutralThink(u); }
     if(u.returning) u.hp = Math.min(u.maxhp, u.hp + u.maxhp * 0.35 * dt);
   } else if(u.kind === 'hero' && u.bot){
+    if(projectiles.length) botDodge(u);   // 🤖 izmicanje udici / strijeli
     u.bot.thinkT -= dt;
-    if(u.bot.thinkT <= 0){ const th = botDiff(u).think; u.bot.thinkT = rand(th[0], th[1]); botThink(u); }
+    if(u.bot.thinkT <= 0 && !(u.bot.dodgeT > gameTime)){ const th = botDiff(u).think; u.bot.thinkT = rand(th[0], th[1]); botThink(u); }
   }
 
   if(u.useOrder){   // 🌿 ide do drveta (tango / sjekirica), pa ga pojede ili posiječe
@@ -4344,6 +4345,7 @@ function updateProjectiles(dt){
         }
       }
       if(removed) continue;
+      if(p.skill) skillNearMiss(p);
       if(p.traveled >= p.range || p.x < 0 || p.x > WORLD || p.y < 0 || p.y > WORLD){
         burst(p.x, p.y, p.color, 4, 70, 3);
         projectiles.splice(i, 1);
@@ -4352,6 +4354,47 @@ function updateProjectiles(dt){
   }
 }
 
+/* 💨 v0.56 udica / strijela upravo je prošla tik uz junaka koji se izmaknuo — vidi se samo kad si ti u tome (gađaš ili te gađaju) */
+function skillNearMiss(p){
+  if(!isHuman(p.src) && !units.some(e => e.kind === 'hero' && isHuman(e) && distXY(e.x, e.y, p.x, p.y) < 260)) return;
+  const ux = p.vx / p.speed, uy = p.vy / p.speed;
+  for(const e of units){
+    if(e.kind !== 'hero' || e.team === p.team || e.dead || e.removeMe || p.hitIds[e.id] || (p.missed && p.missed[e.id])) continue;
+    const rx = e.x - p.x, ry = e.y - p.y, along = rx * ux + ry * uy;
+    if(along > 0 || along < -(e.r + 80)) continue;   // tek je prošla pored njega
+    if(Math.abs(rx * uy - ry * ux) > p.r + e.r + 70) continue;
+    (p.missed = p.missed || {})[e.id] = true;
+    if(!isHuman(e) && !isHuman(p.src)) continue;
+    addFloat(e.x, e.y - 30, isHuman(e) ? L('💨 Izmaknuo si se!', '💨 You dodged it!') : L('💨 Za dlaku!', '💨 So close!'), '#e0f2fe', isHuman(e) ? 15 : 13, isHuman(e) ? e.team : undefined);
+  }
+}
+/* 🤖 v0.56 bot se izmakne udici / Svetoj strijeli: vidi je (nakon kratke reakcije), izračuna da će ga pogoditi i — ponekad,
+   po težini (Lako 15 %, Normalno 35 %, Teško 55 %) — korakne u stranu; ako ne stigne, ni ne pokušava */
+function botDodge(u){
+  if(u.dead || u.status.stun > 0 || u.status.rootT > 0 || u.chan || u.tpChannel > 0 || u.bot.dodgeT > gameTime) return;
+  for(const p of projectiles){
+    if(!p.skill || p.team === u.team || p.hitIds[u.id]) continue;
+    const ux = p.vx / p.speed, uy = p.vy / p.speed, rx = u.x - p.x, ry = u.y - p.y;
+    const along = rx * ux + ry * uy;
+    if(along < 0 || along > p.range - p.traveled + u.r) continue;
+    const tt = along / p.speed;
+    if(tt > 1.1) continue;
+    const side = ry * ux - rx * uy, need = p.r + u.r + 12 - Math.abs(side);
+    if(need <= 0) continue;   // promašit će i bez izmicanja
+    const d = botDiff(u);
+    if(p.traveled / p.speed < (d.react || 0.3)) continue;   // tek je bačena: bot još nije reagirao
+    p.dodge = p.dodge || {};
+    if(p.dodge[u.id] == null) p.dodge[u.id] = Math.random() < (d.dodge || 0.35);
+    if(!p.dodge[u.id] || unitSpeed(u) * tt < need * 0.8) continue;
+    const sg = Math.abs(side) > 4 ? Math.sign(side) : (Math.random() < 0.5 ? -1 : 1);
+    const go = need + 60;
+    u.attackTarget = null; u.amove = null; u.attackOnce = false;
+    if(u.windup && gameTime < u.windup.t){ u.windup = null; u.atkTimer = 0; }
+    u.moveTarget = { x: clamp(u.x - uy * sg * go, 40, WORLD - 40), y: clamp(u.y + ux * sg * go, 40, WORLD - 40) };
+    u.bot.dodgeT = gameTime + Math.min(0.9, tt + 0.25);
+    return;
+  }
+}
 function zoneTick(z){
   if(z.ticksLeft <= 0) return;
   z.ticksLeft--;
@@ -4951,6 +4994,7 @@ function laneIntro(h){
 function startGame(heroIdx){
   applyMode();   // ⚡
   loadCos();     // 🎁
+  SMOOTH.warm = 0; SMOOTH.acc = SMOOTH.n = 0;   // 🐢 nova igra: prvo se učita (korak olakšanja ostaje — isti uređaj)
   units = []; projectiles = []; zones = []; particles = []; lines = [];
   floats = []; markers = []; feed = [];
   ancients = [null, null];
@@ -6468,6 +6512,7 @@ function buildOptionsDom(){
   $('optVol').addEventListener('change', () => sfx('click'));
   for(const b of $('optQ').querySelectorAll('button')) b.addEventListener('click', () => {
     SETTINGS.quality = b.dataset.q; saveSettings();
+    smoothReset();   // 🐢 ručni izbor: automatska glatkoća kreće ispočetka
     setQuality3D(SETTINGS.quality);
     syncOptionsDom(); sfx('click');
   });
@@ -8629,6 +8674,29 @@ function updateHoldMove(){
   if(!hudHit(mouse.sx, mouse.sy)) playerCommand(mouse.wx, mouse.wy, null, { silent: true });
 }
 
+/* 🐢 v0.56 automatska glatkoća: igra koja 5 s zaredom ide ispod ~26 sličica u sekundi sama se olakša, korak po korak —
+   efekti (sjaj) isključeni, pa manja razlučivost, pa niska kvaliteta (bez sjena), pa još manja razlučivost. Vrijedi do kraja
+   ove igre (postavka kvalitete se ne mijenja); ručni izbor kvalitete u ⚙️ vraća sve na početak. */
+const SMOOTH = { acc: 0, n: 0, step: 0, warm: 0, told: false };
+function smoothReset(){ SMOOTH.acc = SMOOTH.n = SMOOTH.step = SMOOTH.warm = 0; if(typeof dynRes !== 'undefined' && dynRes !== 1){ dynRes = 1; if(typeof resize3D === 'function') resize3D(); } }
+function smoothGovern(rawDt){
+  if(!running || paused || gameOver || document.hidden || rawDt > 2 || typeof setQuality3D !== 'function') return;
+  SMOOTH.warm += rawDt;
+  if(SMOOTH.warm < 12) return;   // prvih sekundi se još učitavaju sjene i modeli
+  SMOOTH.acc += rawDt; SMOOTH.n++;
+  if(SMOOTH.acc < 5) return;
+  const fps = SMOOTH.n / SMOOTH.acc;
+  SMOOTH.acc = 0; SMOOTH.n = 0;
+  if(fps >= 26 || SMOOTH.step >= 4) return;
+  SMOOTH.step++;
+  if(SMOOTH.step === 1 && typeof POST !== 'undefined' && POST.on){ POST.on = false; }
+  else if(SMOOTH.step <= 2){ SMOOTH.step = 2; dynRes = 0.8; resize3D(); }
+  else if(SMOOTH.step === 3){ if(quality3 !== 'low') setQuality3D('low'); else { dynRes = 0.72; resize3D(); SMOOTH.step = 4; } }
+  else { dynRes = 0.72; resize3D(); }
+  SMOOTH.warm = 9;   // nakon promjene pričekaj malo prije nove procjene
+  if(!SMOOTH.told){ SMOOTH.told = true; feedMsg(L('🐢 Igra je bila spora — slika je malo jednostavnija da bude glađa (⚙️ kvaliteta)', '🐢 The game was slow — the picture is a bit simpler so it runs smoother (⚙️ quality)'), '#e5e7eb'); }
+}
+
 /* ================= Glavna petlja ================= */
 let lastT = performance.now();
 let slowMo = 0;
@@ -8638,6 +8706,7 @@ function frame(now){
   let dt = (now - lastT) / 1000;
   lastT = now;
   frameDt = Math.min(0.1, Math.max(0, dt));
+  smoothGovern(Math.max(0, dt));   // 🐢
   dt = Math.min(dt, 0.05);
   if(slowMo > 0){ slowMo -= dt; dt *= slowMo > 0.2 ? 0.35 : 0.35 + (0.2 - slowMo) / 0.2 * 0.65; }   // ⏱️ usporenje nakon tvoje pobjede nad junakom
   if(running && !paused && !gameOver){

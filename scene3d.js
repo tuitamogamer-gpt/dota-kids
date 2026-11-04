@@ -633,9 +633,10 @@ function initEnvironment(renderer, scene){
 /* ⚙️ kvaliteta slike: niska = manja rezolucija i bez sjena (brže na tabletima),
    srednja = sjene i rezolucija do 1.25×, visoka = puna rezolucija (do 2×) */
 let quality3 = 'high';
+let dynRes = 1;   // 🐢 v0.56 samo za ovu igru: manja razlučivost kad je igra spora (smoothGovern u game.js)
 function qualityPixelRatio(){
   const dpr = window.devicePixelRatio || 1;
-  return quality3 === 'low' ? Math.min(dpr, 1) * 0.75 : (quality3 === 'med' ? Math.min(dpr, 1.25) : Math.min(dpr, 2));
+  return (quality3 === 'low' ? Math.min(dpr, 1) * 0.75 : (quality3 === 'med' ? Math.min(dpr, 1.25) : Math.min(dpr, 2))) * dynRes;
 }
 function setQuality3D(q){
   quality3 = q;

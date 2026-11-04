@@ -73,7 +73,7 @@ const SRC = ['sr.js', 'i18n.js', 'data.js', 'voices.js'].map(f => fs.readFileSyn
   ['game.js', 'shop.js', 'net.js'].map(f => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n') + `
 ;globalThis.__G = { get units(){ return units; }, get gameTime(){ return gameTime; }, get gameOver(){ return gameOver; },
   get winnerTeam(){ return winnerTeam; }, get kills(){ return kills; }, get player(){ return player; }, get teamAI(){ return typeof teamAI !== 'undefined' ? teamAI : null; },
-  HEROES, CFG, WORLD, SETTINGS, startGame, update, netWorth, LANE_PTS, FOUNTAIN, trees: () => trees, camps: () => camps,
+  HEROES, CFG, WORLD, SETTINGS, startGame, update, netWorth, botSpendPoints, LANE_PTS, FOUNTAIN, trees: () => trees, camps: () => camps,
   treesCut: () => treesCut.length, treeEaten: () => trees.filter(t => t.everCut).length };
 { const cA = castAbility; castAbility = function(u, i, aim){ const cd0 = u.abilities[i] && u.abilities[i].cd; cA(u, i, aim); const ab = u.abilities[i];
     if(ab && cd0 <= 0 && ab.cd > 0){ u.casts = u.casts || {}; u.casts[ab.def.key] = (u.casts[ab.def.key] || 0) + 1; } }; }
@@ -97,7 +97,8 @@ function runGame(gi){
   }
   G.startGame(hi);
   const p = G.player;
-  p.bot = { state: 'lane', thinkT: 0.3 };   // i tvog junaka vodi bot
+  p.bot = { state: 'lane', thinkT: 0.3, order: null };   // i tvog junaka vodi bot
+  G.botSpendPoints(p);   // kao i ostali botovi: poen s levela 1 odmah (prije ga je "igrač" čekao do levela 2)
   if(p.jungler) p.summoners = ['flash', 'smite'];
   const dt = 0.05;
   const stat = { nearSum: 0, nearN: 0, crowd: 0, crowdN: 0, fightT: 0, towerKills: [0, 0], heroDeaths: 0, tDeath: [], spread: 0 };
