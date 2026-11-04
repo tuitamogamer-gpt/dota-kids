@@ -93,6 +93,7 @@ const markerMeshes = new Map();
 const lineMeshes = new Map();
 const runeMeshes = new Map();
 const wardMeshes = new Map();
+const trapMeshes = new Map();   // 🪤 v0.56 Zekine zamke
 const courierMeshes = new Map();   // 🫏 leteći kuriri
 const extraRuneMeshes = new Map(); // 💰📘 rune zlata i mudrosti
 const pingMeshes = new Map();      // 📍 pingovi suigrača
@@ -3207,6 +3208,23 @@ function buildWardMesh(w){
   return g;
 }
 
+/* 🪤 v0.56 Zekina zamka: metalne čeljusti na tlu (Blender 'trap') i krug u boji tima; protivnik je vidi samo kad je ta točka u vidu */
+function buildTrapMesh(t){
+  const g = new THREE.Group();
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(t.r - 5, t.r, 40),
+    new THREE.MeshBasicMaterial({ color: TEAM_LIGHT[t.team] || '#e5e7eb', transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false }));
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 2;
+  g.add(ring);
+  const m = MODELS.ready ? modelInstance('trap', t.team, 46) : null;
+  if(m){ g.add(m); g.userData.model = m; }
+  else { const spr = emojiSprite('🪤', 34); spr.position.y = 14; g.add(spr); g.userData.spr = spr; }
+  g.userData.ring = ring;
+  g.position.set(t.x, groundHeight(t.x, t.y), t.y);
+  return g;
+}
+
 /* 🫏 kurir: leteći magarac s krilima i sandukom (Blender model 'courier') */
 function buildCourierMesh(c){
   const g = new THREE.Group();
@@ -4026,6 +4044,10 @@ function castFx(u, g, key){
       break;
     }
     case 'nisan:R': hitSpark(u.x, u.y, gh + 70, '#fca5a5', 120); break;   // 🎯 nišanjenje: laser i nišan crta syncHeroExtras
+    case 'zeka:Q': muzzleFx(u, gh, '#fde68a'); hitSpark(u.x + Math.cos(u.dir || 0) * 60, u.y + Math.sin(u.dir || 0) * 60, gh + 60, '#fde68a', 90); break;   // 🔫 Mirotvorac
+    case 'zeka:W': for(let i = 0; i < 10; i++) fxSpawn(u.x, u.y, gh + 40, '#d4d4d8', { spd: 90, up: 80, grav: 220, life: 0.6, size: 12 }); break;   // 🪤 baci zamku
+    case 'zeka:E': muzzleFx(u, gh, '#e5e7eb'); for(let i = 0; i < 12; i++) fxSpawn(u.x, u.y, gh + 10, '#f5f5f4', { spd: 70, up: 30, grav: 0, life: 0.5, size: 16 }); break;   // 🕸️ mreža + trzaj
+    case 'zeka:R': hitSpark(u.x, u.y, gh + 70, '#fca5a5', 120); break;   // 🎯 As iz rukava: laser i nišan crta syncHeroExtras
     case 'bikos:Q': {   // 🗯️ Bojni zov: crveni valovi urlika i pukotine u tlu
       shakeAt(u.x, u.y, 0.8, 0.45);
       shockwave(u.x, u.y, 300, '#ef4444');
@@ -4747,6 +4769,14 @@ function syncScene(tAnim){
     if(units.some(h => h.kind === 'hero' && !h.dead && distXY(h.x, h.y, rn.x, rn.y) < 110)) beamFx(rn.x, rn.y, '#fde047', 0.8);
   });
 
+  syncMapped(traps, trapMeshes, buildTrapMesh, (t, g) => {
+    const mine = t.team === myTeam;
+    g.visible = mine || isVisibleTo(myTeam, { x: t.x, y: t.y, team: -1 });   // tuđa zamka: samo u vidu
+    const ud = g.userData, armed = !(t.arm > 0);
+    ud.ring.material.opacity = armed ? 0.22 + 0.12 * Math.sin(tAnim * 3) : 0.08;
+    if(ud.model) ud.model.scale.setScalar(armed ? 1 : 0.85);
+  }, (t, g) => { burst(g.position.x, g.position.z, '#d4d4d8', 10, 120, 4); });
+
   syncMapped(wards, wardMeshes, buildWardMesh, (w, g) => {
     const ud = g.userData;
     g.visible = w.team === myTeam;   // protivnička oka se ne vide (kao u DotA)
@@ -5045,7 +5075,7 @@ function clearScene3D(){
   meshByUnit.clear();
   for(const d of dying){ scene3.remove(d.g); disposeGroup(d.g); }
   dying.length = 0;
-  for(const map of [zoneMeshes, projMeshes, markerMeshes, lineMeshes, runeMeshes, wardMeshes, courierMeshes, extraRuneMeshes, pingMeshes]){
+  for(const map of [zoneMeshes, projMeshes, markerMeshes, lineMeshes, runeMeshes, wardMeshes, trapMeshes, courierMeshes, extraRuneMeshes, pingMeshes]){
     for(const [k, m] of map){ if(m.userData && m.userData.trail) scene3.remove(m.userData.trail.mesh); scene3.remove(m); if(m.traverse) disposeGroup(m); }
     map.clear();
   }

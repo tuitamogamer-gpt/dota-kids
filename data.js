@@ -1956,6 +1956,84 @@ const HEROES = [
         }},
     ],
   },
+  {   // 🐰 v0.56 Zeka — zečica šerif s dugom puškom (kao Caitlyn iz LoL-a): najdulji domet, zamke, mreža i hitac s neba
+    id:'zeka', name:L('Zeka', 'Zeka'), emoji:'🐰',
+    role:L('🎯 Zečica šerif — najdalje puca, postavlja zamke', '🎯 Sheriff bunny — longest range, sets traps'),
+    hp:500, mp:260, dmg:46,
+    attrs:{ str:16, agi:22, int:16, strG:2.0, agiG:4.6, intG:1.9, primary:'agi' },
+    range:470, speed:168, atkCd:1.15, projSpeed:1400, shot:'pellet',
+    passive:{ name:L('Šerifov hitac', 'Sheriff Shot'), emoji:'⭐', color:'#fde047', pid:'serif',
+      desc:L('PASIVNO: svaki 5. hitac jako udari — a junak uhvaćen u zamku ili mrežu odmah dobije takav hitac', 'PASSIVE: every 5th shot hits hard — and a hero caught in a trap or a net gets one right away'),
+      tip:rk => L('⭐ svaki 5. hitac (i meta u zamci / mreži): ' + Math.round(140 + 12*rk) + '% štete', '⭐ every 5th shot (and a trapped / netted target): ' + Math.round(140 + 12*rk) + '% damage') },
+    abilities:[
+      { key:'Q', name:L('Mirotvorac', 'Peacemaker'), emoji:'🔫', cd:9, mana:60, color:'#fde68a',
+        desc:L('Dugi hitac kroz cijelu liniju — rani SVE neprijatelje kroz koje prođe', 'A long shot through a whole line — it hurts EVERY enemy it passes through'),
+        target:'point', castRange:1150, line:true, lineFull:true, shotSpeed:1700, lineW:64,
+        tip:rk => L('⚔️ ' + (60 + 40*rk) + ' štete svima na putu (domet 1150)', '⚔️ ' + (60 + 40*rk) + ' damage to everyone in the way (range 1150)'),
+        bot:{type:'shot', range:1000},
+        cast(u, aim, rk){
+          return spawnSkillshot(u, aim, {speed:1700, r:30, range:1150, pierce:true, dmg:60 + 40*rk + abBonus(u, 'Q', 'dmg'),   // ⚖️ simulacija: 127/70 u 12 igara — malo slabije (bilo 70 + 45)
+            color:'#fde68a', emoji:'💥',
+            model:'proj_pellet', scale:60});
+        }},
+      { key:'W', name:L('Zamka', 'Snap Trap'), emoji:'🪤', cd:6, mana:40, color:'#a3a3a3',
+        desc:L('Postavi zamku na tlo (najviše 3) — neprijateljski junak koji stane na nju ostane ukopan na mjestu i dobije Šerifov hitac', 'Set a trap on the ground (up to 3) — an enemy hero who steps on it is stuck in place and gets a Sheriff Shot'),
+        target:'point', castRange:750, aoe:60,
+        tip:rk => L('🪤 ukopan ' + (1.2 + 0.2*rk).toFixed(1) + ' s + ⚔️ ' + (30 + 25*rk) + ' štete • traje 45 s, najviše 3 zamke', '🪤 stuck ' + (1.2 + 0.2*rk).toFixed(1) + ' s + ⚔️ ' + (30 + 25*rk) + ' damage • lasts 45 s, up to 3 traps'),
+        bot:{type:'trap', range:750},
+        cast(u, aim, rk){
+          const p = clampRange(u, aim, 750), plus = hasTal(u, 'zeka_w_plus');
+          placeTrap(u, p.x, p.y, { max: plus ? 4 : 3, root: 1.2 + 0.2*rk + (plus ? 0.75 : 0), dmg: 30 + 25*rk });
+          return true;
+        }},
+      { key:'E', name:L('Mreža', 'Net'), emoji:'🕸️', cd:13, mana:70, color:'#e5e7eb',
+        desc:L('Ispali mrežu ispred sebe — prvi pogođeni neprijatelj je jako usporen, a ti od trzaja odskočiš unatrag', 'Fire a net in front of you — the first enemy hit is slowed a lot, and the kick sends you hopping backwards'),
+        target:'point', castRange:750, line:true, lineFull:true, shotSpeed:1300, lineW:80,
+        tip:rk => L('⚔️ ' + (50 + 35*rk) + ' štete + 🐌 50% usporenje 1.5 s • 🐰 odskok 380 unatrag', '⚔️ ' + (50 + 35*rk) + ' damage + 🐌 50% slow for 1.5 s • 🐰 hop 380 backwards'),
+        bot:{type:'net', range:450},
+        cast(u, aim, rk){
+          let dx = aim.x - u.x, dy = aim.y - u.y, L0 = Math.hypot(dx, dy);
+          if(L0 < 1){ dx = Math.cos(u.dir || 0); dy = Math.sin(u.dir || 0); L0 = 1; }
+          spawnSkillshot(u, aim, {speed:1300, r:34, range:750, dmg:50 + 35*rk, color:'#e5e7eb', emoji:'🕸️',
+            onHit(e){
+              applySlow(e, 0.5, 1.5);
+              if(e.kind === 'hero') e.serifMark = { src: u, t: gameTime + 3 };   // ⭐ sljedeći hitac je Šerifov
+              addFloat(e.x, e.y - 20, L('🕸️ U mreži!', '🕸️ Netted!'), '#e5e7eb', 15);
+            }});
+          leapTo(u, { x: u.x - dx / L0 * 380, y: u.y - dy / L0 * 380 }, 380);   // trzaj: odskoči unatrag
+          u.dir = Math.atan2(dy, dx);
+          return true;
+        }},
+      { key:'R', name:L('As iz rukava', 'Ace in the Hole'), emoji:'🎯', cd:70, mana:100, ult:true, color:'#f87171',
+        desc:L('ULTI: Nanišani neprijateljskog junaka JAKO daleko — nakon 1 s nišanjenja hitac poleti za njim; drugi neprijateljski junak može uskočiti i primiti metak umjesto njega', 'ULT: Aim at an enemy hero VERY far away — after 1 s of aiming the bullet chases them; another enemy hero can jump in the way and take the bullet instead'),
+        target:'point', castRange:2500, aoe:170,
+        tip:rk => L('🎯 nišani 1 s, pa ⚔️ ' + (230 + 140*rk) + ' štete (domet 2500)', '🎯 aims for 1 s, then ⚔️ ' + (230 + 140*rk) + ' damage (range 2500)'),
+        bot:{type:'snipe', range:2300},
+        cast(u, aim, rk){
+          const p = clampRange(u, aim, 2500);
+          let best = null, bd = 280;
+          for(const e of units){
+            if(e.kind !== 'hero' || e.team === u.team || e.dead || e.removeMe || !isVisibleTo(u.team, e)) continue;
+            if(e.status.invisT > 0 && e.status.trackT <= 0) continue;
+            const d = distXY(p.x, p.y, e.x, e.y); if(d < bd){ bd = d; best = e; }
+          }
+          if(!best) return false;
+          const dmg = 230 + 140*rk + abBonus(u, 'R', 'dmg');   // ⚖️ bilo 260 + 160
+          startChannel(u, 1.0, best, t => {
+            // drugi neprijateljski junak na putu primi metak (kao u LoL-u)
+            const dx = t.x - u.x, dy = t.y - u.y, L0 = Math.hypot(dx, dy) || 1;
+            const blk = lineFirstHit(u, { lineW: 60 }, dx / L0, dy / L0, L0 - (t.r || 0), e => e.kind === 'hero');
+            const tg = blk && blk !== t ? blk : t;
+            if(tg !== t) addFloat(tg.x, tg.y - 30, L('🛡️ Uskočio je!', '🛡️ Jumped in!'), '#fca5a5', 16);
+            spawnHoming(u, tg, { speed:3000, dmg, r:10, color:'#f87171', shot:'pellet', big:true,
+              onHit(e){ burst(e.x, e.y, '#fde047', 30, 320, 8); addFloat(e.x, e.y, L('🎯 AS IZ RUKAVA!', '🎯 ACE IN THE HOLE!'), '#fde047', 20); } });
+            sfxAt('pew', u.x, u.y);
+          });
+          addFloat(best.x, best.y, L('🎯 Nišani te!', '🎯 Aiming at you!'), '#fca5a5', 16);
+          return true;
+        }},
+    ],
+  },
 ];
 
 /* 🎨 v0.55: ikone moći iz GPT Image 2.5 — assets/ab/<junak>_<P|Q|W|E|R|T>.jpg (P = urođena pasiva, T = talenti).
@@ -2456,6 +2534,7 @@ const HERO_BUILDS = {
   nilski: ['bracer', 'phase', 'blink', 'vanguard', 'bkb', 'titanheart'],   // v0.55
   irbis: ['wraith', 'treads', 'mom', 'crystalys', 'butterfly', 'daedalus'],
   skorpion: ['bracer', 'arcane', 'blink', 'bkb', 'shiva', 'refresher'],
+  zeka: ['wraith', 'phase', 'crystalys', 'maelstrom', 'daedalus', 'butterfly'],   // v0.56
 };
 for(const h of HEROES) h.build = HERO_BUILDS[h.id] || BOT_BUILD;
 /* 🎲 v0.56 raznolikost: bot svaku igru odabere jednu od inačica gradnje (prva je ona iz vodiča u dućanu);
@@ -2768,6 +2847,12 @@ const HERO_TALENTS = {
     [TAL('🦂', L('Žalac −3 s hlađenja', 'Stinger −3 s cooldown'), { ab:{ E:{ cd:-3 } } }), TAL('🛡️', L('+5 oklopa', '+5 armor'), { armor:5 })],
     [TAL('🧪', L('Otrovni prasak +1 rang', 'Venom Burst +1 rank'), { pas:1 }), TAL('⏳', L('Pješčana oluja +10 štete/s', 'Sandstorm +10 damage/s'), { ab:{ W:{ dmg:5 } } })],
     [TAL('🌋', L('Epicentar +3 udara', 'Epicenter +3 pulses'), { flag:'skorpion_r_more' }), TAL('🕳️', L('Podzemni juriš +0.6 s omame', 'Burrow Strike +0.6 s stun'), { ab:{ Q:{ dur:0.6 } } })],
+  ],
+  zeka: [   // v0.56
+    [TAL('🔫', L('Mirotvorac +60 štete', 'Peacemaker +60 damage'), { ab:{ Q:{ dmg:60 } } }), TAL('👟', L('+20 brzine kretanja', '+20 move speed'), { spd:20 })],
+    [TAL('🪤', L('Zamka: +1 zamka i +0.75 s ukopavanja', 'Snap Trap: +1 trap and +0.75 s stuck'), { flag:'zeka_w_plus' }), TAL('⚡', L('+20% brzine napada', '+20% attack speed'), { aspd:0.2 })],
+    [TAL('🕸️', L('Mreža −4 s hlađenja', 'Net −4 s cooldown'), { ab:{ E:{ cd:-4 } } }), TAL('⭐', L('Šerifov hitac +1 rang', 'Sheriff Shot +1 rank'), { pas:1 })],
+    [TAL('🎯', L('As iz rukava +300 štete', 'Ace in the Hole +300 damage'), { ab:{ R:{ dmg:300 } } }), TAL('🔭', L('+100 dometa napada', '+100 attack range'), { range:100 })],
   ],
 };
 

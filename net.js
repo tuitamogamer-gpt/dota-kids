@@ -349,6 +349,7 @@ function buildSnapshot(){
     pg: pings.map(p => [Math.round(p.x), Math.round(p.y), p.team, +p.t.toFixed(2)]),
     cu: couriers.map(c => [Math.round(c.x), Math.round(c.y), +c.dir.toFixed(2), ['home', 'go', 'back'].indexOf(c.state), c.carry]),
     wd: wards.map(w => ({ x: Math.round(w.x), y: Math.round(w.y), r: w.r, t: +w.t.toFixed(1), tm: w.team })),
+    tr: traps.map(t => [t.id, Math.round(t.x), Math.round(t.y), t.team, t.arm > 0 ? 1 : 0]),   // 🪤 Zekine zamke
     tc: treesCut.slice(),   // 🌳 pojedena / posječena stabla
   };
 }
@@ -568,6 +569,14 @@ function applySnapshot(d){
     for(const i of treesCut){ if(!now.has(i) && trees[i]){ trees[i].cut = false; changed = true; if(typeof treeGrow3D === 'function') treeGrow3D(i); } }
     if(changed){ treesCut = [...now]; buildTreeGrid(); markTreesDirty(); }
   }
+  {   // 🪤 zamke: isti objekti (po id-u) da 3D prikaz ne gradi mrežu iznova
+    const old = traps;
+    traps = (d.tr || []).map(a => {
+      const ex = old.find(o => o.id === a[0]);
+      if(ex){ ex.arm = a[4] ? 0.3 : 0; return ex; }
+      return { id: a[0], x: a[1], y: a[2], team: a[3], arm: a[4] ? 0.3 : 0, r: 55, t: 45 };
+    });
+  }
   {   // zadrži iste objekte oka da 3D prikaz ne gradi mrežu iznova svaki snapshot
     const old = wards;
     wards = (d.wd || []).map(w => {
@@ -642,7 +651,7 @@ function resetMatchState(){
   kills = [0, 0];
   camps = []; runes = [];
   runeTimer = CFG.runeEvery; runeSpotI = 0; isNight = false;
-  wards = []; nightForceT = 0; superCreeps = [{}, {}]; winnerTeam = null; barracksRespawn = [];
+  wards = []; traps = []; nightForceT = 0; superCreeps = [{}, {}]; winnerTeam = null; barracksRespawn = [];
   glyph = [{ t: 0, cd: 0 }, { t: 0, cd: 0 }];
   makeShrines(); makeCouriers(); creepTier = 0; bossKills = 0; coinDrops = [];
   teamDrakes = [[], []]; nextDrake = null; scoreOpen = false;

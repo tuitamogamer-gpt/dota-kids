@@ -142,7 +142,7 @@
  },
  {
   "id": "strijela",
-  "name": "Strijela",
+  "name": "Arrow",
   "emoji": "🦊",
   "role": "🏹 Sly fox — archer",
   "ranged": true,
@@ -392,7 +392,7 @@
     "key": "Q",
     "name": "Sacred Arrow",
     "emoji": "🌠",
-    "desc": "A moon arrow that flies VERY far — the farther it flies, the harder it stuns and hurts!",
+    "desc": "A moon arrow that flies ACROSS HALF THE MAP (range 2000) and sticks into the FIRST unit it hits (a creep stops it too). It flies slowly — aim AHEAD of a walking hero, who can also dodge it! The farther it flies, the longer it stuns (up to 3.6 s) and the more it hurts. A jungle monster is defeated instantly!",
     "color": "#e9d5ff",
     "ult": false
    },
@@ -1144,7 +1144,7 @@
     "key": "Q",
     "name": "Hook",
     "emoji": "🪝",
-    "desc": "Throw a hook on a chain — the first enemy it hits gets reeled all the way to you!",
+    "desc": "Throw a hook on a chain (range 1400) — the first enemy it hits gets reeled all the way to you! The hook is not instant: aim AHEAD of a walking hero, and a creep in the way stops it too.",
     "color": "#cbd5e1",
     "ult": false
    },
@@ -1152,7 +1152,7 @@
     "key": "W",
     "name": "Stinky Cloud",
     "emoji": "🤢",
-    "desc": "A stinky green cloud rises around you — enemies in it lose health and slow down (it stinks a little for you too!)",
+    "desc": "ON / OFF (like Rot in DotA): while it is on, a stinky green cloud surrounds you — enemies in it lose health and slow down, and it stinks for you too (you lose a little health, but you can't defeat yourself). It works until you switch it off.",
     "color": "#84cc16",
     "ult": false
    },
@@ -1264,6 +1264,53 @@
     "emoji": "🌋",
     "desc": "ULT: After a short wind-up the ground shakes — ever bigger shockwaves around you hurt and slow enemies",
     "color": "#f59e0b",
+    "ult": true
+   }
+  ]
+ },
+ {
+  "id": "zeka",
+  "name": "Zeka",
+  "emoji": "🐰",
+  "role": "🎯 Sheriff bunny — longest range, sets traps",
+  "ranged": true,
+  "P": {
+   "name": "Sheriff Shot",
+   "emoji": "⭐",
+   "desc": "PASSIVE: every 5th shot hits hard — and a hero caught in a trap or a net gets one right away",
+   "color": "#fde047"
+  },
+  "ab": [
+   {
+    "key": "Q",
+    "name": "Peacemaker",
+    "emoji": "🔫",
+    "desc": "A long shot through a whole line — it hurts EVERY enemy it passes through",
+    "color": "#fde68a",
+    "ult": false
+   },
+   {
+    "key": "W",
+    "name": "Snap Trap",
+    "emoji": "🪤",
+    "desc": "Set a trap on the ground (up to 3) — an enemy hero who steps on it is stuck in place and gets a Sheriff Shot",
+    "color": "#a3a3a3",
+    "ult": false
+   },
+   {
+    "key": "E",
+    "name": "Net",
+    "emoji": "🕸️",
+    "desc": "Fire a net in front of you — the first enemy hit is slowed a lot, and the kick sends you hopping backwards",
+    "color": "#e5e7eb",
+    "ult": false
+   },
+   {
+    "key": "R",
+    "name": "Ace in the Hole",
+    "emoji": "🎯",
+    "desc": "ULT: Aim at an enemy hero VERY far away — after 1 s of aiming the bullet chases them; another enemy hero can jump in the way and take the bullet instead",
+    "color": "#f87171",
     "ult": true
    }
   ]

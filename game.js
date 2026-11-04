@@ -351,6 +351,7 @@ let trees = [];
 let camps = [];
 let runes = [];
 let wards = [];                 // 👁️ privremeni vid (Sovino oko)
+let traps = [];                 // 🪤 v0.56 Zekine zamke { id, x, y, team, src, t, arm, r, root, dmg }
 let nightForceT = 0;            // 🌑 Vječna noć: prisilna noć još toliko sekundi
 let superCreeps = [{}, {}];     // [tim][staza] = true kad je protivnička vojarna srušena
 let barracksRespawn = [];       // 🏚️ srušene vojarne se obnavljaju (kao inhibitori u LoL-u): {team, lane, x, y, t}
@@ -1197,6 +1198,39 @@ function botSkillAim(u, e, speed){
   const px = e.x + (lead.x - e.x) * k, py = e.y + (lead.y - e.y) * k;
   const a = (Math.random() - 0.5) * 0.07 * err, dx = px - u.x, dy = py - u.y;
   return { x: u.x + dx * Math.cos(a) - dy * Math.sin(a), y: u.y + dx * Math.sin(a) + dy * Math.cos(a) };
+}
+/* 🪤 v0.56 Zamka (Zeka W): stoji na tlu 45 s (najviše 3 po Zeki, najstarija nestane), pola sekunde se "napinje", pa neprijateljski
+   junak koji stane na nju ostane ukopan, dobije malo štete i Šerifov hitac. Vojnici je ne okidaju (kao u LoL-u). */
+function placeTrap(u, x, y, o){
+  const mine = traps.filter(t => t.src === u);
+  while(mine.length >= o.max){ const old = mine.shift(); traps.splice(traps.indexOf(old), 1); }
+  traps.push({ id: nextId++, x: clamp(x, 40, WORLD - 40), y: clamp(y, 40, WORLD - 40), team: u.team, src: u, t: 45, arm: 0.6, r: 55,
+    root: o.root, dmg: o.dmg, key: abCtx && abCtx.src === u ? abCtx.key : null });
+  ring(x, y, 55, '#d4d4d8');
+}
+function updateTraps(dt){
+  for(let i = traps.length - 1; i >= 0; i--){
+    const tr = traps[i];
+    tr.t -= dt;
+    if(tr.arm > 0) tr.arm -= dt;
+    if(tr.t <= 0){ traps.splice(i, 1); continue; }
+    if(tr.arm > 0) continue;
+    for(const e of units){
+      if(e.kind !== 'hero' || e.team === tr.team || e.dead || e.removeMe || e.invuln || !isSpellTarget(e)) continue;
+      if(distXY(tr.x, tr.y, e.x, e.y) > tr.r + e.r * 0.5) continue;
+      const prev = abCtx; abCtx = tr.key ? { src: tr.src, key: tr.key } : null;
+      applyRoot(e, tr.root);
+      applyDamage(e, tr.dmg, tr.src);
+      abCtx = prev;
+      e.serifMark = { src: tr.src, t: gameTime + 3 };   // ⭐ sljedeći Zekin hitac po njemu je Šerifov
+      e.moveTarget = null;
+      ring(tr.x, tr.y, 80, '#fde047'); burst(tr.x, tr.y, '#d4d4d8', 14, 160, 5);
+      addFloat(e.x, e.y - 24, L('🪤 Uhvaćen!', '🪤 Caught!'), '#fde047', 16);
+      sfxAt('hit', tr.x, tr.y);
+      traps.splice(i, 1);
+      break;
+    }
+  }
 }
 /* zamjena mjesta (Gavran W) */
 function swapPositions(u, e){
@@ -2544,6 +2578,14 @@ function performAttack(u, t){
   const hsr = passiveRank(u, 'headshot');      // 🎯 Pogodak u glavu (Nišan)
   const hsProc = !!(hsr && !isStructure(t) && Math.random() < 0.20 + 0.04 * hsr);
   if(hsProc) dmg += 16 + 16 * hsr;
+  const sr = passiveRank(u, 'serif');          // ⭐ Šerifov hitac (Zeka, v0.56): svaki 5. hitac, i odmah po junaku u zamci ili mreži
+  let srProc = false;
+  if(sr && !isStructure(t)){
+    const marked = !!(t.serifMark && t.serifMark.src === u && gameTime < t.serifMark.t);
+    if(marked) t.serifMark = null;
+    else u.serifN = (u.serifN || 0) + 1;
+    if(marked || u.serifN >= 5){ srProc = true; if(!marked) u.serifN = 0; dmg *= 1.4 + 0.12 * sr; }   // ⚖️ bilo 1.5 + 0.15
+  }
   if(u.precT > 0 && u.projSpeed > 0) dmg *= 1 + u.precF;   // 🎯 Aura preciznosti (Inja, v0.55)
   const frost = u.frostT > 0 && !isStructure(t);            // ❄️ Ledene strijele
   if(frost) dmg += u.frostDmg;
@@ -2593,6 +2635,7 @@ function performAttack(u, t){
     }
     if(shadowBonus) addFloat(tt.x, tt.y, L('Iz sjene! 👤', 'From the shadows! 👤'), '#c4b5fd', 15);
     if(hsProc && !tt.dead){ applyStun(tt, 0.15); knockback(tt, u.x, u.y, 36); addFloat(tt.x, tt.y, L('🎯 U glavu!', '🎯 Headshot!'), '#fde047', 15); }
+    if(srProc){ burst(tt.x, tt.y, '#fde047', 10, 150, 5); if(tt.kind === 'hero' || isHuman(u)) addFloat(tt.x, tt.y - 10, L('⭐ Šerifov hitac!', '⭐ Sheriff Shot!'), '#fde047', 15); }
     if(jinProc){ applySlow(tt, 0.3, 1.5); addFloat(tt.x, tt.y, '💢', '#fb923c', 15); }
     if(dodir) applySlow(tt, 0.1 + 0.05 * dodir, 1.5);
     if(frost) applySlow(tt, u.frostSlow, 1.5);
@@ -2628,7 +2671,8 @@ function performAttack(u, t){
     (u.status.blindT > 0 && Math.random() < u.status.blindF) ||   // 😵 tinta / vrtoglavica
     (!ts && t.dodgeT > 0 && Math.random() < t.dodgeF) ||          // 🥴 Pijani korak
     (!ts && (t.evasion > 0 || t.talEva > 0) && Math.random() < 1 - (1 - (t.evasion || 0)) * (1 - (t.talEva || 0)));   // 🦋 Plesna krila / 🎓 talent: izbjegavanje
-  u.atkHeavy = crit || komboHit || jinProc || clawProc || shadowBonus > 0 || bashProc || hsProc || mkProc;   // 3D: jači zamah (attack2)
+  u.atkHeavy = crit || komboHit || jinProc || clawProc || shadowBonus > 0 || bashProc || hsProc || mkProc || srProc;   // 3D: jači zamah (attack2)
+  u.atkBig = srProc;   // ⭐ Šerifov hitac: veći metak
   u.atkCrit = crit && !miss;   // 3D: bljesak oružja prije kritičnog udarca
   // kao u DotA: zamah traje do "kadra udarca" animacije, tek tada šteta / projektil (kula puca odmah)
   const wind = u.kind === 'tower' ? 0 : ATK_POINT / Math.max(1, ATK_ANIM_LEN / u.atkTimer);
@@ -2665,7 +2709,7 @@ function releaseAttack(u, t, dmg, miss, onHitFx, crit){
     const off = u.kind === 'hero' && u.hero.shot === 'pellet' ? 58 : (u.r || 16) * 0.8 + 8;   // strijela / kugla polijeće iz ruke (metak iz cijevi puške) ispred junaka, ne iz sredine tijela
     spawnHoming(u, t, {
       x: u.x + Math.cos(u.dir || 0) * off, y: u.y + Math.sin(u.dir || 0) * off,
-      speed: u.projSpeed, dmg, miss, atk: true, crit: crit && !miss,
+      speed: u.projSpeed, dmg, miss, atk: true, crit: crit && !miss, big: !!u.atkBig && !miss,   // ⭐ Šerifov hitac: veći metak
       onHit: miss ? null : onHitFx,
       color: u.kind === 'tower' ? '#fbbf24' : TEAM_LIGHT[u.team],
       r: u.kind === 'tower' ? 9 : 6,
@@ -2939,6 +2983,16 @@ function botUseAbilities(u, eh, plan){
           if((e.kind === 'creep' || e.kind === 'neutral') && e.team !== u.team && !e.dead && !e.removeMe && dist(u, e) < hint.range) creepN++;
         }
         if((eh && dEh < hint.range) || creepN >= 3 || (creepN >= 2 && jungleAim(u, hint.range))) castAbility(u, i, { x: u.x, y: u.y });
+        break;
+      }
+      case 'trap': {   // 🪤 Zamka: pod noge neprijateljskom junaku (ispred njega ako hoda), sigurno kad je ukopan / omamljen / usporen
+        if(!eh || dEh > hint.range) break;
+        const held = eh.status.rootT > 0 || eh.status.stun > 0 || eh.status.slowT > 0;
+        if(held || Math.random() < 0.3) castAbility(u, i, held ? { x: eh.x, y: eh.y } : leadAim(u, eh, 900));
+        break;
+      }
+      case 'net': {   // 🕸️ Mreža: kad je neprijatelj preblizu (odskoči od njega) ili kad se tim bori
+        if(eh && dEh < hint.range && (u.hp < u.maxhp * 0.6 || dEh < 250 || (plan && plan.engage))) castAbility(u, i, { x: eh.x, y: eh.y });
         break;
       }
       case 'toggle-aoe': {   // 🔁 Smrdljivi oblak: uključi kad je neprijatelj blizu (gašenje: updateCloud)
@@ -4521,6 +4575,7 @@ function update(dt){
   if(nightForceT > 0) nightForceT -= dt;
   updateTrees(dt);   // 🌳 pojedena / posječena stabla ponovo izrastu
   for(let i = wards.length - 1; i >= 0; i--){ wards[i].t -= dt; if(wards[i].t <= 0) wards.splice(i, 1); }
+  if(traps.length) updateTraps(dt);   // 🪤
   updateShrines(dt);
   updateFountains(dt);   // ⛲
   updateCouriers(dt);
@@ -5001,7 +5056,7 @@ function startGame(heroIdx){
   kills = [0, 0];
   camps = []; runes = []; neutralLvl = 1;
   runeTimer = CFG.runeEvery; runeSpotI = 0; isNight = false;
-  wards = []; nightForceT = 0; superCreeps = [{}, {}]; winnerTeam = null; barracksRespawn = [];
+  wards = []; traps = []; nightForceT = 0; superCreeps = [{}, {}]; winnerTeam = null; barracksRespawn = [];
   glyph = [{ t: 0, cd: 0 }, { t: 0, cd: 0 }];
   makeShrines(); makeCouriers(); creepTier = 0; bossKills = 0; coinDrops = [];
   teamDrakes = [[], []]; nextDrake = null; scoreOpen = false;
@@ -5688,7 +5743,7 @@ const VOX_SILENT = 'data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwL
 function voxSrc(id, key){   // id junaka ili 'ann' (najavljivač)
   if(typeof VOICES === 'undefined') return null;
   const ann = id === 'ann';
-  if(ann ? (typeof ANNOUNCER === 'undefined' || key === 'voice' || !ANNOUNCER[key]) : !VOICES[id]) return null;
+  if(ann ? (typeof ANNOUNCER === 'undefined' || key === 'voice' || !ANNOUNCER[key]) : (!VOICES[id] || VOICES[id].pending)) return null;   // pending = replike još bez zvuka
   if(VOICE_LOCAL) return 'assets/voice/' + id + '/' + key + '.mp3';
   const f = ann ? (typeof ANN_REMOTE !== 'undefined' && ANN_REMOTE[key]) : (VOICE_REMOTE[id] || '').split(' ')[VOICE_KEYS.indexOf(key)];
   return f ? VOICE_REMOTE_BASE + f + '.mp3' : null;
@@ -8502,6 +8557,11 @@ function drawMinimap(ms, mx, my){
     ctx.font = fontEmoji(11);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('👁️', mx + w.x * sc, my + w.y * sc);
+  }
+  for(const t of traps){   // 🪤 svoje zamke na minimapi
+    if(t.team !== myTeam) continue;
+    ctx.font = fontEmoji(9); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('🪤', mx + t.x * sc, my + t.y * sc);
   }
   ctx.font = fontEmoji(11);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';

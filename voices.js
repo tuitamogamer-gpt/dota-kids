@@ -134,6 +134,12 @@ const VOICES = {
     attack: '[gleeful] Come here, little fishy!', ult: '[very hungry, excited] Big gulp! Nom nom nom!', kill: '[satisfied, laughing] Yum! Fresh catch!',
     death: '[sad, groaning] My tummy... so empty...', respawn: '[jolly and loud] Petsko is back, and still hungry!',
     taunt: '[playful, belly laugh] Ha! Look at this belly bounce!' },
+  // ---- v0.56 ---- pending: replike su spremne, ali audio još nije generiran (Fish Audio krediti) — igra je dotad tiha za ovog junaka
+  zeka: { voice: 'e6c66fbaab8544d89460b95b36288958', pending: true,   // Energetic Young Female — vedra, samouvjerena šerifica
+    pick: '[confident and cheerful] Sheriff Zeka, on duty! Nobody escapes my aim!', move1: '[brisk] On patrol!', move2: '[playful] Hop to it!',
+    attack: '[focused, sharp] You are under arrest!', ult: '[calm, then triumphant] Got you in my sights... Ace in the hole!', kill: '[proud] Case closed!',
+    death: '[sad, softly] My hat... my poor hat...', respawn: '[determined] The sheriff is back in town!',
+    taunt: '[teasing, laughing] Watch your step... there might be a trap!' },
   irbis: { voice: '933563129e564b19a115bedd57b7406a',   // Sarah (Fish Official) — mirna, tiha, hladna
     pick: '[cool and calm] Inya. The snow sees everything.', move1: '[quiet, focused] Silent as snow.', move2: '[calm] Moving through the frost.',
     attack: '[focused, icy] Frozen arrow, fly!', ult: '[confident, steady] My aim never misses.', kill: '[cool, satisfied] Chilled to the bone.',

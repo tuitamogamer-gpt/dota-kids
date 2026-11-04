@@ -6,6 +6,7 @@ urls = json.load(open(os.path.join(D, 'urls.json'), encoding='utf-8'))
 src = open(os.path.join(ROOT, 'voices.js'), encoding='utf-8').read()
 KEYS = re.findall(r"'(\w+)'", re.search(r"const VOICE_KEYS = \[(.*?)\];", src).group(1))
 heroes = re.findall(r"^  (\w+): \{ voice:", src, re.M)
+heroes = [h for h in heroes if all((h + '/' + k) in urls for k in KEYS)]   # v0.56: junak bez generiranih replika (pending) se preskače
 ann_block = re.search(r"const ANNOUNCER = \{(.*?)\n\};", src, re.S).group(1)
 ANN = [k for k in re.findall(r"(\w+): ['\"]", ann_block) if k != 'voice']
 base = 'https://platform.r2.fish.audio/tasks/'
