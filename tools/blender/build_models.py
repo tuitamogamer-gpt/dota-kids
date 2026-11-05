@@ -1453,6 +1453,10 @@ def biped(name, c, opts):
         for s in (1, -1):
             h.cyl(V(-0.08, s * 0.22, 1.58), V(-0.12, s * 0.3, 1.8), 0.065 * S * es, 0.04 * S * es, fur, seg=10, smooth=True)
             h.sphere(V(-0.1, s * 0.29, 1.79), (0.025 * S * es, 0.035 * S * es, 0.02 * S * es), inner, seg=(8, 6))
+    elif ears == 'deer':   # v0.56 Jelko: duguljaste jelenje uši postrance, vrhom malo prema gore
+        for s in (1, -1):
+            h.sphere(V(-0.06, s * 0.36, 1.5), (0.05 * S * es, 0.17 * S * es, 0.075 * S * es), fur, rot=(s * 25, 0, 0), seg=(12, 9))
+            h.sphere(V(-0.035, s * 0.37, 1.505), (0.025 * S * es, 0.12 * S * es, 0.045 * S * es), inner, rot=(s * 25, 0, 0), seg=(10, 8))
     elif ears == 'bunny':   # v0.56 Zeka: duge uspravne zečje uši s ružičastom unutrašnjosti, malo nagnute van i natrag
         for s in (1, -1):
             tilt = (s * -14, -12, 0) if s > 0 else (s * -20, -6, 0)   # lijevo uho malo više nagnuto (veselije)
@@ -1893,6 +1897,16 @@ def biped(name, c, opts):
         for k in range(3):
             R.cyl(hR - d * (0.07 - k * 0.05) * S, hR - d * (0.05 - k * 0.05) * S, 0.034 * S, 0.034 * S, '#3b2414', seg=6, caps=False)
         R.cyl(bl + d * 0.34 * S, bl + d * 0.45 * S, 0.046 * S, 0.0, '#dfe6ee', seg=4)
+    if wpn == 'glaives':   # v0.56 Jelko: dvije zakrivljene oštrice (kao Anti-Mage), u svakoj ruci po jedna, sa svjetlećim bridom
+        for arm, hh in ((R, Vector(hR)), (L, Vector(hL))):
+            arm.cyl(hh - Vector((0, 0, 0.09 * S)), hh + Vector((0, 0, 0.07 * S)), 0.03 * S, 0.03 * S, '#3b2414', seg=6)   # drška
+            arm.sphere(hh + Vector((0.0, 0, 0.08 * S)), 0.042 * S, '#f6c945', seg=(8, 6))
+            pts = [hh + Vector((0.03, 0, 0.09)) * S, hh + Vector((0.2, 0, 0.22)) * S, hh + Vector((0.4, 0, 0.2)) * S, hh + Vector((0.54, 0, 0.05)) * S]
+            for a_, b_ in zip(pts, pts[1:]):
+                arm.cyl(tuple(a_), tuple(b_), 0.032 * S, 0.028 * S, '#c7d2fe', seg=6)
+            arm.cyl(tuple(pts[-1]), tuple(pts[-1] + Vector((0.08, 0, -0.08)) * S), 0.028 * S, 0.0, '#e0e7ff', seg=6)
+            for a_, b_ in zip(pts, pts[1:]):   # svjetleći brid
+                arm.cyl(tuple(a_ + Vector((0, 0, 0.025)) * S), tuple(b_ + Vector((0, 0, 0.025)) * S), 0.009 * S, 0.009 * S, '#67e8f9', mat='glow', seg=4)
     if wpn == 'katana':   # v0.56 Jazo: duga tanka katana, okrugli zlatni štitnik (tsuba) i crveno omotana drška
         d = Vector((0.94, 0, 0.34)).normalized()
         up = Vector((-0.34, 0, 0.94)).normalized()
@@ -2751,6 +2765,24 @@ def sig_zeka(k):
         t.sphere(V(-0.34, 0, 0.58), (0.11 * S, 0.11 * S, 0.1 * S), '#ffffff', seg=(12, 9))
 
 
+def sig_jelko(k):
+    """v0.56 Jelko (jelen lovac na čarobnjake, kao Anti-Mage): razgranati rogovi sa svjetlećim vrhovima i tirkizne rune na obrazima"""
+    m, h, b, R, L, V, S = k['m'], k['h'], k['b'], k['R'], k['L'], k['V'], k['S']
+    bone = '#ead9b0'
+    for sd in (1, -1):
+        p0, p1, p2 = Vector(V(-0.06, sd * 0.13, 1.6)), Vector(V(-0.1, sd * 0.24, 1.88)), Vector(V(-0.18, sd * 0.32, 2.12))
+        h.cyl(tuple(p0), tuple(p1), 0.04 * S, 0.033 * S, bone, seg=8, smooth=True)
+        h.cyl(tuple(p1), tuple(p2), 0.033 * S, 0.02 * S, bone, seg=8, smooth=True)
+        for base, tip in ((p1, Vector(V(0.06, sd * 0.24, 2.04))), (p1.lerp(p2, 0.6), Vector(V(-0.04, sd * 0.4, 2.2)))):   # odvojci
+            h.cyl(tuple(base), tuple(tip), 0.022 * S, 0.012 * S, bone, seg=6, smooth=True)
+            h.sphere(tuple(tip), 0.018 * S, '#67e8f9', mat='glow', seg=(6, 4))
+        h.sphere(tuple(p2), 0.02 * S, '#67e8f9', mat='glow', seg=(6, 4))
+    hc, rad = V(0, 0, k['hz']), (k['hr'][0] * S, k['hr'][1] * S, k['hr'][2] * S)
+    for sd in (1, -1):   # svjetleće rune (crtice) na obrazima
+        face_cap(h, hc, rad, sd * 50, -6, (0.05 * S, 0.012 * S), '#22d3ee', out=0.006 * S)
+        face_cap(h, hc, rad, sd * 58, -16, (0.04 * S, 0.011 * S), '#22d3ee', out=0.006 * S)
+
+
 def sig_jazo(k):
     """v0.56 Jazo (jazavac samuraj, kao Juggernaut): bijela pruga od nosa preko tjemena, samurajska punđa, oklopna ploča na prsima"""
     m, h, b, R, L, V, S = k['m'], k['h'], k['b'], k['R'], k['L'], k['V'], k['S']
@@ -2770,7 +2802,7 @@ def sig_jazo(k):
         b.sphere(V(0.3, sd * 0.15, 0.95), 0.016 * S, '#f6c945', seg=(6, 4))
 
 
-SIGS = {'jazo': sig_jazo, 'zeka': sig_zeka, 'nilski': sig_nilski, 'irbis': sig_irbis, 'skorpion': sig_skorpion, 'nisan': sig_nisan, 'bikos': sig_bikos, 'vitez': sig_vitez, 'zarko': sig_zarko, 'ledena': sig_ledena, 'strijela': sig_strijela, 'listko': sig_listko,
+SIGS = {'jelko': sig_jelko, 'jazo': sig_jazo, 'zeka': sig_zeka, 'nilski': sig_nilski, 'irbis': sig_irbis, 'skorpion': sig_skorpion, 'nisan': sig_nisan, 'bikos': sig_bikos, 'vitez': sig_vitez, 'zarko': sig_zarko, 'ledena': sig_ledena, 'strijela': sig_strijela, 'listko': sig_listko,
         'munja': sig_munja, 'skokica': sig_skokica, 'orlina': sig_orlina, 'luna': sig_luna, 'tragac': sig_tragac,
         'jez': sig_jez, 'slon': sig_slon, 'pcela': sig_pcela, 'sova': sig_sova, 'majmun': sig_majmun, 'vuk': sig_vuk,
         'gavran': sig_gavran, 'hobotnica': sig_hobotnica, 'nosorog': sig_nosorog, 'panda': sig_panda,
@@ -2779,6 +2811,12 @@ SIGS = {'jazo': sig_jazo, 'zeka': sig_zeka, 'nilski': sig_nilski, 'irbis': sig_i
 
 HEROES = {
     # ---- v0.56 ----
+    'jelko': (dict(fur='#b7794a', belly='#f5e6d3', muzzle='#f5e6d3', dark='#5a3a22', inner='#f3c9a8', limb='#a86b3f',
+                   hand='#8a5a34', feet='#3b2414', nose='#1f1f1f'),
+              dict(ears='deer', snout='long', tail='stub', weapon='glaives', atk='claws', scale=1.02,
+                   eyes={'color': '#0891b2', 'size': 1.1}, brows='#5a3a22', browAngle=-10, blush=False,
+                   bracers='#312e81', boots='#1e1b4b',
+                   outfit=dict(style='vest', cloth='#4c1d95', lining='#2e1065', trim='#67e8f9', sleeves=True))),
     'jazo': (dict(fur='#6b7280', belly='#e5e7eb', muzzle='#f3f4f6', dark='#1f2937', inner='#9ca3af', limb='#4b5563',
                   hand='#4b5563', feet='#374151', nose='#111111'),
              dict(ears='round', earScale=0.6, snout='canine', snoutLen=0.17, snoutW=0.13, snoutLight=True, mask='#1f2937', tail='stub',
@@ -3927,7 +3965,7 @@ def _look_at(obj, frm, to):
 PORTRAIT_BG = [('jez', '#8a9a4a'), ('slon', '#5a6a8a'), ('pcela', '#b8860b'), ('sova', '#3b2f5c'), ('majmun', '#7a5a2a'),
                ('vuk', '#5a6270'), ('gavran', '#2e2a5c'), ('hobotnica', '#4a3a8a'), ('nosorog', '#6a7a6a'), ('panda', '#4a8a5a'),
                ('jednorog', '#7c3aed'), ('morskipas', '#0e7490'), ('nisan', '#b45309'), ('bikos', '#7f1d1d'),
-               ('nilski', '#6b5a8a'), ('irbis', '#1e5a7a'), ('skorpion', '#a16207'), ('zeka', '#5b3a8a'), ('jazo', '#9a3412')]
+               ('nilski', '#6b5a8a'), ('irbis', '#1e5a7a'), ('skorpion', '#a16207'), ('zeka', '#5b3a8a'), ('jazo', '#9a3412'), ('jelko', '#312e81')]
 
 
 def render_portraits(ids, size=512, outdir=None, samples=128):
@@ -5209,6 +5247,12 @@ def main():
         bake_ao(do_ao='--ao' in argv)
         preview(arg('out', os.path.join(HERE, 'preview_v55.png')), only=['hero_nilski', 'hero_irbis', 'hero_skorpion', 'proj_hook', 'proj_gust'],
                 cols=int(arg('cols', '5')), zoom=float(arg('zoom', '2.0')))
+        return
+    if '--dev-jelko' in argv:   # v0.56 Jelko (bez izvoza):  --out=put.png
+        arg = lambda k, d: next((a[len(k) + 3:] for a in argv if a.startswith('--' + k + '=')), d)
+        build_heroes(['jelko', 'jednorog'])
+        bake_ao(do_ao='--ao' in argv)
+        preview(arg('out', os.path.join(HERE, 'preview_jelko.png')), only=['hero_jelko', 'hero_jednorog'], cols=2, zoom=float(arg('zoom', '2.0')))
         return
     if '--dev-jazo' in argv:   # v0.56 Jazo i njegov totem (bez izvoza):  --out=put.png
         arg = lambda k, d: next((a[len(k) + 3:] for a in argv if a.startswith('--' + k + '=')), d)

@@ -4070,6 +4070,9 @@ function castFx(u, g, key){
     case 'zeka:W': for(let i = 0; i < 10; i++) fxSpawn(u.x, u.y, gh + 40, '#d4d4d8', { spd: 90, up: 80, grav: 220, life: 0.6, size: 12 }); break;   // 🪤 baci zamku
     case 'zeka:E': muzzleFx(u, gh, '#e5e7eb'); for(let i = 0; i < 12; i++) fxSpawn(u.x, u.y, gh + 10, '#f5f5f4', { spd: 70, up: 30, grav: 0, life: 0.5, size: 16 }); break;   // 🕸️ mreža + trzaj
     case 'zeka:R': hitSpark(u.x, u.y, gh + 70, '#fca5a5', 120); break;   // 🎯 As iz rukava: laser i nišan crta syncHeroExtras
+    case 'jelko:Q': for(let i = 0; i < 16; i++) fxSpawn(u.x, u.y, gh + 20 + Math.random() * 60, i % 2 ? '#c4b5fd' : '#a78bfa', { spd: 120, up: 40, grav: 0, life: 0.45, size: 16 }); break;   // ✨ treptaj
+    case 'jelko:W': for(let i = 0; i < 18; i++){ const a = i / 18 * TAU; fxSpawn(u.x + Math.cos(a) * 45, u.y + Math.sin(a) * 45, gh + 50, '#e9d5ff', { spd: 60, up: 30, grav: 0, life: 0.5, size: 14 }); } break;   // 🔮 štit
+    case 'jelko:R': hitSpark(u.x, u.y, gh + 60, '#93c5fd', 120); break;   // 💥 praznina (eksplozija na meti crta ring/burst)
     case 'jazo:Q': for(let i = 0; i < 24; i++){ const a = i / 24 * TAU; fxSpawn(u.x + Math.cos(a) * 60, u.y + Math.sin(a) * 60, gh + 30, i % 2 ? '#fdba74' : '#ffffff', { spd: 200, up: 20, grav: 0, life: 0.4, size: 16 }); } break;   // 🌪️ vihor
     case 'jazo:W': for(let i = 0; i < 16; i++) fxSpawn(u.x, u.y, gh + 20, '#86efac', { spd: 90, up: 120, grav: 160, life: 0.8, size: 14 }); break;   // 🗿 totem
     case 'jazo:E': case 'jazo:R': hitSpark(u.x, u.y, gh + 50, '#fdba74', 110); break;   // ⚡🗡️ rezovi: crte skokova crta addLine
@@ -4504,7 +4507,7 @@ function coinFx(x, y, n){
 }
 /* skokovi (Junački skok, Žablji skok, Obrušavanje, Mjesečev skok, Majmunski skok, Skokne čizme):
    logika premjesti junaka odmah, a model preleti lukom */
-const LEAP_KEYS = { 'bikos:E': 1, 'vitez:E': 1, 'skokica:W': 1, 'orlina:E': 1, 'luna:E': 1, 'majmun:W': 1, 'munja:W': 1, 'item:blink': 1, 'item:force': 1, 'vuk:W': 1, 'morskipas:W': 1, 'pcela:E': 1, 'jednorog:E': 1 };
+const LEAP_KEYS = { 'zeka:E': 1, 'bikos:E': 1, 'vitez:E': 1, 'skokica:W': 1, 'orlina:E': 1, 'luna:E': 1, 'majmun:W': 1, 'munja:W': 1, 'item:blink': 1, 'item:force': 1, 'vuk:W': 1, 'morskipas:W': 1, 'pcela:E': 1, 'jednorog:E': 1 };
 function startLeap(u, g, now, maxH){
   const ud = g.userData;
   if(ud.lastX == null) return;
@@ -4630,7 +4633,7 @@ function syncScene(tAnim){
         ud.model.rotation.x = ud.bank;
       }
       else g.rotation.y = ud.yaw;
-      ud.shield.visible = u.status.shieldT > 0 || u.barrierT > 0;   // 🫧 i Barijera
+      ud.shield.visible = u.status.shieldT > 0 || u.barrierT > 0 || u.status.cspellT > 0;   // 🫧 i Barijera, 🔮 Protučarolija
       const ch = pickStatusEmoji(u);
       if(ch !== ud.statusCh){
         ud.statusCh = ch;

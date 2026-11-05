@@ -1361,5 +1361,52 @@
     "ult": true
    }
   ]
+ },
+ {
+  "id": "jelko",
+  "name": "Yelko",
+  "emoji": "🦌",
+  "role": "🦌 Deer mage hunter — burns mana and blinks",
+  "ranged": false,
+  "P": {
+   "name": "Mana Break",
+   "emoji": "💧",
+   "desc": "PASSIVE: every hit on a hero burns their mana and hits harder because of it",
+   "color": "#60a5fa"
+  },
+  "ab": [
+   {
+    "key": "Q",
+    "name": "Blink",
+    "emoji": "✨",
+    "desc": "Teleport in an instant to the spot you choose — to attack or to escape",
+    "color": "#a78bfa",
+    "ult": false
+   },
+   {
+    "key": "W",
+    "name": "Counterspell",
+    "emoji": "🔮",
+    "desc": "ALWAYS: spells hurt you less. ACTIVE: a short magic shield — spells that hit you bounce back to whoever cast them, and no stun or slow can touch you",
+    "color": "#c084fc",
+    "ult": false
+   },
+   {
+    "key": "E",
+    "name": "Persecutor",
+    "emoji": "🏃",
+    "desc": "PASSIVE: your hits slow enemies down — the less mana they have, the slower they get",
+    "color": "#93c5fd",
+    "ult": false
+   },
+   {
+    "key": "R",
+    "name": "Mana Void",
+    "emoji": "💥",
+    "desc": "ULT: An enemy hero explodes with emptiness — the more mana they are missing, the harder it hurts them and everyone around them",
+    "color": "#60a5fa",
+    "ult": true
+   }
+  ]
  }
 ]

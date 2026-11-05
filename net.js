@@ -245,7 +245,7 @@ function netTalent(l, p){ sendNet({ c: 'talent', l, p }); }
 /* ---------- SNAPSHOT: domaćin → gost ---------- */
 function packStatus(st){
   return [st.slowT, st.stun, st.rootT, st.shieldT, st.hasteT, st.invisT, st.trackT, st.dmgMulT,
-    st.silenceT, st.immuneT, st.poisonT, st.curseT, st.blindT, st.formT, st.rageT].map(v => Math.round(v * 10));
+    st.silenceT, st.immuneT, st.poisonT, st.curseT, st.blindT, st.formT, st.rageT, st.cspellT || 0].map(v => Math.round(v * 10));
 }
 function heroExtras(h){
   return {
@@ -370,6 +370,7 @@ function unpackStatus(st, arr){
   st.trackT = arr[6] / 10; st.dmgMulT = arr[7] / 10;
   st.silenceT = (arr[8] || 0) / 10; st.immuneT = (arr[9] || 0) / 10; st.poisonT = (arr[10] || 0) / 10;
   st.curseT = (arr[11] || 0) / 10; st.blindT = (arr[12] || 0) / 10; st.formT = (arr[13] || 0) / 10; st.rageT = (arr[14] || 0) / 10;
+  st.cspellT = (arr[15] || 0) / 10;   // 🔮
   if(st.slowT > 0 && st.slowF <= 0) st.slowF = 0.3;
   st.dmgMulF = st.dmgMulT > 0 ? 2 : 1;
   st.hasteF = st.hasteT > 0 ? 1.3 : 1;

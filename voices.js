@@ -135,6 +135,11 @@ const VOICES = {
     death: '[sad, groaning] My tummy... so empty...', respawn: '[jolly and loud] Petsko is back, and still hungry!',
     taunt: '[playful, belly laugh] Ha! Look at this belly bounce!' },
   // ---- v0.56 ---- pending: replike su spremne, ali audio još nije generiran (Fish Audio krediti) — igra je dotad tiha za ovog junaka
+  jelko: { voice: '711cf3ed00ab441a8f54a45058047b7a', pending: true,   // Verity — mlad, brz, odlučan lovac
+    pick: '[determined] Yelko. Magic? Not on my watch!', move1: '[quick] Swift as a deer.', move2: '[alert] I hear magic nearby.',
+    attack: '[fierce] Your magic ends here!', ult: '[shouting, intense] Feel the void!', kill: '[confident] No more spells for you.',
+    death: '[surprised, fading] Too much... magic...', respawn: '[eager] The hunt continues!',
+    taunt: '[playful, teasing] Blink, blink! Catch me if you can!' },
   jazo: { voice: '8ec9973300874562962bbcb300f82213', pending: true,   // Guyzo — dubok, smiren, samouvjeren samuraj
     pick: '[calm and proud] Jazo. My blade is ready.', move1: '[calm] As the wind.', move2: '[steady] I walk the path.',
     attack: '[fierce] Face my blade!', ult: '[shouting, intense] A thousand slashes!', kill: '[calm, satisfied] A clean cut.',

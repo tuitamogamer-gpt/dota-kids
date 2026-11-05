@@ -752,7 +752,7 @@ function baseStatus(){
   return { slowT: 0, slowF: 0, stun: 0, rootT: 0, shieldT: 0, shieldF: 0,
     hasteT: 0, hasteF: 1, dmgMulT: 0, dmgMulF: 1, invisT: 0, trackT: 0,
     poisonT: 0, poisonDps: 0, poisonAcc: 0, poisonSrc: null, silenceT: 0, immuneT: 0,
-    curseT: 0, curseF: 0, blindT: 0, blindF: 0, formT: 0, rageT: 0, rageStun: 0, disarmT: 0, stunMax: 0 };
+    curseT: 0, curseF: 0, blindT: 0, blindF: 0, formT: 0, rageT: 0, rageStun: 0, disarmT: 0, stunMax: 0, cspellT: 0 };
 }
 
 function makeUnit(o){
@@ -1451,7 +1451,16 @@ function applyDamage(t, amount, src, kind){
     amount *= 1 + (src.int + (src.itemAttr ? src.itemAttr.int : 0)) * CFG.intSpellAmp;              // 🧠 inteligencija jača moći
   }
   if(kind !== 'atk' && t.mres) amount *= 1 - t.mres;
-  if(kind !== 'atk' && t.furyT > 0) amount *= 0.25;   // 🌪️ Vihor oštrica: magije ga gotovo ne diraju   // 🧥 v0.56 otpor magiji (Vuneni ogrtač, Kapa protiv čarolija, Truba zaštite…)
+  if(kind !== 'atk' && t.furyT > 0) amount *= 0.25;   // 🌪️ Vihor oštrica: magije ga gotovo ne diraju
+  if(kind !== 'atk' && kind !== 'reflect' && t.kind === 'hero'){   // 🔮 Protučarolija (Jelko W): štit vrati čaroliju, inače manje štete od magija
+    if(t.status.cspellT > 0 && src && src !== t && src.team !== t.team && !src.dead && !src.removeMe){
+      applyDamage(src, amount, t, 'reflect');
+      if(Math.random() < 0.5) burst(t.x, t.y, '#c084fc', 8, 140, 4);
+      return;
+    }
+    const cw = t.hero.id === 'jelko' && t.abilities[1] ? t.abilities[1].rank : 0;
+    if(cw) amount *= 1 - (0.08 + 0.05 * cw);
+  }   // 🧥 v0.56 otpor magiji (Vuneni ogrtač, Kapa protiv čarolija, Truba zaštite…)
   if(kind === 'atk' && t.staticT > 0 && src && !isStructure(src) && src.team !== t.team && Math.random() < 0.2){   // 🌩️ statički štit
     addLine(t.x, t.y, src.x, src.y, '#fde047', 4, 0.2); applyDamage(src, 200, t, true);
   }
@@ -2288,7 +2297,7 @@ function castAbility(u, i, aim){
   }
   u.mp -= abMana(u, ab);
   if(u.isPlayer) u.qCasts = (u.qCasts || 0) + 1;   // 🎯 zadaci
-  ab.cd = Math.max(0.5, ab.def.cd * (1 - Math.min(0.5, (u.cdr || 0) + (u.itemCdr || 0)) - (u.jbuff && u.jbuff.blue > 0 ? 0.15 : 0)) + abBonus(u, ab.def.key, 'cd'));   // 🎓 talent / ⚛️ Čarobna jezgra / 🔵 plavi buff: kraće hlađenje
+  ab.cd = Math.max(0.5, (ab.def.cdRk ? ab.def.cdRk(ab.rank) : ab.def.cd) * (1 - Math.min(0.5, (u.cdr || 0) + (u.itemCdr || 0)) - (u.jbuff && u.jbuff.blue > 0 ? 0.15 : 0)) + abBonus(u, ab.def.key, 'cd'));   // 🎓 talent / ⚛️ Čarobna jezgra / 🔵 plavi buff: kraće hlađenje
   if(u.cullRefresh){ ab.cd = 0; u.cullRefresh = false; }   // 🪓 Smrtni udarac: pobjeda nad junakom = ulti odmah spreman
   if(u.windup){ u.windup = null; u.atkTimer = 0; }   // čaranje prekida zamah — napad nije potrošen
   u.castAim = aim ? { x: aim.x, y: aim.y } : null;   // 3D: efekt na mjestu cilja
@@ -2653,6 +2662,8 @@ function performAttack(u, t){
   const hsr = passiveRank(u, 'headshot');      // 🎯 Pogodak u glavu (Nišan)
   const hsProc = !!(hsr && !isStructure(t) && Math.random() < 0.20 + 0.04 * hsr);
   if(hsProc) dmg += 16 + 16 * hsr;
+  const mbr = passiveRank(u, 'manabreak');     // 💧 Krađa mane (Jelko, v0.56)
+  const pers = u.kind === 'hero' && u.hero.id === 'jelko' && u.abilities[2] ? u.abilities[2].rank : 0;   // 🏃 Progonitelj
   const sr = passiveRank(u, 'serif');          // ⭐ Šerifov hitac (Zeka, v0.56): svaki 5. hitac, i odmah po junaku u zamci ili mreži
   let srProc = false;
   if(sr && !isStructure(t)){
@@ -2712,6 +2723,16 @@ function performAttack(u, t){
     }
     if(shadowBonus) addFloat(tt.x, tt.y, L('Iz sjene! 👤', 'From the shadows! 👤'), '#c4b5fd', 15);
     if(hsProc && !tt.dead){ applyStun(tt, 0.15); knockback(tt, u.x, u.y, 36); addFloat(tt.x, tt.y, L('🎯 U glavu!', '🎯 Headshot!'), '#fde047', 15); }
+    if(mbr && tt.kind === 'hero' && tt.maxmp > 0 && tt.mp > 0 && !tt.dead){   // 💧 Krađa mane: ukradena mana + pola toga kao šteta
+      const burn = Math.min(tt.mp, 16 + 8 * mbr);
+      tt.mp -= burn;
+      applyDamage(tt, burn * 0.5, u, 'atk');
+      if(isHuman(u) || isHuman(tt)) addFloat(tt.x, tt.y - 18, '−' + Math.round(burn) + ' 💧', '#93c5fd', 12);
+    }
+    if(pers && !isStructure(tt) && !tt.dead){   // 🏃 Progonitelj: što manje mane, to sporiji
+      const miss = tt.maxmp > 0 ? 1 - tt.mp / tt.maxmp : 1;
+      applySlow(tt, (0.15 + 0.05 * pers) * Math.max(0.3, miss), 1.2);
+    }
     if(srProc){ burst(tt.x, tt.y, '#fde047', 10, 150, 5); if(tt.kind === 'hero' || isHuman(u)) addFloat(tt.x, tt.y - 10, L('⭐ Šerifov hitac!', '⭐ Sheriff Shot!'), '#fde047', 15); }
     if(jinProc){ applySlow(tt, 0.3, 1.5); addFloat(tt.x, tt.y, '💢', '#fb923c', 15); }
     if(dodir) applySlow(tt, 0.1 + 0.05 * dodir, 1.5);
@@ -3066,6 +3087,21 @@ function botUseAbilities(u, eh, plan){
         if(!eh || dEh > hint.range) break;
         const held = eh.status.rootT > 0 || eh.status.stun > 0 || eh.status.slowT > 0;
         if(held || Math.random() < 0.3) castAbility(u, i, held ? { x: eh.x, y: eh.y } : leadAim(u, eh, 900));
+        break;
+      }
+      case 'blink': {   // ✨ Treptaj: ranjen bježi prema fontani, inače uskoči na neprijatelja kad se tim bori
+        if(eh && dEh < 700 && u.hp < u.maxhp * 0.3) castAbility(u, i, stepToward(u, FOUNTAIN[u.team], 700));
+        else if(eh && plan && plan.engage && dEh > 250 && dEh < hint.range + 250 && u.hp > u.maxhp * 0.5) castAbility(u, i, { x: eh.x, y: eh.y });
+        break;
+      }
+      case 'cspell': {   // 🔮 Protučarolija: u borbi s junakom, kad je već malo ranjen
+        if(eh && dEh < hint.range && u.hp < u.maxhp * 0.8 && Math.random() < 0.35) castAbility(u, i, { x: u.x, y: u.y });
+        break;
+      }
+      case 'void': {   // 💥 Praznina mane: na junaka kojem fali puno mane ili je ranjen
+        const per = 0.6 + 0.2 * ab.rank;
+        const tg = nearestEnemyOf(u, hint.range + 50, e => e.kind === 'hero' && (100 + per * (e.maxmp - e.mp) >= e.hp * 0.45 || e.hp < e.maxhp * 0.35));
+        if(tg) castAbility(u, i, { x: tg.x, y: tg.y });
         break;
       }
       case 'omni': {   // 🗡️ Tisuću rezova: na neprijateljskog junaka blizu kad je ranjen ili se tim bori
@@ -4124,6 +4160,7 @@ function updateUnit(u, dt){
   st.trackT = Math.max(0, st.trackT - dt);
   st.silenceT = Math.max(0, st.silenceT - dt);
   st.immuneT = Math.max(0, st.immuneT - dt);
+  if(st.cspellT > 0) st.cspellT -= dt;   // 🔮 Protučarolija (Jelko)
   st.curseT = Math.max(0, st.curseT - dt); if(st.curseT <= 0) st.curseF = 0;
   st.blindT = Math.max(0, st.blindT - dt); if(st.blindT <= 0) st.blindF = 0;
   st.formT = Math.max(0, st.formT - dt);

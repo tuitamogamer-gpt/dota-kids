@@ -2082,6 +2082,68 @@ const HEROES = [
         cast(u, aim, rk){ return startOmni(u, aim, { n: 3 + rk + (hasTal(u, 'jazo_r_more') ? 3 : 0), mul: 1, range: 350, every: 0.35, bounce: 425, ult: true }); }},
     ],
   },
+  {   // 🦌 v0.56 Jelko — jelen lovac na čarobnjake (kao Anti-Mage iz DotA 2): krade manu, trepće, vraća čarolije i praznina mane
+    id:'jelko', name:L('Jelko', 'Yelko'), emoji:'🦌',
+    role:L('🦌 Jelen lovac na čarobnjake — krade manu i trepće', '🦌 Deer mage hunter — burns mana and blinks'),
+    hp:600, mp:200, dmg:50,
+    attrs:{ str:18, agi:24, int:12, strG:2.3, agiG:4.6, intG:1.4, primary:'agi' },
+    range:90, speed:178, atkCd:0.95, projSpeed:0,
+    passive:{ name:L('Krađa mane', 'Mana Break'), emoji:'💧', color:'#60a5fa', pid:'manabreak',
+      desc:L('PASIVNO: svaki tvoj udarac junaku ukrade manu i zbog toga jače udari', 'PASSIVE: every hit on a hero burns their mana and hits harder because of it'),
+      tip:rk => L('💧 −' + (16 + 8*rk) + ' mane po udarcu + pola toga kao šteta', '💧 −' + (16 + 8*rk) + ' mana per hit + half of that as damage') },
+    abilities:[
+      { key:'Q', name:L('Treptaj', 'Blink'), emoji:'✨', cd:12, cdRk:rk => 13 - rk, mana:60, color:'#a78bfa',
+        desc:L('U tren se prebaci na mjesto koje odabereš — za napad ili bijeg', 'Teleport in an instant to the spot you choose — to attack or to escape'),
+        target:'point', castRange:650, line:true, lineW:40,
+        tip:rk => L('✨ treptaj do ' + (650 + (rk - 1) * 50) + ' • hlađenje ' + (13 - rk) + ' s', '✨ blink up to ' + (650 + (rk - 1) * 50) + ' • ' + (13 - rk) + ' s cooldown'),
+        bot:{type:'blink', range:650},
+        cast(u, aim, rk){
+          const R = 650 + (rk - 1) * 50 + (hasTal(u, 'jelko_q_far') ? 150 : 0);
+          burst(u.x, u.y, '#a78bfa', 18, 180, 6); ring(u.x, u.y, 60, '#c4b5fd');
+          const p = clampRange(u, aim, R);
+          u.x = clamp(p.x, 40, WORLD - 40); u.y = clamp(p.y, 40, WORLD - 40); u.moveTarget = null;
+          burst(u.x, u.y, '#c4b5fd', 18, 180, 6); ring(u.x, u.y, 70, '#a78bfa');
+          return true;
+        }},
+      { key:'W', name:L('Protučarolija', 'Counterspell'), emoji:'🔮', cd:15, mana:45, color:'#c084fc',
+        desc:L('UVIJEK: magije ti nanose manje štete. AKTIVNO: kratki čarobni štit — čarolije koje te pogode vrate se onome tko ih je bacio, a ni omama ni usporenje te ne diraju', 'ALWAYS: spells hurt you less. ACTIVE: a short magic shield — spells that hit you bounce back to whoever cast them, and no stun or slow can touch you'),
+        tip:rk => L('🛡️ −' + (8 + 5*rk) + '% štete od magija • 🔮 štit ' + (1.2 + 0.1*rk).toFixed(1) + ' s: čarolije se vraćaju', '🛡️ −' + (8 + 5*rk) + '% spell damage • 🔮 shield ' + (1.2 + 0.1*rk).toFixed(1) + ' s: spells bounce back'),
+        bot:{type:'cspell', range:700},
+        cast(u, aim, rk){
+          const dur = 1.2 + 0.1*rk + (hasTal(u, 'jelko_w_long') ? 1 : 0);
+          u.status.cspellT = dur;
+          u.status.immuneT = Math.max(u.status.immuneT, dur);
+          addFloat(u.x, u.y - 30, L('🔮 Protučarolija!', '🔮 Counterspell!'), '#e9d5ff', 15);
+          return true;
+        }},
+      { key:'E', name:L('Progonitelj', 'Persecutor'), emoji:'🏃', cd:0, mana:0, passive:true, color:'#93c5fd',
+        desc:L('PASIVNO: tvoji udarci usporavaju neprijatelje — što imaju manje mane, to su sporiji', 'PASSIVE: your hits slow enemies down — the less mana they have, the slower they get'),
+        tip:rk => L('🐌 do ' + (15 + 5*rk) + '% usporenja (kad meta nema mane)', '🐌 up to ' + (15 + 5*rk) + '% slow (when the target has no mana)'),
+        cast(){ return false; }},
+      { key:'R', name:L('Praznina mane', 'Mana Void'), emoji:'💥', cd:70, mana:120, ult:true, color:'#60a5fa',
+        desc:L('ULTI: Neprijateljski junak eksplodira od praznine — što mu više mane fali, to jače rani njega i sve oko njega', 'ULT: An enemy hero explodes with emptiness — the more mana they are missing, the harder it hurts them and everyone around them'),
+        target:'point', castRange:600, aoe:400,
+        tip:rk => L('💥 100 + ' + (0.6 + 0.2*rk).toFixed(1) + ' × mana koja mu fali, u krugu 400 + omama 0.3 s', '💥 100 + ' + (0.6 + 0.2*rk).toFixed(1) + ' × missing mana, within 400 + 0.3 s stun'),
+        bot:{type:'void', range:600},
+        cast(u, aim, rk){
+          const p = clampRange(u, aim, 600);
+          let best = null, bd = 300;
+          for(const e of units){
+            if(e.kind !== 'hero' || e.team === u.team || e.dead || e.removeMe || e.invuln || !isSpellTarget(e) || !canAttackTarget(u, e)) continue;
+            if(dist(u, e) > 600 + e.r + 40) continue;
+            const d = distXY(p.x, p.y, e.x, e.y); if(d < bd){ bd = d; best = e; }
+          }
+          if(!best) return false;
+          const per = 0.6 + 0.2*rk + (hasTal(u, 'jelko_r_plus') ? 0.4 : 0);
+          const dmg = Math.round(100 + per * Math.max(0, (best.maxmp || 0) - (best.mp || 0)));
+          applyStun(best, 0.3);
+          damageCircle(u, best.x, best.y, 400, dmg, { color:'#60a5fa' });
+          burst(best.x, best.y, '#93c5fd', 34, 360, 8); ring(best.x, best.y, 400, '#60a5fa');
+          addFloat(best.x, best.y - 30, L('💥 Praznina! ', '💥 Void! ') + dmg, '#93c5fd', 19);
+          return true;
+        }},
+    ],
+  },
 ];
 
 /* 🎨 v0.55: ikone moći iz GPT Image 2.5 — assets/ab/<junak>_<P|Q|W|E|R|T>.jpg (P = urođena pasiva, T = talenti).
@@ -2584,6 +2646,7 @@ const HERO_BUILDS = {
   skorpion: ['bracer', 'arcane', 'blink', 'bkb', 'shiva', 'refresher'],
   zeka: ['wraith', 'phase', 'crystalys', 'maelstrom', 'daedalus', 'butterfly'],   // v0.56
   jazo: ['wraith', 'phase', 'bfury', 'maelstrom', 'basher', 'butterfly'],   // v0.56
+  jelko: ['wraith', 'treads', 'bfury', 'diffusal', 'basher', 'butterfly'],   // v0.56
 };
 for(const h of HEROES) h.build = HERO_BUILDS[h.id] || BOT_BUILD;
 /* 🎲 v0.56 raznolikost: bot svaku igru odabere jednu od inačica gradnje (prva je ona iz vodiča u dućanu);
@@ -2896,6 +2959,12 @@ const HERO_TALENTS = {
     [TAL('🦂', L('Žalac −3 s hlađenja', 'Stinger −3 s cooldown'), { ab:{ E:{ cd:-3 } } }), TAL('🛡️', L('+5 oklopa', '+5 armor'), { armor:5 })],
     [TAL('🧪', L('Otrovni prasak +1 rang', 'Venom Burst +1 rank'), { pas:1 }), TAL('⏳', L('Pješčana oluja +10 štete/s', 'Sandstorm +10 damage/s'), { ab:{ W:{ dmg:5 } } })],
     [TAL('🌋', L('Epicentar +3 udara', 'Epicenter +3 pulses'), { flag:'skorpion_r_more' }), TAL('🕳️', L('Podzemni juriš +0.6 s omame', 'Burrow Strike +0.6 s stun'), { ab:{ Q:{ dur:0.6 } } })],
+  ],
+  jelko: [   // v0.56
+    [TAL('✨', L('Treptaj +150 dometa', 'Blink +150 range'), { flag:'jelko_q_far' }), TAL('❤️', L('+200 života', '+200 HP'), { hp:200 })],
+    [TAL('💧', L('Krađa mane +1 rang', 'Mana Break +1 rank'), { pas:1 }), TAL('⚡', L('+15% brzine napada', '+15% attack speed'), { aspd:0.15 })],
+    [TAL('🔮', L('Protučarolija traje 1 s dulje', 'Counterspell lasts 1 s longer'), { flag:'jelko_w_long' }), TAL('👟', L('+25 brzine kretanja', '+25 move speed'), { spd:25 })],
+    [TAL('💥', L('Praznina mane +0.4 štete po mani', 'Mana Void +0.4 damage per mana'), { flag:'jelko_r_plus' }), TAL('✨', L('Treptaj −3 s hlađenja', 'Blink −3 s cooldown'), { ab:{ Q:{ cd:-3 } } })],
   ],
   jazo: [   // v0.56
     [TAL('🌪️', L('Vihor oštrica +25 štete/s', 'Blade Fury +25 damage/s'), { ab:{ Q:{ dmg:25 } } }), TAL('❤️', L('+225 života', '+225 HP'), { hp:225 })],
