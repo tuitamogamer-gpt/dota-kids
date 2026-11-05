@@ -1459,7 +1459,7 @@ function applyDamage(t, amount, src, kind){
       return;
     }
     const cw = t.hero.id === 'jelko' && t.abilities[1] ? t.abilities[1].rank : 0;
-    if(cw) amount *= 1 - (0.08 + 0.05 * cw);
+    if(cw) amount *= 1 - (0.15 + 0.05 * cw);
   }   // 🧥 v0.56 otpor magiji (Vuneni ogrtač, Kapa protiv čarolija, Truba zaštite…)
   if(kind === 'atk' && t.staticT > 0 && src && !isStructure(src) && src.team !== t.team && Math.random() < 0.2){   // 🌩️ statički štit
     addLine(t.x, t.y, src.x, src.y, '#fde047', 4, 0.2); applyDamage(src, 200, t, true);
@@ -2724,9 +2724,9 @@ function performAttack(u, t){
     if(shadowBonus) addFloat(tt.x, tt.y, L('Iz sjene! 👤', 'From the shadows! 👤'), '#c4b5fd', 15);
     if(hsProc && !tt.dead){ applyStun(tt, 0.15); knockback(tt, u.x, u.y, 36); addFloat(tt.x, tt.y, L('🎯 U glavu!', '🎯 Headshot!'), '#fde047', 15); }
     if(mbr && tt.kind === 'hero' && tt.maxmp > 0 && tt.mp > 0 && !tt.dead){   // 💧 Krađa mane: ukradena mana + pola toga kao šteta
-      const burn = Math.min(tt.mp, 16 + 8 * mbr);
+      const burn = Math.min(tt.mp, 20 + 10 * mbr);
       tt.mp -= burn;
-      applyDamage(tt, burn * 0.5, u, 'atk');
+      applyDamage(tt, burn * 0.8, u, 'atk');
       if(isHuman(u) || isHuman(tt)) addFloat(tt.x, tt.y - 18, '−' + Math.round(burn) + ' 💧', '#93c5fd', 12);
     }
     if(pers && !isStructure(tt) && !tt.dead){   // 🏃 Progonitelj: što manje mane, to sporiji
@@ -3099,8 +3099,8 @@ function botUseAbilities(u, eh, plan){
         break;
       }
       case 'void': {   // 💥 Praznina mane: na junaka kojem fali puno mane ili je ranjen
-        const per = 0.6 + 0.2 * ab.rank;
-        const tg = nearestEnemyOf(u, hint.range + 50, e => e.kind === 'hero' && (100 + per * (e.maxmp - e.mp) >= e.hp * 0.45 || e.hp < e.maxhp * 0.35));
+        const per = 1 + 0.3 * ab.rank;
+        const tg = nearestEnemyOf(u, hint.range + 50, e => e.kind === 'hero' && (100 + 50 * ab.rank + per * (e.maxmp - e.mp) >= e.hp * 0.45 || e.hp < e.maxhp * 0.4));
         if(tg) castAbility(u, i, { x: tg.x, y: tg.y });
         break;
       }

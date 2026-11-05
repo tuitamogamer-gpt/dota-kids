@@ -2085,12 +2085,12 @@ const HEROES = [
   {   // 🦌 v0.56 Jelko — jelen lovac na čarobnjake (kao Anti-Mage iz DotA 2): krade manu, trepće, vraća čarolije i praznina mane
     id:'jelko', name:L('Jelko', 'Yelko'), emoji:'🦌',
     role:L('🦌 Jelen lovac na čarobnjake — krade manu i trepće', '🦌 Deer mage hunter — burns mana and blinks'),
-    hp:600, mp:200, dmg:50,
-    attrs:{ str:18, agi:24, int:12, strG:2.3, agiG:4.6, intG:1.4, primary:'agi' },
+    hp:690, mp:200, dmg:55,   // ⚖️ simulacija: prvo 69/166 i 1 pobjeda od 9 — puno izdržljiviji, jača krađa mane i Praznina
+    attrs:{ str:21, agi:24, int:12, strG:2.7, agiG:4.6, intG:1.4, primary:'agi' },
     range:90, speed:178, atkCd:0.95, projSpeed:0,
     passive:{ name:L('Krađa mane', 'Mana Break'), emoji:'💧', color:'#60a5fa', pid:'manabreak',
       desc:L('PASIVNO: svaki tvoj udarac junaku ukrade manu i zbog toga jače udari', 'PASSIVE: every hit on a hero burns their mana and hits harder because of it'),
-      tip:rk => L('💧 −' + (16 + 8*rk) + ' mane po udarcu + pola toga kao šteta', '💧 −' + (16 + 8*rk) + ' mana per hit + half of that as damage') },
+      tip:rk => L('💧 −' + (20 + 10*rk) + ' mane po udarcu + 80% toga kao šteta', '💧 −' + (20 + 10*rk) + ' mana per hit + 80% of that as damage') },
     abilities:[
       { key:'Q', name:L('Treptaj', 'Blink'), emoji:'✨', cd:12, cdRk:rk => 13 - rk, mana:60, color:'#a78bfa',
         desc:L('U tren se prebaci na mjesto koje odabereš — za napad ili bijeg', 'Teleport in an instant to the spot you choose — to attack or to escape'),
@@ -2107,7 +2107,7 @@ const HEROES = [
         }},
       { key:'W', name:L('Protučarolija', 'Counterspell'), emoji:'🔮', cd:15, mana:45, color:'#c084fc',
         desc:L('UVIJEK: magije ti nanose manje štete. AKTIVNO: kratki čarobni štit — čarolije koje te pogode vrate se onome tko ih je bacio, a ni omama ni usporenje te ne diraju', 'ALWAYS: spells hurt you less. ACTIVE: a short magic shield — spells that hit you bounce back to whoever cast them, and no stun or slow can touch you'),
-        tip:rk => L('🛡️ −' + (8 + 5*rk) + '% štete od magija • 🔮 štit ' + (1.2 + 0.1*rk).toFixed(1) + ' s: čarolije se vraćaju', '🛡️ −' + (8 + 5*rk) + '% spell damage • 🔮 shield ' + (1.2 + 0.1*rk).toFixed(1) + ' s: spells bounce back'),
+        tip:rk => L('🛡️ −' + (15 + 5*rk) + '% štete od magija • 🔮 štit ' + (1.2 + 0.1*rk).toFixed(1) + ' s: čarolije se vraćaju', '🛡️ −' + (15 + 5*rk) + '% spell damage • 🔮 shield ' + (1.2 + 0.1*rk).toFixed(1) + ' s: spells bounce back'),
         bot:{type:'cspell', range:700},
         cast(u, aim, rk){
           const dur = 1.2 + 0.1*rk + (hasTal(u, 'jelko_w_long') ? 1 : 0);
@@ -2123,7 +2123,7 @@ const HEROES = [
       { key:'R', name:L('Praznina mane', 'Mana Void'), emoji:'💥', cd:70, mana:120, ult:true, color:'#60a5fa',
         desc:L('ULTI: Neprijateljski junak eksplodira od praznine — što mu više mane fali, to jače rani njega i sve oko njega', 'ULT: An enemy hero explodes with emptiness — the more mana they are missing, the harder it hurts them and everyone around them'),
         target:'point', castRange:600, aoe:400,
-        tip:rk => L('💥 100 + ' + (0.6 + 0.2*rk).toFixed(1) + ' × mana koja mu fali, u krugu 400 + omama 0.3 s', '💥 100 + ' + (0.6 + 0.2*rk).toFixed(1) + ' × missing mana, within 400 + 0.3 s stun'),
+        tip:rk => L('💥 ' + (100 + 50*rk) + ' + ' + (1 + 0.3*rk).toFixed(1) + ' × mana koja mu fali, u krugu 400 + omama 0.3 s', '💥 ' + (100 + 50*rk) + ' + ' + (1 + 0.3*rk).toFixed(1) + ' × missing mana, within 400 + 0.3 s stun'),
         bot:{type:'void', range:600},
         cast(u, aim, rk){
           const p = clampRange(u, aim, 600);
@@ -2134,8 +2134,8 @@ const HEROES = [
             const d = distXY(p.x, p.y, e.x, e.y); if(d < bd){ bd = d; best = e; }
           }
           if(!best) return false;
-          const per = 0.6 + 0.2*rk + (hasTal(u, 'jelko_r_plus') ? 0.4 : 0);
-          const dmg = Math.round(100 + per * Math.max(0, (best.maxmp || 0) - (best.mp || 0)));
+          const per = 1 + 0.3*rk + (hasTal(u, 'jelko_r_plus') ? 0.4 : 0);
+          const dmg = Math.round(100 + 50*rk + per * Math.max(0, (best.maxmp || 0) - (best.mp || 0)));
           applyStun(best, 0.3);
           damageCircle(u, best.x, best.y, 400, dmg, { color:'#60a5fa' });
           burst(best.x, best.y, '#93c5fd', 34, 360, 8); ring(best.x, best.y, 400, '#60a5fa');
