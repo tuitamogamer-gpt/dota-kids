@@ -134,18 +134,18 @@ const VOICES = {
     attack: '[gleeful] Come here, little fishy!', ult: '[very hungry, excited] Big gulp! Nom nom nom!', kill: '[satisfied, laughing] Yum! Fresh catch!',
     death: '[sad, groaning] My tummy... so empty...', respawn: '[jolly and loud] Petsko is back, and still hungry!',
     taunt: '[playful, belly laugh] Ha! Look at this belly bounce!' },
-  // ---- v0.56 ---- pending: replike su spremne, ali audio još nije generiran (Fish Audio krediti) — igra je dotad tiha za ovog junaka
-  jelko: { voice: '711cf3ed00ab441a8f54a45058047b7a', pending: true,   // Verity — mlad, brz, odlučan lovac
+  // ---- v0.56 ---- (junak s `pending: true` ima spremne replike, ali još nema zvuka — igra je dotad tiha za njega)
+  jelko: { voice: '711cf3ed00ab441a8f54a45058047b7a',   // Verity — mlad, brz, odlučan lovac
     pick: '[determined] Yelko. Magic? Not on my watch!', move1: '[quick] Swift as a deer.', move2: '[alert] I hear magic nearby.',
     attack: '[fierce] Your magic ends here!', ult: '[shouting, intense] Feel the void!', kill: '[confident] No more spells for you.',
     death: '[surprised, fading] Too much... magic...', respawn: '[eager] The hunt continues!',
     taunt: '[playful, teasing] Blink, blink! Catch me if you can!' },
-  jazo: { voice: '8ec9973300874562962bbcb300f82213', pending: true,   // Guyzo — dubok, smiren, samouvjeren samuraj
+  jazo: { voice: '8ec9973300874562962bbcb300f82213',   // Guyzo — dubok, smiren, samouvjeren samuraj
     pick: '[calm and proud] Jazo. My blade is ready.', move1: '[calm] As the wind.', move2: '[steady] I walk the path.',
     attack: '[fierce] Face my blade!', ult: '[shouting, intense] A thousand slashes!', kill: '[calm, satisfied] A clean cut.',
     death: '[quiet, fading] My blade... rests...', respawn: '[determined] The samurai returns!',
     taunt: '[playful, laughing] Spin, spin, spin! Try to catch me!' },
-  zeka: { voice: 'e6c66fbaab8544d89460b95b36288958', pending: true,   // Energetic Young Female — vedra, samouvjerena šerifica
+  zeka: { voice: 'e6c66fbaab8544d89460b95b36288958',   // Energetic Young Female — vedra, samouvjerena šerifica
     pick: '[confident and cheerful] Sheriff Zeka, on duty! Nobody escapes my aim!', move1: '[brisk] On patrol!', move2: '[playful] Hop to it!',
     attack: '[focused, sharp] You are under arrest!', ult: '[calm, then triumphant] Got you in my sights... Ace in the hole!', kill: '[proud] Case closed!',
     death: '[sad, softly] My hat... my poor hat...', respawn: '[determined] The sheriff is back in town!',
@@ -210,6 +210,9 @@ const VOICE_REMOTE = {
   nisan: '2026-10-27/f76a07b9c8664933aaf6fd1163c2bf94 2026-10-27/97a39e6ae3b743baa0de254cbcef3972 2026-10-27/5f4dc66989214c23a5c9f186c123053f 2026-10-27/fcd5e76b14054b8ca66d3f048f8ce6ec 2026-10-27/b30b283a300f477daa3fa391349fed36 2026-10-27/f7f7a9d3cf9645afb0b3d24f736f28cb 2026-10-27/93fe8affadf64f668a198a92cc5c7160 2026-10-27/3883b40175eb426ab38718c4c270af16 2026-10-27/e40af20e29a7427b9219e1fdda91a4c5',
   bikos: '2026-10-27/02c1c815f2034f4389556f9ead43f551 2026-10-27/725e8a2238a94af8bcb45d1e4689f6d8 2026-10-27/0d0b5045cc8043968bb86f9154b8a56b 2026-10-27/099f91bd25d2446f8852568941ec135e 2026-10-27/0ca789ba7c2e4a1cb7e67fce41d7a35f 2026-10-27/629803a59f394a4b86f6ebee5add133d 2026-10-27/db6335d6d2f9426a8b08a05865c42fef 2026-10-27/ad6f1977f81a45c9a31055b504758253 2026-10-27/ceb07ac5281c41949dc5c49ba0b576db',
   nilski: '2026-10-30/663e22a10a0147f988fd6468d7ab5fe2 2026-10-30/85fd50618a014113b206d2f5d56abc21 2026-10-30/bc45136e42264940b1b81dcee22cfa1b 2026-10-30/e881bae6d3a04fdbae98f2090bd0d4b4 2026-10-30/1c2e97a78d2e4ef9b9a271954a4c66a8 2026-10-30/603da289fe214a6282c739055d6afe4d 2026-10-30/dad30d670de249fd98d137ce2909b665 2026-10-30/d1a8a2f2a4a34bada64cd26024733667 2026-10-30/eea38860fcb8464182991dcea892da4d',
+  jelko: '2026-11-10/88b73c20240445c096606350640230a3 2026-11-10/48e8787a50bd4bd49a76974c8a137ee5 2026-11-10/460dd1accb354a7c86b7cb9b0bfc5b5e 2026-11-10/5bb444a944514228ba2e0d0add6c9cda 2026-11-10/b76e621f0f3547a6adb76cfa8989c6f6 2026-11-10/61fbd7e0b3a94241a42d53f6258e063e 2026-11-10/547b1ce55d9e40caa5af3fd9a31196b6 2026-11-10/7c6eb343c30d4551891e0b575d77c2c0 2026-11-10/e09eb51545244389abfca4f9b371e0a5',
+  jazo: '2026-11-10/c58806e973a948d8a87967d669a94c56 2026-11-10/74e8c60039524aad9725359803e269d1 2026-11-10/dce58f03eb05497fa4ffbcf3d43ae664 2026-11-10/c4f6fc3720a34737a1844fa25d39e9a5 2026-11-10/4098bbd7a02245749bc4f360b993092d 2026-11-10/ea1a11151c4a4ff4abc48da192a21ec8 2026-11-10/1123d351cc454bdbaf509ab6c10664e5 2026-11-10/3211222fd2a747c2acc7797c947b27ad 2026-11-10/12d49d22ed774271854fdbd145d22f43',
+  zeka: '2026-11-10/c11676da3fad445c9eb4e8803d038a09 2026-11-10/d1f896c9a1a74dacb25840b6f653430e 2026-11-10/12599d943dee4fffb3722f3cc037d797 2026-11-10/287e0a8d847a4379b5926456e5472608 2026-11-10/7706f9c6164b4f979290b1836c884a37 2026-11-10/51834546f9464105be351c7c5ef3f0ed 2026-11-10/6b4dfb358050486280c7d767c0d60c67 2026-11-10/27f6204ace1c407793e8c2d873cda523 2026-11-10/680614aa3dff4c70bbe1be69779035eb',
   irbis: '2026-10-30/dd22625cbab54af5975605576fa3e752 2026-10-30/ae78c70c418747218067e5220a5bc03f 2026-10-30/f3e05a1f66fc40698e7555a7a10cdcaf 2026-10-30/d14dad7dfcf24a61a135fb86d42a0983 2026-10-30/a8e619fc77ae4f82b291811286fdaba8 2026-10-30/1cc5961ab27345649b0d862467f78997 2026-10-30/934d2e0c7e434e2cb9b477385ec44d9a 2026-10-30/74c7c1f437b94cb1a897c0539ff1545f 2026-10-30/558e8c1993b341bd9be53dbd384858ee',
   skorpion: '2026-10-30/c714713f99204d89be24e7c7dc82719b 2026-10-30/ddfaadd65ed340e39fa4749339eea3d9 2026-10-30/7ce3f3faa4214922bf739cf470a2456a 2026-10-30/be7e3c9529e64d37ba48ef8ea8f85cbb 2026-10-30/9d5de9eda275464ca3e094c35bbeffbc 2026-10-30/42bf69cc8d1d4a5db8ac187db536b7a2 2026-10-30/4f17628ccbe843c6be756874c5035f07 2026-10-30/705a555628b14322a12614a27ec95c62 2026-10-30/1c1baad9df4d47f1927587d60ccb33e2',
 };
