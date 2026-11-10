@@ -59,8 +59,11 @@ def reset_scene():
     sc.render.fps = FPS
     return sc
 
-SLOT = {'vc': 0, 'team': 1, 'glow': 2, 'teamglow': 3, 'metal': 4}
+SLOT = {'vc': 0, 'team': 1, 'glow': 2, 'teamglow': 3, 'metal': 4, 'detail': 5}
 MATS = []
+# v0.56: sitnice lica junaka (oči, trepavice, obrve, brkovi) idu u materijal DETAIL — u igri izgleda isto kao VC, ali ga obris
+# (napuhana crna ljuska oko svakog dijela) preskače: oko sitnih, gusto složenih oblika obris je izgledao dlakavo i neuredno.
+DETAIL = {'ok': False, 'on': False}   # ok: gradimo junake (vojnici i čudovišta ostaju po starom — jedan draw call manje); on: upravo se slaže lice
 # v0.29: sjajni metal (kao u LoL-u) — dijelovi u ovim bojama dobivaju METAL materijal.
 # Samo jasno metalne boje: npr. #fde68a je i trbuh pčele, a #9aa3ad kamen golema (golem nije u build_heroes).
 CHAR_METAL = {'#f6c945', '#dfe6ee', '#9fb0c0', '#c9d3de', '#b8c4d0', '#9aa7b5', '#d6dde6', '#e2e8f0', '#a9a2b4',
@@ -114,6 +117,11 @@ def make_materials():
     bsdf.inputs['Metallic'].default_value = 0.8
     bsdf.inputs['Roughness'].default_value = 0.3
     MATS.append(m)
+    # DETAIL — sitnice lica (isto kao VC; hrapavost je malo drukčija samo da sažimanje ne spoji ova dva materijala u jedan)
+    m, nt, bsdf, vc = base('DETAIL')
+    nt.links.new(vc.outputs['Color'], bsdf.inputs['Base Color'])
+    bsdf.inputs['Roughness'].default_value = 0.78
+    MATS.append(m)
 
 
 # ------------------------------------------------------------------ glatkoća
@@ -152,7 +160,9 @@ class Part:
                 @ Matrix.Diagonal((scale[0], scale[1], scale[2], 1)))
 
     def _paint(self, before, color, mat, smooth):
-        if mat == 'vc' and METAL_SET and isinstance(color, str) and color.lower() in METAL_SET:
+        if mat == 'vc' and DETAIL['ok'] and DETAIL['on']:
+            mat = 'detail'
+        elif mat == 'vc' and METAL_SET and isinstance(color, str) and color.lower() in METAL_SET:
             mat = 'metal'
         c = col(color) if isinstance(color, str) else color
         for f in self.bm.faces:
@@ -257,15 +267,34 @@ class Part:
     def poly(self, pts, color, mat='vc', thick=0.0):
         """ravni poligon (krila, peraja); zadaj točke redom"""
         before = set(self.bm.faces)
-        vs = [self.bm.verts.new(Vector(p) - self.pivot) for p in pts]
-        self.bm.faces.new(vs)
-        if thick:
-            n = (Vector(pts[1]) - Vector(pts[0])).cross(Vector(pts[2]) - Vector(pts[0])).normalized()
-            vs2 = [self.bm.verts.new(Vector(p) - self.pivot - n * thick) for p in pts]
-            self.bm.faces.new(list(reversed(vs2)))
-            k = len(pts)
-            for i in range(k):
-                self.bm.faces.new([vs[i], vs2[i], vs2[(i + 1) % k], vs[(i + 1) % k]])
+        P = [Vector(p) for p in pts]
+        vs = [self.bm.verts.new(p - self.pivot) for p in P]
+        if not thick:
+            self.bm.faces.new(vs)
+        else:
+            n = (P[1] - P[0]).cross(P[2] - P[0]).normalized()   # smjer debljine: ploča ide na stranu −n (kao i prije)
+            # v0.56: strana na koju gleda CIJELI poligon (Newell). Kod udubljenih oblika (oštrica sjekire, zvijezda) i zrcaljenih
+            # (desno krilo) prva tri vrha gledaju suprotno, pa je tijelo ispalo izvrnuto — plohe prema unutra, u igri crno ili krivo
+            # osvijetljeno. Položaj ostaje isti, samo se plohe slože tako da gledaju van.
+            nw = Vector((0.0, 0.0, 0.0))
+            for i in range(len(P)):
+                a, b = P[i], P[(i + 1) % len(P)]
+                nw += Vector(((a.y - b.y) * (a.z + b.z), (a.z - b.z) * (a.x + b.x), (a.x - b.x) * (a.y + b.y)))
+            k = len(P)
+            # neravan poligon (krilo zmaja: točke nisu u jednoj ravnini, a ploča je tanja od te neravnine): Blender bi prednju i
+            # stražnju stranu podijelio na trokute svaku po svome, plohe bi se križale i krilo bi u igri bilo sivo i izvrnuto.
+            # Takav se slaže lepezom trokuta iz prve točke — obje strane jednako, a debljina ide duž normale cijelog poligona.
+            nwn = nw.normalized() if nw.length > 1e-9 else n
+            fan = k > 3 and max(abs((p - P[0]).dot(nwn)) for p in P) > thick * 0.5
+            if fan:
+                n = nwn
+            flip = n.dot(nw) < 0
+            vs2 = [self.bm.verts.new(p - self.pivot - n * thick) for p in P]
+            front = [[vs[0], vs[i], vs[i + 1]] for i in range(1, k - 1)] if fan else [vs]
+            back = [[vs2[0], vs2[i + 1], vs2[i]] for i in range(1, k - 1)] if fan else [list(reversed(vs2))]
+            sides = [[vs[i], vs2[i], vs2[(i + 1) % k], vs[(i + 1) % k]] for i in range(k)]
+            for f in front + back + sides:
+                self.bm.faces.new(list(reversed(f)) if flip else f)
         self._paint(before, color, mat, False)
         return self
 
@@ -1286,8 +1315,10 @@ def biped(name, c, opts):
             for k in range(3):   # točkice iz kojih rastu brkovi
                 h.sphere(V(0.415 + 0.01 * fs, sd * (0.045 + 0.028 * k) * fs, 1.218 - 0.016 * k), 0.0085 * S, mix(mz, '#000000', 0.5), seg=(5, 4))
             wc = opts.get('whiskers', '#ffffff')
+            DETAIL['on'] = True   # brkovi: tanke niti bez obrisa
             for k in range(3):   # brkovi
                 h.cyl(V(0.4, sd * 0.1 * fs, 1.215 - 0.02 * k), V(0.42, sd * (0.33 + 0.03 * k) * fs, 1.25 - 0.055 * k), 0.0065 * S, 0.002 * S, wc, seg=4)
+            DETAIL['on'] = False
         h.sphere(V(0.325, 0, 1.13), (0.055 * S * fs, 0.07 * S * fs, 0.045 * S), mz, seg=(12, 8))   # bradica
         h.cyl(V(0.42 + 0.02 * (fs - 1), 0, 1.275), V(0.44 + 0.02 * (fs - 1), 0, 1.222), 0.05 * S * fs, 0.008 * S, c.get('nose', '#e48aa0'), seg=14, smooth=True)   # nos
         for sd in (1, -1):   # usta u obliku slova w
@@ -1425,11 +1456,13 @@ def biped(name, c, opts):
         if ey.get('white'):
             for s in (1, -1):
                 h.sphere(V(ex + 0.053 * esz - 0.06, s * 0.15, 1.36), (0.06 * S, 0.095 * S * esz, 0.11 * S * esz), '#ffffff', seg=(12, 8))
+        DETAIL['on'] = True   # oči i obrve: bez obrisa u igri
         eyes(h, ex * S, 0, 1.36 * S, r=0.078 * S * esz, color=ey.get('color', '#1b1b2a'), spread=0.15 * S, shape=ey.get('shape', 'round'))
         bc = opts.get('brows', dark)
         if bc:
             brows(h, 0.355 * S, 0, 1.475 * S, bc, angle=opts.get('browAngle', 12), spread=0.15 * S,
                   head=(V(0, 0, hz), (hr[0] * S, hr[1] * S, hr[2] * S)), width=0.065 * S)
+        DETAIL['on'] = False
         if opts.get('blush', True):
             for s in (1, -1):
                 h.sphere(V(0.3, s * 0.27, 1.22), (0.03 * S, 0.06 * S, 0.035 * S), '#f49ab0', seg=(8, 5))
@@ -2768,15 +2801,27 @@ def sig_zeka(k):
 def sig_jelko(k):
     """v0.56 Jelko (jelen lovac na čarobnjake, kao Anti-Mage): razgranati rogovi sa svjetlećim vrhovima i tirkizne rune na obrazima"""
     m, h, b, R, L, V, S = k['m'], k['h'], k['b'], k['R'], k['L'], k['V'], k['S']
-    bone = '#ead9b0'
+    bone, bone2 = '#ead9b0', '#d9c398'
     for sd in (1, -1):
-        p0, p1, p2 = Vector(V(-0.06, sd * 0.13, 1.6)), Vector(V(-0.1, sd * 0.24, 1.88)), Vector(V(-0.18, sd * 0.32, 2.12))
-        h.cyl(tuple(p0), tuple(p1), 0.04 * S, 0.033 * S, bone, seg=8, smooth=True)
-        h.cyl(tuple(p1), tuple(p2), 0.033 * S, 0.02 * S, bone, seg=8, smooth=True)
-        for base, tip in ((p1, Vector(V(0.06, sd * 0.24, 2.04))), (p1.lerp(p2, 0.6), Vector(V(-0.04, sd * 0.4, 2.2)))):   # odvojci
-            h.cyl(tuple(base), tuple(tip), 0.022 * S, 0.012 * S, bone, seg=6, smooth=True)
-            h.sphere(tuple(tip), 0.018 * S, '#67e8f9', mat='glow', seg=(6, 4))
-        h.sphere(tuple(p2), 0.02 * S, '#67e8f9', mat='glow', seg=(6, 4))
+        # v0.56: pravi razgranati rogovi (prije dva tanka ravna štapa): debela grana u luku van pa naprijed, tri odvojka,
+        # zaobljeni zglobovi i svjetleći vrhovi — čitaju se i odozgo, iz kamere u igri
+        beam = [Vector(V(-0.05, sd * 0.12, 1.57)), Vector(V(-0.10, sd * 0.22, 1.79)), Vector(V(-0.14, sd * 0.33, 1.97)),
+                Vector(V(-0.11, sd * 0.41, 2.13)), Vector(V(-0.02, sd * 0.43, 2.25))]
+        rr = [0.056, 0.05, 0.043, 0.035, 0.022]
+        h.sphere(tuple(beam[0]), 0.066 * S, bone2, seg=(10, 7))   # ružica pri dnu roga
+        for i in range(len(beam) - 1):
+            h.cyl(tuple(beam[i]), tuple(beam[i + 1]), rr[i] * S, rr[i + 1] * S, bone, seg=10, smooth=True)
+            h.sphere(tuple(beam[i + 1]), rr[i + 1] * S, bone, seg=(10, 7))
+        tines = ((beam[1], Vector(V(0.11, sd * 0.20, 1.96)), 0.034),      # očni odvojak (naprijed)
+                 (beam[2], Vector(V(0.03, sd * 0.37, 2.16)), 0.03),
+                 (beam[3], Vector(V(-0.17, sd * 0.54, 2.25)), 0.027))     # vanjski odvojak
+        for base, tip, r0 in tines:
+            mid = base.lerp(tip, 0.55) + Vector((0, 0, 0.03 * S))        # blagi luk prema gore
+            h.cyl(tuple(base), tuple(mid), r0 * S, r0 * 0.72 * S, bone, seg=8, smooth=True)
+            h.sphere(tuple(mid), r0 * 0.72 * S, bone, seg=(8, 6))
+            h.cyl(tuple(mid), tuple(tip), r0 * 0.72 * S, 0.012 * S, bone, seg=8, smooth=True)
+            h.sphere(tuple(tip), 0.024 * S, '#67e8f9', mat='glow', seg=(8, 6))
+        h.sphere(tuple(beam[-1]), 0.026 * S, '#67e8f9', mat='glow', seg=(8, 6))
     hc, rad = V(0, 0, k['hz']), (k['hr'][0] * S, k['hr'][1] * S, k['hr'][2] * S)
     for sd in (1, -1):   # svjetleće rune (crtice) na obrazima
         face_cap(h, hc, rad, sd * 50, -6, (0.05 * S, 0.012 * S), '#22d3ee', out=0.006 * S)
@@ -2967,10 +3012,12 @@ HEROES = {
 def build_heroes(only=None):
     global METAL_SET
     METAL_SET = CHAR_METAL   # zlato i čelik na junacima sjaje
+    DETAIL['ok'] = True      # sitnice lica u svoj materijal (bez obrisa)
     try:
         _build_heroes(only)
     finally:
         METAL_SET = set()
+        DETAIL['ok'] = DETAIL['on'] = False
 
 
 def _build_heroes(only=None):

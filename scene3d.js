@@ -196,7 +196,7 @@ function indexModels(gltf){
 }
 
 /* materijali modela: VC = boje vrhova, TEAM = boje vrhova × boja tima,
-   GLOW = svijetli (bez sjene), TEAMGLOW = svijetli u boji tima.
+   GLOW = svijetli (bez sjene), TEAMGLOW = svijetli u boji tima, METAL = zlato i čelik, DETAIL = sitnice lica (kao VC, bez obrisa).
    look: 'n' normalno, 'f' bljesak pogotka, 'g' prozirno (nevidljivost), 'c' smrznuto (usporen) */
 /* rubno (fresnel) svjetlo dodano u MeshStandardMaterial — obrisi modela lagano svijetle, bez dodatnih draw callova */
 const RIM = { color: { value: new THREE.Color('#e0ecff') }, strength: { value: 0.3 } };
@@ -217,6 +217,7 @@ const METAL_ENV = { day: 1.15, night: 0.45 };
 let CHAR_ROUGH = 0.62;   // likovi: blagi sjaj (oslikani odsjaj kao u LoL-u); prije 0.78
 const metalMats = [];   // noću metal slabije odsijava (okolina je studijsko svjetlo)
 function modelMat(name, team, look, variant){
+  if(name === 'DETAIL') name = 'VC';   // sitnice lica: isti materijal kao VC (razlika je samo što ih obris preskače)
   const key = 'M' + name + '|' + team + '|' + look + (variant ? '|' + variant : '');
   if(matCache[key]) return matCache[key];
   let m;
@@ -318,7 +319,7 @@ function outlinePartGeo(key, part){
   if(OUTLINE_GEO[key] !== undefined) return OUTLINE_GEO[key];
   const geos = [];
   for(const c of part.children){
-    if(!c.isMesh || c.userData.outline || !c.name.startsWith(part.name + '_') || /GLOW/.test(c.userData.matName || '')) continue;
+    if(!c.isMesh || c.userData.outline || !c.name.startsWith(part.name + '_') || /GLOW|DETAIL/.test(c.userData.matName || '')) continue;   // DETAIL: oči, obrve, brkovi — obris oko sitnica je izgledao dlakavo
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', c.geometry.attributes.position.clone());
     g.setAttribute('normal', c.geometry.attributes.normal.clone());
@@ -345,7 +346,7 @@ function addOutline(obj, name){
     if(o.isMesh){
       const p = o.parent;
       if(p && p !== obj && o.name.startsWith(p.name + '_')) return;   // komad dijela — u spojenoj geometriji dijela
-      if(!/GLOW/.test(o.userData.matName || '')) geo = o.geometry;   // dio od jednog komada (npr. rep)
+      if(!/GLOW|DETAIL/.test(o.userData.matName || '')) geo = o.geometry;   // dio od jednog komada (npr. rep)
     } else if(o.children.some(c => c.isMesh && c.name.startsWith(o.name + '_'))){
       geo = outlinePartGeo(name + '|' + o.name, o);
     }
