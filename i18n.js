@@ -58,7 +58,7 @@ function fixNames(s){
   if(typeof s !== 'string' || !s || !L_NAMES_DONE) return s;
   if(!nameFix){
     const map = new Map();
-    const add = (v, loc) => { if(v && v.length >= 3 && v !== loc && !map.has(v)) map.set(v, loc); };
+    const add = (v, loc) => { if(v && v.length >= 3 && !map.has(v)) map.set(v, loc); };   // i isto ime (junak Bambus) zauzme ključ — kasniji par (pasiva Bambus → Bamboo) ga ne mijenja
     for(const [hr, en] of L_NAMES_DONE){
       const loc = EN && en != null ? en : (SR ? toSr(hr) : hr), sr = srText(hr);
       for(const v of [hr, en, sr, toCyr(sr)]){ add(v, loc); if(v) add(v.toLowerCase(), loc.toLowerCase()); }
@@ -112,7 +112,9 @@ const CYR_MAP = { a:'а', b:'б', c:'ц', č:'ч', ć:'ћ', d:'д', đ:'ђ', e:'
   m:'м', n:'н', o:'о', p:'п', r:'р', s:'с', š:'ш', t:'т', u:'у', v:'в', z:'з', ž:'ж' };
 /* ostaju latinicom: kratice, tipke i imena koja se tako pišu i u igri */
 const CYR_KEEP = new Set(['hp', 'mp', 'xp', 'mvp', 'kda', 'ok', 'ai', 'dota', 'kids', 'esc', 'tab', 'enter', 'shift', 'ctrl', 'alt',
-  'lvl', 'lh', 'dn', 'fps', 'gg', 'peerjs', 'webrtc', 'hud', 'lol', 'vs']);
+  'lvl', 'lh', 'dn', 'fps', 'gg', 'peerjs', 'webrtc', 'hud', 'lol', 'vs',
+  'iphone', 'ipad', 'chrome', 'edge', 'safari', 'firefox', 'blender', 'rift', 'riftu',   // strana imena
+  'juggernaut', 'anti', 'mage', 'pudge', 'drow', 'ranger', 'sand', 'king', 'caitlyn']);
 function cyrWord(w){
   let o = '';
   for(let i = 0; i < w.length; i++){

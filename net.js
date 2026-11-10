@@ -89,7 +89,7 @@ function netJoinRoom(code){
   net.mode = 'guest';
   net.code = code;
   myTeam = TEAM_RED;
-  netStatus(L('Spajam se na sobu ' + code + '...', 'Joining room ' + code + '...'));
+  netStatus(L('Spajam se na sobu ', 'Joining room ') + code + '...');   // kod izvan L(): ćirilica ga ne smije presloviti
   net.peer = new Peer();
   netWait(12000, () => net.peer && net.peer.open, 'timeout');
   net.peer.on('open', () => {

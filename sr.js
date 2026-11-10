@@ -15,10 +15,15 @@ const SR_PHRASES = [
   ["jasniji dućan", "jasnija prodavnica"],
   ["dućan je otvoren", "prodavnica je otvorena"],
   ["Doma! 🏠", "Kući! 🏠"],
-  ["kratke upute", "kratka uputstva"]
+  ["kratke upute", "kratka uputstva"],
+  // v0.56: rod i padež koje zamjena riječ po riječ ne pogodi (gumb → dugme je srednji rod; tipke = tasteri / tastera)
+  ["ovaj gumb", "ovo dugme"], ["iznad tipke", "iznad tastera"], ["Sve tipke", "Svi tasteri"], ["sve tipke", "svi tasteri"],
+  ["predmeti: tipke", "predmeti: tasteri"], ["(tipke D i F)", "(tasteri D i F)"]
 ];
 const SR_WORDS = {
   // v0.56 (džungla, predmeti; nova imena predmeta)
+  "gumba":"dugmeta", "preglednik":"pregledač", "preglednika":"pregledača", "suigračem":"saigračem", "suigraču":"saigraču", "suigrače":"saigrače",
+  "vojarnom":"kasarnom", "vanjska":"spoljna",
   "sječeš":"sečeš", "siječeš":"sečeš", "vijest":"vest", "vijesti":"vesti", "cijele":"cele", "pobijeđeno":"pobeđeno", "bježi":"beži",
   "ponovno":"ponovo", "spajanje":"povezivanje", "spajanja":"povezivanja", "spajam":"povezujem",
   "medvjeđe":"medveđe", "medvjeđa":"medveđa", "medvjeđi":"medveđi", "vjetrova":"vetrova", "drvosječina":"drvosečina", "drvosječa":"drvoseča",

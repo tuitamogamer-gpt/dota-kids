@@ -1426,7 +1426,7 @@ function buildRecap(t, killerName){
 }
 let hitCrit = false;   // 💥 upravo se dijeli kritični udarac (releaseAttack / projektil napada)
 function applyDamage(t, amount, src, kind){
-  if(!t || t.dead || t.removeMe || t.invuln || gameOver) return;
+  if(!t || t.dead || t.removeMe || t.invuln || gameOver || !t.status) return;   // bez statusa = nije jedinica (npr. ⛲ fontana kao izvor štete)
   if(t.cycloneT > 0) return;   // 🌪️ u vihoru: ništa ga ne može ozlijediti
   const st = t.status;
   if(isStructure(t) && glyph[t.team] && glyph[t.team].t > 0){   // 🛡️ Glif utvrde
@@ -1453,7 +1453,7 @@ function applyDamage(t, amount, src, kind){
   if(kind !== 'atk' && t.mres) amount *= 1 - t.mres;
   if(kind !== 'atk' && t.furyT > 0) amount *= 0.25;   // 🌪️ Vihor oštrica: magije ga gotovo ne diraju
   if(kind !== 'atk' && kind !== 'reflect' && t.kind === 'hero'){   // 🔮 Protučarolija (Jelko W): štit vrati čaroliju, inače manje štete od magija
-    if(t.status.cspellT > 0 && src && src !== t && src.team !== t.team && !src.dead && !src.removeMe){
+    if(t.status.cspellT > 0 && src && src.status && src !== t && src.team !== t.team && !src.dead && !src.removeMe){   // ⛲ munje fontane se ne vraćaju (fontana nije jedinica)
       applyDamage(src, amount, t, 'reflect');
       if(Math.random() < 0.5) burst(t.x, t.y, '#c084fc', 8, 140, 4);
       return;
@@ -1964,6 +1964,7 @@ function learnAbility(h, i){
   h.skillPoints--;
   ab.rank++;
   if(ab.def.onLearn) ab.def.onLearn(h, ab.rank);   // 🎖️ pasivni ulti (Majstorica luka): +okretnost
+  if(h.isPlayer && ab.def.ult && ab.def.passive) voxSay(h.hero.id, 'ult');   // 🗣️ pasivni ulti se ne baca — replika se čuje kad ga naučiš
   if(isHuman(h)){
     addFloat(h.x, h.y, ab.def.emoji + ' ' + ab.def.name + L(' — rang ', ' — rank ') + ab.rank + '!', '#a7f3d0', 15);
     if(h.isPlayer) sfx('buy');
@@ -2461,8 +2462,7 @@ function aimPoint(){
 }
 function pendingAbDef(){   // moć koja čeka klik na cilj (ne predmet ni čarolija)
   if(!pendingCast || pendingCast.i == null || pendingCast.i < 0 || !player) return null;
-  const ab = player.abilities[pendingCast.i];
-  return ab ? ab.def : null;
+  return abDefFor(player, player.abilities[pendingCast.i]);
 }
 /* 🎯 v0.56 pomoć pri ciljanju: strijela, kugla ili udica uperena u neprijatelja ili BLIZU neprijateljskog junaka
    (do 1,5 širine hica) pogodi njega — i gađa malo ispred ako hoda (kao botovi, leadAim). Djeca ne moraju sama
@@ -2620,7 +2620,7 @@ function performAttack(u, t){
   // napad iz sjene (Tragač): bonus PRIJE nego nevidljivost pukne
   let shadowBonus = 0;
   if(u.status.invisT > 0){
-    const sj = passiveRank(u, 'sjena');
+    const sj = u.kind === 'hero' && u.hero.id === 'tragac' && u.abilities[2] ? u.abilities[2].rank : 0;   // 👤 Sjena je moć E (nije urođena pasiva)
     if(sj) shadowBonus = 40 + 30 * sj;
     if(u.sbBonus) shadowBonus += u.sbBonus;   // 🌒 Nevidljivi bodež
     u.sbBonus = 0;
@@ -3774,6 +3774,9 @@ function botUseItems(u, eh, plan){
       case 'arcane': case 'soulring': case 'clarity': case 'mango': go = mpF < 0.35; break;
       case 'fairy': go = hpF < 0.25 && !!eh; break;
       case 'hood': go = fight && hpF < 0.75; break;
+      case 'force':   // 🌬️ Štap vjetra: ranjen se odgurne od neprijatelja prema kući
+        if(eh && dEh < 450 && hpF < 0.5){ go = true; aim = stepToward(u, FOUNTAIN[u.team], 600); }
+        break;
       case 'pipe': case 'greaves': {   // 🎺👢 kad tim (ili bot) strada
         const hurt = units.filter(e => e.kind === 'hero' && e.team === u.team && !e.dead && dist(u, e) < 1100 && e.hp < e.maxhp * 0.55).length;
         go = (fight && hurt >= 1) || hpF < 0.4 || (it.id === 'greaves' && hurt >= 2);
@@ -5433,7 +5436,7 @@ const ACHIEVEMENTS = [
   { k: 'helper',     e: '🤝', n: L('Timski igrač', 'Team Player'),   d: L('15 asistencija u jednoj igri', '15 assists in one game') },
   { k: 'towers',     e: '🏰', n: L('Rušitelj', 'Wrecker'),       d: L('zadnji udarac na 3 kule u jednoj igri', 'last hit on 3 towers in one game') },
   { k: 'dragon',     e: '🐲', n: L('Zmajoubojica', 'Dragon Slayer'),   d: L('tvoj tim pobijedi Velikog Zmaja', 'your team defeats the Great Dragon') },
-  { k: 'tango',      e: '🌿', n: L('Proždrljivac', 'Big Eater'),   d: L('pojedi 4 drveta tangom u jednoj igri', 'eat 4 trees with tango in one game') },
+  { k: 'tango',      e: '🌿', n: L('Proždrljivac', 'Big Eater'),   d: L('pojedi 4 drveta Šumskom grickalicom u jednoj igri', 'eat 4 trees with the Forest Snack in one game') },
   { k: 'mvp',        e: '👑', n: L('Najbolji', 'The Best'),       d: L('budi najbolji igrač igre', 'be the best player of the game') },
   { k: 'legend',     e: '🎓', n: L('Legenda', 'Legend'),        d: L('dođi do levela 25', 'reach level 25') },
   { k: 'hard',       e: '🦸', n: L('Junak', 'Hero'),          d: L('pobijedi botove na težini 🔥 Teško', 'beat the bots on 🔥 Hard') },
@@ -7380,7 +7383,7 @@ function buffList(h){
     h.travel === 2 ? (EN ? '+40% speed from the fountain at the start of the game — until you fight' : LS('+40% brzine od fontane na početku igre — dok ne uđeš u borbu')) : (EN ? '+15% speed when not fighting' : LS('+15% brzine kad nisi u borbi')));
   add('🛡️', EN ? 'Battle Call' : LS('Bojni zov'), h.armorBuffT, true, EN ? '+' + (h.armorBuff || 0) + ' armor' : LS('+' + (h.armorBuff || 0) + ' oklopa'));
   add('🔭', EN ? 'Spyglass' : LS('Durbin'), h.scopeT, true, EN ? 'you shoot farther and faster' : LS('gađaš dalje i brže'));
-  add('🍖', EN ? 'War Hunger' : LS('Ratna glad'), h.hungerT, false, EN ? 'you lose health until you defeat someone' : LS('gubiš život dok nekoga ne pobijediš'));
+  add('🍖', EN ? 'Battle Hunger' : LS('Ratna glad'), h.hungerT, false, EN ? 'you lose health until you defeat someone' : LS('gubiš život dok nekoga ne pobijediš'));
   add('🛡', EN ? 'Shield' : LS('Štit'), st.shieldT, true, EN ? 'you take less damage' : LS('primaš manje štete'));
   add('👻', EN ? 'Invisible' : LS('Nevidljiv'), st.invisT, true, EN ? "enemies can't see you (attacking ends it)" : LS('neprijatelji te ne vide (napad prekida)'));
   add('🦇', EN ? 'Thirst' : LS('Žeđ'), h.lsBoostT, true, EN ? 'attacks steal lots of health' : LS('udarci kradu puno života'));

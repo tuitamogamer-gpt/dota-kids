@@ -1899,8 +1899,7 @@ function pendingDef(){
     if(it && it.active && it.active.target === 'tree') return { target: 'point', castRange: it.active.castRange || 165, color: '#4ade80', treeAim: true };
     return it && it.active ? { target: 'point', castRange: it.active.castRange || 600, color: '#bae6fd', aoe: it.active.aoe || 0 } : null;
   }
-  const ab = player.abilities[pendingCast.i];
-  return ab ? ab.def : null;
+  return abDefFor(player, player.abilities[pendingCast.i]);
 }
 /* 🌀 ciljanje teleporta: plavi prstenovi na svim našim građevinama, odabrana (pod mišem) svijetli jače */
 const tpMarks = [];

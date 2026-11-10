@@ -129,18 +129,18 @@ function abilityTipHtml(h, i){
   html += `<div class="tipDesc">${escHtml(d.desc.replace(/^(ULTI|ULTIMATE|ULT|УЛТИ):\s*/, ''))}</div>`;
   if(d.tip){
     html += `<div class="tipBox tipAct"><div class="tipActH"><span class="tipLbl">${ab.rank ? L('RANG ', 'RANK ') + ab.rank : L('NA RANGU 1', 'AT RANK 1')}</span>` +
-      (d.passive ? '' : `<span class="tipCd">💧 ${d.mana} &nbsp;⏱️ ${d.cd} ${U_SEC}</span>`) + `</div>${escHtml(d.tip(rk))}</div>`;
+      (d.passive ? '' : `<span class="tipCd">💧 ${d.mana} &nbsp;⏱️ ${d.cdRk ? d.cdRk(rk) : d.cd} ${U_SEC}</span>`) + `</div>${escHtml(d.tip(rk))}</div>`;
     if(ab.rank > 0 && ab.rank < max) html += `<div class="tipNote">⬆️ ${L('Rang', 'Rank')} ${ab.rank + 1}: ${escHtml(d.tip(ab.rank + 1))}</div>`;
   }
   {   // 🎓 odabrani talenti koji jačaju ovu moć
     const tb = (h.talAb && h.talAb[keyL]) || {}, parts = [];
-    if(tb.dmg) parts.push(L('+' + tb.dmg + ' štete', '+' + tb.dmg + ' damage'));
+    if(tb.dmg) parts.push(d.dmgTick ? L('+' + tb.dmg / d.dmgTick + ' štete/s', '+' + tb.dmg / d.dmgTick + ' damage/s') : L('+' + tb.dmg + ' štete', '+' + tb.dmg + ' damage'));   // oblaci: bonus je po otkucaju
     if(tb.heal) parts.push(L('+' + tb.heal + ' liječenja', '+' + tb.heal + ' healing'));
     if(tb.dur) parts.push(L('+' + tb.dur + ' s trajanja', '+' + tb.dur + ' s duration'));
     if(tb.cd) parts.push(L('−' + Math.abs(tb.cd) + ' s hlađenja', '−' + Math.abs(tb.cd) + ' s cooldown'));
     if(tb.mana) parts.push(L('−' + Math.abs(tb.mana) + ' mane', '−' + Math.abs(tb.mana) + ' mana'));
     const fl = Object.keys(h.talFlags || {}).filter(f => f.startsWith(h.hero.id + '_' + keyL.toLowerCase()));
-    if(parts.length || fl.length) html += `<div class="tipNote" style="color:#fde68a">🎓 Talent: ${escHtml(parts.join(', ') || L('posebno pojačanje', 'special boost'))}</div>`;
+    if(parts.length || fl.length) html += `<div class="tipNote" style="color:#fde68a">🎓 ${LS('Talent')}: ${escHtml(parts.join(', ') || L('posebno pojačanje', 'special boost'))}</div>`;
   }
   html += `<div class="tipFoot">${d.passive ? L('✨ Pasivno — uvijek radi', '✨ Passive — always on') : (d.ult ? L('🔓 Ulti na levelima ', '🔓 Ult at levels ') + CFG.ultLevels.join(' / ') : L('🔓 Rangovi na levelima 1 / 3 / 5 / 7', '🔓 Ranks at levels 1 / 3 / 5 / 7')) +
     (ab.rank > 0 && !d.passive ? L(' · tipka ', ' · key ') + keyL : '')}</div>`;
@@ -312,7 +312,7 @@ const SHOP_CATS = [
   { hdr:L('🧱 OSNOVNO', '🧱 BASIC') },
   { id:'cons',   label:L('🧪 Napitci', '🧪 Potions'),           tip:L('Liječenje, mana, štapići vida — potroše se', 'Healing, mana, wards — they get used up') },
   { id:'attr',   label:L('💪 Atributi', '💪 Attributes'),       tip:L('Snaga, okretnost, inteligencija', 'Strength, agility, intelligence') },
-  { id:'equip',  label:L('🗡️ Oprema', '🗡️ Gear'),              tip:L('Oružje, oklop i čizme za početak', 'Weapons, armor and boots to start') },
+  { id:'equip',  label:L('🗡️ Oprema', '🗡️ Gear'),              tip:L('Oružje i oklop za početak', 'Weapons and armor to start') },
   { id:'misc',   label:L('🎒 Razno', '🎒 Misc'),                tip:L('Obnova, brzina i korisne sitnice', 'Regen, speed and handy little things') },
   { id:'secret', label:L('💎 Rijetko', '💎 Rare'),              tip:L('Skupi dijelovi za najjače predmete', 'Pricey parts for the strongest items') },
   { hdr:L('🏆 VELIKI PREDMETI', '🏆 BIG ITEMS') },

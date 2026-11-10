@@ -991,7 +991,7 @@ const HEROES = [
           return true;
         }},
       { key:'W', name:L('Sovino oko', 'Owl Eye'), emoji:'👁️', cd:18, mana:50, color:'#c4b5fd',
-        desc:L('Pogledaj daleko — vidiš odabrano mjesto 10 sekundi (i kroz maglu rata!)', 'Look far away — see the chosen spot for 10 seconds (even through the fog of war!)'),
+        desc:L('Pogledaj daleko — vidiš odabrano mjesto nekoliko sekundi (i kroz maglu rata!)', 'Look far away — see the chosen spot for a few seconds (even through the fog of war!)'),
         target:'point', castRange:1400, aoe:420,
         tip:rk => L('👁️ vid u krugu 420 na ' + (8 + 3*rk) + ' s', '👁️ vision in a 420 circle for ' + (8 + 3*rk) + ' s'),
         bot:{type:'ward', range:1200},
@@ -1014,7 +1014,7 @@ const HEROES = [
         }},
       { key:'R', name:L('Vječna noć', 'Endless Night'), emoji:'🌑', cd:90, mana:120, ult:true, color:'#6d28d9',
         desc:L('ULTI: Pozovi noć usred dana! Neprijatelji vide kraće, a tvoj tim je brži i jače udara', 'ULT: Call the night in the middle of the day! Enemies see less, and your team is faster and hits harder'),
-        tip:rk => L('🌑 noć ' + (18 + 6*rk) + ' s • tim +20% brzine i ⚔️ +' + (20 + 6*rk) + '% štete 10 s', '🌑 night for ' + (18 + 6*rk) + ' s • team +20% speed and ⚔️ +' + (20 + 6*rk) + '% damage for 10 s'),
+        tip:rk => L('🌑 noć ' + (18 + 6*rk) + ' s • tim +20% brzine 6 s i ⚔️ +' + (20 + 6*rk) + '% štete 10 s', '🌑 night for ' + (18 + 6*rk) + ' s • team +20% speed for 6 s and ⚔️ +' + (20 + 6*rk) + '% damage for 10 s'),
         bot:{type:'night', range:700},
         cast(u, aim, rk){
           nightForceT = Math.max(nightForceT, 18 + 6*rk);
@@ -1634,7 +1634,7 @@ const HEROES = [
             const d = distXY(p.x, p.y, e.x, e.y); if(d < bd){ bd = d; best = e; }
           }
           if(!best) return false;
-          const dmg = 230 + 105*rk + abBonus(u, 'R', 'dmg');
+          const dmg = 230 + 105*rk;   // 🎓 talent +štete dodaje applyDamage (abCtx)
           startChannel(u, hasTal(u, 'nisan_r_fast') ? 0.8 : 1.6, best, t => {
             spawnHoming(u, t, { speed:2600, dmg, r:10, color:'#fde047', shot:'pellet', big:true,
               onHit(e){ applyStun(e, 0.4); burst(e.x, e.y, '#fde047', 30, 320, 8); addFloat(e.x, e.y, L('🎯 POGODAK!', '🎯 BULLSEYE!'), '#fde047', 20); } });
@@ -1758,7 +1758,7 @@ const HEROES = [
               addFloat(e.x, e.y, L('🪝 Upecan!', '🪝 Hooked!'), '#e2e8f0', 16);
             }});
         }},
-      { key:'W', name:L('Smrdljivi oblak', 'Stinky Cloud'), emoji:'🤢', cd:1, mana:0, color:'#84cc16', toggle:true,
+      { key:'W', name:L('Smrdljivi oblak', 'Stinky Cloud'), emoji:'🤢', cd:1, mana:0, color:'#84cc16', toggle:true, dmgTick:0.5,
         desc:L('UKLJUČI / ISKLJUČI (kao Rot u DotA): dok je uključen, oko tebe je smrdljivi zeleni oblak — neprijatelji u njemu gube život i sporiji su, a i tebi smrdi (gubiš malo života, ali ne možeš sam sebe pobijediti). Radi dok ga ne isključiš.',
           'ON / OFF (like Rot in DotA): while it is on, a stinky green cloud surrounds you — enemies in it lose health and slow down, and it stinks for you too (you lose a little health, but you can\'t defeat yourself). It works until you switch it off.'),
         selfAoe:250,
@@ -1914,7 +1914,7 @@ const HEROES = [
           burst(u.x, u.y, '#e7c27d', 22, 240, 6);
           return true;
         }},
-      { key:'W', name:L('Pješčana oluja', 'Sandstorm'), emoji:'⏳', cd:18, mana:80, color:'#e2b86b',
+      { key:'W', name:L('Pješčana oluja', 'Sandstorm'), emoji:'⏳', cd:18, mana:80, color:'#e2b86b', dmgTick:0.5,
         desc:L('Digni pješčanu oluju oko sebe — neprijatelji u njoj gube život, a tebe nitko ne vidi (dok ne napadneš)', 'Whip up a sandstorm around you — enemies inside lose health, and nobody can see you (until you attack)'),
         selfAoe:280,
         tip:rk => L('⚔️ ' + (25 + 15*rk) + ' štete/s u krugu 280 na 5 s + 👻 nevidljiv', '⚔️ ' + (25 + 15*rk) + ' damage/s within 280 for 5 s + 👻 invisible'),
@@ -1972,7 +1972,7 @@ const HEROES = [
         tip:rk => L('⚔️ ' + (60 + 40*rk) + ' štete svima na putu (domet 1150)', '⚔️ ' + (60 + 40*rk) + ' damage to everyone in the way (range 1150)'),
         bot:{type:'shot', range:1000},
         cast(u, aim, rk){
-          return spawnSkillshot(u, aim, {speed:1700, r:30, range:1150, pierce:true, dmg:60 + 40*rk + abBonus(u, 'Q', 'dmg'),   // ⚖️ simulacija: 127/70 u 12 igara — malo slabije (bilo 70 + 45)
+          return spawnSkillshot(u, aim, {speed:1700, r:30, range:1150, pierce:true, dmg:60 + 40*rk,   // ⚖️ simulacija: 127/70 u 12 igara — malo slabije (bilo 70 + 45)
             color:'#fde68a', emoji:'💥',
             model:'proj_pellet', scale:60});
         }},
@@ -2018,7 +2018,7 @@ const HEROES = [
             const d = distXY(p.x, p.y, e.x, e.y); if(d < bd){ bd = d; best = e; }
           }
           if(!best) return false;
-          const dmg = 230 + 140*rk + abBonus(u, 'R', 'dmg');   // ⚖️ bilo 260 + 160
+          const dmg = 230 + 140*rk;   // ⚖️ bilo 260 + 160
           startChannel(u, 1.0, best, t => {
             // drugi neprijateljski junak na putu primi metak (kao u LoL-u)
             const dx = t.x - u.x, dy = t.y - u.y, L0 = Math.hypot(dx, dy) || 1;
@@ -2044,7 +2044,7 @@ const HEROES = [
       desc:L('PASIVNO: udarci katanom ponekad su KRITIČNI i jako udare', 'PASSIVE: katana strikes are sometimes CRITICAL and hit hard'),
       tip:rk => L('💥 ' + (20 + 5*rk) + '% šanse za kritični udarac (175% štete)', '💥 ' + (20 + 5*rk) + '% chance of a critical strike (175% damage)') },
     abilities:[
-      { key:'Q', name:L('Vihor oštrica', 'Blade Fury'), emoji:'🌪️', cd:16, mana:90, color:'#fdba74',
+      { key:'Q', name:L('Vihor oštrica', 'Blade Fury'), emoji:'🌪️', cd:16, mana:90, color:'#fdba74', dmgTick:0.5,
         desc:L('Zavrti se kao vihor s katanom — rani sve oko sebe, a magije te gotovo ne diraju (ni omama ni usporenje); dok se vrtiš, ne udaraš', 'Spin like a whirlwind with your katana — it hurts everyone around you, and spells barely touch you (no stuns or slows); while spinning you don\'t attack'),
         selfAoe:250,
         tip:rk => L('🌪️ ' + (3 + 0.5*rk).toFixed(1) + ' s: ⚔️ ' + (55 + 30*rk) + ' štete/s u krugu 250 • 🛡️ −75% štete od magija', '🌪️ ' + (3 + 0.5*rk).toFixed(1) + ' s: ⚔️ ' + (55 + 30*rk) + ' damage/s within 250 • 🛡️ −75% spell damage'),
@@ -2054,7 +2054,7 @@ const HEROES = [
           u.furyT = dur;
           u.status.immuneT = Math.max(u.status.immuneT, dur);   // kao u DotA: ni omama ni usporenje
           u.status.stun = 0; u.status.slowT = 0; u.status.rootT = 0;   // i otrese one koje već ima
-          startCloud(u, { kind:'fury', t:dur, r:250, dps:55 + 30*rk + abBonus(u, 'Q', 'dmg'), color:'#fdba74' });
+          startCloud(u, { kind:'fury', t:dur, r:250, dps:55 + 30*rk, color:'#fdba74' });   // 🎓 talent dodaje applyDamage po otkucaju
           addFloat(u.x, u.y - 30, L('🌪️ Vihor!', '🌪️ Blade Fury!'), '#fdba74', 16);
           return true;
         }},
@@ -2094,11 +2094,11 @@ const HEROES = [
     abilities:[
       { key:'Q', name:L('Treptaj', 'Blink'), emoji:'✨', cd:12, cdRk:rk => 13 - rk, mana:60, color:'#a78bfa',
         desc:L('U tren se prebaci na mjesto koje odabereš — za napad ili bijeg', 'Teleport in an instant to the spot you choose — to attack or to escape'),
-        target:'point', castRange:650, line:true, lineW:40,
+        target:'point', castRange:650, rangeRk:(u, rk) => 650 + (rk - 1) * 50 + (hasTal(u, 'jelko_q_far') ? 150 : 0), line:true, lineW:40,   // domet raste s rangom (nišan: abDefFor)
         tip:rk => L('✨ treptaj do ' + (650 + (rk - 1) * 50) + ' • hlađenje ' + (13 - rk) + ' s', '✨ blink up to ' + (650 + (rk - 1) * 50) + ' • ' + (13 - rk) + ' s cooldown'),
         bot:{type:'blink', range:650},
         cast(u, aim, rk){
-          const R = 650 + (rk - 1) * 50 + (hasTal(u, 'jelko_q_far') ? 150 : 0);
+          const R = this.rangeRk(u, rk);
           burst(u.x, u.y, '#a78bfa', 18, 180, 6); ring(u.x, u.y, 60, '#c4b5fd');
           const p = clampRange(u, aim, R);
           u.x = clamp(p.x, 40, WORLD - 40); u.y = clamp(p.y, 40, WORLD - 40); u.moveTarget = null;
@@ -2149,6 +2149,15 @@ const HEROES = [
 /* 🎨 v0.55: ikone moći iz GPT Image 2.5 — assets/ab/<junak>_<P|Q|W|E|R|T>.jpg (P = urođena pasiva, T = talenti).
    Popis junaka koji ih imaju piše tools/art/dl.py kad preuzme i izreže slike; bez ikone igra crta emoji kao prije. */
 const SPELL_ICONS = ['bikos', 'gavran', 'hobotnica', 'irbis', 'jednorog', 'jez', 'ledena', 'listko', 'luna', 'majmun', 'morskipas', 'munja', 'nilski', 'nisan', 'nosorog', 'orlina', 'panda', 'pcela', 'skokica', 'skorpion', 'slon', 'sova', 'strijela', 'tragac', 'vitez', 'vuk', 'zarko'];
+/* moć kojoj domet raste s rangom / talentom (rangeRk): kopija definicije s trenutnim dometom — za nišan na tlu i dodirne kontrole */
+function abDefFor(u, ab){
+  if(!ab) return null;
+  const d = ab.def;
+  if(!d.rangeRk) return d;
+  const cr = d.rangeRk(u, Math.max(1, ab.rank));
+  if(!ab.defR || ab.defR.castRange !== cr) ab.defR = Object.assign({}, d, { castRange: cr });
+  return ab.defR;
+}
 function spellIconSrc(heroId, slot){ return SPELL_ICONS.includes(heroId) ? 'assets/ab/' + heroId + '_' + slot + '.jpg' : null; }
 
 /* ---------------- DUĆAN S RECEPTIMA ---------------- */
@@ -2293,7 +2302,7 @@ const ITEMS = [
     act:L('Skok: skoči do 1000 daleko • ne radi 3 s nakon udarca neprijateljskog junaka', 'Leap: jump up to 1000 away • doesn\'t work for 3 s after an enemy hero hits you'), lore:L('Hop — i već si tamo.', 'Hop — and you\'re already there.'),
     active:{ cd:13, mana:0, target:'point', castRange:1000,
       use(h, aim){
-        if(gameTime - (h.lastHitT || -99) < 3){ if(isHuman(h)) addFloat(h.x, h.y, L('⚡ Bodež je zaključan — netko te udara!', '⚡ The dagger is locked — someone is hitting you!'), '#fca5a5', 13); return false; }
+        if(gameTime - (h.lastHitT || -99) < 3){ if(isHuman(h)) addFloat(h.x, h.y, L('⚡ Amulet je zaključan — netko te udara!', '⚡ The amulet is locked — someone is hitting you!'), '#fca5a5', 13); return false; }
         leapTo(h, aim, 1000); burst(h.x, h.y, '#bae6fd', 16, 200, 5); return true;
       } } },
   // ----- 🔆 rijetko (kao tajna trgovina) -----
@@ -2398,7 +2407,7 @@ const ITEMS = [
         for(const e of units) if(e.kind === 'hero' && e.team === h.team && !e.dead && dist(h, e) <= 1200){ e.barrierHp = Math.max(e.barrierHp || 0, 300); e.barrierT = 10; }
         ring(h.x, h.y, 1200, '#93c5fd'); burst(h.x, h.y, '#bfdbfe', 24, 240, 6); return true;
       } } },
-  { id:'greaves', emoji:'🧦', name:L('Iscjeliteljske čarape', 'Healer\'s Socks'), cat:'sup', cost:450, components:['arcane', 'mek'], stats:{speed:50, mp:250, armor:4, hpRegen:3},   // v0.56
+  { id:'greaves', emoji:'🧦', name:L('Iscjeliteljske čarape', 'Healer\'s Socks'), cat:'sup', cost:450, components:['arcane', 'mek'], tag:'boots', stats:{speed:50, mp:250, armor:4, hpRegen:3},   // v0.56
     aura:{ armor:3, mpRegen:1.5, r:900 }, pas:L('Aura: saveznici u krugu 900 dobivaju +3 oklopa i +1.5 obnove mane', 'Aura: allies within 900 get +3 armor and +1.5 mana regen'),
     act:L('Izliječi sebe i saveznike u krugu 1200 za 300 života i 150 mane i skini im usporenja', 'Heal yourself and allies within 1200 for 300 HP and 150 mana and remove their slows'), lore:L('Čizme koje čuvaju cijeli tim.', 'Boots that guard the whole team.'),
     active:{ cd:45, mana:0,
@@ -2498,7 +2507,7 @@ const ITEMS = [
   { id:'titanheart', emoji:'🧡', name:L('Srce titana', 'Titan Heart'), cat:'armor', cost:650, components:['reaver', 'heart'], stats:{str:45, hp:250, hpRegen:12},
     lore:L('Kuca kao bubanj divova.', 'It beats like a giant\'s drum.') },
   { id:'hood', emoji:'🧢', name:L('Kapa protiv čarolija', 'Spellproof Cap'), cat:'armor', cost:200, components:['cloak', 'ringhealth', 'ringregen'], stats:{hpRegen:8, mres:0.25},   // v0.56
-    act:L('Štit protiv magije: upije 350 štete na 12 s', 'Spell shield: absorbs 350 damage for 12 s'), lore:L('Magije se odbijaju od nje.', 'Spells bounce off it.'),
+    act:L('Štit: upije 350 štete na 12 s', 'Shield: absorbs 350 damage for 12 s'), lore:L('Magije se odbijaju od nje.', 'Spells bounce off it.'),
     active:{ cd:60, mana:0, use(h){ h.barrierHp = Math.max(h.barrierHp || 0, 350); h.barrierT = 12; burst(h.x, h.y, '#93c5fd', 16, 170, 5); return true; } } },
   { id:'halberd', emoji:'⚜️', name:L('Gardijska helebarda', 'Guard\'s Halberd'), cat:'armor', cost:300, components:['ogre', 'staff', 'ringhealth'], stats:{str:16, dmg:10, hpRegen:5, evasion:0.2},   // v0.56
     act:L('Razoružaj: neprijatelj 3 s ne može udarati (domet 600)', 'Disarm: an enemy can\'t attack for 3 s (range 600)'), lore:L('Jedan zamah — i oružje padne iz ruke.', 'One swing — and the weapon drops from their hand.'),
@@ -2967,7 +2976,7 @@ const HERO_TALENTS = {
     [TAL('💥', L('Praznina mane +0.4 štete po mani', 'Mana Void +0.4 damage per mana'), { flag:'jelko_r_plus' }), TAL('✨', L('Treptaj −3 s hlađenja', 'Blink −3 s cooldown'), { ab:{ Q:{ cd:-3 } } })],
   ],
   jazo: [   // v0.56
-    [TAL('🌪️', L('Vihor oštrica +25 štete/s', 'Blade Fury +25 damage/s'), { ab:{ Q:{ dmg:25 } } }), TAL('❤️', L('+225 života', '+225 HP'), { hp:225 })],
+    [TAL('🌪️', L('Vihor oštrica +25 štete/s', 'Blade Fury +25 damage/s'), { ab:{ Q:{ dmg:12.5 } } }), TAL('❤️', L('+225 života', '+225 HP'), { hp:225 })],   // 12.5 po otkucaju (0,5 s) = +25/s
     [TAL('🗿', L('Ljekoviti totem +0.6% života/s', 'Healing Totem +0.6% HP/s'), { flag:'jazo_w_plus' }), TAL('⚡', L('+15% brzine napada', '+15% attack speed'), { aspd:0.15 })],
     [TAL('💥', L('Ples oštrice +1 rang', 'Blade Dance +1 rank'), { pas:1 }), TAL('🌪️', L('Vihor oštrica traje 1 s dulje', 'Blade Fury lasts 1 s longer'), { ab:{ Q:{ dur:1 } } })],
     [TAL('🗡️', L('Tisuću rezova: +3 reza', 'Omnislash: +3 slashes'), { flag:'jazo_r_more' }), TAL('👟', L('+30 brzine kretanja', '+30 move speed'), { spd:30 })],
