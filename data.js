@@ -538,8 +538,7 @@ const HEROES = [
           return spawnSkillshot(u, aim, {speed:720, r:18, range:560,
             dmg:65 + 40*rk, color:'#f472b6', emoji:'👅',
             onHit(e){
-              const p = stepToward(u, e, 70);
-              e.x = p.x; e.y = p.y;
+              if(e.status.immuneT <= 0){ const p = stepToward(u, e, 70); e.x = p.x; e.y = p.y; }   // 👑 imunog na čarolije jezik ne privuče (kao ni udica, pipci i odbačaj)
               applyStun(e, 0.8 + 0.1*rk);
               addLine(u.x, u.y, e.x, e.y, '#f472b6', 5, 0.25);
               burst(e.x, e.y, '#f472b6', 10, 160, 5);
@@ -1195,6 +1194,7 @@ const HEROES = [
           let best = null, bd = 150;
           for(const e of units){
             if(e.kind !== 'hero' || e.team === u.team || e.dead || e.invuln || e.status.invisT > 0) continue;
+            if(e.status.immuneT > 0 || !isVisibleTo(u.team, e)) continue;   // 👑 imunog na čarolije (i onoga u magli) ne može zamijeniti
             const d = distXY(p.x, p.y, e.x, e.y);
             if(d < bd){ bd = d; best = e; }
           }
@@ -1806,8 +1806,13 @@ const HEROES = [
           let acc = 0;
           startChannel(u, dur, best, null, { kind:'channel', msg:L('😋 Zalogaj prekinut!', '😋 Gulp interrupted!'),
             tick(t, dt){
-              applyStun(t, 0.2);
-              if(dist(u, t) > u.r + t.r + 30){ const q = stepToward(u, t, u.r + t.r + 20); t.x = q.x; t.y = q.y; }
+              const far = dist(u, t) > u.r + t.r + 30;
+              if(t.status.immuneT > 0){   // 👑 imun na čarolije: zalogaj ga ne omami niti drži uz Pecka — ode li, zalogaj prestaje
+                if(far){ cancelChannel(u, L('😋 Zalogaj prekinut!', '😋 Gulp interrupted!')); return; }
+              } else {
+                applyStun(t, 0.2);
+                if(far){ const q = stepToward(u, t, u.r + t.r + 20); t.x = q.x; t.y = q.y; }
+              }
               acc += dt;
               while(acc >= 0.5 && !t.dead){
                 acc -= 0.5;

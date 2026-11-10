@@ -116,7 +116,8 @@ const MODEL_SCALE = {
 /* ☀️🌙 osvjetljenje: umjerenije nebo i ekspozicija — vrhovi krošnji i svijetli kamen se više ne "isperu" u bijelo.
    v0.47: noć je MJESEČINA — plavkasto svjetlo (~55% dana), svjetlije nebo i malo jača ekspozicija; prije je noću sunce
    padalo na 15%, a nebo na četvrtinu, pa je slika bila skoro crna */
-const LIGHT = { exposure: 1.0, sunDay: 1.06, sunNight: 0.6, hemiDay: 0.62, hemiNight: 0.5, nightExp: 0.16 };
+const LIGHT = { exposure: 1.0, sunDay: 1.06, sunNight: 0.6, hemiDay: 0.62, hemiNight: 0.5, nightExp: 0.16,
+  postExp: 1.23, postContrast: 1.18, postNightExp: 0.30 };   // 🎞️ završna obrada (efekti uključeni): ekspozicija, kontrast i noćno pojačanje ACES krivulje
 const TOWER_CRYSTAL_Z = 3.75;   // visina kristala na kuli (u jedinicama modela; tools/blender: TOWER_CRYSTAL_Z)
 
 /* ================= Blender modeli (GLB) ================= */
@@ -683,15 +684,20 @@ function resize3D(){
 
 /* ================= POST-PROCESSING =================
    HDR render (MSAA) → bloom (sjaj magija, kristala, baklji) → završna obrada:
-   ACES tonska krivulja (kao prije), malo jače boje i kontrast, vinjeta, sRGB.
-   Na sporim uređajima se samo isključi; tipka K ih pali/gasi. */
+   ACES tonska krivulja, malo jače boje i kontrast, vinjeta, sRGB.
+   Na sporim uređajima se samo isključi; tipka K ih pali/gasi.
+   🎞️ v0.56 JEDNO mapiranje tonova: dok su efekti uključeni, materijali crtaju bez tonske krivulje (pravi HDR — render3D
+   postavlja NoToneMapping), a ACES radi samo završna obrada. Prije je three.js krivulju primijenio već u materijalima, pa
+   završna obrada još jednom: svijetlo je stalo na ~76 % (nikad bijelo), sjaj nije dobivao vrijednosti iznad 1 (plamen s
+   bojom ×1,6 nije sjao), a noćno pojačanje se brojalo dvaput. LIGHT.postExp / postContrast / postNightExp su namješteni
+   tako da srednji tonovi i sjene ostanu kao prije (razlika do ~2 %), a svijetli dijelovi dobiju puni raspon. */
 const POST = { on: true, composer: null, bloom: null, grade: null, auto: true, frames: 0, acc: 0, last: 0 };
 const GRADE_SHADER = {
-  uniforms: { tDiffuse: { value: null }, exposure: { value: LIGHT.exposure }, sat: { value: 1.0 }, contrast: { value: 1.07 },
-    vig: { value: 0.26 }, night: { value: 0 } },
+  uniforms: { tDiffuse: { value: null }, exposure: { value: LIGHT.exposure * LIGHT.postExp }, sat: { value: 1.0 }, contrast: { value: LIGHT.postContrast },
+    vig: { value: 0.26 }, night: { value: 0 }, nightExp: { value: LIGHT.postNightExp } },
   vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: `
-    uniform sampler2D tDiffuse; uniform float exposure, sat, contrast, vig, night; varying vec2 vUv;
+    uniform sampler2D tDiffuse; uniform float exposure, sat, contrast, vig, night, nightExp; varying vec2 vUv;
     vec3 rrtOdt(vec3 v){ vec3 a = v * (v + 0.0245786) - 0.000090537; vec3 b = v * (0.983729 * v + 0.4329510) + 0.238081; return a / b; }
     vec3 aces(vec3 c){
       const mat3 I = mat3(vec3(0.59719, 0.07600, 0.02840), vec3(0.35458, 0.90834, 0.13383), vec3(0.04823, 0.01566, 0.83777));
@@ -700,7 +706,7 @@ const GRADE_SHADER = {
     }
     vec3 toSRGB(vec3 c){ return mix(c * 12.92, pow(c, vec3(1.0 / 2.4)) * 1.055 - 0.055, step(0.0031308, c)); }
     void main(){
-      vec3 c = aces(texture2D(tDiffuse, vUv).rgb * (1.0 + 0.16 * night));   // 🌙 noću malo svjetlije (mjesečina)
+      vec3 c = aces(texture2D(tDiffuse, vUv).rgb * (1.0 + nightExp * night));   // 🌙 noću malo svjetlije (mjesečina)
       float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
       c = mix(vec3(l), c, sat * (1.0 - 0.18 * night));          // noću boje blijede (kao pod mjesecom), danju normalne
       c = (c - 0.5) * contrast + 0.5;                            // malo više kontrasta
@@ -733,6 +739,10 @@ function togglePost(){
 }
 function render3D(){
   cullDeco();
+  {   // 🎞️ jedno mapiranje tonova: s efektima ga radi završna obrada (materijali u HDR-u), bez efekata sam renderer
+    const tm = POST.on && POST.composer ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
+    if(renderer3.toneMapping !== tm) renderer3.toneMapping = tm;
+  }
   if(POST.on && POST.composer){
     POST.grade.uniforms.night.value = 1 - dayK;
     POST.bloom.strength = 0.42 + 0.22 * (1 - dayK);   // noću vatre i kristali jače sjaje

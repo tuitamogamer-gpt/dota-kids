@@ -111,6 +111,31 @@ check('Gost: nišanjenje teleporta, čarolije i predmeta ne nestaje nakon jedne 
     net.mode = 'local'; pendingCast = null;
     return out.every(Boolean) || out;`);
 });
+check('Hlađenja teku i dok junak čeka oživljavanje', () => {
+  const g = game();
+  return g(SETUP('zarko') + `
+    P.abilities[3].rank = 1; P.abilities[3].cd = 100; P.sumCd[0] = 60; P.tpCd = 40;
+    P.maxhp = P.hp = 100; applyDamage(P, 99999, E);
+    if(!P.dead) return 'junak nije pao';
+    for(let k = 0; k < 100; k++) update(0.05);       // 5 s
+    const r = [P.abilities[3].cd, P.sumCd[0], P.tpCd].map(v => +v.toFixed(1));
+    return (Math.abs(r[0] - 95) < 0.3 && Math.abs(r[1] - 55) < 0.3 && Math.abs(r[2] - 35) < 0.3) || r;`);
+});
+check('Imun na čarolije: jezik ga ne privuče, zamjena mjesta ga ne dira (a bez imunosti rade)', () => {
+  const tongue = immune => game()(SETUP('skokica') + `
+    P.abilities[0].rank = 4; E.x = P.x + 300;
+    ${immune ? 'E.status.immuneT = 9;' : ''}
+    castAbility(P, 0, { x: E.x, y: E.y });
+    for(let k = 0; k < 30; k++){ E.moveTarget = null; E.attackTarget = null; E.atkTimer = 99; update(0.05); }
+    return Math.round(dist(P, E));`);
+  const swap = immune => game()(SETUP('gavran') + `
+    P.abilities[1].rank = 4; E.x = P.x + 300; E.status.trackT = 99; updateVision();
+    ${immune ? 'E.status.immuneT = 9;' : ''}
+    const x0 = P.x; castAbility(P, 1, { x: E.x, y: E.y });
+    return Math.round(P.x - x0);`);
+  const r = { tongueImmune: tongue(true), tongueNormal: tongue(false), swapImmune: swap(true), swapNormal: swap(false) };
+  return (r.tongueImmune > 250 && r.tongueNormal < 150 && r.swapImmune === 0 && r.swapNormal === 300) || r;
+});
 check('Svaka moć svakog junaka: bez iznimke i bez NaN', () => {
   const g = game();
   const n = g('return HEROES.length;');

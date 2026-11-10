@@ -4209,6 +4209,12 @@ function updateUnit(u, dt){
     if(u.kind === 'hero'){
       u.deadT -= dt;
       if(u.buybackCd > 0) u.buybackCd -= dt;
+      // ⏱️ v0.56 hlađenja teku i dok junak čeka oživljavanje (moći, teleport, predmeti, čarolije prizivača) — kao u DotA i LoL-u;
+      // prije su stajala: tko padne s ultijem na 100 s, nakon oživljavanja je i dalje čekao svih 100 s
+      for(const ab of u.abilities) ab.cd = Math.max(0, ab.cd - dt);
+      u.tpCd = Math.max(0, u.tpCd - dt);
+      for(const k in u.itemCd) u.itemCd[k] = Math.max(0, u.itemCd[k] - dt);
+      if(u.sumCd){ u.sumCd[0] = Math.max(0, u.sumCd[0] - dt); u.sumCd[1] = Math.max(0, u.sumCd[1] - dt); }
       // botovi se otkupljuju kasnije u igri kad su bogati
       if(u.bot && botDiff(u).buyback && u.deadT > 12 && gameClock() > 420 && u.buybackCd <= 0 && u.gold > buybackCost(u) * 2.5) buyback(u);
       else if(u.deadT <= 0) respawn(u);
@@ -6666,7 +6672,7 @@ function setupInput(){
     // v0.31: držanje tipke ne ponavlja naredbu (preglednik šalje ponovljene pritiske — prije je to samo
     // od sebe bacilo moć na staro mjesto miša)
     if(e.repeat){ if(k === 'tab') e.preventDefault(); return; }   // vrijedi za sve tipke: držanje P bi pauzu odmah i ugasilo, držanje T pokrenulo teleport kući
-    if(paused && !'p m h'.split(' ').includes(k) && k !== 'escape' && k !== 'tab') return;   // ⏸️ u pauzi se ne bacaju moći, ne kupuje i ne troše čarolije
+    if(paused && !'p m h k'.split(' ').includes(k) && k !== 'escape' && k !== 'tab') return;   // ⏸️ u pauzi se ne bacaju moći, ne kupuje i ne troše čarolije (zvuk, pomoć i efekti rade)
     const quick = SETTINGS.quickCast && !touchMode;   // ⚡ brzo bacanje: drži tipku = indikator, pusti = baci
     const pc0 = pendingCast;
     const qKey = () => { if(quick && pendingCast && pendingCast !== pc0) pendingCast.key = k; };   // samo ako je ova tipka započela ciljanje
