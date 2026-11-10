@@ -5175,6 +5175,7 @@ function showHeroPreview(container, heroId){
       heroPv.anim = makeAnimator(heroPv.model, 'hero_' + heroId);
       heroPv.model.rotation.y = -0.6;
       heroPv.scene.add(heroPv.model);
+      heroPreviewFit();   // kamera se odmakne koliko treba da cijeli junak stane u okvir
       heroPv.id = heroId;
       heroPv.nextAct = 0.5;
       heroPv.t = 0;
@@ -5210,6 +5211,36 @@ function heroPreviewSetup(){
   c.position.set(2.6, 1.9, 3.6);
   c.lookAt(0, 0.85, 0);
   heroPv.renderer = r; heroPv.scene = s; heroPv.camera = c;
+}
+/* 🖼️ v0.56: okvir pregleda je mali (150 × 170), a kamera je bila namještena na junaka visokog ~1,9 — visokim junacima
+   (Jelkovi rogovi, Zekine uši, šeširi, Bikoševi rogovi) vrh je bio odrezan, a Nišanu puška sa strane. Kamera se zato
+   odmakne duž istog smjera (i cilja malo više) dok svi kutovi junakove kutije, u svakom položaju vrtnje, ne stanu u okvir. */
+const _pvBox = new THREE.Box3(), _pvV = new THREE.Vector3();
+function heroPreviewFit(){
+  const cam = heroPv.camera, m = heroPv.model;
+  if(!cam || !m) return;
+  const ry = m.rotation.y;
+  m.rotation.y = 0; m.updateMatrixWorld(true);
+  _pvBox.setFromObject(m);
+  m.rotation.y = ry; m.updateMatrixWorld(true);
+  const b = _pvBox, top = b.max.y;
+  const ty = Math.min(1.15, Math.max(0.85, top * 0.45));   // viši junak: gledaj malo više, da ostane u sredini
+  const fits = k => {
+    cam.position.set(2.6 * k, ty + 1.05 * k, 3.6 * k); cam.lookAt(0, ty, 0); cam.updateMatrixWorld(true);
+    for(let a = 0; a < 12; a++){
+      const c = Math.cos(a / 12 * TAU), s = Math.sin(a / 12 * TAU);
+      for(let i = 0; i < 8; i++){
+        const x = i & 1 ? b.max.x : b.min.x, y = i & 2 ? b.max.y : Math.max(0, b.min.y), z = i & 4 ? b.max.z : b.min.z;
+        _pvV.set(x * c + z * s, y, -x * s + z * c).project(cam);
+        if(Math.abs(_pvV.x) > 0.95 || _pvV.y > 0.86 || _pvV.y < -0.99) return false;   // gore više zraka: u animaciji se glava i oružje dižu
+      }
+    }
+    return true;
+  };
+  let k = 1;
+  while(k < 2.2 && !fits(k)) k += 0.03;
+  fits(k);
+  heroPv.fitK = k;
 }
 function heroPreviewFrame(now){
   const sel = document.getElementById('select');
