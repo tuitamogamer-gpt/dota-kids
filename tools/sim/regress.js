@@ -1,0 +1,143 @@
+/* =====================================================================
+   🧪 DOTA Kids — regresijski test (Node, bez preglednika; ~10 s)
+   Greške koje su jednom popravljene ne smiju se vratiti. Igra se učita kao u sim.js (isti stubovi za DOM i 3D),
+   pa svaka provjera namjesti malu situaciju i usporedi ishod. Zadnja provjera baci SVAKU moć SVAKOG junaka na
+   neprijatelja i pusti igru nekoliko sekundi — iznimka ili NaN u logici bilo koje moći ruši test.
+
+     node tools/sim/regress.js          (pokreće ga i tools/check.sh)
+   ===================================================================== */
+'use strict';
+const fs = require('fs'), path = require('path'), vm = require('vm');
+// isti kontekst i stubovi kao simulacija (kao tools/sim/econ.js: zaglavlje sim.js do funkcije runGame)
+const head = fs.readFileSync(path.join(__dirname, 'sim.js'), 'utf8').split('function runGame')[0];
+const { makeContext, SRC } = new Function('require', '__dirname', 'process', head + '\n;return { makeContext, SRC };')(require, __dirname, { argv: ['node', 'sim.js'] });
+
+function game(){
+  const ctx = makeContext();
+  vm.createContext(ctx);
+  vm.runInContext(SRC, ctx, { filename: 'game-bundle.js' });
+  return code => vm.runInContext('(function(){' + code + '})()', ctx);
+}
+/* zajednička priprema: igra s junakom `id`, igrač P i jedan neprijateljski junak E sami na sredini mape */
+const SETUP = id => `
+  startGame(HEROES.findIndex(h => h.id === '${id}')); gameTime = 100;
+  const P = player; P.bot = null;
+  const E = units.find(u => u.kind === 'hero' && u.team !== P.team && !u.projSpeed && u.hero.id !== 'jelko') || units.find(u => u.kind === 'hero' && u.team !== P.team);
+  E.bot = null;
+  units = units.filter(u => u === P || u === E); projectiles = []; zones = [];
+  P.x = 3000; P.y = 3000; E.x = 3200; E.y = 3000;
+  P.maxhp = P.hp = 1e6; P.maxmp = P.mp = 1e5; E.maxhp = E.hp = 1e6; E.maxmp = E.mp = 1000; E.armor = 0; E.hpRegen = 0; E.evasion = 0;
+  const hold = () => { E.status.stun = 5; E.moveTarget = null; E.attackTarget = null; E.atkTimer = 99; };
+  const run = (sec, each) => { for(let k = 0; k < sec * 20; k++){ hold(); if(each) each(k); update(0.05); } };
+`;
+let failed = 0;
+function check(name, fn){
+  let res, err = null;
+  try { res = fn(); } catch(e){ err = e; }
+  const ok = !err && res === true;
+  if(!ok) failed++;
+  console.log((ok ? '  ✓ ' : '  ✗ ') + name + (ok ? '' : '  → ' + (err ? err.message : JSON.stringify(res))));
+}
+
+check('Protučarolija pod neprijateljskom fontanom ne ruši igru', () => {
+  const g = game();
+  return g(SETUP('jelko') + `
+    P.abilities[1].rank = 4;
+    const f = FOUNTAIN[1 - P.team];
+    for(let k = 0; k < 200; k++){ P.x = f.x - 100; P.y = f.y + 100; P.moveTarget = null; if(k % 20 === 0){ P.abilities[1].cd = 0; castAbility(P, 1, { x: P.x, y: P.y }); } update(0.05); }
+    return P.hp < 1e6 || 'fontana nije gađala';`);
+});
+check('Tragač: udarac iz sjene (E) nosi bonus štetu', () => {
+  const g = game();
+  return g(SETUP('tragac') + `
+    P.abilities[2].rank = 4; E.x = P.x + 60;
+    const hit = () => { const h0 = E.hp; P.attackTarget = E; P.atkTimer = 0; run(1.2, () => { P.attackTarget = E; }); P.attackTarget = null; P.windup = null; return h0 - E.hp; };
+    Math.random = () => 0.99;                       // bez kritičnih i pasivnih pogodaka
+    P.atkTimer = 0; const plain = hit();
+    castAbility(P, 2, { x: P.x, y: P.y }); const shadow = hit();
+    return shadow - plain > 100 || { plain, shadow };`);
+});
+check('Talent štete moći se ne broji dvaput (Nišan R +250)', () => {
+  const dmg = tal => game()(SETUP('nisan') + `
+    P.abilities[3].rank = 1; E.x = P.x + 600; E.status.trackT = 999;
+    ${tal ? "applyTalent(P, { ab: { R: { dmg: 250 } } });" : ''}
+    const h0 = E.hp; castAbility(P, 3, { x: E.x, y: E.y }); run(5);
+    return h0 - E.hp;`);
+  const a = dmg(false), b = dmg(true);
+  return (b - a > 150 && b - a < 400) || { base: a, withTalent: b };
+});
+check('Jači učinak ostaje: runa brzine preživi Iscjeljenje, jaki otrov se ne produžuje slabim', () => {
+  const g = game();
+  return g(SETUP('zarko') + `
+    applyHaste(P, 1.8, 15); applyHaste(P, 1.3, 1);
+    if(P.status.hasteF !== 1.8 || P.status.hasteT < 14) return { haste: [P.status.hasteF, P.status.hasteT] };
+    applyShield(P, 0.5, 15); applyShield(P, 0.2, 3);
+    if(P.status.shieldF !== 0.5) return { shield: P.status.shieldF };
+    applySlow(E, 0.12, 10); applySlow(E, 0.5, 1.5);
+    if(E.status.slowF !== 0.5 || E.status.slowT > 1.6) return { slow: [E.status.slowF, E.status.slowT] };
+    clearStatus(E.status, 'slowT');
+    P.x = 800; P.y = 5200;                          // daleko: bez običnih udaraca, samo otrov
+    const h0 = E.hp; applyDot(E, 54, 5, P);
+    run(20, k => { if(k % 20 === 0) applyDot(E, 12, 2, P); });
+    const total = h0 - E.hp;
+    return (total > 250 && total < 700) || { dotTotal: total };`);
+});
+check('Premještanje predmeta u ruksak i natrag ne liječi', () => {
+  const g = game();
+  return g(SETUP('vitez') + `
+    giveItem(P, ITEM_BY_ID.vanguard); recomputeItemStats(P);
+    P.hp = 50;
+    for(let k = 0; k < 4; k++){ swapItems(P, 0, CFG.inventorySlots); swapItems(P, CFG.inventorySlots, 0); }
+    return P.hp <= 50 || { hp: P.hp };`);
+});
+check('Jedinica pada samo jednom; pobjeda pomagača ide njegovom junaku', () => {
+  const g = game();
+  return g(SETUP('majmun') + `
+    const d0 = E.deaths, k0 = kills[P.team];
+    kill(E, P); kill(E, P);
+    if(E.deaths - d0 !== 1 || kills[P.team] - k0 !== 1) return { deaths: E.deaths - d0, kills: kills[P.team] - k0 };
+    const cr = makeUnit({ kind: 'creep', team: E.team, x: 3100, y: 3100, hp: 10, maxhp: 10, dmg: 1, r: 14, goldValue: 26, xpValue: 10 });
+    const pet = makeUnit({ kind: 'creep', team: P.team, x: 3100, y: 3080, hp: 100, maxhp: 100, dmg: 50, r: 14 }); pet.summonOf = P;
+    const g0 = P.gold, lh0 = P.lastHits;
+    kill(cr, pet);
+    return (P.gold - g0 === 26 && P.lastHits - lh0 === 1) || { gold: P.gold - g0, lastHits: P.lastHits - lh0 };`);
+});
+check('Gost: nišanjenje teleporta, čarolije i predmeta ne nestaje nakon jedne sličice', () => {
+  const g = game();
+  return g(SETUP('zeka') + `
+    net.mode = 'guest';
+    const out = [];
+    for(const pc of [{ tp: true, i: -1 }, { sum: 0, i: -1 }]){ pendingCast = pc; guestFrame(0.05); out.push(pendingCast === pc); }
+    net.mode = 'local'; pendingCast = null;
+    return out.every(Boolean) || out;`);
+});
+check('Svaka moć svakog junaka: bez iznimke i bez NaN', () => {
+  const g = game();
+  const n = g('return HEROES.length;');
+  const bad = [];
+  for(let i = 0; i < n; i++){
+    const r = g(`
+      startGame(${i}); gameTime = 100;
+      const P = player; P.bot = null;
+      while(P.level < 25) levelUp(P);
+      for(let j = 0; j < P.abilities.length; j++){ let q = 0; while(P.skillPoints > 0 && canLearn(P, j) && q++ < 9) learnAbility(P, j); }
+      for(const lvl of TALENT_LVLS) chooseTalent(P, lvl, lvl % 20 ? 'a' : 'b');
+      const foes = units.filter(u => u.kind === 'hero' && u.team !== P.team), mate = units.find(u => u.kind === 'hero' && u.team === P.team && u !== P);
+      const place = () => { P.x = 3000; P.y = 3000; P.dead = false; P.hp = P.maxhp; P.mp = P.maxmp = 1e5; P.status.stun = 0; P.status.silenceT = 0;
+        foes.forEach((e, k) => { e.x = 3180 + k * 45; e.y = 2950 - k * 30; e.dead = false; e.hp = e.maxhp; });
+        if(mate){ mate.x = 2920; mate.y = 3060; mate.hp = mate.maxhp * 0.5; } };
+      for(let j = 0; j < P.abilities.length; j++) for(const self of [false, true]){
+        place(); P.abilities[j].cd = 0;
+        castAbility(P, j, self ? { x: P.x, y: P.y } : { x: foes[0].x, y: foes[0].y });
+        for(let k = 0; k < 70; k++) update(0.05);
+      }
+      for(let s = 0; s < 2; s++){ place(); P.sumCd[s] = 0; castSummoner(P, s, { x: foes[0].x, y: foes[0].y }); for(let k = 0; k < 20; k++) update(0.05); }
+      const nan = units.filter(u => !isFinite(u.x) || !isFinite(u.y) || !isFinite(u.hp) || !isFinite(u.mp || 0)).length;
+      return nan ? P.hero.id + ': NaN u ' + nan + ' jedinica' : null;`);
+    if(r) bad.push(r);
+  }
+  return bad.length === 0 || bad;
+});
+
+if(failed){ console.error('✗ regresijski test: ' + failed + ' provjera nije prošlo'); process.exit(1); }
+console.log('✓ regresijski test prošao');

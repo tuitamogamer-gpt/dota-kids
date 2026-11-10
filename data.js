@@ -205,8 +205,7 @@ const HEROES = [
         cast(u, aim, rk){
           for(const e of units){
             if(e.kind !== 'hero' || e.team !== u.team || e.dead || dist(u, e) > 500) continue;
-            const cur = e.status.dmgMulT > 0 ? e.status.dmgMulF : 1;
-            e.status.dmgMulF = Math.max(cur, 1.15 + 0.07*rk); e.status.dmgMulT = Math.max(e.status.dmgMulT, 6);
+            applyDmgMul(e, 1.15 + 0.07*rk, 6);
             applyHaste(e, 1.1, 6);
             addFloat(e.x, e.y - 20, '📯', '#fde68a', 18);
           }
@@ -610,7 +609,7 @@ const HEROES = [
         bot:{type:'haste', range:520},
         cast(u, aim, rk){
           applyHaste(u, 1.4 + 0.05*rk, 3);
-          u.status.slowT = 0;
+          clearStatus(u.status, 'slowT');
           u.status.rootT = 0;
           burst(u.x, u.y, '#bae6fd', 16, 200, 5);
           return true;
@@ -847,7 +846,7 @@ const HEROES = [
         bot:{type:'ult-aoe', range:450},
         cast(u, aim, rk){
           applyHaste(u, 1.25 + 0.1*rk, 8);
-          u.status.dmgMulT = 8; u.status.dmgMulF = 1.2 + 0.1*rk;
+          applyDmgMul(u, 1.2 + 0.1*rk, 8);
           heal(u, 60 + 40*rk);
           burst(u.x, u.y, '#bef264', 24, 260, 6);
           return true;
@@ -1021,7 +1020,7 @@ const HEROES = [
           for(const e of units){
             if(e.kind === 'hero' && e.team === u.team && !e.dead){
               applyHaste(e, 1.2, 6);
-              e.status.dmgMulF = Math.max(e.status.dmgMulT > 0 ? e.status.dmgMulF : 1, 1.2 + 0.06*rk); e.status.dmgMulT = Math.max(e.status.dmgMulT, 10);   // ⚔️ noćni lov (⚖️ v0.56: bilo 15% + 5%, 8 s)
+              applyDmgMul(e, 1.2 + 0.06*rk, 10);   // ⚔️ noćni lov (⚖️ v0.56: bilo 15% + 5%, 8 s)
             }
           }
           announce(L('🌑 Vječna noć!', '🌑 Endless Night!'), L(u.emoji + ' ' + u.name + ' je pozvala noć!', u.emoji + ' ' + u.name + ' called the night!'));
@@ -1151,7 +1150,7 @@ const HEROES = [
           const d = 10 + 2*rk;
           u.status.formT = d;
           applyHaste(u, 1.35, d);
-          u.status.dmgMulT = d; u.status.dmgMulF = 1.3 + 0.12*rk;
+          applyDmgMul(u, 1.3 + 0.12*rk, d);
           heal(u, 100 + 50*rk);
           burst(u.x, u.y, '#94a3b8', 30, 300, 7);
           announce(L('🐺 Vučji oblik!', '🐺 Wolf Form!'), L(u.name + ' je postao golemi vuk!', u.name + ' became a giant wolf!'));
@@ -1195,7 +1194,7 @@ const HEROES = [
           const p = clampRange(u, aim, 520);
           let best = null, bd = 150;
           for(const e of units){
-            if(e.kind !== 'hero' || e.team === u.team || e.dead || e.status.invisT > 0) continue;
+            if(e.kind !== 'hero' || e.team === u.team || e.dead || e.invuln || e.status.invisT > 0) continue;
             const d = distXY(p.x, p.y, e.x, e.y);
             if(d < bd){ bd = d; best = e; }
           }
@@ -1719,7 +1718,7 @@ const HEROES = [
           if(!best) return false;
           u.dir = Math.atan2(best.y - u.y, best.x - u.x);
           const thr = 250 + 75*rk + (hasTal(u, 'bikos_r_plus') ? 150 : 0);
-          if(best.hp <= thr && best.status.immuneT <= 0){
+          if(best.hp <= thr && best.status.immuneT <= 0 && !(best.cycloneT > 0)){   // 🌪️ u vihoru je neranjiv
             addFloat(best.x, best.y - 20, L('🪓 SASJEČEN!', '🪓 CHOPPED!'), '#fca5a5', 22);
             burst(best.x, best.y, '#dc2626', 40, 360, 9);
             const wasHero = best.kind === 'hero';
@@ -2053,7 +2052,7 @@ const HEROES = [
           const dur = 3 + 0.5*rk + abBonus(u, 'Q', 'dur');
           u.furyT = dur;
           u.status.immuneT = Math.max(u.status.immuneT, dur);   // kao u DotA: ni omama ni usporenje
-          u.status.stun = 0; u.status.slowT = 0; u.status.rootT = 0;   // i otrese one koje već ima
+          u.status.stun = 0; u.status.rootT = 0; clearStatus(u.status, 'slowT');   // i otrese one koje već ima
           startCloud(u, { kind:'fury', t:dur, r:250, dps:55 + 30*rk, color:'#fdba74' });   // 🎓 talent dodaje applyDamage po otkucaju
           addFloat(u.x, u.y - 30, L('🌪️ Vihor!', '🌪️ Blade Fury!'), '#fdba74', 16);
           return true;
@@ -2413,7 +2412,7 @@ const ITEMS = [
     active:{ cd:45, mana:0,
       use(h){
         for(const e of units) if(e.team === h.team && !e.dead && !e.removeMe && (e.kind === 'hero' || e.kind === 'creep') && dist(h, e) <= 1200){
-          heal(e, 300); if(e.maxmp) e.mp = Math.min(e.maxmp, e.mp + 150); if(e.kind === 'hero'){ e.status.slowT = 0; e.status.poisonT = 0; }
+          heal(e, 300); if(e.maxmp) e.mp = Math.min(e.maxmp, e.mp + 150); if(e.kind === 'hero') clearStatus(e.status, 'slowT', 'poisonT');
         }
         ring(h.x, h.y, 1200, '#86efac'); burst(h.x, h.y, '#bbf7d0', 26, 260, 6); return true;
       } } },
@@ -2431,7 +2430,7 @@ const ITEMS = [
     active:{ cd:23, mana:75, target:'point', castRange:575,
       use(h, aim){
         if(distXY(aim.x, aim.y, h.x, h.y) < 90){   // na sebe: očisti loše stanje
-          const st = h.status; st.slowT = 0; st.poisonT = 0; st.curseT = 0; st.blindT = 0; st.silenceT = 0; st.rootT = 0;
+          const st = h.status; clearStatus(st, 'slowT', 'poisonT', 'curseT', 'blindT'); st.silenceT = 0; st.rootT = 0;
           h.cycloneT = 2.5; h.status.stun = Math.max(h.status.stun, 2.5); h.status.stunMax = h.status.stun;
           burst(h.x, h.y, '#e0f2fe', 16, 180, 5); return true;
         }
@@ -3001,7 +3000,7 @@ const RUNE_TYPES = [
   { id:'regen',  emoji:'💚', name:L('Runa obnove', 'Regen Rune'),
     apply(h){ h.runeRegenT = 10; } },
   { id:'double', emoji:'⚔️', name:L('Runa dvostruke štete', 'Double Damage Rune'),
-    apply(h){ h.status.dmgMulT = 20; h.status.dmgMulF = 2; } },
+    apply(h){ applyDmgMul(h, 2, 20); } },
   { id:'shield', emoji:'🛡️', name:L('Runa štita', 'Shield Rune'),
     apply(h){ applyShield(h, 0.5, 15); } },
 ];
