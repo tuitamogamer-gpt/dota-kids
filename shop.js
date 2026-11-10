@@ -416,12 +416,19 @@ function renderShopDetail(){
   const it = shopSel && ITEM_BY_ID[shopSel];
   box.classList.toggle('empty', !it || !player);   // 📱 v0.56: na niskom zaslonu prazan opis ne zauzima mjesto predmetima
   if(!it || !player){
+    box.dataset.k = '';
     box.innerHTML = '<div class="sdEmpty">' + (touchMode   // dodirni zaslon: bez uputa za miš
       ? L('👆 Dodirni predmet — vidjet ćeš što radi, od čega se slaže i gumb za kupnju', '👆 Tap an item — see what it does, what it is made of and a buy button')
       : L('👆 Klikni predmet — vidjet ćeš što radi i od čega se slaže<br>🖱️ Desni klik ili dvoklik = kupi odmah', '👆 Click an item — see what it does and what it is made of<br>🖱️ Right-click or double-click = buy now')) + '</div>';
     return;
   }
   const inv = player.items.concat(player.backpack || []).map(x => x.id);
+  const bs = buyBtnState(it);
+  {   // isti prikaz se ne gradi ponovno: osvježavanje svakih pola sekunde je mijenjalo gumb „Kupi” usred klika, pa je klik propao
+    const key = it.id + '|' + bs.txt + '|' + bs.dis + '|' + (quickBuy === it.id) + '|' + inv.join(',');
+    if(box.dataset.k === key) return;
+    box.dataset.k = key;
+  }
   let comps = '';
   if(it.components){
     comps = '<div class="sdRow"><span class="sdLbl">' + L('🧩 Recept — složi od:', '🧩 Recipe — made from:') + '</span>' + it.components.map(cid => {
@@ -433,7 +440,6 @@ function renderShopDetail(){
   }
   const into = (it.buildsInto || []).length ? '<div class="sdRow"><span class="sdLbl">' + L('⬆️ Ulazi u:', '⬆️ Builds into:') + '</span>' +
     it.buildsInto.map(id => `<span class="sdc" data-id="${id}" title="${escHtml(ITEM_BY_ID[id].name)}">${iconImg(ITEM_BY_ID[id], 'sdIcon')}</span>`).join('') + '</div>' : '';
-  const bs = buyBtnState(it);
   box.innerHTML = `<div class="sdMain">${itemTipHtml(it, { compact: true })}</div><div class="sdSide">${comps}${into}
     <div class="sdBtns"><button id="sdBuy" ${bs.dis ? 'disabled' : ''} class="${bs.dis ? (bs.poor ? 'poor' : '') : 'afford'}">${bs.txt}</button>
     ${it.instant ? '' : `<button id="sdPin" class="${quickBuy === it.id ? 'on' : ''}" title="${L('Prikvači: HUD pokazuje što još fali, klik ga kupi', 'Pin: the HUD shows what is still missing, click to buy it')}">📌 ${quickBuy === it.id ? L('Prikvačeno', 'Pinned') : L('Prikvači', 'Pin')}</button>`}</div></div>`;

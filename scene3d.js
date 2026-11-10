@@ -148,6 +148,11 @@ function loadModels3D(){
     try { indexModels(gltf); }
     catch(e){ fail(e); return; }
     MODELS.ready = true;
+    // igra je možda već počela s jednostavnim oblicima: rune, oka, zamke, totemi i kuriri se izgrade ponovno s modelima
+    for(const map of [runeMeshes, wardMeshes, trapMeshes, totemMeshes, courierMeshes, extraRuneMeshes]){
+      for(const m of map.values()){ scene3.remove(m); disposeGroup(m); }
+      map.clear();
+    }
     MODELS.waiting.splice(0).forEach(f => f());
   };
   if(window.MODELS_GLB_B64){
@@ -734,8 +739,10 @@ function render3D(){
     POST.composer.render();
     // samozaštita: ako je ispod ~28 fps 4 s zaredom, isključi efekte
     const now = performance.now();
-    if(POST.auto && POST.last){
-      POST.acc += now - POST.last; POST.frames++;
+    const gap = now - POST.last;
+    if(POST.auto && POST.last && (gap > 1000 || document.hidden)){ POST.acc = 0; POST.frames = 0; }   // skrivena kartica / jedan dugi zastoj nije spora igra
+    else if(POST.auto && POST.last){
+      POST.acc += gap; POST.frames++;
       if(POST.acc > 4000){
         if(POST.frames / (POST.acc / 1000) < 28){ POST.on = false; if(typeof feedMsg === 'function') feedMsg(L('✨ Efekti isključeni da igra bude brža (K = uključi)', '✨ Effects turned off so the game runs faster (K = turn on)'), '#e5e7eb'); }
         POST.acc = 0; POST.frames = 0;
@@ -2078,6 +2085,7 @@ function drakeAura(el, x, y, gh){
 }
 function updateFx(dt){
   let n = 0;
+  const drag = Math.pow(0.96, dt * 60);   // kočenje čestica po sekundi (isto na 30, 60 i 144 Hz)
   const P = fx.pos, C = fx.col, S = fx.size, A = fx.alpha;
   // čestice iz igre (burst)
   if(typeof particles !== 'undefined'){
@@ -2099,7 +2107,7 @@ function updateFx(dt){
     p.t += dt;
     if(p.t > p.life){ fx.list[i] = fx.list[fx.list.length - 1]; fx.list.pop(); continue; }
     p.x += p.vx * dt; p.y += p.vy * dt; p.h += p.vh * dt; p.vh += p.g * dt;
-    p.vx *= 0.96; p.vy *= 0.96;
+    p.vx *= drag; p.vy *= drag;
     if(n >= FX_MAX) continue;
     const f = p.t / p.life;
     P[n * 3] = p.x; P[n * 3 + 1] = p.h; P[n * 3 + 2] = p.y;
@@ -2570,7 +2578,7 @@ function ensureUnitMesh(u){
   let g = meshByUnit.get(u);
   if(g && g.userData.fallback && MODELS.ready){
     // modeli su stigli nakon početka igre — zamijeni jednostavne oblike
-    scene3.remove(g); disposeGroup(g); meshByUnit.delete(u); g = null;
+    scene3.remove(g); heroSceneExtras(g); disposeGroup(g); meshByUnit.delete(u); g = null;
   }
   if(g) return g;
   if(u.kind === 'hero') g = buildHeroMesh(u);
@@ -2927,6 +2935,8 @@ function buildProjMesh(p){
 }
 function syncProj(p, g, tAnim, dt){
   const ud = g.userData;
+  g.visible = (p.team != null ? p.team : (p.src ? p.src.team : myTeam)) === myTeam || seenProj(p);   // 🌫️ tuđi hitac u magli se ne vidi (kao ni njegov trag)
+  if(ud.tongue) ud.tongue.visible = g.visible;
   const dx = p.x - ud.px, dy = p.y - ud.py;
   if(dx * dx + dy * dy > 0.5){ ud.yaw = -Math.atan2(dy, dx); ud.px = p.x; ud.py = p.y; }
   else if(p.vx != null) ud.yaw = -Math.atan2(p.vy, p.vx);
@@ -2961,7 +2971,7 @@ function syncProj(p, g, tAnim, dt){
       case 'proj_acorn': m.rotation.z += dt * 14; break;
       case 'proj_moon': m.rotation.x += dt * 9; break;
       case 'proj_ice': m.rotation.x += dt * 5; break;
-      case 'proj_fireball': { const s = projScale(ud.name, p) * (1 + Math.sin(tAnim * 30) * 0.08); m.scale.setScalar(s); break; }
+      case 'proj_fireball': { if(ud.baseS == null) ud.baseS = m.scale.x; m.scale.setScalar(ud.baseS * (1 + Math.sin(tAnim * 30) * 0.08)); break; }   // baseS: i kritična / velika kugla ostaje veća
       case 'proj_hawk': m.rotation.z = Math.sin(tAnim * 16) * 0.3; m.position.y = Math.sin(tAnim * 16) * 4; break;
       case 'proj_bee': m.position.y = Math.sin(tAnim * 22) * 5; m.rotation.z = Math.sin(tAnim * 22) * 0.15; break;
       case 'proj_slime': m.rotation.z += dt * 8; break;
@@ -3656,7 +3666,7 @@ function isStructureKind(k){ return k === 'tower' || k === 'ancient' || k === 'b
 /* prašina pod nogama dok hoda */
 function syncSteps(u, g, dt){
   const ud = g.userData;
-  const moving = gameTime - (u.lastMoveT == null ? -9 : u.lastMoveT) < 0.15;
+  const moving = !gameOver && !paused && gameTime - (u.lastMoveT == null ? -9 : u.lastMoveT) < 0.15;
   if(!moving){ ud.stepT = 0.15; ud.stepPh = null; return; }
   const a = ud.anim, act = a && (a.cur === 'walk' || a.cur === 'run') && a.acts[a.cur];
   if(act){   // v0.56: oblačić prašine pod stopalom koje upravo stane na tlo (dva koraka po ciklusu)
@@ -4315,7 +4325,7 @@ function syncHeroExtras(u, g, gh, tAnim, dt, seen){
     ud.cross.material.rotation = tAnim * 1.5;
     ud.cross.material.opacity = 0.6 + 0.4 * Math.abs(Math.sin(tAnim * (6 + cf * 14)));
   } else if(ud.laser){ ud.laser.visible = false; ud.cross.visible = false; }
-  if(!seen) return;
+  if(!seen){ ud.helixN = u.helixN || 0; ud.killFxN = u.killFxN || 0; ud.talN = u.talN || 0; return; }   // u magli se efekti ne skupljaju za kasnije
   // 💨 putovanje izvan borbe: vjetar za petama (plavkast od fontane)
   if(u.travel && gameTime - (u.lastMoveT == null ? -9 : u.lastMoveT) < 0.15 && Math.random() < dt * (u.travel === 2 ? 24 : 10)){
     const a = (u.dir || 0) + Math.PI + (Math.random() - 0.5) * 1.1, n = fx.list.length;
@@ -4410,8 +4420,9 @@ function animateUnit(u, g, now, dt){
     animOnce(a, nm, nm === 'cast2' ? 1.15 : 1.25, now, nm === 'cast2' ? 6 / 24 : 7 / 24, 0.1);
     if(u.castFx) castFx(u, g, u.castFx);
   }
-  const moving = gameTime - (u.lastMoveT == null ? -9 : u.lastMoveT) < 0.15;
+  const moving = !gameOver && !paused && gameTime - (u.lastMoveT == null ? -9 : u.lastMoveT) < 0.15;   // kraj igre / pauza: sat stoji, nitko ne hoda u mjestu
   const stunned = u.status && u.status.stun > 0;
+  if(a.cur === 'idle2' && (moving || stunned)) a.oneEnd = 0;   // ogledavanje ne smije zadržati hod (junak bi klizio 3 s)
   // v0.56: stvarna brzina po tlu (izglađena) — korak animacije prati brzinu (manje klizanja), skok/teleport se ne broji
   if(dt > 0){
     let sp = ud.aX == null ? 0 : Math.hypot(u.x - ud.aX, u.y - ud.aY) / dt;
@@ -4513,6 +4524,7 @@ function startLeap(u, g, now, maxH){
   const d = distXY(ud.lastX, ud.lastY, u.x, u.y);
   if(d < 40) return;
   ud.leap = { x0: ud.lastX, y0: ud.lastY, t0: now, dur: Math.min(0.5, 0.22 + d / 1400), h: Math.min(maxH || 170, 60 + d * 0.25), knock: !!maxH };
+  g.position.set(ud.leap.x0, groundHeight(ud.leap.x0, ud.leap.y0), ud.leap.y0);   // luk kreće s polazišta (bez jednog kadra na odredištu)
   if(!maxH && g.visible){ for(let i = 0; i < 10; i++) fxSpawn(ud.lastX, ud.lastY, groundHeight(ud.lastX, ud.lastY) + 4, '#c9b48c', { spd: 110, up: 40, grav: -30, life: 0.5, size: 20 }); sfxAt('whoosh', u.x, u.y); }   // odraz
   if(!maxH && ud.anim && ud.anim.acts.jump) animOnce(ud.anim, 'jump', 14 / 24 / ud.leap.dur, now, 0);
   else if(maxH && ud.anim && ud.anim.acts.hit) animOnce(ud.anim, 'hit', 0.8, now, 0);
@@ -4554,6 +4566,8 @@ function syncScene(tAnim){
             else ud.anim.mixer.stopAllAction();
           }
           for(const k of ['ring', 'shield', 'statusSpr', 'stars', 'roots', 'aura']) if(ud[k]) ud[k].visible = false;
+          for(const k of ['tpBeam', 'laser', 'cross', 'cloudG', 'chain']) if(ud[k]) ud[k].visible = false;   // oblak, laser, TP stup i lanac su u sceni, ne u grupi junaka
+          if(ud.topper){ scene3.remove(ud.topper); ud.topper = null; ud.topperId = null; }                     // 🎁 šešir / ljubimac se vrati kad oživi
           if(seen && MODELS.ready){ ghostFx(u.x, u.y, gh); ud.tomb = tombFx(u.x, u.y, gh); }
         }
         const t = tAnim - ud.deadT0;
@@ -4564,7 +4578,7 @@ function syncScene(tAnim){
           else m.rotation.x = Math.min(1, t / 0.35) * 1.45;
           g.position.y = ud.deadY - Math.max(0, t - (ud.dieAnim ? 1.4 : 0.9)) * 60;
         }
-        ud.hp = u.hp;
+        ud.hp = u.hp; ud.lastX = u.x; ud.lastY = u.y;
         continue;
       }
       if(ud.deadT0 != null){
@@ -4607,10 +4621,12 @@ function syncScene(tAnim){
           for(let i = 0; i < 14; i++) fxSpawn(u.x, u.y, gh + 4, '#c9b48c', { spd: 130, up: 30, grav: -30, life: 0.55, size: 22 });
         }
       }
-      ud.lastX = u.x; ud.lastY = u.y;
       if(u.cycloneT > 0) cycloneFx(u, g, tAnim, dt);   // 🌪️ Tornado u boci
       syncHeroExtras(u, g, gh, tAnim, dt, seen);
-      if(!seen) continue;
+      if(!seen){   // u magli: brojači prate stanje, da se stari efekti (čarolija, udarac, pogodak) ne odigraju kad izađe iz magle
+        ud.lastX = u.x; ud.lastY = u.y; ud.atkN = u.atkN || 0; ud.castN = u.castN || 0; ud.critN = u.critN || 0; ud.hp = u.hp;
+        continue;
+      }
       ud.yaw = angleLerp(ud.yaw, -(u.dir || 0), Math.min(1, dt * 14));
       if(u.cycloneT > 0 && !(ud.spin > 0)) ud.spin = TAU;   // vrti se u vihoru
       // Vrtlog: dodatna vrtnja modela
@@ -4673,6 +4689,7 @@ function syncScene(tAnim){
         ud.head.material.opacity = invis ? 0.55 : 1;
       }
       syncHitFx(u, g, 50, tAnim);
+      ud.lastX = u.x; ud.lastY = u.y;   // tek sada: efekt čarolije (skok u luku, pješčani trag) čita prošlo mjesto
     }
     else if(u.kind === 'creep' || u.kind === 'neutral'){
       g.visible = seen;
@@ -4686,7 +4703,7 @@ function syncScene(tAnim){
       }
       ud.lastX = u.x; ud.lastY = u.y;
       if(u.cycloneT > 0) cycloneFx(u, g, tAnim, dt);
-      if(!seen){ ud.hp = u.hp; continue; }
+      if(!seen){ ud.hp = u.hp; ud.atkN = u.atkN || 0; ud.castN = u.castN || 0; ud.critN = u.critN || 0; continue; }
       ud.yaw = angleLerp(ud.yaw, -(u.dir || 0), Math.min(1, dt * 12));
       g.rotation.y = ud.yaw;
       if(ud.model){
@@ -4777,6 +4794,7 @@ function syncScene(tAnim){
   syncMapped(projectiles, projMeshes, buildProjMesh, (p, g) => syncProj(p, g, tAnim, dt), projEndFx);
 
   syncMapped(markers, markerMeshes, buildMarkerMesh, (m, mesh) => {
+    mesh.visible = m.team == null || m.team === myTeam;   // oznake klikova drugog igrača se ne vide
     const f = Math.min(1, m.t / 0.5);
     const s = m.isRing ? (0.4 + 0.6 * f) : (1 - 0.4 * f);
     mesh.scale.set(s, s, 1);
@@ -4814,7 +4832,7 @@ function syncScene(tAnim){
     g.visible = mine || isVisibleTo(myTeam, { x: t.x, y: t.y, team: -1 });   // tuđa zamka: samo u vidu
     const ud = g.userData, armed = !(t.arm > 0);
     ud.ring.material.opacity = armed ? 0.22 + 0.12 * Math.sin(tAnim * 3) : 0.08;
-    if(ud.model) ud.model.scale.setScalar(armed ? 1 : 0.85);
+    if(ud.model) ud.model.scale.setScalar(46 * (armed ? 1 : 0.85));   // 46 = veličina modela (buildTrapMesh)
   }, (t, g) => { burst(g.position.x, g.position.z, '#d4d4d8', 10, 120, 4); });
 
   syncMapped(wards, wardMeshes, buildWardMesh, (w, g) => {

@@ -73,9 +73,10 @@ function netCreateRoom(tries){
     netStatus(L('Pošalji prijatelju kod i čekaj da uđe...', 'Send the code to your friend and wait for them to join...'));
   });
   net.peer.on('connection', (c) => {
-    if(net.conn){ c.close(); return; }
+    if(net.conn || running){ c.close(); return; }   // soba je puna ili igra već traje
     net.conn = c;
     bindConn();
+    setTimeout(() => { if(net.conn === c && !c.open){ try { c.close(); } catch(err){} net.conn = null; } }, 15000);   // veza koja se nikad ne otvori ne smije zauzeti sobu
   });
   net.peer.on('error', (e) => {
     if(e.type === 'unavailable-id' && (tries || 0) < 3){ netResetLobby(); netCreateRoom((tries || 0) + 1); return; }   // kod je zauzet: novi kod
@@ -110,6 +111,12 @@ function netResetLobby(){
   net.mode = 'local';
   myTeam = TEAM_BLUE;
   net.myPick = -1; net.otherPick = -1; net.myReady = false; net.otherReady = false;
+  net.otherSum = null; net.otherLane = 'mid';
+  if(!running){   // gumb i kod sobe natrag na običnu igru
+    const sb = document.getElementById('startBtn'), big = document.getElementById('mpCodeBig');
+    if(sb) sb.textContent = L('▶️ ZAIGRAJ', '▶️ PLAY');
+    if(big && big.classList) big.classList.add('hidden');
+  }
 }
 function bindConn(){
   net.conn.on('open', () => {
@@ -118,10 +125,16 @@ function bindConn(){
       ? L('✅ Prijatelj je tu! Odaberite junake pa stisnite SPREMAN.', '✅ Your friend is here! Both pick heroes, then press READY.')
       : L('✅ Spojen! Ti si 🔴 crveni — odaberi junaka pa SPREMAN.', '✅ Connected! You are 🔴 Red — pick a hero, then READY.'));
     sendNet({ c: 'hello' });
+    // odabir i SPREMAN kliknuti prije nego se veza otvorila nisu poslani — pošalji ih sada (i već označenog junaka)
+    if(net.myPick < 0 && typeof selectedHero !== 'undefined' && selectedHero >= 0) net.myPick = selectedHero;
+    if(net.myPick >= 0) sendNet({ c: 'pick', i: net.myPick });
+    if(net.myReady) sendNet({ c: 'ready', sm: pickedSummoners, ln: SETTINGS.lane });
+    syncLobbyText();
   });
-  net.conn.on('data', onNetData);
-  net.conn.on('close', onNetClose);
-  net.conn.on('error', () => {});
+  const c = net.conn;
+  c.on('data', onNetData);
+  c.on('close', onNetClose);
+  c.on('error', () => { if(net.conn === c && !c.open && net.mode === 'host') net.conn = null; });   // neuspjelo spajanje ne javlja 'close' — oslobodi mjesto u sobi
 }
 function sendNet(o){
   if(net.conn && net.conn.open){
@@ -133,6 +146,7 @@ function onNetClose(){
     if(net.mode === 'host' && remoteHero){
       remoteHero.human = false;
       remoteHero.bot = { state: 'lane', thinkT: 0.5 };
+      botSpendPoints(remoteHero);   // nepotrošeni poeni vještina ne čekaju sljedeći level
       announce(L('🔌 Prijatelj je izašao', '🔌 Your friend left'), L('Preuzima ga bot', 'A bot takes over'));
       net.conn = null;
     } else if(net.mode === 'guest'){
@@ -142,6 +156,9 @@ function onNetClose(){
   } else {
     netStatus(L('Veza prekinuta.', 'Connection lost.'));
     net.conn = null;
+    net.otherPick = -1; net.otherReady = false; net.otherSum = null; net.otherLane = 'mid';   // novi prijatelj bira ispočetka
+    if(net.mode === 'guest') netResetLobby();   // gost: može se spojiti ponovno ili igrati sam (domaćinova soba ostaje otvorena)
+    else if(!running) document.getElementById('startBtn').textContent = L('▶️ ZAIGRAJ', '▶️ PLAY');
   }
 }
 
@@ -158,6 +175,10 @@ function netReady(){
   syncLobbyText();
   tryStartMatch();
 }
+/* staza ili čarolije promijenjene nakon SPREMAN: javi ih ponovno (inače igra krene sa starima) */
+function netPrefsChanged(){
+  if(net.conn && net.myReady) sendNet({ c: 'ready', sm: pickedSummoners, ln: SETTINGS.lane });
+}
 function syncLobbyText(){
   if(!net.conn || running) return;
   const nm = (i) => i >= 0 ? HEROES[i].emoji + ' ' + HEROES[i].name : '…';
@@ -165,6 +186,7 @@ function syncLobbyText(){
     L('  •  Prijatelj: ', '  •  Friend: ') + nm(net.otherPick) + (net.otherReady ? ' ✅' : ''));
 }
 function tryStartMatch(){
+  if(running) return;   // igra već traje (dvostruki SPREMAN ili gost koji se vratio u sobu ne smije je pokrenuti ispočetka)
   if(net.mode !== 'host' || !net.myReady || !net.otherReady) return;
   if(net.myPick < 0 || net.otherPick < 0) return;
   const pool = shuffle(HEROES.map((h, i) => i)
@@ -172,6 +194,7 @@ function tryStartMatch(){
   const bots = pool.slice(0, 2 * (CFG.teamSize - 1));   // 👥 po 4 bota u svakom timu
   genTrees();
   for(const t of trees){ t.x = Math.round(t.x); t.y = Math.round(t.y); t.size = Math.round(t.size); }   // manja poruka (v0.38: ~900 stabala)
+  buildTreeGrid();   // mreža stabala po zaokruženim mjestima (inače posječeno stablo ostane u mreži domaćina)
   sendNet({ c: 'start', host: net.myPick, guest: net.otherPick, bots, trees: trees.map(t => ({ x: t.x, y: t.y, r: t.r, size: t.size, kind: t.kind })) });
   startMatchHost(net.myPick, net.otherPick, bots, SETTINGS.lane, net.otherLane || 'mid');
 }
@@ -181,7 +204,7 @@ function onNetData(d){
   if(!d || !d.c) return;
   switch(d.c){
     case 'hello': syncLobbyText(); break;
-    case 'pick': net.otherPick = d.i; syncLobbyText(); break;
+    case 'pick': net.otherPick = d.i; syncLobbyText(); if(net.mode === 'host') tryStartMatch(); break;
     case 'ready':
       net.otherReady = true;
       if(Array.isArray(d.sm) && d.sm.length === 2 && d.sm.every(id => SUMMONER_BY_ID[id])) net.otherSum = d.sm;
@@ -189,10 +212,13 @@ function onNetData(d){
       syncLobbyText();
       if(net.mode === 'host') tryStartMatch();
       break;
-    case 'start': if(net.mode === 'guest') startMatchGuest(d); break;
+    case 'start': if(net.mode === 'guest' && !running) startMatchGuest(d); break;
     case 'snap': if(net.mode === 'guest') applySnapshot(d); break;
     case 'end':
-      if(net.mode === 'guest' && !gameOver) endGameView(d.win);
+      if(net.mode === 'guest' && !gameOver){
+        if(Array.isArray(d.st)) for(const s of d.st){ const u = net.guestUnits.get(s[0]); if(u){ u.heroDmg = s[1] || 0; u.bldDmg = s[2] || 0; } }   // 🏅 medalje štete
+        endGameView(d.win);
+      }
       break;
     // --- ulazi gosta (obrađuje domaćin) ---
     case 'cmd':
@@ -258,6 +284,7 @@ function heroExtras(h){
     tal: h.talents, cdr: h.cdr || 0, rg: Math.round(h.atkRange),
     sm: h.summoners, smc: (h.sumCd || [0, 0]).map(v => +v.toFixed(1)),
     jg: h.jungler ? 1 : 0,   // 🌲 v0.56: junak u džungli (vodič u dućanu)
+    fb: h.firstBlood ? 1 : 0, bs: h.bestStreak || 0, tk: h.towerKills || 0, bk: h.bossKill ? 1 : 0, te: h.treesEaten || 0,   // 🏆 postignuća gosta
     ab: h.abilities.map(a => [a.rank, +a.cd.toFixed(1)]),
     it: h.items.map(i => i.id),
     ip: h.items.reduce((a, it, k) => (it.pending && a.push(k), a), []),   // 🫏 čekaju kurira
@@ -332,7 +359,7 @@ function buildSnapshot(){
       tx: p.target ? Math.round(p.target.x) : 0, ty: p.target ? Math.round(p.target.y) : 0, cr: p.crit ? 1 : 0, bg: p.big ? 1 : 0, md: p.model || 0, sc: p.scale || 0 })),
     z: zones.map(z => ({ i: z.id, x: Math.round(z.x), y: Math.round(z.y), r: z.r, t: +z.t.toFixed(2), dl: z.delay, s: z.started ? 1 : 0, cl: z.color, e: z.emoji, tk: z.ticksLeft })),
     rn: runes.length ? [{ x: runes[0].x, y: runes[0].y, di: RUNE_TYPES.indexOf(runes[0].def) }] : [],
-    mk: markers.map(m => ({ x: Math.round(m.x), y: Math.round(m.y), t: +m.t.toFixed(2), r: Math.round(m.r), ir: m.isRing ? 1 : 0, cl: m.color })),
+    mk: markers.filter(m => m.team == null || m.team === TEAM_RED).map(m => ({ x: Math.round(m.x), y: Math.round(m.y), t: +m.t.toFixed(2), r: Math.round(m.r), ir: m.isRing ? 1 : 0, cl: m.color })),   // oznake klikova samo svom igraču
     ln: lines.map(l => ({ x1: Math.round(l.x1), y1: Math.round(l.y1), x2: Math.round(l.x2), y2: Math.round(l.y2), t: +l.t.toFixed(2), lf: l.life, cl: l.color, w: l.w })),
     fl: floats.map(f => { const o = { x: Math.round(f.x), y: Math.round(f.y), hh: Math.round(f.h), tx: netTx(f.txt), cl: f.color, sz: f.size, t: +f.t.toFixed(2) }; if(f.team >= 0) o.tm = f.team; if(f.st){ o.st = f.st; o.ro = +f.rot.toFixed(2); } if(f.who) o.wh = f.who; return o; }),
     fd: feed.map(f => f.team >= 0 ? { tx: netTx(f.txt), cl: f.color, t: +f.t.toFixed(2), tm: f.team } : { tx: netTx(f.txt), cl: f.color, t: +f.t.toFixed(2) }),
@@ -357,6 +384,8 @@ function buildSnapshot(){
 function maybeSendSnapshot(now){
   if(net.mode !== 'host' || !net.conn || !net.conn.open || !running) return;
   if(now - net.snapT < 80) return;
+  const dc = net.conn.dataChannel;
+  if((dc && dc.bufferedAmount > 262144) || net.conn.bufferSize > 0) return;   // spora veza: ne gomilaj stare slike svijeta (gost bi sve više kasnio)
   net.snapT = now;
   sendNet(buildSnapshot());
 }
@@ -505,6 +534,7 @@ function applySnapshot(d){
     player.cdr = e.cdr || 0;
     if(e.sm) player.summoners = e.sm;
     player.jungler = !!e.jg;
+    player.firstBlood = !!e.fb; player.bestStreak = e.bs || 0; player.towerKills = e.tk || 0; player.bossKill = !!e.bk; player.treesEaten = e.te || 0;
     if(e.smc) player.sumCd = e.smc;
     e.ab.forEach((a, j) => {
       if(player.abilities[j]){ player.abilities[j].rank = a[0]; player.abilities[j].cd = a[1]; }
@@ -530,7 +560,14 @@ function applySnapshot(d){
   else if(!runes.length || runes[0].x !== d.rn[0].x || runes[0].y !== d.rn[0].y){
     runes = [{ x: d.rn[0].x, y: d.rn[0].y, def: RUNE_TYPES[d.rn[0].di] || RUNE_TYPES[0], t: 0 }];
   }
-  markers = d.mk.map(m => ({ x: m.x, y: m.y, t: m.t, r: m.r, isRing: !!m.ir, color: m.cl }));
+  {   // zadrži iste objekte oznaka (3D prsten se gradi samo jednom, kao i linije)
+    const old = markers;
+    markers = d.mk.map(m => {
+      const ex = old.find(o => o.x === m.x && o.y === m.y && o.r === m.r && o.color === m.cl);
+      if(ex){ ex.t = m.t; return ex; }
+      return { x: m.x, y: m.y, t: m.t, r: m.r, isRing: !!m.ir, color: m.cl };
+    });
+  }
   {   // zadrži iste objekte linija (3D cijev munje se gradi samo jednom)
     const old = lines;
     lines = d.ln.map(l => {
@@ -632,11 +669,29 @@ function guestFrame(dt){
   const dayK = 0.5 + 0.5 * Math.cos((gameTime % CFG.dayCycle) / CFG.dayCycle * TAU);
   isNight = dayK < 0.5 || nightForceT > 0;
   // ciljanje: odustani ako moć nije spremna
-  if(pendingCast){
-    const ab = player && !player.dead ? player.abilities[pendingCast.i] : null;
-    if(!ab || ab.rank <= 0) pendingCast = null;
+  if(pendingCast){   // isto kao u update(): teleport, čarolije prizivača i predmeti nisu moći (i = -1) — prije ih je gost gubio nakon jednog kadra
+    if(pendingCast.tp || pendingCast.sum != null){
+      if(!player || player.dead) pendingCast = null;
+    } else if(pendingCast.item != null){
+      if(!player || player.dead || !player.items[pendingCast.item] || !player.items[pendingCast.item].active) pendingCast = null;
+    } else {
+      const ab = player && !player.dead ? player.abilities[pendingCast.i] : null;
+      if(!ab || ab.rank <= 0) pendingCast = null;
+    }
+  }
+  // 🛒 dućan gosta: update() ga ne osvježava (gost ne simulira) — prvi put ga nacrtaj kad stigne junak, pa osvježavaj dvaput u sekundi
+  if(shopOpen && player){
+    const k = Math.floor(gameTime * 2);
+    if(!net.shopDrawn){ net.shopDrawn = true; renderShopBody(); refreshShop(); }
+    else if(k !== net.shopTick){ net.shopTick = k; refreshShop(); }
   }
   if(banner){ banner.t += dt; if(banner.t > banner.dur + 0.4) banner = null; }   // najava izblijedi i kod gosta
+  for(let i = particles.length - 1; i >= 0; i--){   // gostove čestice (burst kad nestane zamka, totem, oko, runa) — inače ostanu zauvijek
+    const p = particles[i];
+    p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt;
+    p.vx *= 0.92; p.vy *= 0.92;
+    if(p.t > p.life) particles.splice(i, 1);
+  }
   for(let i = floats.length - 1; i >= 0; i--){   // gostove vlastite poruke se same dižu i nestaju
     const f = floats[i];
     if(!f.local) continue;
@@ -731,6 +786,7 @@ function startMatchGuest(d){
   banner = { txt: L(`⚔️ ${CFG.teamSize} NA ${CFG.teamSize}!`, `⚔️ ${CFG.teamSize} VS ${CFG.teamSize}!`), sub: L('Sruši plavi prijestol! 👑', 'Destroy the Blue throne! 👑'), t: 0, dur: 3 };
   annLog = []; VOX.annSeen = 0;   // 📣 najave stižu u snimkama (av)
   gameTime = -CFG.prepTime; prepShop = false;   // ⏳ priprema: domaćin šalje sat, dućan se sam otvori
+  net.shopDrawn = false;   // dućan se nacrta kad stigne junak (guestFrame)
   if(CFG.prepTime > 0 && !shopOpen){ toggleShop(); prepShop = true; }
   sfx('levelup');
 }

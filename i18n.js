@@ -15,7 +15,7 @@ function normLang(l){
 const LANG_CHOSEN = (() => {
   try {
     const q = typeof location !== 'undefined' && location.search ? normLang(new URLSearchParams(location.search).get('lang')) : null;
-    if(q){ localStorage.setItem('dk_lang', q); return q; }
+    if(q){ try { localStorage.setItem('dk_lang', q); } catch(e){} return q; }   // ?lang= vrijedi i kad je pohrana blokirana
     return normLang(localStorage.getItem('dk_lang'));
   } catch(e){}
   return null;
@@ -64,9 +64,11 @@ function fixNames(s){
       for(const v of [hr, en, sr, toCyr(sr)]){ add(v, loc); if(v) add(v.toLowerCase(), loc.toLowerCase()); }
     }
     const keys = [...map.keys()].sort((a, b) => b.length - a.length).map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-    nameFix = { map, re: keys.length ? new RegExp('(?<![\\p{L}])(' + keys.join('|') + ')(?![\\p{L}])', 'gu') : null };
+    let re = null;   // bez „lookbehind” izraza: stariji Safari (iPad s iOS-om 15) ga ne poznaje i bacio bi grešku na svakoj poruci
+    try { if(keys.length) re = new RegExp('(^|[^\\p{L}])(' + keys.join('|') + ')(?![\\p{L}])', 'gu'); } catch(e){}
+    nameFix = { map, re };
   }
-  return nameFix.re ? s.replace(nameFix.re, m => nameFix.map.get(m)) : s;
+  return nameFix.re ? s.replace(nameFix.re, (m, pre, k) => pre + nameFix.map.get(k)) : s;
 }
 let L_NAMES_DONE = null;
 function lockNames(){ L_NAMES_DONE = L_NAMES; L_NAMES = null; }   // kraj data.js: dalje L() piše poruke, ne imena
@@ -74,9 +76,11 @@ function lockNames(){ L_NAMES_DONE = L_NAMES; L_NAMES = null; }   // kraj data.j
 function LS(hr){ if(L_NAMES) nameRec(hr, null); return SR ? toSr(hr) : hr; }
 function setLang(l){
   l = normLang(l) || 'hr';
-  try { localStorage.setItem('dk_lang', l); } catch(e){}
+  let saved = true;
+  try { localStorage.setItem('dk_lang', l); } catch(e){ saved = false; }
   if(l === LANG) return;
-  const u = new URL(location.href); u.searchParams.delete('lang');
+  const u = new URL(location.href);
+  if(saved) u.searchParams.delete('lang'); else u.searchParams.set('lang', l);   // bez pohrane jezik putuje u adresi
   location.replace(u.toString());
 }
 

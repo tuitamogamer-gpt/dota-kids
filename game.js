@@ -4096,6 +4096,11 @@ function tryBuy(h, item){
       if(h.isPlayer) sfx('click');
       return;
     }
+    if(h.dead || h.hp >= h.maxhp){   // napitak ne bi ništa izliječio — ne uzimaj zlato
+      if(isHuman(h)) addFloat(h.x, h.y, h.dead ? L('Napitak ne pomaže dok čekaš oživljavanje! 💤', 'A potion can\'t help while you wait to respawn! 💤') : L('Život ti je već pun! ❤️', 'Your health is already full! ❤️'), '#e5e7eb', 14, h.team);
+      if(h.isPlayer) sfx('click');
+      return;
+    }
     h.gold -= item.cost;
     heal(h, item.heal);
     if(h.isPlayer) sfx('buy');
@@ -5172,6 +5177,7 @@ function laneIntro(h){
   if(t1) pings.push({ x: t1.x, y: t1.y, team: h.team, t: 0 });
 }
 function startGame(heroIdx){
+  if(net.mode !== 'local') netResetLobby();   // soba je napravljena, ali igra se sam: obična igra (inače bi ostala mrežna pravila, a gostu bi sat stajao)
   applyMode();   // ⚡
   loadCos();     // 🎁
   SMOOTH.warm = 0; SMOOTH.acc = SMOOTH.n = 0;   // 🐢 nova igra: prvo se učita (korak olakšanja ostaje — isti uređaj)
@@ -5270,7 +5276,7 @@ function skipPrep(){   // ▶️ igra protiv botova: ne čekaj do kraja pripreme
 }
 
 function endGame(winTeam){
-  if(net.mode === 'host') sendNet({ c: 'end', win: winTeam });
+  if(net.mode === 'host') sendNet({ c: 'end', win: winTeam, st: units.filter(u => u.kind === 'hero').map(u => [u.id, Math.round(u.heroDmg || 0), Math.round(u.bldDmg || 0)]) });   // st: šteta junaka za medalje kod gosta
   endGameView(winTeam);
 }
 function endGameView(winTeam){
@@ -6119,13 +6125,13 @@ function playerCommandFor(h, wx, wy, tgt, opts){
     if(opts.amove && (t.kind === 'creep' || t.kind === 'neutral')) h.attackOnce = true;
     if(t.kind === 'hero') drawAggro(h, t);                    // DotA: već sama naredba napada povlači aggro
     else if(t.team === h.team && t.kind === 'creep') dropAggro(h, t);   // klik na svog vojnika: neprijateljski vojnici te puste
-    markers.push({ x: t.x, y: t.y, t: 0, color: t.team === h.team ? '#fde047' : '#f87171', r: t.r + 14 });
+    markers.push({ x: t.x, y: t.y, t: 0, color: t.team === h.team ? '#fde047' : '#f87171', r: t.r + 14, team: h.team });   // team: oznaku klika vidi samo taj igrač
   } else {
     const dest = { x: wx, y: wy };   // klik na prijatelja ili prazno tlo: idi točno onamo
     h.attackTarget = null;
     h.moveTarget = { x: clamp(dest.x, 40, WORLD - 40), y: clamp(dest.y, 40, WORLD - 40) };
     if(opts.amove) h.amove = true;
-    if(!opts.silent) markers.push({ x: dest.x, y: dest.y, t: 0, color: opts.amove ? '#f87171' : '#4ade80', r: 22 });
+    if(!opts.silent) markers.push({ x: dest.x, y: dest.y, t: 0, color: opts.amove ? '#f87171' : '#4ade80', r: 22, team: h.team });
   }
   if(h.isPlayer && !opts.silent) sfx('click');
 }
@@ -6146,10 +6152,10 @@ function inRect(sx, sy, r){ sx /= UI_K; sy /= UI_K; return r && sx >= r.x && sx 
 /* ploče HUD-a: donja ploča junaka, naredbena kartica, gornja ploča s rezultatom */
 function hudPanelAt(sx, sy){
   if(!running || !player) return false;
-  const HL = hudLayout(), tw = 280;
+  const HL = hudLayout(), tw = 280, W = uiLogical ? VW : VW / UI_K;   // 📱 logične mjere kao i ostale ploče (na mobitelu je gornja ploča bila pomaknuta)
   return inRect(sx, sy, { x: HL.px, y: HL.py, w: HL.pw, h: HL.ph }) ||
     inRect(sx, sy, { x: HL.cardX, y: HL.cardY, w: HL.cardW, h: HL.cardH }) ||
-    inRect(sx, sy, { x: (VW - tw) / 2, y: 8, w: tw, h: 64 });
+    inRect(sx, sy, { x: (W - tw) / 2, y: 8, w: tw, h: 64 });
 }
 /* 👆 je li dodir na HUD-u (gumbi, predmeti, minimapa, ploče)? — tamo prst ne pomiče kameru */
 function hudHit(sx, sy){
@@ -6580,14 +6586,19 @@ function setupInput(){
       if(k === 'escape') e.target.blur();
       return;
     }
+    if(e.ctrlKey || e.metaKey || e.altKey) return;   // prečaci preglednika (Ctrl+F, Ctrl+D, Alt+Tab…) nisu naredbe igri
     keys[k] = true;
-    if(!running) return;
+    if(!running){   // izvan igre: Esc zatvara postavke ili pomoć
+      if(k === 'escape'){ if(optionsOpen()) toggleOptions(); else if(!document.getElementById('help').classList.contains('hidden')) toggleHelp(); }
+      return;
+    }
     if(optionsOpen() && k !== 'escape') return;   // ⚙️ dok su postavke otvorene, tipke ne upravljaju igrom
     if(k === ' '){ e.preventDefault(); cam.follow = true; if(player){ cam.x = player.x; cam.y = player.y; } }
     if(gameOver) return;
     // v0.31: držanje tipke ne ponavlja naredbu (preglednik šalje ponovljene pritiske — prije je to samo
     // od sebe bacilo moć na staro mjesto miša)
-    if(e.repeat && 'qwerdfas123456'.includes(k)) return;
+    if(e.repeat){ if(k === 'tab') e.preventDefault(); return; }   // vrijedi za sve tipke: držanje P bi pauzu odmah i ugasilo, držanje T pokrenulo teleport kući
+    if(paused && !'p m h'.split(' ').includes(k) && k !== 'escape' && k !== 'tab') return;   // ⏸️ u pauzi se ne bacaju moći, ne kupuje i ne troše čarolije
     const quick = SETTINGS.quickCast && !touchMode;   // ⚡ brzo bacanje: drži tipku = indikator, pusti = baci
     const pc0 = pendingCast;
     const qKey = () => { if(quick && pendingCast && pendingCast !== pc0) pendingCast.key = k; };   // samo ako je ova tipka započela ciljanje
@@ -6622,7 +6633,7 @@ function setupInput(){
     if(k >= '1' && k <= '6' && !e.ctrlKey && !e.metaKey){ amovePending = false; pressItem(parseInt(k, 10) - 1, quick); qKey(); }
     if(k === 'tab') e.preventDefault();
     if(k === 'm'){ muted = !muted; }
-    if(k === 'p'){ paused = !paused; document.getElementById('pause').classList.toggle('hidden', !paused); }
+    if(k === 'p' && net.mode === 'local'){ paused = !paused; document.getElementById('pause').classList.toggle('hidden', !paused); }   // u mrežnoj igri nema pauze (svijet bi stao samo jednom igraču)
     if(k === 'escape'){
       if(optionsOpen()) toggleOptions();
       else if(chatOpen) chatOpen = false;
@@ -6638,7 +6649,7 @@ function setupInput(){
     const k = e.key.toLowerCase();
     keys[k] = false;
     // ⚡ brzo bacanje: otpuštanje tipke baca moć prema mišu (ili na jedinicu pod mišem)
-    if(pendingCast && pendingCast.quick && pendingCast.key === k && running && !gameOver && !optionsOpen()) castPending(aimPoint());
+    if(pendingCast && pendingCast.quick && pendingCast.key === k && running && !gameOver && !paused && !optionsOpen()) castPending(aimPoint());
   });
 }
 
@@ -6772,6 +6783,7 @@ function buildSelectScreen(){
   const syncLane = () => document.querySelectorAll('#laneTabs button').forEach(x => x.classList.toggle('on', x.dataset.l === SETTINGS.lane));
   document.querySelectorAll('#laneTabs button').forEach(b => b.addEventListener('click', () => {   // 🛣️ tvoja staza (uloga)
     SETTINGS.lane = b.dataset.l; saveSettings(); syncLane(); sfx('click');
+    netPrefsChanged();
     if(SETTINGS.lane === 'jungle' && !pickedSummoners.includes('smite')){   // 🌲 u džungli treba 🌩️ Kazna (ide na F)
       pickedSummoners = jungleSummoners(pickedSummoners);
       try { localStorage.setItem('dk_summoners', JSON.stringify(pickedSummoners)); } catch(e){}
@@ -6880,6 +6892,7 @@ function selectHero(i){
       pickedSummoners = [pickedSummoners[1], sp.id];  // nova ide na F, stara F prelazi na D
       try { localStorage.setItem('dk_summoners', JSON.stringify(pickedSummoners)); } catch(e){}
       syncSum(); sfx('click');
+      netPrefsChanged();
     });
   });
   syncSum();
@@ -8940,7 +8953,7 @@ function frame(now){
   }
   watchMouseLock();
   drawLockedCursor();
-  if(now - (frame.ambT || 0) > 250){ frame.ambT = now; updateAmbience(); }
+  if(now - (frame.ambT || 0) > 250){ frame.ambT = now; updateAmbience(); if(hoverUi && !(invDrag && invDrag.moved)) updateHudTip(); }   // opis pod mišem prati vrijeme (hlađenje, trajanje) i kad miš miruje
   if(now - (frame.musT || 0) > 90){ frame.musT = now; updateMusic(); }   // 🎶   // 🌲 4× u sekundi je dovoljno
 }
 
@@ -8979,6 +8992,9 @@ window.addEventListener('DOMContentLoaded', () => {
   resize();
   window.addEventListener('resize', resize);
   window.addEventListener('touchstart', () => { touchMode = true; }, { passive: true, capture: true });   // 👆 dodir bilo gdje = tablet
+  window.addEventListener('pointermove', e => {   // 🖱️ pravi miš nakon dodira (prijenosnik s dodirnim zaslonom): natrag na upravljanje mišem
+    if(touchMode && e.pointerType === 'mouse' && (e.movementX || e.movementY)){ touchMode = false; wrReset(); }
+  }, { passive: true, capture: true });
   for(const ev of ['touchend', 'pointerdown', 'keydown']) window.addEventListener(ev, voxUnlock, { passive: true, capture: true });   // 🗣️ iPad: dopusti glasove
   buildSelectScreen();
   buildShopDom();
