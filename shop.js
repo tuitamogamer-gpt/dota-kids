@@ -14,8 +14,27 @@ function hexA(hex, a){
   const n = parseInt(hex.slice(1), 16);
   return 'rgba(' + (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')';
 }
+/* 🎨 v0.56: naslikana ikona predmeta (assets/item/<id>.jpg, tools/art/dl_items.py). Dok se slika ne učita (ili ako je
+   nema), ikona je sličica-emoji na pločici u boji kvalitete — ista pločica i rub ostaju i oko naslikane ikone. */
+function itemHasArt(it){ return typeof ITEM_ICONS !== 'undefined' && ITEM_ICONS.includes(it.id); }
+function itemArtUrl(it){ return 'assets/item/' + it.id + '.jpg'; }
 function itemIconCanvas(it){
   if(ITEM_ICON[it.id]) return ITEM_ICON[it.id];
+  const c = drawItemTile(it, null);
+  ITEM_ICON[it.id] = c;
+  iconQueue(it.id);
+  if(itemHasArt(it) && typeof Image !== 'undefined'){
+    const art = new Image();
+    art.onload = () => { ITEM_ICON[it.id] = drawItemTile(it, art); iconQueue(it.id); };
+    art.src = itemArtUrl(it);
+  }
+  return c;
+}
+function iconQueue(id){
+  ICON_Q.push(id);
+  if(ICON_Q.length === 1 && typeof setTimeout === 'function') setTimeout(iconPump, 40);
+}
+function drawItemTile(it, art){
   // 🖼️ v0.56: platno u ICON_S × većoj razlučivosti (oštro i na mobitelu / retina zaslonu), crta se u istim koordinatama
   const c = document.createElement('canvas'); c.width = ICON_W * ICON_S; c.height = ICON_H * ICON_S;
   // softversko platno: toDataURL() je tada trenutan (ne čeka grafičku karticu koja crta 3D scenu)
@@ -41,6 +60,12 @@ function itemIconCanvas(it){
   const gl = g.createRadialGradient(ICON_W / 2, ICON_H / 2, 2, ICON_W / 2, ICON_H / 2, 30);
   gl.addColorStop(0, hexA(q[0], 0.55)); gl.addColorStop(1, hexA(q[0], 0));
   g.fillStyle = gl; g.fillRect(0, 0, ICON_W, ICON_H);
+  if(art){   // naslikana ikona preko cijele pločice + isti rub u boji kvalitete
+    g.drawImage(art, 0, 0, ICON_W, ICON_H);
+    g.strokeStyle = hexA(q[0], 0.95); g.lineWidth = 2; g.strokeRect(1, 1, ICON_W - 2, ICON_H - 2);
+    g.strokeStyle = 'rgba(0,0,0,0.55)'; g.lineWidth = 1; g.strokeRect(3.5, 3.5, ICON_W - 7, ICON_H - 7);
+    return c;
+  }
   // sam predmet: pune boje, veći. Prvo svijetla aura oko sličice — tamni predmeti (šišmiš, lanac, ogrtač) se tako
   // odvoje od tamne pozadine i vide i u maloj ikoni — pa meka sjena ispod
   g.font = fontEmoji(42); g.textAlign = 'center'; g.textBaseline = 'middle';
@@ -51,9 +76,6 @@ function itemIconCanvas(it){
   g.shadowColor = 'transparent';
   g.strokeStyle = hexA(q[0], 0.9); g.lineWidth = 2; g.strokeRect(1, 1, ICON_W - 2, ICON_H - 2);
   g.strokeStyle = 'rgba(0,0,0,0.55)'; g.lineWidth = 1; g.strokeRect(3.5, 3.5, ICON_W - 7, ICON_H - 7);
-  ITEM_ICON[it.id] = c;
-  ICON_Q.push(it.id);
-  if(ICON_Q.length === 1 && typeof setTimeout === 'function') setTimeout(iconPump, 40);
   return c;
 }
 /* 🖼️ v0.56: ikona se nacrta na platnu, a zatim u pozadini pretvori u SLIKU. Preglednik (osobito na mobitelu i tabletu)
@@ -66,7 +88,7 @@ function iconPump(){
     const id = ICON_Q.shift(), c = ITEM_ICON[id];
     if(!c || !c.getContext) continue;
     try {
-      const url = ITEM_ICON_URL[id] || (ITEM_ICON_URL[id] = c.toDataURL());
+      const url = ITEM_ICON_URL[id] = c.toDataURL();
       if(typeof Image === 'undefined' || !url || url.length < 200) continue;
       const img = new Image();
       img.onload = () => { if(ITEM_ICON[id] === c) ITEM_ICON[id] = img; };
@@ -80,9 +102,17 @@ if(typeof document !== 'undefined' && document.addEventListener) document.addEve
   for(const id in ITEM_ICON) if(ITEM_ICON[id] && ITEM_ICON[id].getContext) delete ITEM_ICON[id];
 });
 function itemIconUrl(it){
-  if(!ITEM_ICON_URL[it.id]){ const c = itemIconCanvas(it); if(!ITEM_ICON_URL[it.id]) ITEM_ICON_URL[it.id] = c.toDataURL(); }
-  return ITEM_ICON_URL[it.id];
+  if(itemHasArt(it)) return itemArtUrl(it);   // 🎨 naslikana ikona: sama datoteka (rub u boji kvalitete daje CSS, .pic)
+  return itemEmojiUrl(it.id);
 }
+/* pločica sa sličicom-emojijem kao slika — i pričuva ako se naslikana ikona ne učita */
+function itemEmojiUrl(id){
+  const it = id === '_recipe' ? RECIPE_ICON : ITEM_BY_ID[id];
+  if(!it) return '';
+  if(!ITEM_EMOJI_URL[id]) ITEM_EMOJI_URL[id] = drawItemTile(it, null).toDataURL();
+  return ITEM_EMOJI_URL[id];
+}
+const ITEM_EMOJI_URL = {};
 /* svitak recepta (dio cijene nadogradnje) */
 const RECIPE_ICON = { id: '_recipe', emoji: '📜', q: 'cons' };
 
@@ -104,7 +134,11 @@ function statLines(it){
   return out;
 }
 function escHtml(t){ return String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }
-function iconImg(it, cls){ return `<img class="${cls || ''}" src="${itemIconUrl(it)}" alt="${it.emoji}" draggable="false">`; }
+function iconImg(it, cls){
+  return itemHasArt(it)
+    ? `<img class="${cls || ''} pic pq-${it.q || 'comp'}" src="${itemArtUrl(it)}" alt="${it.emoji}" draggable="false" onerror="this.onerror=null;this.classList.remove('pic');this.src=itemEmojiUrl('${it.id}')">`
+    : `<img class="${cls || ''}" src="${itemIconUrl(it)}" alt="${it.emoji}" draggable="false">`;
+}
 function itemTipHtml(it, opts){
   opts = opts || {};
   const full = it.neutral ? 0 : itemFullCost(it);

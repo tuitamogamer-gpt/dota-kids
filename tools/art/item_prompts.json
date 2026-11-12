@@ -1,0 +1,189 @@
+{
+ "items/1": {
+  "ids": [
+   "tango",
+   "potion",
+   "clarity",
+   "dust",
+   "eye",
+   "bottle",
+   "cheese",
+   "fairy",
+   "mango",
+   "smoke",
+   "branch",
+   "gauntlets"
+  ],
+  "prompt": "A sprite sheet of twelve item icons for a kids' fantasy MOBA game (Dota-style shop item icons), arranged in an exact grid of 4 columns and 3 rows of equal rectangular tiles that fill the whole image edge to edge, with no gaps, no gutters and no outer margin. Every tile is its own complete icon: painterly digital illustration of ONE single object, large and centered, filling most of the tile, bold readable silhouette, vibrant saturated colors, a soft bright glow behind the object, dark vignette toward the tile edges, cute and kid-friendly. No characters, no hands. Tile 1 (top row, 1st), \"Forest Snack\": a bundle of fresh green leaves tied with string, on a dark warm sandy brown background. Tile 2 (top row, 2nd), \"Herbal Potion\": a round glass bottle of glowing green herbal potion with a cork, on a dark warm sandy brown background. Tile 3 (top row, 3rd), \"Blue Drop\": a single big glowing blue water drop, on a dark warm sandy brown background. Tile 4 (top row, 4th), \"Reveal Powder\": a small open pouch spilling sparkling silver powder, on a dark warm sandy brown background. Tile 5 (middle row, 1st), \"Magic Eye\": a magic floating eyeball on a short wooden stick, on a dark warm sandy brown background. Tile 6 (middle row, 2nd), \"Spring Flask\": a glass flask with a swirl of sparkling spring water and a cork, on a dark warm sandy brown background. Tile 7 (middle row, 3rd), \"Dragon Treat\": a wedge of golden cheese with holes, glowing, on a dark warm sandy brown background. Tile 8 (middle row, 4th), \"Fairy Spark\": a tiny glowing fairy light with wings, on a dark warm sandy brown background. Tile 9 (bottom row, 1st), \"Sunny Mango\": a ripe orange-yellow mango with a leaf, on a dark warm sandy brown background. Tile 10 (bottom row, 2nd), \"Fog Ball\": a grey glass ball full of swirling fog, on a dark warm sandy brown background. Tile 11 (bottom row, 3rd), \"Sprout\": a small green sprout with two leaves in a clump of soil, on a dark cool steel grey background. Tile 12 (bottom row, 4th), \"Bear Mitts\": a pair of furry brown bear-paw mittens, on a dark cool steel grey background. No text, no letters, no numbers, no UI frame, no borders."
+ },
+ "items/2": {
+  "ids": [
+   "slippers",
+   "mantle",
+   "circlet",
+   "belt",
+   "band",
+   "robe",
+   "ogre",
+   "alacrity",
+   "wizstaff",
+   "quelling",
+   "hunter",
+   "sword"
+  ],
+  "prompt": "A sprite sheet of twelve item icons for a kids' fantasy MOBA game (Dota-style shop item icons), arranged in an exact grid of 4 columns and 3 rows of equal rectangular tiles that fill the whole image edge to edge, with no gaps, no gutters and no outer margin. Every tile is its own complete icon: painterly digital illustration of ONE single object, large and centered, filling most of the tile, bold readable silhouette, vibrant saturated colors, a soft bright glow behind the object, dark vignette toward the tile edges, cute and kid-friendly. No characters, no hands. Tile 1 (top row, 1st), \"Cat Slippers\": a pair of soft blue slippers with cat ears, on a dark cool steel grey background. Tile 2 (top row, 2nd), \"Owl Scarf\": a red knitted scarf with an owl pattern, on a dark cool steel grey background. Tile 3 (top row, 3rd), \"Bead Necklace\": a necklace of colourful beads, on a dark cool steel grey background. Tile 4 (top row, 4th), \"Wrestler's Belt\": a wide golden champion wrestler belt, on a dark cool steel grey background. Tile 5 (middle row, 1st), \"Breeze Ribbon\": a pink ribbon bow fluttering in the wind, on a dark cool steel grey background. Tile 6 (middle row, 2nd), \"Starry Robe\": a folded dark blue robe covered with golden stars, on a dark cool steel grey background. Tile 7 (middle row, 3rd), \"Troll Club\": a heavy wooden club with iron studs, on a dark cool steel grey background. Tile 8 (middle row, 4th), \"Fox Blade\": a slim curved orange blade shaped like a fox tail, on a dark cool steel grey background. Tile 9 (bottom row, 1st), \"Elfwood Staff\": a wooden elf staff with a glowing purple crystal on top, on a dark cool steel grey background. Tile 10 (bottom row, 2nd), \"Woodcutter's Hatchet\": a small woodcutter hatchet stuck in a tree stump, on a dark cool steel grey background. Tile 11 (bottom row, 3rd), \"Hunter's Knife\": a hunting knife with a bone handle and a paw print on the blade, on a dark cool steel grey background. Tile 12 (bottom row, 4th), \"Twin Daggers\": two crossed short daggers, on a dark cool steel grey background. No text, no letters, no numbers, no UI frame, no borders."
+ },
+ "items/3": {
+  "ids": [
+   "broadsword",
+   "claymore",
+   "mithril",
+   "demonedge",
+   "gloves",
+   "ringprot",
+   "chainmail",
+   "platemail",
+   "morbid",
+   "hyperstone",
+   "staff",
+   "cloak"
+  ],
+  "prompt": "A sprite sheet of twelve item icons for a kids' fantasy MOBA game (Dota-style shop item icons), arranged in an exact grid of 4 columns and 3 rows of equal rectangular tiles that fill the whole image edge to edge, with no gaps, no gutters and no outer margin. Every tile is its own complete icon: painterly digital illustration of ONE single object, large and centered, filling most of the tile, bold readable silhouette, vibrant saturated colors, a soft bright glow behind the object, dark vignette toward the tile edges, cute and kid-friendly. No characters, no hands. Tile 1 (top row, 1st), \"Knight's Sword\": a classic straight knight sword with a blue grip, on a dark cool steel grey background. Tile 2 (top row, 2nd), \"Highland Sword\": a big two-handed sword with a tartan-wrapped handle, on a dark cool steel grey background. Tile 3 (top row, 3rd), \"Dwarf Hammer\": a sturdy silver dwarf hammer with runes, on a dark cool steel grey background. Tile 4 (top row, 4th), \"Imp Fang\": a jagged dark red blade shaped like a fang, glowing, on a dark cool steel grey background. Tile 5 (middle row, 1st), \"Boxing Gloves\": a pair of red boxing gloves, on a dark cool steel grey background. Tile 6 (middle row, 2nd), \"Turtle Ring\": a green ring shaped like a turtle shell, on a dark cool steel grey background. Tile 7 (middle row, 3rd), \"Link Armor\": a shirt of steel chain links, on a dark cool steel grey background. Tile 8 (middle row, 4th), \"Iron Armor\": a shiny steel breastplate, on a dark cool steel grey background. Tile 9 (bottom row, 1st), \"Bat Mask\": a dark mask shaped like a bat with red eyes, on a dark cool steel grey background. Tile 10 (bottom row, 2nd), \"Swift Gem\": a faceted cyan gem with speed streaks, on a dark cool steel grey background. Tile 11 (bottom row, 3rd), \"Shepherd's Staff\": a wooden shepherd crook, on a dark cool steel grey background. Tile 12 (bottom row, 4th), \"Wool Cloak\": a thick blue wool cloak with a clasp, on a dark cool steel grey background. No text, no letters, no numbers, no UI frame, no borders."
+ },
+ "items/4": {
+  "ids": [
+   "boots",
+   "ringregen",
+   "sage",
+   "heart",
+   "orb",
+   "pointbooster",
+   "windlace",
+   "ringhealth",
+   "voidstone",
+   "blink",
+   "reaver",
+   "eaglesong"
+  ],
+  "prompt": "A sprite sheet of twelve item icons for a kids' fantasy MOBA game (Dota-style shop item icons), arranged in an exact grid of 4 columns and 3 rows of equal rectangular tiles that fill the whole image edge to edge, with no gaps, no gutters and no outer margin. Every tile is its own complete icon: painterly digital illustration of ONE single object, large and centered, filling most of the tile, bold readable silhouette, vibrant saturated colors, a soft bright glow behind the object, dark vignette toward the tile edges, cute and kid-friendly. No characters, no hands. Tile 1 (top row, 1st), \"Sneakers\": a pair of blue running sneakers with white laces, on a dark cool steel grey background. Tile 2 (top row, 2nd), \"Herb Ring\": a ring woven of green herbs with a tiny leaf, on a dark cool steel grey background. Tile 3 (top row, 3rd), \"Cup of Tea\": a steaming cup of green tea, on a dark cool steel grey background. Tile 4 (top row, 4th), \"Heart Ruby\": a heart-shaped red ruby, on a dark cool steel grey background. Tile 5 (middle row, 1st), \"Blue Sapphire\": a round deep blue sapphire, on a dark cool steel grey background. Tile 6 (middle row, 2nd), \"Star Crystal\": a star-shaped golden crystal, on a dark cool steel grey background. Tile 7 (middle row, 3rd), \"Seagull Feather\": a white seagull feather on a string, on a dark cool steel grey background. Tile 8 (middle row, 4th), \"Unicorn Ring\": a pink ring with a tiny unicorn horn spiral, on a dark cool steel grey background. Tile 9 (bottom row, 1st), \"Night Stone\": a dark purple stone with stars inside, on a dark cool steel grey background. Tile 10 (bottom row, 2nd), \"Leap Amulet\": a golden amulet with a lightning bolt, on a dark cool steel grey background. Tile 11 (bottom row, 3rd), \"Mountain Might\": a massive stone axe with a skull-shaped rock head, on a dark teal cyan background. Tile 12 (bottom row, 4th), \"Eagle Plume\": a large brown-and-white eagle feather with a golden quill, on a dark teal cyan background. No text, no letters, no numbers, no UI frame, no borders."
+ },
+ "items/5": {
+  "ids": [
+   "mystic",
+   "relic",
+   "javelin",
+   "wand",
+   "bracer",
+   "wraith",
+   "nulltal",
+   "phase",
+   "treads",
+   "arcane",
+   "midas",
+   "soulring"
+  ],
+  "prompt": "A sprite sheet of twelve item icons for a kids' fantasy MOBA game (Dota-style shop item icons), arranged in an exact grid of 4 columns and 3 rows of equal rectangular tiles that fill the whole image edge to edge, with no gaps, no gutters and no outer margin. Every tile is its own complete icon: painterly digital illustration of ONE single object, large and centered, filling most of the tile, bold readable silhouette, vibrant saturated colors, a soft bright glow behind the object, dark vignette toward the tile edges, cute and kid-friendly. No characters, no hands. Tile 1 (top row, 1st), \"Star Staff\": a tall golden staff topped with a shining star, on a dark teal cyan background. Tile 2 (top row, 2nd), \"Sun Shard\": a glowing shard of the sun, orange-gold, on a dark teal cyan background. Tile 3 (top row, 3rd), \"Hunting Spear\": a hunting spear with feathers tied below the tip, on a dark teal cyan background. Tile 4 (top row, 4th), \"Sparkle Wand\": a short wand throwing colourful sparks, on a dark forest green background. Tile 5 (middle row, 1st), \"Bear Bracelet\": a leather bracelet with a bear tooth and a red gem, on a dark forest green background. Tile 6 (middle row, 2nd), \"Fox Ribbon\": an orange silk ribbon with a fox-tail tip, on a dark forest green background. Tile 7 (middle row, 3rd), \"Owl Charm\": a blue owl-shaped charm on a chain, on a dark forest green background. Tile 8 (middle row, 4th), \"Warrior Boots\": sturdy brown leather warrior boots with steel toe caps, on a dark forest green background. Tile 9 (bottom row, 1st), \"Triple Boots\": heavy boots striped red, green and blue, on a dark forest green background. Tile 10 (bottom row, 2nd), \"Wizard Boots\": elegant blue wizard boots with curled toes and stars, on a dark forest green background. Tile 11 (bottom row, 3rd), \"Golden Glove\": a shining golden glove, on a dark forest green background. Tile 12 (bottom row, 4th), \"Moon Ring\": a silver ring with a crescent moon, on a dark forest green background. No text, no letters, no numbers, no UI frame, no borders."
+ },
+ "items/6": {
+  "ids": [
+   "mom",
+   "machete",
+   "mek",
+   "drum",
+   "vlad",
+   "buckler",
+   "glimmer",
+   "pipe",
+   "greaves",
+   "force",
+   "euls",
+   "dagon"
+  ],
+  "prompt": "A sprite sheet of twelve item icons for a kids' fantasy MOBA game (Dota-style shop item icons), arranged in an exact grid of 4 columns and 3 rows of equal rectangular tiles that fill the whole image edge to edge, with no gaps, no gutters and no outer margin. Every tile is its own complete icon: painterly digital illustration of ONE single object, large and centered, filling most of the tile, bold readable silhouette, vibrant saturated colors, a soft bright glow behind the object, dark vignette toward the tile edges, cute and kid-friendly. No characters, no hands. Tile 1 (top row, 1st), \"Rage Mask\": an angry red theatre mask, on a dark forest green background. Tile 2 (top row, 2nd), \"Hunter's Machete\": a broad hunter machete with a leather grip, on a dark forest green background. Tile 3 (top row, 3rd), \"Healing Medallion\": a golden medallion with a green cross, on a dark forest green background. Tile 4 (top row, 4th), \"War Drum\": a war drum with red tassels and two drumsticks, on a dark forest green background. Tile 5 (middle row, 1st), \"Pack Banner\": a red banner with a wolf head emblem, on a dark forest green background. Tile 6 (middle row, 2nd), \"Round Shield\": a small round wooden shield with a metal boss, on a dark forest green background. Tile 7 (middle row, 3rd), \"Firefly Cloak\": a shimmering cloak covered in tiny glowing fireflies, on a dark forest green background. Tile 8 (middle row, 4th), \"Guardian Horn\": a curved guardian horn with gold rings, on a dark forest green background. Tile 9 (bottom row, 1st), \"Healer's Socks\": white knitted socks with a green healing cross, on a dark forest green background. Tile 10 (bottom row, 2nd), \"Gust Staff\": a staff with a spiral of wind at the tip, on a dark royal blue background. Tile 11 (bottom row, 3rd), \"Bottled Tornado\": a glass bottle with a tiny tornado inside, on a dark royal blue background. Tile 12 (bottom row, 4th), \"Trident Beam\": a golden trident shooting a red beam, on a dark royal blue background. No text, no letters, no numbers, no UI frame, no borders."
+ },
+ "items/7": {
+  "ids": [
+   "refresher",
+   "shiva",
+   "kaya",
+   "octarine",
+   "orchid",
+   "atos",
+   "vanguard",
+   "bkb",
+   "assault",
+   "titanheart",
+   "hood",
+   "halberd"
+  ],
+  "prompt": "A sprite sheet of twelve item icons for a kids' fantasy MOBA game (Dota-style shop item icons), arranged in an exact grid of 4 columns and 3 rows of equal rectangular tiles that fill the whole image edge to edge, with no gaps, no gutters and no outer margin. Every tile is its own complete icon: painterly digital illustration of ONE single object, large and centered, filling most of the tile, bold readable silhouette, vibrant saturated colors, a soft bright glow behind the object, dark vignette toward the tile edges, cute and kid-friendly. No characters, no hands. Tile 1 (top row, 1st), \"Repeat Orb\": a green orb with two circling arrows, on a dark royal blue background. Tile 2 (top row, 2nd), \"Ice Shield\": a round shield made of blue ice, on a dark royal blue background. Tile 3 (top row, 3rd), \"Spellbook\": an open blue spellbook with glowing pages, on a dark royal blue background. Tile 4 (top row, 4th), \"Magic Core\": a glowing purple core with orbiting rings like an atom, on a dark royal blue background. Tile 5 (middle row, 1st), \"Hush Flower\": a purple orchid flower with a finger-on-lips hush glow, on a dark royal blue background. Tile 6 (middle row, 2nd), \"Chain Rod\": a rod wrapped in glowing chains, on a dark royal blue background. Tile 7 (middle row, 3rd), \"Oak Shield\": a thick oak wooden shield with iron bands, on a dark royal blue background. Tile 8 (middle row, 4th), \"Royal Armor\": golden royal armor with a crown emblem, on a dark royal blue background. Tile 9 (bottom row, 1st), \"General's Armor\": a dark green general's chest armor with medals and gold epaulettes, on a dark royal blue background. Tile 10 (bottom row, 2nd), \"Titan Heart\": a huge glowing orange stone heart, on a dark royal blue background. Tile 11 (bottom row, 3rd), \"Spellproof Cap\": a blue cap with a crossed-out spell rune, on a dark royal blue background. Tile 12 (bottom row, 4th), \"Guard's Halberd\": a long halberd with a golden fleur-de-lis blade, on a dark royal blue background. No text, no letters, no numbers, no UI frame, no borders."
+ },
+ "items/8": {
+  "ids": [
+   "crystalys",
+   "daedalus",
+   "bfury",
+   "deso",
+   "basher",
+   "abyssal",
+   "mkb",
+   "maelstrom",
+   "mjollnir",
+   "diffusal",
+   "butterfly",
+   "shadowblade"
+  ],
+  "prompt": "A sprite sheet of twelve item icons for a kids' fantasy MOBA game (Dota-style shop item icons), arranged in an exact grid of 4 columns and 3 rows of equal rectangular tiles that fill the whole image edge to edge, with no gaps, no gutters and no outer margin. Every tile is its own complete icon: painterly digital illustration of ONE single object, large and centered, filling most of the tile, bold readable silhouette, vibrant saturated colors, a soft bright glow behind the object, dark vignette toward the tile edges, cute and kid-friendly. No characters, no hands. Tile 1 (top row, 1st), \"Crystal Knife\": a knife with a blade of clear crystal, on a dark deep purple background. Tile 2 (top row, 2nd), \"Bullseye Blade\": a golden blade with a red bullseye target on the guard, on a dark deep purple background. Tile 3 (top row, 3rd), \"Storm Axe\": a big double axe crackling with storm clouds, on a dark deep purple background. Tile 4 (top row, 4th), \"Dusk Sword\": a dark curved sword with a crescent moon glow, on a dark deep purple background. Tile 5 (middle row, 1st), \"Stone Mallet\": a heavy stone mallet, on a dark deep purple background. Tile 6 (middle row, 2nd), \"Whirlpool Sword\": a blue sword wrapped in a water whirlpool, on a dark deep purple background. Tile 7 (middle row, 3rd), \"Never-Miss Staff\": a golden staff with a monkey face cap, on a dark deep purple background. Tile 8 (middle row, 4th), \"Storm Hammer\": a hammer with a storm cloud and rain, on a dark deep purple background. Tile 9 (bottom row, 1st), \"Thunderer\": a mighty hammer with lightning bolts, on a dark deep purple background. Tile 10 (bottom row, 2nd), \"Drain Blade\": a purple blade draining blue mana wisps, on a dark deep purple background. Tile 11 (bottom row, 3rd), \"Dancing Wings\": a pair of shimmering butterfly wings, orange and blue, on a dark burnt orange background. Tile 12 (bottom row, 4th), \"Ghost Dagger\": a dagger half fading into shadow, on a dark burnt orange background. No text, no letters, no numbers, no UI frame, no borders."
+ },
+ "items/9": {
+  "ids": [
+   "satanic",
+   "sun",
+   "skadi",
+   "venom",
+   "blight",
+   "helm",
+   "raindrop",
+   "talisman",
+   "ultorb",
+   "tranquil",
+   "travel",
+   "perseverance"
+  ],
+  "prompt": "A sprite sheet of twelve item icons for a kids' fantasy MOBA game (Dota-style shop item icons), arranged in an exact grid of 4 columns and 3 rows of equal rectangular tiles that fill the whole image edge to edge, with no gaps, no gutters and no outer margin. Every tile is its own complete icon: painterly digital illustration of ONE single object, large and centered, filling most of the tile, bold readable silhouette, vibrant saturated colors, a soft bright glow behind the object, dark vignette toward the tile edges, cute and kid-friendly. No characters, no hands. Tile 1 (top row, 1st), \"Vampire Sword\": a dark red sword with bat-wing crossguard, on a dark burnt orange background. Tile 2 (top row, 2nd), \"Sun Stone\": a round golden stone blazing like a small sun, on a dark burnt orange background. Tile 3 (top row, 3rd), \"Frost Heart\": a heart-shaped block of blue ice, on a dark burnt orange background. Tile 4 (top row, 4th), \"Snake Fang\": a curved snake fang dripping a green drop, on a dark cool steel grey background. Tile 5 (middle row, 1st), \"Toadstool\": a red toadstool with white spots, faintly glowing, on a dark cool steel grey background. Tile 6 (middle row, 2nd), \"Iron Helmet\": a round iron helmet with a nose guard, on a dark cool steel grey background. Tile 7 (middle row, 3rd), \"Raindrops\": three shiny blue raindrops, on a dark cool steel grey background. Tile 8 (middle row, 4th), \"Wind Chime\": a glass wind chime with a paper strip, on a dark teal cyan background. Tile 9 (bottom row, 1st), \"Rainbow Orb\": a glass orb with a rainbow swirling inside, on a dark teal cyan background. Tile 10 (bottom row, 2nd), \"Calm Sandals\": a pair of simple green sandals with a leaf, on a dark forest green background. Tile 11 (bottom row, 3rd), \"Rocket Boots\": red boots with little rocket engines and flames, on a dark forest green background. Tile 12 (bottom row, 4th), \"Ring of Perseverance\": a double ring twisted into an infinity sign, green and blue, on a dark forest green background. No text, no letters, no numbers, no UI frame, no borders."
+ },
+ "items/10": {
+  "ids": [
+   "medallion",
+   "lotus",
+   "crimson",
+   "veil",
+   "hex",
+   "bloodthorn",
+   "mageslayer",
+   "sange",
+   "yasha",
+   "sny",
+   "lance",
+   "moonshard"
+  ],
+  "prompt": "A sprite sheet of twelve item icons for a kids' fantasy MOBA game (Dota-style shop item icons), arranged in an exact grid of 4 columns and 3 rows of equal rectangular tiles that fill the whole image edge to edge, with no gaps, no gutters and no outer margin. Every tile is its own complete icon: painterly digital illustration of ONE single object, large and centered, filling most of the tile, bold readable silhouette, vibrant saturated colors, a soft bright glow behind the object, dark vignette toward the tile edges, cute and kid-friendly. No characters, no hands. Tile 1 (top row, 1st), \"Medal of Courage\": a bronze medal with a lion on a ribbon, on a dark forest green background. Tile 2 (top row, 2nd), \"Mirror Blossom\": a pink lotus blossom with a mirror in its centre, on a dark forest green background. Tile 3 (top row, 3rd), \"Fortress Shield\": a tall red tower shield with a castle emblem, on a dark forest green background. Tile 4 (top row, 4th), \"Veil of Weakness\": a thin purple veil like a spider web, on a dark royal blue background. Tile 5 (middle row, 1st), \"Frog Staff\": a wooden staff with a green frog sitting on top, on a dark royal blue background. Tile 6 (middle row, 2nd), \"Rose Thorn\": a red rose with one long sharp thorn, on a dark royal blue background. Tile 7 (middle row, 3rd), \"Spell Broom\": a witch broom sweeping away blue sparks, on a dark royal blue background. Tile 8 (middle row, 4th), \"Bear Saber\": a heavy red saber with a bear head pommel, on a dark deep purple background. Tile 9 (bottom row, 1st), \"Wind Saber\": a light green saber with wind streaks, on a dark deep purple background. Tile 10 (bottom row, 2nd), \"Twin Sabers\": two crossed sabers, one red and one green, on a dark deep purple background. Tile 11 (bottom row, 3rd), \"Dragon Lance\": a long spear with a green dragon head tip, on a dark deep purple background. Tile 12 (bottom row, 4th), \"Moon Crystal\": a pale glowing crystal shaped like a full moon, on a dark deep purple background. No text, no letters, no numbers, no UI frame, no borders."
+ },
+ "items/11": {
+  "ids": [
+   "scepter",
+   "rapier",
+   "n_clover",
+   "n_feather",
+   "n_amulet",
+   "n_shell",
+   "n_fang",
+   "n_crystal",
+   "n_star",
+   "n_dheart",
+   "n_moon",
+   "_recipe"
+  ],
+  "prompt": "A sprite sheet of twelve item icons for a kids' fantasy MOBA game (Dota-style shop item icons), arranged in an exact grid of 4 columns and 3 rows of equal rectangular tiles that fill the whole image edge to edge, with no gaps, no gutters and no outer margin. Every tile is its own complete icon: painterly digital illustration of ONE single object, large and centered, filling most of the tile, bold readable silhouette, vibrant saturated colors, a soft bright glow behind the object, dark vignette toward the tile edges, cute and kid-friendly. No characters, no hands. Tile 1 (top row, 1st), \"Wizard's Scepter\": a wizard scepter with a blue orb and a tiny wizard hat on top, on a dark burnt orange background. Tile 2 (top row, 2nd), \"Flame Sword\": a sword with a blade of bright flame, on a dark burnt orange background. Tile 3 (top row, 3rd), \"Lucky Clover\": a four-leaf clover, on a dark leafy green background. Tile 4 (top row, 4th), \"Light Feather\": a light white swan feather floating, on a dark leafy green background. Tile 5 (middle row, 1st), \"Blue Amulet\": a round blue eye amulet, on a dark leafy green background. Tile 6 (middle row, 2nd), \"Seashell\": a spiral seashell with pearl shine, on a dark leafy green background. Tile 7 (middle row, 3rd), \"Ancient Wolf Bone\": an ancient wolf bone with carved runes, on a dark leafy green background. Tile 8 (middle row, 4th), \"Crystal of Wisdom\": a blue diamond-shaped crystal with a tiny book glow, on a dark leafy green background. Tile 9 (bottom row, 1st), \"Stardust\": a pinch of glittering stardust with a shooting star, on a dark leafy green background. Tile 10 (bottom row, 2nd), \"Diamond Heart\": a heart cut from sparkling diamond, pink, on a dark leafy green background. Tile 11 (bottom row, 3rd), \"Moonstone\": a glowing crescent moonstone, on a dark leafy green background. Tile 12 (bottom row, 4th), \"Recipe Scroll\": a rolled parchment scroll with a red wax seal, on a dark warm sandy brown background. No text, no letters, no numbers, no UI frame, no borders."
+ }
+}

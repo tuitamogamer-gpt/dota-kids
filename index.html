@@ -286,6 +286,10 @@
   .sbAll .sgnT span{ display:none; }
   .sbAll .sgnImg{ width:50px; height:36px; }
   @media (min-height: 900px){ .sgi{ width:62px; height:45px; } .sgLbl{ height:45px; font-size:12.5px; } .sgrid{ gap:7px 6px; } }
+  /* 🎨 v0.56: naslikana ikona predmeta — rub u boji kvalitete (kod sličica-emojija rub je dio slike) */
+  img.pic{ box-sizing:border-box; border:2px solid #9aa4b1; object-fit:cover; background:#14181d; }
+  img.pic.pq-cons{ border-color:#cbb68a; } img.pic.pq-secret{ border-color:#5ee7f0; } img.pic.pq-common{ border-color:#3fcf6b; } img.pic.pq-rare{ border-color:#4f8cff; }
+  img.pic.pq-epic{ border-color:#b86bff; } img.pic.pq-art{ border-color:#ff9b2f; } img.pic.pq-neutral{ border-color:#7fd36b; }
   .sbHead{ font-size:13px; font-weight:bold; color:#f3d48a; margin:4px 2px 6px; }
   .sbHead small{ font-weight:normal; color:#9ca3af; margin-left:6px; }
   .scards{ display:grid; grid-template-columns:repeat(auto-fill, minmax(176px, 1fr)); gap:6px; margin-bottom:8px; }
