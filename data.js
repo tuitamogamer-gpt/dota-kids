@@ -2636,7 +2636,7 @@ const ITEMS = [
   { id:'crimson', emoji:'🏰', name:L('Štit tvrđave', 'Fortress Shield'), cat:'sup', cost:350, components:['vanguard', 'helm'], stats:{hp:250, hpRegen:8, armor:6},
     block:{ c:0.6, a:50 }, pas:L('60% šanse da blokira 50 štete od udarca', '60% chance to block 50 damage from a hit'),
     act:L('Ti i saveznički junaci u krugu 1200 dobivate +8 oklopa i štit od 200 štete na 8 s', 'You and allied heroes within 1200 get +8 armor and a shield that absorbs 200 damage for 8 s'), lore:L('Cijeli tim iza jednog štita.', 'The whole team behind one shield.'),
-    active:{ cd:45, mana:0,
+    active:{ cd:60, mana:0,
       use(h){
         for(const e of units) if(e.kind === 'hero' && e.team === h.team && !e.dead && dist(h, e) <= 1200){
           if(!(e.armorBuffT > 0 && e.armorBuff > 8)){ e.armorBuffT = 8; e.armorBuff = 8; }
@@ -2773,11 +2773,11 @@ for(const h of HEROES) h.build = HERO_BUILDS[h.id] || BOT_BUILD;
 /* 🎲 v0.56 raznolikost: bot svaku igru odabere jednu od inačica gradnje (prva je ona iz vodiča u dućanu);
    junaci s vlastitom gradnjom ponekad zamijene zadnji predmet novim legendarnim. Junak u džungli odmah nadogradi Lovački nož. */
 const BUILD_ALTS = new Map([
-  [BUILD_TANK,    [['bracer', 'phase', 'hood', 'halberd', 'assault', 'titanheart'], ['buckler', 'phase', 'vanguard', 'pipe', 'bkb', 'assault'], ['bracer', 'phase', 'vanguard', 'crimson', 'sange', 'assault']]],   // 🆕 treća inačica: novi predmeti
-  [BUILD_MELEE,   [['wraith', 'phase', 'maelstrom', 'bkb', 'skadi', 'mjollnir'], ['wraith', 'treads', 'diffusal', 'basher', 'skadi', 'butterfly'], ['wraith', 'phase', 'sange', 'sny', 'bkb', 'moonshard']]],
-  [BUILD_RANGED,  [['wraith', 'treads', 'maelstrom', 'skadi', 'mjollnir', 'butterfly'], ['wraith', 'treads', 'diffusal', 'mkb', 'skadi', 'daedalus'], ['wraith', 'treads', 'lance', 'maelstrom', 'sny', 'daedalus']]],
-  [BUILD_MAGE,    [['nulltal', 'arcane', 'kaya', 'orchid', 'octarine', 'shiva'], ['nulltal', 'arcane', 'atos', 'kaya', 'dagon', 'octarine'], ['nulltal', 'arcane', 'veil', 'kaya', 'hex', 'scepter']]],
-  [BUILD_SUPPORT, [['wand', 'arcane', 'glimmer', 'mek', 'greaves', 'pipe'], ['wand', 'buckler', 'arcane', 'glimmer', 'force', 'greaves'], ['wand', 'tranquil', 'medallion', 'mek', 'lotus', 'pipe']]],
+  [BUILD_TANK,    [['bracer', 'phase', 'hood', 'halberd', 'assault', 'titanheart'], ['buckler', 'phase', 'vanguard', 'pipe', 'bkb', 'assault'], ['bracer', 'phase', 'vanguard', 'crimson', 'bkb', 'assault']]],   // 🆕 treća inačica: jedan-dva nova predmeta uz provjerene
+  [BUILD_MELEE,   [['wraith', 'phase', 'maelstrom', 'bkb', 'skadi', 'mjollnir'], ['wraith', 'treads', 'diffusal', 'basher', 'skadi', 'butterfly'], ['wraith', 'treads', 'sange', 'bkb', 'sny', 'basher']]],
+  [BUILD_RANGED,  [['wraith', 'treads', 'maelstrom', 'skadi', 'mjollnir', 'butterfly'], ['wraith', 'treads', 'diffusal', 'mkb', 'skadi', 'daedalus'], ['wraith', 'treads', 'lance', 'maelstrom', 'mkb', 'butterfly']]],
+  [BUILD_MAGE,    [['nulltal', 'arcane', 'kaya', 'orchid', 'octarine', 'shiva'], ['nulltal', 'arcane', 'atos', 'kaya', 'dagon', 'octarine'], ['nulltal', 'arcane', 'veil', 'dagon', 'hex', 'octarine']]],
+  [BUILD_SUPPORT, [['wand', 'arcane', 'glimmer', 'mek', 'greaves', 'pipe'], ['wand', 'buckler', 'arcane', 'glimmer', 'force', 'greaves'], ['wand', 'arcane', 'medallion', 'mek', 'lotus', 'greaves']]],
 ]);
 /* vodič u dućanu za igrača (🌲 u džungli: Lovačka mačeta odmah nakon prvog predmeta) */
 function guideNextId(h){   // sljedeći predmet iz vodiča (🌲 u džungli prvo Lovački nož)
@@ -2789,7 +2789,11 @@ const LATE_ALTS = { str: ['halberd', 'pipe', 'assault', 'crimson', 'sny'], agi: 
 function botBuildFor(def, jungler){
   let b = def.build || BOT_BUILD;
   const alts = BUILD_ALTS.get(b);
-  if(alts){ const k = Math.floor(Math.random() * (alts.length + 1)); if(k > 0) b = alts[k - 1]; }
+  if(alts){   // zadnja inačica (🆕 novi predmeti) dolazi rjeđe, oko 15% — s njom su simulirane igre bile malo dulje
+    let k = Math.floor(Math.random() * (alts.length + 1));
+    if(k === alts.length && alts.length > 2 && Math.random() < 0.4) k = 0;
+    if(k > 0) b = alts[k - 1];
+  }
   else if(Math.random() < 0.4){
     const late = LATE_ALTS[def.attrs.primary].filter(id => !b.includes(id));
     if(late.length) b = b.slice(0, -1).concat(late[Math.floor(Math.random() * late.length)]);
