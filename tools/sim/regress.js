@@ -165,6 +165,83 @@ check('Glif botova: bazu štiti i kad je ruše samo vojnici, kulu tek pred sam p
     const r = { tower30: step(T, 0.3), tower10: step(T, 0.1), barracks30: step(B, 0.3) };
     return (!r.tower30 && r.tower10 && r.barracks30) || r;`);
 });
+check('Svaki predmet: recept, opis, kupnja za točnu cijenu, aktivno radi bez iznimke', () => {
+  const g = game();
+  return g(SETUP('vitez') + `
+    const bad = [];
+    const SPECIAL = ['crit', 'bash', 'cleave', 'creepDmg', 'hunt', 'corrupt', 'block', 'trueStrike', 'proc', 'aura', 'burn', 'wand', 'chain', 'cold', 'mburn', 'range', 'tpFast', 'ultCd'];
+    const base = () => { P.items = []; P.backpack = []; P.itemCharges = {}; P.itemCd = {}; P.neutral = null; recomputeItemStats(P); P.dead = false; P.status.stun = 0; P.status.silenceT = 0;
+      P.maxhp = P.hp = 1e6; P.maxmp = P.mp = 1e5; P.gold = 99999; };
+    for(const it of ITEMS){
+      if(!it.name || !it.emoji || !it.lore) bad.push(it.id + ': nema imena, sličice ili priče');
+      if(SPECIAL.some(k => it[k]) && !it.pas) bad.push(it.id + ': poseban učinak bez opisa (pas)');
+      if(it.active && !it.act) bad.push(it.id + ': aktivno bez opisa (act)');
+      for(const k in it.stats || {}) if(!STAT_LABEL[k]) bad.push(it.id + ': nepoznata statistika ' + k);
+      for(const c of it.components || []) if(!ITEM_BY_ID[c]) bad.push(it.id + ': nepoznat dio ' + c);
+      if(it.components && it.components.includes(it.id)) bad.push(it.id + ': sam sebi dio');
+      if(!it.instant && !it.noShop && itemFullCost(it) <= 0) bad.push(it.id + ': cijena 0');
+      base(); P.x = FOUNTAIN[P.team].x; P.y = FOUNTAIN[P.team].y;
+      if(!it.noShop && !it.instant){   // kupnja odjednom: dijelovi + recept
+        const cost = Math.ceil(planPurchase(P, it).cost), g0 = P.gold;
+        tryBuy(P, it);
+        if(!P.items.some(x => x.id === it.id)) bad.push(it.id + ': kupnja ga nije stavila u torbu');
+        else if(Math.abs((g0 - P.gold) - cost) > 1) bad.push(it.id + ': naplaćeno ' + (g0 - P.gold) + ' umjesto ' + cost);
+        if(P.items.length !== 1) bad.push(it.id + ': nakon kupnje u torbi ' + P.items.map(x => x.id).join('+'));
+      } else if(!it.instant){ giveItem(P, it); recomputeItemStats(P); }
+      if(it.active){
+        P.x = 3000; P.y = 3000; E.x = 3150; E.y = 3000; P.hp = P.maxhp * 0.5; P.mp = P.maxmp;
+        for(const aim of [{ x: E.x, y: E.y }, { x: P.x, y: P.y }]){
+          const i = P.items.findIndex(x => x.id === it.id);
+          if(i < 0) break;
+          P.itemCd = {};
+          try { useItem(P, i, aim); run(1.5); } catch(e){ bad.push(it.id + ': aktivno baca iznimku — ' + e.message); }
+        }
+      }
+      try { run(0.5); } catch(e){ bad.push(it.id + ': ' + e.message); }
+      if(![P, E].every(u => isFinite(u.x) && isFinite(u.y) && isFinite(u.hp) && isFinite(u.mp) && isFinite(u.dmg) && isFinite(u.speed))) bad.push(it.id + ': NaN');
+    }
+    const ids = ITEMS.map(i => i.id), em = ITEMS.concat(NEUTRAL_ITEMS).map(i => i.emoji);
+    for(const x of new Set(ids)) if(ids.filter(y => y === x).length > 1) bad.push('dvaput isti id ' + x);
+    for(const x of new Set(em)) if(em.filter(y => y === x).length > 1) bad.push('dvaput ista sličica ' + x + ' (' + ITEMS.concat(NEUTRAL_ITEMS).filter(i => i.emoji === x).map(i => i.id).join(', ') + ')');
+    for(const b of [BUILD_TANK, BUILD_MELEE, BUILD_RANGED, BUILD_MAGE, BUILD_SUPPORT, ...Object.values(HERO_BUILDS), ...[...BUILD_ALTS.values()].flat(), ...Object.values(LATE_ALTS), START_ITEMS, START_JUNGLE])
+      for(const id of b) if(!ITEM_BY_ID[id]) bad.push('vodič spominje nepostojeći predmet ' + id);
+    return bad.length === 0 || bad;`);
+});
+check('Novi predmeti rade kako piše (domet, ulti, žaba, medalja, zrcalo, veo, štit; jači učinak pobjeđuje)', () => {
+  const g = game();
+  return g(SETUP('zarko') + `
+    const out = {};
+    const give = (u, ...ids) => { u.items = ids.map(id => ITEM_BY_ID[id]); u.itemCd = {}; recomputeItemStats(u); };
+    const use = (u, id, aim) => { u.itemCd = {}; u.mp = u.maxmp; return useItem(u, u.items.findIndex(x => x.id === id), aim); };
+    // 🐉 domet samo junacima koji gađaju izdaleka (Žarko gađa, E udara izbliza)
+    give(P); give(E); run(0.2); const r0 = P.atkRange, m0 = E.atkRange;
+    give(P, 'lance'); give(E, 'lance'); run(0.2); out.lance = [P.atkRange - r0, E.atkRange - m0];
+    // 🧙 ulti se puni 30% brže
+    P.abilities[3].rank = 1; give(P); P.abilities[3].cd = 0; castAbility(P, 3, { x: E.x, y: E.y }); const cd0 = P.abilities[3].cd;
+    give(P, 'scepter'); P.abilities[3].cd = 0; castAbility(P, 3, { x: E.x, y: E.y }); out.ultCd = +(P.abilities[3].cd / cd0).toFixed(2);
+    run(4); projectiles = []; zones = [];
+    // 🚀 brži teleport, jači učinak pobjeđuje bez obzira na redoslijed u torbi
+    give(P, 'travel'); out.tpFast = P.ifx.tpFast;
+    give(P, 'deso', 'blight'); const c1 = P.ifx.corrupt.a; give(P, 'blight', 'deso'); out.corrupt = [c1, P.ifx.corrupt.a];
+    give(P, 'skadi', 'venom'); const f1 = P.ifx.cold.f; give(P, 'venom', 'skadi'); out.cold = [f1, P.ifx.cold.f];
+    give(P, 'mkb', 'javelin'); const p1 = P.ifx.proc.dmg; give(P, 'javelin', 'mkb'); out.proc = [p1, P.ifx.proc.dmg];
+    // 🐸 žaba: ne udara, ne baca moći, upola sporija
+    clearStatus(E.status, 'slowT'); E.status.silenceT = 0; E.status.disarmT = 0;
+    give(P, 'hex'); use(P, 'hex', { x: E.x, y: E.y }); out.hex = [E.status.silenceT > 2, E.status.disarmT > 2, E.status.slowF];
+    // 🏵️ medalja: neprijatelju −6 oklopa
+    E.corruptT = 0; const a0 = unitArmor(E); give(P, 'medallion'); use(P, 'medallion', { x: E.x, y: E.y }); out.medal = +(unitArmor(E) - a0).toFixed(1);
+    // 🕸️ veo: +18% primljene štete
+    clearStatus(E.status, 'curseT'); give(P, 'veil'); use(P, 'veil', { x: E.x, y: E.y }); out.veil = [E.status.curseT > 7, E.status.curseF];
+    // 🏰 štit tvrđave: +8 oklopa i štit 200
+    P.armorBuffT = 0; P.barrierHp = 0; give(P, 'crimson'); const pa = unitArmor(P); use(P, 'crimson'); out.crimson = [+(unitArmor(P) - pa).toFixed(1), P.barrierHp];
+    // 🌸 zrcalo: čarolija se vrati onome tko ju je bacio
+    give(P, 'lotus'); use(P, 'lotus', { x: P.x, y: P.y }); P.barrierHp = 0; P.barrierT = 0;
+    const hp0 = P.hp, eh0 = E.hp; applyDamage(P, 300, E, true); out.lotus = [hp0 - P.hp, eh0 - E.hp > 100];
+    const ok = out.lance[0] === 110 && out.lance[1] === 0 && out.ultCd === 0.7 && out.tpFast === true && out.corrupt.join() === '6,6' && out.cold.join() === '0.35,0.35' &&
+      out.proc.join() === '70,70' && out.hex[0] && out.hex[1] && out.hex[2] === 0.5 && out.medal === -6 && out.veil[0] && out.veil[1] === 0.18 &&
+      out.crimson[0] === 8 && out.crimson[1] === 200 && out.lotus[0] === 0 && out.lotus[1];
+    return ok || out;`);
+});
 check('Svaka moć svakog junaka: bez iznimke i bez NaN', () => {
   const g = game();
   const n = g('return HEROES.length;');

@@ -41,18 +41,46 @@ function itemIconCanvas(it){
   const gl = g.createRadialGradient(ICON_W / 2, ICON_H / 2, 2, ICON_W / 2, ICON_H / 2, 30);
   gl.addColorStop(0, hexA(q[0], 0.55)); gl.addColorStop(1, hexA(q[0], 0));
   g.fillStyle = gl; g.fillRect(0, 0, ICON_W, ICON_H);
-  // sam predmet: pune boje, veći, s mekom sjenom
+  // sam predmet: pune boje, veći. Prvo svijetla aura oko sličice — tamni predmeti (šišmiš, lanac, ogrtač) se tako
+  // odvoje od tamne pozadine i vide i u maloj ikoni — pa meka sjena ispod
   g.font = fontEmoji(42); g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.shadowColor = 'rgba(0,0,0,0.7)'; g.shadowBlur = 6; g.shadowOffsetY = 2;
+  g.shadowColor = 'rgba(255,255,255,0.6)'; g.shadowBlur = 9; g.shadowOffsetY = 0;
+  g.fillText(it.emoji, ICON_W / 2, ICON_H / 2 + 2);
+  g.shadowColor = 'rgba(0,0,0,0.7)'; g.shadowBlur = 5; g.shadowOffsetY = 2;
   g.fillText(it.emoji, ICON_W / 2, ICON_H / 2 + 2);
   g.shadowColor = 'transparent';
   g.strokeStyle = hexA(q[0], 0.9); g.lineWidth = 2; g.strokeRect(1, 1, ICON_W - 2, ICON_H - 2);
   g.strokeStyle = 'rgba(0,0,0,0.55)'; g.lineWidth = 1; g.strokeRect(3.5, 3.5, ICON_W - 7, ICON_H - 7);
   ITEM_ICON[it.id] = c;
+  ICON_Q.push(it.id);
+  if(ICON_Q.length === 1 && typeof setTimeout === 'function') setTimeout(iconPump, 40);
   return c;
 }
+/* 🖼️ v0.56: ikona se nacrta na platnu, a zatim u pozadini pretvori u SLIKU. Preglednik (osobito na mobitelu i tabletu)
+   smije isprazniti platna izvan ekrana kad ponestane memorije ili kad se igra vrati iz pozadine — ikone u torbi i na
+   tablici tada bi ostale prazne do kraja igre. Sliku preglednik uvijek može ponovo dekodirati; platna koja još nisu
+   pretvorena crtaju se iznova kad se stranica vrati iz pozadine. */
+const ICON_Q = [];
+function iconPump(){
+  for(let n = 0; n < 8 && ICON_Q.length; n++){
+    const id = ICON_Q.shift(), c = ITEM_ICON[id];
+    if(!c || !c.getContext) continue;
+    try {
+      const url = ITEM_ICON_URL[id] || (ITEM_ICON_URL[id] = c.toDataURL());
+      if(typeof Image === 'undefined' || !url || url.length < 200) continue;
+      const img = new Image();
+      img.onload = () => { if(ITEM_ICON[id] === c) ITEM_ICON[id] = img; };
+      img.src = url;
+    } catch(e){}
+  }
+  if(ICON_Q.length) setTimeout(iconPump, 40);
+}
+if(typeof document !== 'undefined' && document.addEventListener) document.addEventListener('visibilitychange', () => {
+  if(document.hidden) return;
+  for(const id in ITEM_ICON) if(ITEM_ICON[id] && ITEM_ICON[id].getContext) delete ITEM_ICON[id];
+});
 function itemIconUrl(it){
-  if(!ITEM_ICON_URL[it.id]) ITEM_ICON_URL[it.id] = itemIconCanvas(it).toDataURL();
+  if(!ITEM_ICON_URL[it.id]){ const c = itemIconCanvas(it); if(!ITEM_ICON_URL[it.id]) ITEM_ICON_URL[it.id] = c.toDataURL(); }
   return ITEM_ICON_URL[it.id];
 }
 /* svitak recepta (dio cijene nadogradnje) */
@@ -305,8 +333,9 @@ function buyItemId(id){
 /* ---------- 🛒 dućan ----------
    v0.38: jasniji dućan za djecu — lijevo kategorije s razumljivim imenima, desno kartice predmeta
    (slika, ime, što daje, cijena, "fali još X"), gore "⭐ Kupi sljedeće", dolje recept i tvoja torba. */
-let shopTab = 'guide', shopSel = null, shopQuery = '';
+let shopTab = 'all', shopSel = null, shopQuery = '';   // 🗂️ v0.56: dućan se otvara na mreži SVIH predmeta
 const SHOP_CATS = [
+  { id:'all',    label:L('🗂️ Svi predmeti', '🗂️ All items'),   tip:L('Svi predmeti odjednom — klikni ikonu za opis i recept', 'Every item at once — click an icon for info and its recipe') },
   { id:'guide',  label:L('⭐ Za tebe', '⭐ For you'),           tip:L('Što kupiti, redom — za tvog junaka', 'What to buy, in order — for your hero') },
   { id:'afford', label:L('💰 Mogu kupiti', '💰 Can buy'),       tip:L('Sve što možeš kupiti odmah', 'Everything you can buy right now') },
   { hdr:L('🧱 OSNOVNO', '🧱 BASIC') },
@@ -346,7 +375,11 @@ function shopCell(it, extra){
 function renderShopTabs(){
   const tabs = document.getElementById('shopTabs');
   if(!tabs) return;
-  tabs.innerHTML = SHOP_CATS.map(c => c.hdr ? `<div class="stHdr">${c.hdr}</div>` :
+  // 🗂️ v0.56: tri glavne kartice u redu iznad predmeta; vrste (Napitci, Oružje…) se biraju u samoj mreži svih predmeta,
+  // a otvorena vrsta se pokaže kao četvrta kartica
+  if(tabs.dataset.k === shopTab) return;
+  tabs.dataset.k = shopTab;
+  tabs.innerHTML = SHOP_CATS.filter(c => !c.hdr && (c.id === 'all' || c.id === 'guide' || c.id === 'afford' || c.id === shopTab)).map(c =>
     `<button data-tab="${c.id}" title="${escHtml(c.tip)}"><span>${c.label}</span><i class="stN"></i></button>`).join('');
   tabs.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
     shopTab = b.dataset.tab; shopQuery = ''; document.getElementById('shopSearch').value = '';
@@ -361,6 +394,7 @@ function affordableItems(){
 function renderShopBody(){
   const body = document.getElementById('shopBody');
   if(!body || !player) return;
+  renderShopTabs();
   document.querySelectorAll('#shopTabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === shopTab && !shopQuery));
   let html = '';
   const cat = SHOP_CATS.find(c => c.id === shopTab) || SHOP_CATS[0];
@@ -369,6 +403,18 @@ function renderShopBody(){
     const hits = ITEMS.filter(it => !it.noShop && (normTxt(it.name).includes(q) || it.emoji === shopQuery.trim() ||
       statLines(it).some(l => normTxt(l).includes(q)) || normTxt(it.pas || '').includes(q) || normTxt(it.act || '').includes(q)));
     html = `<div class="sbHead">${L('🔍 Pronađeno', '🔍 Found')}: ${hits.length}</div><div class="scards">${hits.map(it => shopCell(it)).join('') || '<span class="sempty">' + L('Ništa — probaj drugu riječ 🙂', 'Nothing — try another word 🙂') + '</span>'}</div>`;
+  } else if(shopTab === 'all'){
+    // 🗂️ v0.56: SVI predmeti odjednom (kao dućan u Doti): samo ikone, redom po vrsti i cijeni. ⭐ = iz vodiča za tvog
+    // junaka, zeleni rub = možeš kupiti odmah, ✓ = imaš. Naziv vrste vodi na popis te vrste s imenima i cijenama.
+    const guide = new Set(guideBuild(player).concat((player && player.jungler) || SETTINGS.lane === 'jungle' ? START_JUNGLE : START_ITEMS));
+    const tile = it => `<div class="sgi q-${it.q}${guide.has(it.id) ? ' g' : ''}" data-id="${it.id}">${iconImg(it, 'sgiImg')}<i class="sgiOwn">✓</i></div>`;
+    const group = c => {
+      const list = ITEMS.filter(it => it.cat === c.id && !it.noShop).sort((a, b) => itemFullCost(a) - itemFullCost(b));
+      if(!list.length) return '';
+      return `<span class="sgGrp"><button class="sgLbl" data-tab="${c.id}" title="${escHtml(c.tip)}">${c.label}</button>${tile(list[0])}</span>` + list.slice(1).map(tile).join('');
+    };
+    html = '<div id="sgNext"></div><div class="sgrid">' +
+      SHOP_CATS.map(c => c.hdr ? `<div class="sgSec">${c.hdr}</div>` : (ITEM_CAT_INFO[c.id] ? group(c) : '')).join('') + '</div>';
   } else if(shopTab === 'guide'){
     const b = guideBuild(player);
     const rows = [[L('🌅 Za početak', '🌅 Starting items'), (player && player.jungler) || SETTINGS.lane === 'jungle' ? START_JUNGLE : START_ITEMS], [L('🌱 Rano', '🌱 Early game'), b.slice(0, 2)], [L('⚔️ Sredina igre', '⚔️ Mid game'), b.slice(2, 4)], [L('🏆 Kraj igre', '🏆 Late game'), b.slice(4)]];
@@ -385,7 +431,9 @@ function renderShopBody(){
   }
   body.innerHTML = html;
   body.scrollTop = 0;
-  body.querySelectorAll('.sit').forEach(el => {
+  body.classList.toggle('sbAll', shopTab === 'all' && !shopQuery);
+  body.querySelectorAll('.sgLbl').forEach(b => b.addEventListener('click', () => { shopTab = b.dataset.tab; renderShopBody(); sfx('click'); }));
+  body.querySelectorAll('.sit, .sgi').forEach(el => {
     const id = el.dataset.id;
     el.addEventListener('click', () => { selectShopItem(id); sfx('click'); });
     el.addEventListener('dblclick', () => buyItemId(id));
@@ -400,6 +448,7 @@ function renderShopBody(){
 }
 function selectShopItem(id){
   shopSel = id;
+  document.querySelectorAll('#shopBody .sgi').forEach(el => el.classList.toggle('sel', el.dataset.id === id));
   renderShopDetail();
 }
 /* gumb kupnje: "Kupi za X" ili "Fali još X" */
@@ -415,6 +464,7 @@ function renderShopDetail(){
   if(!box) return;
   const it = shopSel && ITEM_BY_ID[shopSel];
   box.classList.toggle('empty', !it || !player);   // 📱 v0.56: na niskom zaslonu prazan opis ne zauzima mjesto predmetima
+  { const sb = document.getElementById('shopBody'); if(sb) sb.classList.toggle('hasSel', !!(it && player)); }
   if(!it || !player){
     box.dataset.k = '';
     box.innerHTML = '<div class="sdEmpty">' + (touchMode   // dodirni zaslon: bez uputa za miš
@@ -490,7 +540,7 @@ function refreshShop(){
   if(!shopOpen) return;
   if(shopTab === 'afford' && !shopQuery && affordableItems().map(it => it.id).join(',') !== shopAffordKey){ renderShopBody(); return; }
   const nextId = guideNextId(player);
-  document.querySelectorAll('#shopBody .sit').forEach(el => {
+  document.querySelectorAll('#shopBody .sit, #shopBody .sgi').forEach(el => {
     const it = ITEM_BY_ID[el.dataset.id];
     const plan = itemPlan(it);
     const cost = Math.ceil(plan.cost);
@@ -501,6 +551,7 @@ function refreshShop(){
     el.classList.toggle('owned', own);
     el.classList.toggle('next', it.id === nextId && el.classList.contains('g'));
     el.classList.toggle('pinned', it.id === quickBuy);
+    el.classList.toggle('sel', it.id === shopSel && el.classList.contains('sgi'));
     const ce = el.querySelector('.sitCost');
     if(ce) ce.innerHTML = player.gold < cost ? `${cost} 🪙<em>${L('fali', 'need')} ${cost - Math.floor(player.gold)}</em>` : `${cost} 🪙`;
   });
@@ -516,7 +567,7 @@ function refreshShop(){
     const i = b.querySelector('.stN');
     if(i) i.textContent = b.dataset.tab !== 'guide' && n[b.dataset.tab] ? n[b.dataset.tab] : '';
   });
-  if(shopTab === 'guide' && !shopQuery) renderGuideNext(nextId);
+  if((shopTab === 'guide' || shopTab === 'all') && !shopQuery) renderGuideNext(nextId);
   renderShopInv();
   renderShopDetail();
 }

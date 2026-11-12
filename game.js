@@ -2347,6 +2347,7 @@ function castAbility(u, i, aim){
   u.mp -= abMana(u, ab);
   if(u.isPlayer) u.qCasts = (u.qCasts || 0) + 1;   // 🎯 zadaci
   ab.cd = Math.max(0.5, (ab.def.cdRk ? ab.def.cdRk(ab.rank) : ab.def.cd) * (1 - Math.min(0.5, (u.cdr || 0) + (u.itemCdr || 0)) - (u.jbuff && u.jbuff.blue > 0 ? 0.15 : 0)) + abBonus(u, ab.def.key, 'cd'));   // 🎓 talent / ⚛️ Čarobna jezgra / 🔵 plavi buff: kraće hlađenje
+  if(ab.def.ult && u.ifx && u.ifx.ultCd) ab.cd *= 1 - u.ifx.ultCd;   // 🧙 Čarobnjakovo žezlo: ulti se puni brže
   if(u.cullRefresh){ ab.cd = 0; u.cullRefresh = false; }   // 🪓 Smrtni udarac: pobjeda nad junakom = ulti odmah spreman
   if(u.windup){ u.windup = null; u.atkTimer = 0; }   // čaranje prekida zamah — napad nije potrošen
   u.castAim = aim ? { x: aim.x, y: aim.y } : null;   // 3D: efekt na mjestu cilja
@@ -3826,7 +3827,7 @@ function botUseItems(u, eh, plan){
       case 'force':   // 🌬️ Štap vjetra: ranjen se odgurne od neprijatelja prema kući
         if(eh && dEh < 450 && hpF < 0.5){ go = true; aim = stepToward(u, FOUNTAIN[u.team], 600); }
         break;
-      case 'pipe': case 'greaves': {   // 🎺👢 kad tim (ili bot) strada
+      case 'pipe': case 'greaves': case 'crimson': {   // 🎺👢🏰 kad tim (ili bot) strada
         const hurt = units.filter(e => e.kind === 'hero' && e.team === u.team && !e.dead && dist(u, e) < 1100 && e.hp < e.maxhp * 0.55).length;
         go = (fight && hurt >= 1) || hpF < 0.4 || (it.id === 'greaves' && hurt >= 2);
         break;
@@ -3838,9 +3839,10 @@ function botUseItems(u, eh, plan){
         break;
       }
       case 'mjollnir': go = fight; break;
-      case 'orchid': case 'halberd': case 'atos': case 'diffusal':
+      case 'orchid': case 'halberd': case 'atos': case 'diffusal': case 'hex': case 'bloodthorn': case 'medallion': case 'veil':   // 🆕 i novi predmeti s metom
         if(eh && dEh < (it.active.castRange || 600) && (eh.hp < eh.maxhp * 0.75 || (plan && plan.engage))){ go = true; aim = { x: eh.x, y: eh.y }; }
         break;
+      case 'lotus': if(fight && hpF < 0.8){ go = true; aim = { x: u.x, y: u.y }; } break;   // 🌸 zrcalo na sebe usred borbe
       case 'shiva': go = eh && dEh < 600; break;
       case 'refresher': go = fight && u.abilities.filter(a => a.def.ult && a.rank > 0 && a.cd > 10).length > 0; break;
       case 'dagon': case 'euls': case 'abyssal':
@@ -3992,7 +3994,8 @@ function recomputeItemStats(h){
   const ia = { str: 0, agi: 0, int: 0 };
   let aspd = 0, armor = 0, ls = 0, ev = 0;
   let mres = 0, cdr = 0, amp = 0;   // v0.56: otpor magiji (množi se), kraće hlađenje (najjače), jačina magija (zbraja se)
-  const fx = { chain: null, cold: null, mburn: null, crit: [], bash: null, cleave: 0, creepDmg: 0, hunt: null, corrupt: null, block: null, trueStrike: false, proc: null, aura: [], wand: false };
+  const fx = { chain: null, cold: null, mburn: null, crit: [], bash: null, cleave: 0, creepDmg: 0, hunt: null, corrupt: null, block: null, trueStrike: false, proc: null, aura: [], wand: false,
+    range: 0, tpFast: false, ultCd: 0 };   // 🆕 v0.56: 🐉 domet (daljinski), 🚀 brži teleport, 🧙 brži ulti
   const prim = h.hero ? h.hero.attrs.primary : 'str';
   for(const it of h.neutral ? h.items.concat([h.neutral]) : h.items){
     if(it.pending) continue;   // 🫏 još kod kurira
@@ -4008,18 +4011,21 @@ function recomputeItemStats(h){
     ev = 1 - (1 - ev) * (1 - (s.evasion || 0));
     mres = 1 - (1 - mres) * (1 - (s.mres || 0)); cdr = Math.max(cdr, s.cdr || 0); amp += s.amp || 0;
     if(it.chain && (!fx.chain || it.chain.dmg > fx.chain.dmg)) fx.chain = it.chain;   // ⛈️ Olujni čekić / 🌩️ Gromovnik
-    if(it.cold) fx.cold = it.cold;      // 🧊 Ledeno srce
+    if(it.cold && (!fx.cold || it.cold.f > fx.cold.f)) fx.cold = it.cold;      // 🧊 Ledeno srce / 🐍 Zmijski zub: vrijedi jače usporenje
     if(it.mburn) fx.mburn = it.mburn;   // 🪀 Oštrica ispijanja
+    if(it.range) fx.range = Math.max(fx.range, it.range);   // 🐉 Zmajevo koplje
+    if(it.tpFast) fx.tpFast = true;                         // 🚀 Raketne čizme
+    if(it.ultCd) fx.ultCd = Math.max(fx.ultCd, it.ultCd);   // 🧙 Čarobnjakovo žezlo
     // pasivni efekti (DotA pravila: najjači krit, jedan tresak, zbrojeni sjekirica-bonus…)
     if(it.crit) fx.crit.push(it.crit);
     if(it.bash && !fx.bash) fx.bash = it.bash;
     if(it.cleave) fx.cleave = Math.max(fx.cleave, it.cleave);
     if(it.creepDmg) fx.creepDmg = Math.max(fx.creepDmg, it.creepDmg);
     if(it.hunt) fx.hunt = it.hunt;   // 🐾 Lovački nož (ne zbraja se)
-    if(it.corrupt) fx.corrupt = it.corrupt;
+    if(it.corrupt && (!fx.corrupt || it.corrupt.a > fx.corrupt.a)) fx.corrupt = it.corrupt;   // vrijedi jače skidanje oklopa (prije: zadnji predmet u torbi)
     if(it.block && (!fx.block || it.block.a > fx.block.a)) fx.block = it.block;
     if(it.trueStrike) fx.trueStrike = true;
-    if(it.proc) fx.proc = it.proc;
+    if(it.proc && (!fx.proc || it.proc.c * it.proc.dmg > fx.proc.c * fx.proc.dmg)) fx.proc = it.proc;   // jači od dva (Lovačko koplje uz Nepromašivi štap ga je znalo zamijeniti slabijim)
     if(it.aura) fx.aura.push(it.aura);
     if(it.wand) fx.wand = true;
   }
@@ -4344,7 +4350,7 @@ function updateUnit(u, dt){
     const vid = passiveRank(u, 'vid');         // Orlovski vid (Orlina): veći domet
     if(u.scopeT > 0) u.scopeT -= dt;           // 🔭 Durbin (Nišan)
     updateTravel(u, dt);                       // 💨 putovanje izvan borbe
-    u.atkRange = u.hero.range + 30 * vid + (u.talRange || 0) + (u.scopeT > 0 ? u.scopeR : 0);   // 🎓 talent dometa
+    u.atkRange = u.hero.range + 30 * vid + (u.talRange || 0) + (u.scopeT > 0 ? u.scopeR : 0) + (u.projSpeed > 0 && u.ifx && u.ifx.range ? u.ifx.range : 0);   // 🎓 talent dometa, 🐉 Zmajevo koplje
     const griva = passiveRank(u, 'griva');     // Čarobna griva (Duga E): aura mane
     if(griva) for(const e of units){
       if(e.kind === 'hero' && e.team === u.team && !e.dead && dist(u, e) <= 450) e.mp = Math.min(e.maxmp, e.mp + (0.5 + 0.75 * griva) * dt);
@@ -4455,7 +4461,7 @@ function updateUnit(u, dt){
       }
       burst(u.x, u.y, '#60a5fa', 22, 260, 6);
       u.tpChannel = 0; u.tpDest = null;
-      u.tpCd = 60;
+      u.tpCd = u.ifx && u.ifx.tpFast ? 30 : 60;   // 🚀 Raketne čizme: upola kraće
       if(isHuman(u)){ addFloat(u.x, u.y, d ? L('Stigao! 🏰', 'Arrived! 🏰') : L('Doma! 🏠', 'Home! 🏠'), '#93c5fd', 15, u.team); if(u.isPlayer){ sfx('heal'); } }
     }
     return;
