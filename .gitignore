@@ -7,3 +7,4 @@ node_modules/
 .vercel
 node_modules
 tools/art/src/
+__pycache__/

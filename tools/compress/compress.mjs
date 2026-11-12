@@ -12,9 +12,38 @@ const io = new NodeIO()
   .registerDependencies({ 'draco3d.encoder': await draco3d.createEncoderModule(), 'draco3d.decoder': await draco3d.createDecoderModule() });
 const before = statSync(file).size;
 const doc = await io.read(file);
+/* 🎬 v0.56: Blender za svaki animirani dio izveze sva tri kanala (položaj, okret, veličina), i kad se u isječku
+   ne mijenjaju. Kanal koji cijelo vrijeme stoji na vrijednosti mirovanja tog dijela ne radi ništa — three.js
+   dijelu bez kanala sam drži vrijednost mirovanja — pa ga brišemo: manji GLB i manje posla za mikser animacija. */
+function dropRestChannels(){
+  return doc => {
+    const EPS = 1e-5;
+    let dropped = 0, kept = 0;
+    for(const anim of doc.getRoot().listAnimations()){
+      for(const ch of anim.listChannels()){
+        const node = ch.getTargetNode(), path = ch.getTargetPath(), smp = ch.getSampler();
+        const out = smp && smp.getOutput();
+        if(!node || !out || smp.getInterpolation() === 'CUBICSPLINE'){ kept++; continue; }
+        const rest = path === 'translation' ? node.getTranslation() : path === 'rotation' ? node.getRotation() : path === 'scale' ? node.getScale() : null;
+        if(!rest){ kept++; continue; }
+        const arr = out.getArray(), n = rest.length;
+        let same = true;
+        for(let i = 0; i < arr.length && same; i++){
+          const d = Math.abs(arr[i] - rest[i % n]);
+          // kvaternion q i -q su isti okret
+          if(d > EPS && !(path === 'rotation' && Math.abs(arr[i] + rest[i % n]) <= EPS && rest.every((v, k) => Math.abs(arr[i - (i % n) + k] + v) <= EPS))) same = false;
+        }
+        if(same){ anim.removeChannel(ch); ch.dispose(); dropped++; } else kept++;
+      }
+      for(const smp of anim.listSamplers()) if(!anim.listChannels().some(c => c.getSampler() === smp)){ anim.removeSampler(smp); smp.dispose(); }
+    }
+    console.log('kanali animacija: %d obrisano (stoje na mirovanju), %d ostaje', dropped, kept);
+  };
+}
 await doc.transform(
   dedup(),
   resample({ tolerance: 1e-4 }),      // makni suvišne ključne sličice animacija
+  dropRestChannels(),
   prune({ keepLeaves: true, keepAttributes: true }),
   draco({ method: 'edgebreaker', quantizePosition: 14, quantizeNormal: 10, quantizeColor: 8, encodeSpeed: 3, decodeSpeed: 5 }),
 );

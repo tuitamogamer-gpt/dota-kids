@@ -1,6 +1,7 @@
 /* 🧪 Probna igra u pregledniku (Playwright + Chromium): učita igru s malim poslužiteljem, odabere junaka, pokrene igru
    i pusti je nekoliko sekundi — svaka greška na stranici (i u 3D crtanju, koje simulacija ne pokreće) ruši provjeru.
-   Uz to provjeri geometriju svih 3D modela: nijedan komad ne smije biti izvrnut naopako (insideOutPieces).
+   Uz to provjeri geometriju svih 3D modela: nijedan komad ne smije biti izvrnut naopako (insideOutPieces),
+   i da svaka moć svakog junaka ima svoju animaciju (isječak abQ / abW / abE / abR u modelu).
      npm i --no-save playwright && npx playwright install chromium && node tools/smoke.js */
 'use strict';
 const http = require('http'), fs = require('fs'), path = require('path');
@@ -65,6 +66,10 @@ function insideOutPieces(){
       const bad = await p.evaluate('(' + insideOutPieces.toString() + ')()');
       console.log('modeli: izvrnutih komada ' + bad.length);
       if(bad.length) errors.push('izvrnuti komadi modela: ' + bad.slice(0, 12).join(', '));
+      // 🎬 svaka moć koja se baca ima svoju kretnju iz Blendera (isječak 'ab' + tipka u modelu junaka)
+      const noAnim = await p.evaluate(() => HEROES.flatMap(h => h.abilities.filter(a => !a.passive && !(MODELS.clips['hero_' + h.id] || {})['ab' + a.key]).map(a => h.id + ':' + a.key)));
+      console.log('modeli: moći bez vlastite animacije ' + noAnim.length);
+      if(noAnim.length) errors.push('moći bez animacije: ' + noAnim.join(', '));
     }
     await p.close();
   }

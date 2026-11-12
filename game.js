@@ -4798,7 +4798,7 @@ function update(dt){
     glyphAiT[tm] = (glyphAiT[tm] || 0) - dt;
     if(g.cd <= 0 && glyphAiT[tm] <= 0){
       glyphAiT[tm] = 0.5;
-      const human = units.some(u => u.kind === 'hero' && u.team === tm && isHuman(u));
+      const human = units.some(u => u.kind === 'hero' && u.team === tm && isHuman(u) && !u.bot);   // (u simulaciji i tvog junaka vodi bot — tada i plavi tim sam koristi Glif)
       if(!human) for(const u of units){
         if(!isStructure(u) || u.team !== tm || u.removeMe || u.invuln) continue;
         // junaci je ruše (kao prije) ILI je vojnici sami dovršavaju: baza (vojarna, Drevno) ispod 35%, kula ispod 15%
@@ -6950,6 +6950,7 @@ function selectHero(i){
     const t = tiles[j];
     det.querySelectorAll('.ab').forEach(b => b.classList.toggle('on', +b.dataset.j === j));
     det.querySelector('.d-desc').innerHTML = `${t.e} <b>${t.name}</b> ${t.tag}<br>${t.desc}`;
+    if('QWER'.includes(t.k) && typeof heroPreviewPlay === 'function') heroPreviewPlay('ab' + t.k);   // 🎬 v0.56: 3D pregled pokaže kretnju te moći
   };
   det.querySelectorAll('.ab').forEach(b => {
     b.addEventListener('mouseenter', () => show(+b.dataset.j));

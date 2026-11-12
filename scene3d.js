@@ -371,7 +371,7 @@ function makeAnimator(root, name){
   const mixer = new THREE.AnimationMixer(root);
   const acts = {};
   for(const k in clips) acts[k] = mixer.clipAction(clips[k]);
-  const a = { mixer, acts, cur: null, oneEnd: 0 };
+  const a = { mixer, acts, cur: null, oneEnd: 0, chName: Object.keys(acts).find(k => /^ch[QWER]$/.test(k)) || null };   // 🎬 petlja kanaliziranja junaka
   animBase(a, 'idle', 1, 0);
   if(acts.idle) acts.idle.time = Math.random() * clips.idle.duration;
   return a;
@@ -3835,7 +3835,7 @@ function castFx(u, g, key){
   const aim = u.castAim;   // mjesto cilja (game.js; gost ga dobiva preko mreže)
   if(aim && g.visible) castTargetFx(u, key, aim);
   const dust = (n, c) => { for(let i = 0; i < n; i++) fxSpawn(u.x, u.y, gh + 4, c || '#c9b48c', { spd: 120, up: 30, grav: -30, life: 0.6, size: 22 }); };
-  if(LEAP_KEYS[key]) startLeap(u, g, lastAnimT);
+  if(LEAP_KEYS[key]) startLeap(u, g, lastAnimT, 0, 'ab' + key.split(':')[1], LEAP_KEYS[key] === 2);
   switch(key){
     case 'jez:Q':   // Kiša bodlji: bodlje lete na sve strane
       fxRadial('proj_quill', u.x, u.y, gh + 45, 14, { scale: 30, speed: 420, life: 0.5 }); break;
@@ -4422,14 +4422,22 @@ function animateUnit(u, g, now, dt){
     ud.castN = u.castN || 0;
     // magije s ciljem: "bacanje" prema cilju (cast2); oko sebe i ulti: obje ruke uvis (cast)
     let nm = 'cast';
-    if(u.castFx && a.acts.cast2 && u.hero){
-      const k = u.castFx.split(':')[1];
-      const ab = u.hero.abilities.find(x => x.key === k);
+    const ck = u.castFx && u.hero && u.castFx.startsWith(u.hero.id + ':') ? u.castFx.split(':')[1] : null;
+    if(ck && a.acts['ab' + ck]) nm = 'ab' + ck;   // 🎬 v0.56: svaka moć ima svoju kretnju iz Blendera (tools/blender/ability_anims.py)
+    else if(ck && a.acts.cast2){
+      const ab = u.hero.abilities.find(x => x.key === ck);
       if(ab && ab.target === 'point' && !ab.ult) nm = 'cast2';
     }
     // efekt magije nastaje odmah: animacija kreće s vrha zamaha pa ruke "bace" čaroliju baš kad se efekt pojavi
-    animOnce(a, nm, nm === 'cast2' ? 1.15 : 1.25, now, nm === 'cast2' ? 6 / 24 : 7 / 24, 0.1);
+    // (isječci moći već počinju u zamahu, pa kreću od nule)
+    if(nm.startsWith('ab')){ animOnce(a, nm, 1.1, now, 0, 0.08); ud.abClip = nm; }
+    else animOnce(a, nm, nm === 'cast2' ? 1.15 : 1.25, now, nm === 'cast2' ? 6 / 24 : 7 / 24, 0.1);
     if(u.castFx) castFx(u, g, u.castFx);
+  }
+  if(ud.abClip && a.acts[ud.abClip]){   // 🎬 juriš (Rogo, Bodljo): poza juriša stoji dok juriš traje, pa se isječak dovrši
+    const act = a.acts[ud.abClip], mid = 7 / 24;
+    if(u.charge && a.cur === ud.abClip){ if(act.time >= mid){ act.paused = true; act.time = mid; a.oneEnd = now + 0.2; } }
+    else { if(act.paused){ act.paused = false; a.oneEnd = now + (act.getClip().duration - mid) / 1.1 - 0.07; } ud.abClip = null; }
   }
   const moving = !gameOver && !paused && gameTime - (u.lastMoveT == null ? -9 : u.lastMoveT) < 0.15;   // kraj igre / pauza: sat stoji, nitko ne hoda u mjestu
   const stunned = u.status && u.status.stun > 0;
@@ -4444,7 +4452,7 @@ function animateUnit(u, g, now, dt){
   if(((typeof winnerTeam !== 'undefined' && winnerTeam != null && u.kind === 'hero' && u.team === winnerTeam) || u.danceT > 0) && a.acts.victory)
     animBase(a, 'victory', 1, now);   // pobjednički ples (i 💃 ples na tipku J)
   else if(((u.chan && !u.chan.o) || u.chanFx) && a.acts.aim) animBase(a, 'aim', 1, now);   // 🎯 nišani (Savršen hitac)
-  else if(((u.chan && u.chan.o) || u.chanK) && a.acts.channel) animBase(a, 'channel', 1.3, now);   // v0.55: Veliki zalogaj, Lepeza strijela, Epicentar
+  else if(((u.chan && u.chan.o) || u.chanK) && (a.chName || a.acts.channel)) animBase(a, a.chName || 'channel', a.chName ? 1 : 1.3, now);   // v0.55: Veliki zalogaj, Lepeza strijela, Epicentar (🎬 svaka svojom petljom)
   else if(u.tpChannel > 0 && a.acts.channel) animBase(a, 'channel', 1, now);
   else if(stunned && a.acts.stun && !u.cycloneT) animBase(a, 'stun', 1, now);   // v0.56: tetura, glava kruži
   else if(moving && !stunned){
@@ -4528,16 +4536,19 @@ function coinFx(x, y, n){
 }
 /* skokovi (Junački skok, Žablji skok, Obrušavanje, Mjesečev skok, Majmunski skok, Skokne čizme):
    logika premjesti junaka odmah, a model preleti lukom */
-const LEAP_KEYS = { 'zeka:E': 1, 'bikos:E': 1, 'vitez:E': 1, 'skokica:W': 1, 'orlina:E': 1, 'luna:E': 1, 'majmun:W': 1, 'munja:W': 1, 'item:blink': 1, 'item:force': 1, 'vuk:W': 1, 'morskipas:W': 1, 'pcela:E': 1, 'jednorog:E': 1 };
-function startLeap(u, g, now, maxH){
+// 1 = skok u luku; 2 = 🎬 v0.56 klizanje po tlu bez luka (Ledena klizi potrbuške, Škorpo roni pod pijeskom — prije su se samo stvorili na cilju)
+const LEAP_KEYS = { 'zeka:E': 1, 'bikos:E': 1, 'vitez:E': 1, 'skokica:W': 1, 'orlina:E': 1, 'luna:E': 1, 'majmun:W': 1, 'munja:W': 1, 'item:blink': 1, 'item:force': 1, 'vuk:W': 1, 'morskipas:W': 1, 'pcela:E': 1, 'jednorog:E': 1,
+  'ledena:W': 2, 'skorpion:Q': 2 };
+function startLeap(u, g, now, maxH, clip, flat){   // 🎬 clip: isječak skoka te moći (igra ga rastegne na trajanje leta); flat: klizanje po tlu, bez luka
   const ud = g.userData;
   if(ud.lastX == null) return;
   const d = distXY(ud.lastX, ud.lastY, u.x, u.y);
   if(d < 40) return;
-  ud.leap = { x0: ud.lastX, y0: ud.lastY, t0: now, dur: Math.min(0.5, 0.22 + d / 1400), h: Math.min(maxH || 170, 60 + d * 0.25), knock: !!maxH };
+  ud.leap = { x0: ud.lastX, y0: ud.lastY, t0: now, dur: Math.min(0.5, 0.22 + d / 1400) * (flat ? 1.25 : 1), h: flat ? 0 : Math.min(maxH || 170, 60 + d * 0.25), knock: !!maxH || !!flat };
   g.position.set(ud.leap.x0, groundHeight(ud.leap.x0, ud.leap.y0), ud.leap.y0);   // luk kreće s polazišta (bez jednog kadra na odredištu)
   if(!maxH && g.visible){ for(let i = 0; i < 10; i++) fxSpawn(ud.lastX, ud.lastY, groundHeight(ud.lastX, ud.lastY) + 4, '#c9b48c', { spd: 110, up: 40, grav: -30, life: 0.5, size: 20 }); sfxAt('whoosh', u.x, u.y); }   // odraz
-  if(!maxH && ud.anim && ud.anim.acts.jump) animOnce(ud.anim, 'jump', 14 / 24 / ud.leap.dur, now, 0);
+  const jc = ud.anim && clip && ud.anim.acts[clip] ? clip : 'jump';
+  if(!maxH && ud.anim && ud.anim.acts[jc]) animOnce(ud.anim, jc, ud.anim.acts[jc].getClip().duration / ud.leap.dur, now, 0);
   else if(maxH && ud.anim && ud.anim.acts.hit) animOnce(ud.anim, 'hit', 0.8, now, 0);
 }
 
@@ -5215,6 +5226,13 @@ function heroPreviewSetup(){
 /* 🖼️ v0.56: okvir pregleda je mali (150 × 170), a kamera je bila namještena na junaka visokog ~1,9 — visokim junacima
    (Jelkovi rogovi, Zekine uši, šeširi, Bikoševi rogovi) vrh je bio odrezan, a Nišanu puška sa strane. Kamera se zato
    odmakne duž istog smjera (i cilja malo više) dok svi kutovi junakove kutije, u svakom položaju vrtnje, ne stanu u okvir. */
+/* 🎬 v0.56: prelazak mišem (ili dodir) preko moći na ekranu odabira pusti njezinu kretnju u 3D pregledu */
+function heroPreviewPlay(clip){
+  const a = heroPv.anim;
+  if(!a || !a.acts[clip]) return;
+  animOnce(a, clip, 0.9, heroPv.t, 0, 0.1);
+  heroPv.nextAct = heroPv.t + 2.4;
+}
 const _pvBox = new THREE.Box3(), _pvV = new THREE.Vector3();
 function heroPreviewFit(){
   const cam = heroPv.camera, m = heroPv.model;
@@ -5254,7 +5272,8 @@ function heroPreviewFrame(now){
     heroPv.model.rotation.y += dt * 0.5;
     if(heroPv.anim){
       if(heroPv.t > heroPv.nextAct){
-        animOnce(heroPv.anim, Math.random() < 0.6 ? 'attack' : 'cast', 0.9, heroPv.t, 0);
+        const abs = ['abQ', 'abW', 'abE', 'abR'].filter(k => heroPv.anim.acts[k]);   // 🎬 v0.56: pokazuje i kretnje svojih moći
+        animOnce(heroPv.anim, Math.random() < 0.4 || !abs.length ? 'attack' : abs[Math.floor(Math.random() * abs.length)], 0.9, heroPv.t, 0);
         heroPv.nextAct = heroPv.t + 2.6 + Math.random() * 1.5;
       }
       animBase(heroPv.anim, 'idle', 1, heroPv.t);

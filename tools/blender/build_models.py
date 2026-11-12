@@ -31,6 +31,9 @@ ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
 ASSETS = os.path.join(ROOT, 'assets')
 FPS = 24
 RAD = math.radians
+if HERE not in sys.path:   # Blender pokreće skriptu izvan njezine mape
+    sys.path.insert(0, HERE)
+from ability_anims import ability_anims   # 🎬 v0.56: kretnje moći junaka
 
 argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else sys.argv[1:]
 WANT_PREVIEW = '--preview' in argv
@@ -2126,6 +2129,9 @@ def biped(name, c, opts):
     paint_patterns(m, S, c, opts, seed=sum(ord(ch) for ch in name))   # v0.56: krzno, pruge, rozete, ljuske, perje
     biped_anims(m, kind=opts.get('atk', 'melee'), wings=bool(opts.get('wings')), tail=bool(opts.get('tail')),
                 arm_wings=bool(arm_wings))
+    if name.startswith('hero_'):   # 🎬 v0.56: svaka moć ima svoju kretnju (tools/blender/ability_anims.py)
+        ability_anims(m, name[5:], dict(kind=opts.get('atk', 'melee'), wings=bool(opts.get('wings')), tail=bool(opts.get('tail')),
+                                        arm_wings=bool(arm_wings)))
     m.finish()
     if tip:   # nevidljivi čvor na vrhu oružja (dijete ruke — prati animaciju)
         part = m.parts[tip[0]]
@@ -5336,6 +5342,13 @@ def main():
         build_neutrals()
         bake_ao(do_ao=False)
         preview(arg('out', os.path.join(HERE, 'preview_v56.png')), only=['mob_lizard', 'mob_boars'], cols=2, zoom=2.4)
+        return
+    if '--dev-anim' in argv:   # 🎬 v0.56 animacije moći, brza izgradnja (bez AO):  --only=vitez,slon  --out=put.glb
+        arg = lambda k, d: next((a[len(k) + 3:] for a in argv if a.startswith('--' + k + '=')), d)
+        only = [x for x in arg('only', '').split(',') if x]
+        build_heroes(only or None)
+        bake_ao(do_ao=False)
+        export(arg('out', os.path.join(HERE, 'anim_test.glb')))
         return
     if '--dev-mobs' in argv:   # v0.56 oči čudovišta (bez izvoza):  --out=put.png  --zoom=2.0
         arg = lambda k, d: next((a[len(k) + 3:] for a in argv if a.startswith('--' + k + '=')), d)
