@@ -352,30 +352,30 @@ const HEROES = [
   {
     id:'strijela', name:L('Strijela', 'Arrow'), emoji:'🦊',
     role:L('🏹 Lukava lisica — strijelac', '🏹 Sly fox — archer'),
-    hp:550, mp:250, dmg:50,
-    attrs:{ str:18, agi:24, int:15, strG:3.4, agiG:5.5, intG:2.2, primary:'agi' },
+    hp:520, mp:250, dmg:47,
+    attrs:{ str:18, agi:24, int:15, strG:3.4, agiG:4.8, intG:2.2, primary:'agi' },
     range:360, speed:170, atkCd:1.0, projSpeed:680, shot:'arrow',
     passive:{ name:L('Oštro oko', 'Sharp Eye'), emoji:'👁️', color:'#fb923c', pid:'oko',
       desc:L('PASIVNO: šansa za KRITIČNI pogodak', 'PASSIVE: chance for a CRITICAL hit'),
       tip:rk => L('💥 15% šanse za ×' + (1.25 + 0.25*rk).toFixed(2) + ' štete', '💥 15% chance for ×' + (1.25 + 0.25*rk).toFixed(2) + ' damage') },
     abilities:[
-      { key:'Q', name:L('Probojna strijela', 'Piercing Arrow'), emoji:'🎯', cd:8, mana:40, color:'#fbbf24',
+      { key:'Q', name:L('Probojna strijela', 'Piercing Arrow'), emoji:'🎯', cd:9, mana:40, color:'#fbbf24',
         desc:L('Strijela koja probija sve na svom putu', 'An arrow that pierces everything in its path'),
         target:'point', castRange:860, line:true, lineFull:true, shotSpeed:680, lineW:56,
-        tip:rk => L('⚔️ ' + (62 + 42*rk) + ' štete SVIMA na putu', '⚔️ ' + (62 + 42*rk) + ' damage to ALL in its path'),
+        tip:rk => L('⚔️ ' + (56 + 38*rk) + ' štete SVIMA na putu', '⚔️ ' + (56 + 38*rk) + ' damage to ALL in its path'),
         bot:{type:'shot', range:760},
         cast(u, aim, rk){
           return spawnSkillshot(u, aim, {speed:680, r:18, range:860,
-            dmg:62 + 42*rk, pierce:true, color:'#fbbf24', emoji:'🎯'});
+            dmg:56 + 38*rk, pierce:true, color:'#fbbf24', emoji:'🎯'});
         }},
-      { key:'W', name:L('Lovačka mreža', 'Hunter\'s Net'), emoji:'🕸️', cd:12, mana:55, color:'#a3e635',
+      { key:'W', name:L('Lovačka mreža', 'Hunter\'s Net'), emoji:'🕸️', cd:13, mana:55, color:'#a3e635',
         desc:L('Baci mrežu — prvi neprijatelj kojeg pogodi ostane zarobljen na mjestu', 'Throw a net — the first enemy it hits gets stuck in place'),
         target:'point', castRange:700, line:true, lineFull:true, shotSpeed:900, lineW:72,
-        tip:rk => L('⚔️ ' + (40 + 30*rk) + ' štete + 🕸️ ne može se micati ' + (1.2 + 0.3*rk).toFixed(1) + ' s', '⚔️ ' + (40 + 30*rk) + ' damage + 🕸️ can\'t move for ' + (1.2 + 0.3*rk).toFixed(1) + ' s'),
+        tip:rk => L('⚔️ ' + (40 + 30*rk) + ' štete + 🕸️ ne može se micati ' + (1.0 + 0.25*rk).toFixed(2) + ' s', '⚔️ ' + (40 + 30*rk) + ' damage + 🕸️ can\'t move for ' + (1.0 + 0.25*rk).toFixed(2) + ' s'),
         bot:{type:'shot', range:650},
         cast(u, aim, rk){
           return spawnSkillshot(u, aim, {speed:900, r:26, range:700, dmg:40 + 30*rk, color:'#a3e635', emoji:'🕸️',
-            onHit:e => { applyRoot(e, 1.2 + 0.3*rk); addFloat(e.x, e.y, L('🕸️ Uhvaćen!', '🕸️ Caught!'), '#d9f99d', 15); }});
+            onHit:e => { applyRoot(e, 1.0 + 0.25*rk); addFloat(e.x, e.y, L('🕸️ Uhvaćen!', '🕸️ Caught!'), '#d9f99d', 15); }});
         }},
       { key:'E', name:L('Kiša strijela', 'Arrow Rain'), emoji:'🌧️', cd:18, mana:90, color:'#f59e0b',
         desc:L('Strijele padaju 3 puta na odabrano mjesto', 'Arrows fall 3 times on the chosen spot'),
@@ -387,20 +387,20 @@ const HEROES = [
             dmg:40 + 25*rk, castRange:600,
             color:'#f59e0b', emoji:'🏹'});
         }},
-      { key:'R', name:L('Sokolovo oko', 'Falcon\'s Eye'), emoji:'🌠', cd:65, mana:110, ult:true, color:'#fde047',
+      { key:'R', name:L('Sokolovo oko', 'Falcon\'s Eye'), emoji:'🌠', cd:80, mana:110, ult:true, color:'#fde047',
         desc:L('ULTI: Čarobna strijela sama pronađe najslabijeg neprijateljskog junaka!', 'ULT: A magic arrow finds the weakest enemy hero by itself!'),
-        tip:rk => L('⚔️ ' + (150 + 92*rk) + ' štete najslabijem junaku (ne može promašiti)', '⚔️ ' + (150 + 92*rk) + ' damage to the weakest hero (can\'t miss)'),
+        tip:rk => L('⚔️ ' + (132 + 82*rk) + ' štete najslabijem junaku (ne može promašiti)', '⚔️ ' + (132 + 82*rk) + ' damage to the weakest hero (can\'t miss)'),
         bot:{type:'snipe', range:2000},
         cast(u, aim, rk){
           const t = weakestEnemyHero(u, 2200);
           if(!t) return false;
-          spawnHoming(u, t, {speed:950, dmg:150 + 92*rk, r:12,
+          spawnHoming(u, t, {speed:950, dmg:132 + 82*rk, r:12,
             color:'#fde047', emoji:'🌠',
             onHit(e){ burst(e.x, e.y, '#fde047', 26, 300, 7); }});
           if(hasTal(u, 'strijela_r2')){   // 🎓 talent: druga strijela u drugog najslabijeg junaka
             let t2 = null, bh = 1e9;
             for(const e of units) if(e !== t && e.kind === 'hero' && e.team !== u.team && !e.dead && dist(u, e) < 2200 && isVisibleTo(u.team, e) && e.hp < bh){ bh = e.hp; t2 = e; }
-            if(t2) spawnHoming(u, t2, {speed:950, dmg:150 + 92*rk, r:12, color:'#fde047', emoji:'🌠', onHit(e){ burst(e.x, e.y, '#fde047', 26, 300, 7); }});
+            if(t2) spawnHoming(u, t2, {speed:950, dmg:132 + 82*rk, r:12, color:'#fde047', emoji:'🌠', onHit(e){ burst(e.x, e.y, '#fde047', 26, 300, 7); }});
           }
           return true;
         }},
@@ -796,8 +796,8 @@ const HEROES = [
   {
     id:'jez', name:L('Bodljo', 'Bodlyo'), emoji:'🦔',
     role:L('🌵 Jež — bodljikavi tenk', '🌵 Hedgehog — spiky tank'),
-    hp:660, mp:230, dmg:58,
-    attrs:{ str:24, agi:17, int:13, strG:5.4, agiG:2.4, intG:1.8, primary:'str' },
+    hp:685, mp:230, dmg:60,
+    attrs:{ str:24, agi:17, int:13, strG:5.6, agiG:2.4, intG:1.8, primary:'str' },
     range:80, speed:170, atkCd:1.1, projSpeed:0,
     passive:{ name:L('Oklop od bodlji', 'Quill Armor'), emoji:'🦔', color:'#a3e635', pid:'oklop',
       desc:L('PASIVNO: tko te udari, može dobiti bodlje natrag!', 'PASSIVE: whoever hits you might get quills back!'),
@@ -1097,8 +1097,8 @@ const HEROES = [
   {
     id:'vuk', name:LS('Sivko'), emoji:'🐺',
     role:L('🌕 Vuk — vođa čopora', '🌕 Wolf — pack leader'),
-    hp:730, mp:230, dmg:70,
-    attrs:{ str:24, agi:20, int:12, strG:5.4, agiG:3.2, intG:1.6, primary:'str' },
+    hp:790, mp:230, dmg:75,
+    attrs:{ str:24, agi:20, int:12, strG:5.9, agiG:3.2, intG:1.6, primary:'str' },
     range:82, speed:176, atkCd:1.05, projSpeed:0,
     passive:{ name:L('Čopor', 'Pack'), emoji:'🐾', color:'#cbd5e1', pid:'copor',
       desc:L('PASIVNO: brže napadaš i rane ti brže zacjeljuju', 'PASSIVE: you attack faster and your wounds heal faster'),
@@ -1160,8 +1160,8 @@ const HEROES = [
   {
     id:'gavran', name:LS('Mrak'), emoji:'🐦‍⬛',
     role:L('🌑 Gavran — mračni čarobnjak', '🌑 Raven — dark wizard'),
-    hp:520, mp:340, dmg:50,
-    attrs:{ str:17, agi:17, int:26, strG:3.2, agiG:2.4, intG:5.8, primary:'int' },
+    hp:500, mp:340, dmg:47,
+    attrs:{ str:17, agi:17, int:26, strG:3.2, agiG:2.4, intG:5.3, primary:'int' },
     range:360, speed:166, atkCd:1.1, projSpeed:640, shot:'feather',
     passive:{ name:L('Gavranovo pero', 'Raven Feather'), emoji:'🪶', color:'#ddd6fe', pid:'pero',
       desc:L('PASIVNO: pokoji napad ukrade neprijatelju manu i da je tebi', 'PASSIVE: some attacks steal mana from the enemy and give it to you'),
@@ -1207,20 +1207,20 @@ const HEROES = [
       { key:'E', name:L('Pernata oluja', 'Feather Storm'), emoji:'🪶', cd:13, mana:70, color:'#6366f1',
         desc:L('Vihor oštrog perja kruži nad mjestom — ranjava i usporava sve u njemu', 'A whirl of sharp feathers spins over a spot — hurts and slows everyone in it'),
         target:'point', castRange:600, aoe:230,
-        tip:rk => L('⚔️ 4 × ' + (25 + 18*rk) + ' štete + 🐌 usporenje 30%', '⚔️ 4 × ' + (25 + 18*rk) + ' damage + 🐌 30% slow'),
+        tip:rk => L('⚔️ 4 × ' + (23 + 16*rk) + ' štete + 🐌 usporenje 30%', '⚔️ 4 × ' + (23 + 16*rk) + ' damage + 🐌 30% slow'),
         bot:{type:'zone', range:550},
         cast(u, aim, rk){
           return spawnZone(u, aim, {castRange:600, r:230, delay:0.3, ticks:4, interval:0.6,
-            dmg:25 + 18*rk, slow:{f:0.3, t:1}, color:'#6366f1', emoji:'🪶'});
+            dmg:23 + 16*rk, slow:{f:0.3, t:1}, color:'#6366f1', emoji:'🪶'});
         }},
       { key:'R', name:L('Jato gavranova', 'Raven Flock'), emoji:'🐦‍⬛', cd:80, mana:140, ult:true, color:'#4c1d95',
         desc:L('ULTI: Pozovi jato gavranova — kljucaju i ušutkavaju sve u krugu', 'ULT: Call a flock of ravens — they peck and silence everyone in the circle'),
         target:'point', castRange:650, aoe:300,
-        tip:rk => L('⚔️ 6 × ' + (24 + 17*rk) + ' štete + 🤐 ušutkani', '⚔️ 6 × ' + (24 + 17*rk) + ' damage + 🤐 silenced'),
+        tip:rk => L('⚔️ 6 × ' + (22 + 15*rk) + ' štete + 🤐 ušutkani', '⚔️ 6 × ' + (22 + 15*rk) + ' damage + 🤐 silenced'),
         bot:{type:'zone', range:600},
         cast(u, aim, rk){
           return spawnZone(u, aim, {r:300, delay:0.3, ticks:6, interval:0.7,
-            dmg:24 + 17*rk, silence:1.0, castRange:650,   // ⚖️ v0.56: bilo 27 + 20
+            dmg:22 + 15*rk, silence:1.0, castRange:650,   // ⚖️ v0.56: bilo 27 + 20
             color:'#4c1d95', emoji:'🐦‍⬛'});
         }},
     ],
