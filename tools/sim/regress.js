@@ -136,6 +136,35 @@ check('Imun na čarolije: jezik ga ne privuče, zamjena mjesta ga ne dira (a bez
   const r = { tongueImmune: tongue(true), tongueNormal: tongue(false), swapImmune: swap(true), swapNormal: swap(false) };
   return (r.tongueImmune > 250 && r.tongueNormal < 150 && r.swapImmune === 0 && r.swapNormal === 300) || r;
 });
+check('Gost: učinci na traci, oklop i brojevi štete ne ovise o postavkama domaćina', () => {
+  const host = JSON.parse(game()(SETUP('zarko') + `
+    net.mode = 'host'; remoteHero = E; E.human = true; SETTINGS.dmgNums = false;
+    floats = []; applyDamage(E, 50, P); applyDamage(P, 40, E);
+    E.armorBuffT = 4; E.armorBuff = 12; E.weakT = 3; E.gwT = 2; E.corruptT = 5; E.corruptA = 6; E.lsBoostT = 7; E.runeRegenT = 8;
+    E.barrierT = 2.5; E.barrierHp = 80; applyDmgMul(E, 1.4, 6);
+    const out = JSON.stringify({ snap: buildSnapshot(), arm: unitArmor(E), hostSees: floats.filter(f => f.dn === 1 && SETTINGS.dmgNums).length });
+    net.mode = 'local'; return out;`));
+  const r = game()(`
+    startGame(0); net.mode = 'guest'; units = [];
+    applySnapshot(${JSON.stringify(host.snap)});
+    const icons = buffList(player).map(b => b.e), need = ['🛡️', '🦇', '✨', '🐌', '🔥', '🌘', '🫧', '⚔️'];
+    const out = { miss: need.filter(e => !icons.includes(e)), nums: floats.filter(f => f.dn === 1 && f.who.includes(player.id)).length,
+      arm: +unitArmor(player).toFixed(1), mul: player.status.dmgMulF, barrier: player.barrierT };
+    net.mode = 'local'; return out;`);
+  return (r.miss.length === 0 && r.nums >= 1 && host.hostSees === 0 && Math.abs(r.arm - host.arm) < 0.11 && r.mul === 1.4 && r.barrier === 2.5) || { guest: r, hostArmor: host.arm, hostSees: host.hostSees };
+});
+check('Glif botova: bazu štiti i kad je ruše samo vojnici, kulu tek pred sam pad', () => {
+  const g = game();
+  return g(`
+    startGame(0); gameTime = 100;
+    const T = units.find(u => u.kind === 'tower' && u.team === 1 && !u.invuln), B = units.find(u => u.kind === 'barracks' && u.team === 1);
+    const cr = makeUnit({ kind: 'creep', team: 0, x: T.x - 60, y: T.y + 60, hp: 1e5, maxhp: 1e5, dmg: 1, r: 14 });
+    const step = (S, f) => { glyph[1].t = 0; glyph[1].cd = 0; glyphAiT[1] = 0; units.forEach(u => { if(isStructure(u)) u.lastDmgT = u.lastHitT = -99; });
+      const iv = S.invuln; S.invuln = false; S.hp = S.maxhp * f; S.lastDmgT = gameTime;
+      update(0.05); const used = glyph[1].t > 0; S.hp = S.maxhp; S.invuln = iv; return used; };
+    const r = { tower30: step(T, 0.3), tower10: step(T, 0.1), barracks30: step(B, 0.3) };
+    return (!r.tower30 && r.tower10 && r.barracks30) || r;`);
+});
 check('Svaka moć svakog junaka: bez iznimke i bez NaN', () => {
   const g = game();
   const n = g('return HEROES.length;');

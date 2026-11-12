@@ -293,6 +293,9 @@ function heroExtras(h){
     ar: +(unitArmor(h)).toFixed(1), asb: +(h.atkSpdBonus || 0).toFixed(3), ls: h.lifesteal || 0, ev: h.evasion || 0,
     nt: h.neutral ? h.neutral.id : 0,                                     // 🌰 neutralni predmet
     rc: h.dead && h.recap ? h.recap : 0,                                  // 💀 pregled pogibije
+    // 🧿 v0.56 učinci koje gost prije nije vidio na traci učinaka (i prava trajanja barijere i gladi, pravi postotak jačih udaraca)
+    bf: [h.armorBuffT, h.armorBuff, h.scopeT, h.lsBoostT, h.runeRegenT, h.weakT, h.gwT, h.corruptT, h.corruptA, h.barrierT, h.hungerT]
+      .map(v => +Math.max(0, v || 0).toFixed(1)).concat(+(h.status.dmgMulF || 1).toFixed(2)),
   };
 }
 const CAMP_KEYS = Object.keys(CAMP_TYPES);   // isti data.js kod domaćina i gosta
@@ -361,7 +364,7 @@ function buildSnapshot(){
     rn: runes.length ? [{ x: runes[0].x, y: runes[0].y, di: RUNE_TYPES.indexOf(runes[0].def) }] : [],
     mk: markers.filter(m => m.team == null || m.team === TEAM_RED).map(m => ({ x: Math.round(m.x), y: Math.round(m.y), t: +m.t.toFixed(2), r: Math.round(m.r), ir: m.isRing ? 1 : 0, cl: m.color })),   // oznake klikova samo svom igraču
     ln: lines.map(l => ({ x1: Math.round(l.x1), y1: Math.round(l.y1), x2: Math.round(l.x2), y2: Math.round(l.y2), t: +l.t.toFixed(2), lf: l.life, cl: l.color, w: l.w })),
-    fl: floats.map(f => { const o = { x: Math.round(f.x), y: Math.round(f.y), hh: Math.round(f.h), tx: netTx(f.txt), cl: f.color, sz: f.size, t: +f.t.toFixed(2) }; if(f.team >= 0) o.tm = f.team; if(f.st){ o.st = f.st; o.ro = +f.rot.toFixed(2); } if(f.who) o.wh = f.who; return o; }),
+    fl: floats.map(f => { const o = { x: Math.round(f.x), y: Math.round(f.y), hh: Math.round(f.h), tx: netTx(f.txt), cl: f.color, sz: f.size, t: +f.t.toFixed(2) }; if(f.team >= 0) o.tm = f.team; if(f.st){ o.st = f.st; o.ro = +f.rot.toFixed(2); } if(f.who) o.wh = f.who; if(f.dn) o.dn = f.dn; return o; }),
     fd: feed.map(f => f.team >= 0 ? { tx: netTx(f.txt), cl: f.color, t: +f.t.toFixed(2), tm: f.team } : { tx: netTx(f.txt), cl: f.color, t: +f.t.toFixed(2) }),
     // najave: zajednička (za sve) i gostova osobna (Bravo!, Ne brini!, ulti…) — gost prikaže svaku novu (po id-u)
     bn: netBanner && gameTime - netBanner.t0 < 3 ? [netBanner.id, netTx(netBanner.txt), netTx(netBanner.sub), netBanner.tone] : 0,
@@ -436,6 +439,7 @@ function makeGuestUnit(b){
   else if(b.k === 'creep'){
     base.r = b.sg ? 19 : (b.rc ? 14 : 16);
     base.rangedCreep = !!b.rc; base.siege = !!b.sg;
+    base.armor = b.rc || b.sg || b.sm ? 0 : 2;   // 🪙 kao makeCreep: oznaka „zadnjeg udarca” kod gosta računa oklop vojnika izbliza
     if(b.sm){ base.summonModel = b.sm; base.summonOf = true; base.r = 13; }
     if(b.su){ base.superCreep = true; base.r += 2; }
   }
@@ -544,7 +548,13 @@ function applySnapshot(d){
     player.items = e.it.map((id, k) => ITEM_BY_ID[id] && ((e.ip || []).includes(k) ? pendingItem(ITEM_BY_ID[id]) : ITEM_BY_ID[id])).filter(Boolean);
     player.backpack = (e.bp || []).map(s => { const pend = s[0] === '*', it = ITEM_BY_ID[pend ? s.slice(1) : s]; return it && (pend ? pendingItem(it) : it); }).filter(Boolean);
     if(e.ia) player.itemAttr = { str: e.ia[0], agi: e.ia[1], int: e.ia[2] };
-    player.armor = e.ar || 0; player.auraArmor = 0; player.corruptT = 0; player.atkSpdBonus = e.asb || 0; player.lifesteal = e.ls || 0; player.evasion = e.ev || 0;
+    const bf = e.bf || [];
+    player.armorBuffT = bf[0] || 0; player.armorBuff = bf[1] || 0; player.scopeT = bf[2] || 0; player.lsBoostT = bf[3] || 0; player.runeRegenT = bf[4] || 0;
+    player.weakT = bf[5] || 0; player.gwT = bf[6] || 0; player.corruptT = bf[7] || 0; player.corruptA = bf[8] || 0;
+    if(e.bf){ player.barrierT = bf[9] || 0; player.hungerT = bf[10] || 0; if(player.status.dmgMulT > 0) player.status.dmgMulF = bf[11] || 1; }
+    // `ar` je već ukupni oklop (unitArmor na domaćinu): ovdje se skinuti oklop i Bojni zov vrate da ih unitArmor ne uračuna dvaput
+    player.armor = (e.ar || 0) + (player.corruptT > 0 ? player.corruptA : 0) - (player.armorBuffT > 0 ? player.armorBuff : 0);
+    player.auraArmor = 0; player.atkSpdBonus = e.asb || 0; player.lifesteal = e.ls || 0; player.evasion = e.ev || 0;
   }
   if(player && !net.ringBuilt){ buildPlayerRing(); net.ringBuilt = true; }
   // projektili / zone / rune
@@ -576,7 +586,7 @@ function applySnapshot(d){
       return { x1: l.x1, y1: l.y1, x2: l.x2, y2: l.y2, t: l.t, life: l.lf, color: l.cl, w: l.w || 4 };
     });
   }
-  floats = d.fl.map(f => ({ x: f.x, y: f.y, h: f.hh, txt: locTx(f.tx), color: f.cl, size: f.sz, t: f.t, team: f.tm == null ? -1 : f.tm, st: f.st || null, rot: f.ro || 0, who: f.wh || null }))
+  floats = d.fl.map(f => ({ x: f.x, y: f.y, h: f.hh, txt: locTx(f.tx), color: f.cl, size: f.sz, t: f.t, team: f.tm == null ? -1 : f.tm, st: f.st || null, rot: f.ro || 0, who: f.wh || null, dn: f.dn || 0 }))
     .concat(floats.filter(f => f.local));   // gostove vlastite poruke ("🔒 Treba ti poen vještine!"…) ostaju
   feed = d.fd.map(f => ({ txt: locTx(f.tx), color: f.cl, t: f.t, team: f.tm == null ? -1 : f.tm }));
   {   // nova najava (zajednička ili moja osobna); lokalne (pobjeda/poraz) domaćin ne prepisuje

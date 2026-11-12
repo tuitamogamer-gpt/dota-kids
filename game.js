@@ -1544,15 +1544,16 @@ function applyDamage(t, amount, src, kind){
   if(isHuman(t)) who.push(t.id);
   if(hitCrit && kind === 'atk'){   // 💥 kritični udarac: veliki broj koji iskoči + 3D rez preko mete
     t.critN = (t.critN || 0) + 1;
-    if(who.length) addFloat(t.x, t.y, SETTINGS.dmgNums ? amount + '!' : L('KRIT!', 'CRIT!'), src && src.team === TEAM_BLUE ? '#ff5a1f' : '#ff3b6b', t.kind === 'hero' ? 27 : 23, undefined, 'crit', who);
+    if(who.length){ addFloat(t.x, t.y, amount + '!', src && src.team === TEAM_BLUE ? '#ff5a1f' : '#ff3b6b', t.kind === 'hero' ? 27 : 23, undefined, 'crit', who); floats[floats.length - 1].dn = 2; }
     if(src && (src.isPlayer || t.isPlayer)) sfx('crit'); else sfxAt('crit', t.x, t.y);
   }
-  else if(SETTINGS.dmgNums && who.length){
+  else if(who.length && (SETTINGS.dmgNums || (net.mode === 'host' && remoteHero && who.includes(remoteHero.id)))){
+    // 🔢 v0.56: u mrežnoj igri svatko odlučuje za sebe (⚙️ Brojevi štete) — prije je postavka domaćina vrijedila i za gosta
     const mine = isHuman(t) ? 't' : 's', df = t.dmgF;
     if(df && df.t < 0.3 && df.mine === mine && floats.includes(df)){ df.amt += amount; df.txt = '-' + df.amt; }   // brzi udarci (otrov, glad…) u jedan broj
     else {
       addFloat(t.x, t.y, '-' + amount, mine === 't' ? '#ff6b6b' : '#ffd166', t.kind === 'hero' ? 16 : 13, undefined, null, who);
-      t.dmgF = floats[floats.length - 1]; t.dmgF.amt = amount; t.dmgF.mine = mine;
+      t.dmgF = floats[floats.length - 1]; t.dmgF.amt = amount; t.dmgF.mine = mine; t.dmgF.dn = 1;
     }
   }
   if(isStructure(t) && src && src.team !== t.team) t.lastDmgT = gameTime;   // 🤖 obrana: koga upravo ruše
@@ -1564,6 +1565,7 @@ function applyDamage(t, amount, src, kind){
     if(src.kind === 'hero' && (t.kind === 'hero' || isStructure(t))) noteCombat(src);
     if(t.kind === 'hero' && (src.kind === 'hero' || src.kind === 'tower')) noteCombat(t);
   }
+  if(src && src.team !== t.team && isStructure(t)) t.lastDmgT = gameTime;   // 🛡️ Glif botova: i kad je ruše samo vojnici
   if(src && src.kind === 'hero' && !src.dead && src.team !== t.team){
     t.lastHitter = src;
     t.lastHitT = gameTime;
@@ -4799,7 +4801,9 @@ function update(dt){
       const human = units.some(u => u.kind === 'hero' && u.team === tm && isHuman(u));
       if(!human) for(const u of units){
         if(!isStructure(u) || u.team !== tm || u.removeMe || u.invuln) continue;
-        if(u.hp < u.maxhp * 0.35 && gameTime - (u.lastHitT || -99) < 1.5){ useGlyph(tm, null); break; }
+        // junaci je ruše (kao prije) ILI je vojnici sami dovršavaju: baza (vojarna, Drevno) ispod 35%, kula ispod 15%
+        const heroHit = gameTime - (u.lastHitT || -99) < 1.5, anyHit = gameTime - (u.lastDmgT || -99) < 1.5;
+        if((u.hp < u.maxhp * 0.35 && (heroHit || (anyHit && u.kind !== 'tower'))) || (u.hp < u.maxhp * 0.15 && anyHit)){ useGlyph(tm, null); break; }
       }
     }
   }
@@ -7226,7 +7230,9 @@ function lastHitMark(c){
   const range = (player.atkRange || 150) + 380;
   if(dist(player, c) > range) return null;
   const ranged = player.projSpeed > 0;
-  const raw = (player.dmg || 0) + (c.team !== player.team && player.ifx && player.ifx.creepDmg ? player.ifx.creepDmg * (ranged ? 0.5 : 1) : 0);
+  // ⛏️ sjekirica: gost nema `ifx` (domaćin računa predmete), pa bonus čita izravno s predmeta
+  const cdmg = player.ifx && player.ifx.creepDmg != null ? player.ifx.creepDmg : (player.items || []).reduce((a, it) => Math.max(a, (!it.pending && it.creepDmg) || 0), 0);
+  const raw = (player.dmg || 0) + (c.team !== player.team && cdmg ? cdmg * (ranged ? 0.5 : 1) : 0);
   const hit = raw * armorMul(unitArmor(c));
   if(c.hp > hit) return null;
   if(c.team !== player.team) return seenByPlayer(c) ? 'gold' : null;
@@ -7337,6 +7343,7 @@ function drawWorldOverlay(){
   for(const f of floats){
     if(f.team != null && f.team >= 0 && f.team !== myTeam) continue;   // tuđa osobna poruka
     if(f.who && !(player && f.who.includes(player.id))) continue;      // tuđi brojevi štete (mrežna igra)
+    if(f.dn === 1 && !SETTINGS.dmgNums) continue;                      // 🔢 brojevi štete isključeni (svaki igrač za sebe)
     const s = worldToScreen(f.x, groundHeight(f.x, f.y) + f.h, f.y);
     if(!s) continue;
     ctx.globalAlpha = f.t < 0.7 ? 1 : 1 - (f.t - 0.7) / 0.4;
@@ -7403,13 +7410,14 @@ function drawCritFloat(f, s){
   ctx.font = fontTxt(f.size, true);
   ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
   ctx.lineJoin = 'round';
-  const tw = ctx.measureText(f.txt).width;
+  const txt = f.dn === 2 && !SETTINGS.dmgNums ? L('KRIT!', 'CRIT!') : f.txt;   // 🔢 bez brojeva štete: samo „KRIT!”
+  const tw = ctx.measureText(txt).width;
   ctx.strokeStyle = 'rgba(40,0,0,0.9)'; ctx.lineWidth = 6;
-  ctx.strokeText(f.txt, 0, 0);
+  ctx.strokeText(txt, 0, 0);
   const gr = ctx.createLinearGradient(0, -f.size, 0, 0);
   gr.addColorStop(0, '#fff3a3'); gr.addColorStop(0.45, '#ffb020'); gr.addColorStop(1, f.color);
   ctx.fillStyle = gr;
-  ctx.fillText(f.txt, 0, 0);
+  ctx.fillText(txt, 0, 0);
   ctx.font = fontEmoji(f.size * 0.7);
   ctx.fillText('💥', -tw * 0.5 - f.size * 0.55, -f.size * 0.1);
   ctx.restore();

@@ -3360,11 +3360,27 @@ def quad(name, c, o):
             h.cyl((hx + 0.32, s * 0.06, hz - 0.13), (hx + 0.34, s * 0.06, hz - 0.21), 0.025, 0.0, '#ffffff', seg=4)
     ec = o.get('eyeColor', '#141414')
     emat = 'glow' if o.get('glowEyes') else 'vc'
+    # 👀 v0.56: oči sjede NA površini glave. Prije su bile cijele unutar kugle glave (glava je pomaknuta naprijed,
+    # a oči nisu), pa su sva četveronožna čudovišta izgledala bez očiju — virio je samo vrh obrve.
+    hc, hR = (hx + 0.08, 0.0, hz + 0.04), (hr * 1.05, hr, hr * 0.95)
+
+    def on_head(fx, fy, fz, out=1.0):
+        n = math.sqrt(fx * fx + fy * fy + fz * fz)
+        return (hc[0] + hR[0] * fx / n * out, hc[1] + hR[1] * fy / n * out, hc[2] + hR[2] * fz / n * out)
+    er = hr * 0.25 * o.get('eyeS', 1.0)
+    dark_eye = ec.lower() in ('#141414', '#1a1a1a', '#000000')
     for s in (1, -1):
-        h.sphere((hx + hr * 0.75, s * hr * 0.55, hz + hr * 0.3), (0.035, 0.045, 0.05), ec, mat=emat, seg=(8, 6))
-        if not o.get('glowEyes'):
-            h.sphere((hx + hr * 0.85, s * hr * 0.52, hz + hr * 0.38), 0.014, '#ffffff', seg=(5, 4))
-        h.box((hx + hr * 0.8, s * hr * 0.55, hz + hr * 0.6), (0.03, 0.1, 0.025), dark, rot=(s * -18, 0, 0))
+        e = on_head(0.64, s * 0.64, 0.42, 0.93)
+        h.sphere(e, (er * 0.8, er * 0.92, er), ec, mat=emat, seg=(12, 8))
+        fw = on_head(0.85, s * 0.45, 0.3)                       # smjer pogleda: naprijed i malo u stranu
+        d = [fw[i] - hc[i] for i in range(3)]
+        dn = math.sqrt(sum(v * v for v in d))
+        d = [v / dn for v in d]
+        if dark_eye:   # tamno oko: bijeli odsjaj
+            h.sphere((e[0] + d[0] * er * 0.62, e[1] + d[1] * er * 0.62, e[2] + d[2] * er * 0.62 + er * 0.42), er * 0.3, '#ffffff', seg=(6, 5))
+        else:          # obojeno oko (žuto, svjetleće): uska tamna zjenica kao u gmaza ili vuka
+            h.sphere((e[0] + d[0] * er * 0.6, e[1] + d[1] * er * 0.6, e[2] + d[2] * er * 0.6), (er * 0.42, er * 0.42, er * 0.72), '#16101c', seg=(8, 6))
+        h.cyl(on_head(0.84, s * 0.34, 0.50, 1.03), on_head(0.46, s * 0.80, 0.66, 1.03), er * 0.36, er * 0.26, dark, seg=6, smooth=True)   # obrva
     if o.get('fangs'):
         for s in (1, -1):
             h.cyl((hx + 0.38, s * 0.05, hz - 0.08), (hx + 0.39, s * 0.055, hz - 0.15), 0.02, 0.0, '#ffffff', seg=4)
@@ -5320,6 +5336,12 @@ def main():
         build_neutrals()
         bake_ao(do_ao=False)
         preview(arg('out', os.path.join(HERE, 'preview_v56.png')), only=['mob_lizard', 'mob_boars'], cols=2, zoom=2.4)
+        return
+    if '--dev-mobs' in argv:   # v0.56 oči čudovišta (bez izvoza):  --out=put.png  --zoom=2.0
+        arg = lambda k, d: next((a[len(k) + 3:] for a in argv if a.startswith('--' + k + '=')), d)
+        build_neutrals()
+        bake_ao(do_ao=False)
+        preview(arg('out', os.path.join(HERE, 'preview_mobs.png')), only=['mob_'], cols=4, zoom=float(arg('zoom', '2.0')))
         return
     if '--dev-v14' in argv:   # brza provjera novih modela (bez izvoza)
         build_courier()
