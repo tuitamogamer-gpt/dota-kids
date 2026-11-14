@@ -6909,6 +6909,9 @@ function buildSelectScreen(){
     if(!box.classList.contains('hidden') && box.scrollIntoView) setTimeout(() => box.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 60);   // ploča je ispod gumba — pomakni do nje
   });
   document.getElementById('helpClose').addEventListener('click', toggleHelp);
+  document.getElementById('pause').addEventListener('click', () => {   // ⏸️ klik (ili dodir) nastavlja igru, kao tipka P
+    if(paused && net.mode === 'local'){ paused = false; document.getElementById('pause').classList.add('hidden'); }
+  });
   document.getElementById('againBtn').addEventListener('click', () => location.reload());
   selectHero(0);   // odmah je netko odabran — dovoljno je pritisnuti ZAIGRAJ
 }
