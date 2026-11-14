@@ -4016,8 +4016,7 @@ function castFx(u, g, key){
     case 'munja:E': case 'vuk:E':   // kandže: crvene / žute iskre oko šapa
       for(let i = 0; i < 18; i++) fxSpawn(u.x, u.y, gh + 40, key === 'munja:E' ? '#facc15' : '#ef4444', { spd: 150, up: 40, grav: 0, life: 0.45, size: 18 });
       break;
-    case 'jez:E':   // Klupko: zavrti se
-      g.userData.spin = TAU * 3;
+    case 'jez:E':   // Klupko: sklupča se i kotrlja (vrtnju naprijed radi petlja junaka dok traje juriš — ud.tumble)
       dust(14);
       break;
     case 'slon:E':   // Tuš iz surle: fontana kapljica
@@ -4653,6 +4652,14 @@ function syncScene(tAnim){
       if(u.cycloneT > 0 && !(ud.spin > 0)) ud.spin = TAU;   // vrti se u vihoru
       // Vrtlog: dodatna vrtnja modela
       if(ud.spin > 0){ const d = Math.min(ud.spin, dt * 22); ud.spinA = (ud.spinA || 0) + d; ud.spin -= d; if(ud.spin <= 0) ud.spinA = 0; }
+      /* 🦔 v0.57 Klupko (Bodljo E): dok juri, sklupčani junak se KOTRLJA naprijed oko sredine lopte, kao prava lopta — prije se
+         vrtio oko okomite osi, polegnut potrbuške i do pola u zemlji. Kad juriš stane, dovrši okret do kraja pa ustane. */
+      if(u.charge && u.hero && u.hero.id === 'jez') ud.tumble = (ud.tumble || 0) + dt * 21;
+      else if(ud.tumble){
+        const rest = (TAU - ud.tumble % TAU) % TAU;
+        if(rest < 0.02 || rest > TAU - 0.02 || u.dead) ud.tumble = 0;
+        else { const d = Math.min(rest, dt * 26); ud.tumble += d; if(rest - d < 0.02) ud.tumble = 0; }
+      }
       if(ud.model){
         ud.model.rotation.y = ud.yaw + (ud.spinA || 0);
         // 🏃 v0.56: nagne se naprijed kad trči i u zavoj kad skreće (kao trkač) — samo izgled, ne mijenja kretanje
@@ -4668,6 +4675,7 @@ function syncScene(tAnim){
         ud.model.rotation.order = 'YXZ';
         ud.model.rotation.z = ud.lean;
         ud.model.rotation.x = ud.bank;
+        tumbleModel(ud.model, ud.tumble || 0, ud.lean);
       }
       else g.rotation.y = ud.yaw;
       ud.shield.visible = u.status.shieldT > 0 || u.barrierT > 0 || u.status.cspellT > 0;   // 🫧 i Barijera, 🔮 Protučarolija
@@ -5263,6 +5271,19 @@ function heroPreviewFit(){
   fits(k);
   heroPv.fitK = k;
 }
+/* 🦔 okret modela naprijed za kut a oko SREDINE sklupčanog tijela (visina hC), a ne oko stopala: model se zakrene oko svoje
+   osi Z, pomakne za c − Rz·c i malo podigne (lopta je šira od svoje sredine, pa ne uranja u tlo). a = 0 vrati model na mjesto. */
+function tumbleModel(m, a, lean){
+  if(!a){
+    if(m.userData.tumbled){ m.userData.tumbled = false; m.rotation.z = lean || 0; m.position.set(0, 0, 0); }
+    return;
+  }
+  const sc = m.scale.y, hC = 0.56 * sc, rB = 0.70 * sc, ry = m.rotation.y, vx = -hC * Math.sin(a);
+  m.rotation.order = 'YXZ';
+  m.rotation.z = (lean || 0) - a;
+  m.position.set(vx * Math.cos(ry), hC * (1 - Math.cos(a)) + (rB - hC) * (1 - Math.cos(a)) / 2, -vx * Math.sin(ry));
+  m.userData.tumbled = true;
+}
 function heroPreviewFrame(now){
   const sel = document.getElementById('select');
   const cv = heroPv.renderer && heroPv.renderer.domElement;
@@ -5281,6 +5302,9 @@ function heroPreviewFrame(now){
       }
       animBase(heroPv.anim, 'idle', 1, heroPv.t);
       heroPv.anim.mixer.update(dt);
+      // 🦔 Bodljino Klupko i u pregledu: dok je sklupčan (kadrovi 3–11 isječka abE) napravi jedan okret naprijed
+      const roll = heroPv.id === 'jez' && heroPv.anim.cur === 'abE' ? (heroPv.anim.acts.abE.time * 24 - 3) / 8 : -1;
+      tumbleModel(heroPv.model, roll > 0 && roll < 1 ? roll * TAU : 0, 0);
     }
   }
   {   // 🎁 odabrana nagrada iznad glave i na ekranu odabira
