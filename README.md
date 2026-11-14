@@ -15,7 +15,7 @@ Ili lokalno: preuzmi repo i otvori `index.html` dvoklikom (radi offline — Thre
 1. Igrač 1 klikne **📡 Napravi sobu** i dobije kod od 4 znaka
 2. Igrač 2 upiše kod i klikne **🔌 Uđi**
 3. Oba odaberu junake i stisnu **✅ SPREMAN!**
-4. Domaćin je 🔵 plavi mid, gost 🔴 crveni mid — svaki sa 4 bota saveznika, pravi 5v5!
+4. Domaćin je 🔵 plavi, gost 🔴 crveni — svatko bira svoju stazu (ili džunglu), svaki sa 4 bota saveznika, pravi 5v5!
 
 P2P preko WebRTC-a (PeerJS), bez servera. Magla rata vrijedi za svakoga iz perspektive njegovog tima, a ako igrač izleti — bot preuzima njegovog junaka.
 
