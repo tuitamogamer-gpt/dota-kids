@@ -1001,6 +1001,8 @@ function ring(x, y, r, color){ markers.push({ x, y, t: 0, color, r, isRing: true
 function addLine(x1, y1, x2, y2, color, w, life){
   lines.push({ x1, y1, x2, y2, color, w, life, t: 0 });
 }
+const floatLift = new Map();   // 🎨 v0.57: pomak natpisa prema gore (px) da se ne preklapaju — vidi crtanje natpisa
+let floatFrame = 0;
 function addFloat(x, y, txt, color, size, team, st, who){   // team: osobna poruka (zlato, "Nema mane!"…) — vidi je samo taj tim; st: 'crit' = 💥 veliki iskačući broj; who: vide samo ti junaci (brojevi štete)
   if(floats.length > 70) floats.shift();
   floats.push({ x: x + rand(-10, 10), y: y + rand(-6, 6), h: 70, txt, color: color || '#fff', size: size || 15, t: 0, team: team == null ? -1 : team,
@@ -5460,7 +5462,7 @@ function computeAwards(heroes){
   return out;
 }
 /* završna tablica (kao u DotA): po timovima, K/D/A, zadnji udarci, neto vrijednost, predmeti, 👑 najbolji igrač */
-function endTableHtml(winTeam){
+function endTableHtml(winTeam, extraNotes){
   const heroesAll = units.filter(u => u.kind === 'hero');
   const awards = computeAwards(heroesAll);
   const score = h => h.kills * 3 + h.assists * 1.5 - h.deaths + (h.lastHits || 0) / 15 + netWorth(h) / 1500;
@@ -5482,21 +5484,22 @@ function endTableHtml(winTeam){
         `<td class="etItems">${items.join('')}${h.neutral ? `<img class="etItem etNeut" src="${itemIconUrl(h.neutral)}" title="${h.neutral.name}">` : ''}</td></tr>`;
     }
   }
-  html += '</table>';
+  html += '</table><div class="etNotes">';   // 👑 značke ispod tablice (najbolji igrač, medalje, botovi, profil)
   if(mvp) html += `<div class="etMvp">👑 ${L('Najbolji igrač', 'Best player')}: <b>${mvp.emoji} ${mvp.name}</b> — ${mvp.kills} / ${mvp.deaths} / ${mvp.assists}</div>`;
   const mine = player && awards.get(player);
   if(mine) html += `<div class="etMvp etMine">🏅 ${L('Tvoje medalje', 'Your medals')}: ${mine.map(a => `<b>${a.e} ${a.n}</b> <small>(${a.d})</small>`).join(' · ')}</div>`;
   if(net.mode !== 'host' && net.mode !== 'guest')
     html += `<div class="etMvp">🤖 ${L('Botovi', 'Bots')}: <b>${{ easy: L('🐣 Lako', '🐣 Easy'), normal: L('⚔️ Normalno', '⚔️ Normal'), hard: L('🔥 Teško', '🔥 Hard') }[SETTINGS.diff]}</b>` +
       (gameMode() === 'turbo' ? ` · <b>${L('⚡ Brza igra', '⚡ Quick game')}</b>` : '') + `</div>`;
-  return html;
+  return html + (extraNotes || '') + '</div>';
 }
 function showEndScreen(winTeam, won){
   document.getElementById('endEmoji').textContent = won ? '🎉🏆🎉' : '😢💔😢';
   document.getElementById('endTitle').textContent = won ? L('POBJEDA!', 'VICTORY!') : L('PORAZ!', 'DEFEAT!');
   document.getElementById('endTitle').style.color = won ? '#fde047' : '#fca5a5';
+  document.getElementById('end').classList.toggle('won', !!won);   // zlatni ili crveni naslov (index.html)
   const fresh = recordGame(won);   // 🏆 nova postignuća idu IZNAD tablice (odmah se vide), profil ispod
-  document.getElementById('endTable').innerHTML = achievementsNewHtml(fresh) + endTableHtml(winTeam) + histGraphHtml() + profileLineHtml();
+  document.getElementById('endTable').innerHTML = achievementsNewHtml(fresh) + endTableHtml(winTeam, profileLineHtml()) + histGraphHtml();
   if(fresh.length) setTimeout(() => sfx('levelup'), 600);
   const conf = document.getElementById('confetti');
   conf.innerHTML = '';
@@ -6841,7 +6844,7 @@ function buildSelectScreen(){
       <img class="c-img" src="assets/hero_${h.id}.jpg" alt="${h.emoji}"
         onerror="this.outerHTML='<div class=&quot;c-emoji&quot;>${h.emoji}</div>'">
       <div class="c-name">${h.name}</div>
-      <div class="c-type">${h.projSpeed > 0 ? '🏹' : '⚔️'}</div>${heroDifficulty(h.id) === 0 ? L('<div class="c-easy" title="Lako za početnike">🟢</div>', '<div class="c-easy" title="Easy for beginners">🟢</div>') : ''}
+      <div class="c-type">${h.projSpeed > 0 ? '🏹' : '🗡️'}</div>${heroDifficulty(h.id) === 0 ? L('<div class="c-easy" title="Lako za početnike">🟢</div>', '<div class="c-easy" title="Easy for beginners">🟢</div>') : ''}
     </div>`;
   });
   cards.innerHTML = html;
@@ -6903,6 +6906,7 @@ function buildSelectScreen(){
     e.currentTarget.classList.toggle('on', !box.classList.contains('hidden'));
     document.getElementById('diffTabs').classList.toggle('mpOff', !box.classList.contains('hidden'));   // 🤖 u igri s prijateljem ne vrijedi
     document.getElementById('modeTabs').classList.toggle('mpOff', !box.classList.contains('hidden'));   // ⚡ ni brza igra
+    if(!box.classList.contains('hidden') && box.scrollIntoView) setTimeout(() => box.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 60);   // ploča je ispod gumba — pomakni do nje
   });
   document.getElementById('helpClose').addEventListener('click', toggleHelp);
   document.getElementById('againBtn').addEventListener('click', () => location.reload());
@@ -7347,15 +7351,41 @@ function drawWorldOverlay(){
     ctx.globalAlpha = 1;
   }
 
+  /* 🎨 v0.57: natpisi koji iskoče u istom trenu na istom mjestu (zlato + iskustvo + šteta + ime moći) slažu se jedan IZNAD
+     drugog — prije su se ispisali jedan preko drugog pa se nijedan nije dao pročitati. Računa se u pikselima zaslona (vrijedi
+     za svaki zum) i samo među natpisima koje ovaj igrač vidi: mlađi se podigne iznad starijih koji su mu na putu i taj pomak
+     zadrži dok ne nestane (svi se dižu istom brzinom). Ključ je mjesto + tekst, pa vrijedi i za gosta, kojemu natpisi stižu
+     iznova sa svakom snimkom. Najviše 5 redova — iznad toga se opet preklapaju. */
+  const placed = [];
   for(const f of floats){
     if(f.team != null && f.team >= 0 && f.team !== myTeam) continue;   // tuđa osobna poruka
     if(f.who && !(player && f.who.includes(player.id))) continue;      // tuđi brojevi štete (mrežna igra)
     if(f.dn === 1 && !SETTINGS.dmgNums) continue;                      // 🔢 brojevi štete isključeni (svaki igrač za sebe)
     const s = worldToScreen(f.x, groundHeight(f.x, f.y) + f.h, f.y);
     if(!s) continue;
+    const fpx = f.st === 'crit' ? f.size * 1.15 : (touchMode && VH < 450 ? Math.max(10, f.size * 0.78) : f.size);   // 📱 mobitel: manji natpisi nad junacima
+    {
+      const key = f.x + '|' + f.y + '|' + f.txt, hw = Math.max(14, f.txt.length * fpx * 0.29);
+      let rec = floatLift.get(key);
+      if(!rec){
+        let lift = 0;
+        for(let pass = 0; pass < 6 && lift < fpx * 5.5; pass++){
+          let hit = false;
+          for(const o of placed){
+            const need = (o.px + fpx) * 0.56;
+            if(Math.abs(o.x - s.x) < o.hw + hw && Math.abs(o.y - (s.y - lift)) < need){ lift = s.y - o.y + need; hit = true; }
+          }
+          if(!hit) break;
+        }
+        floatLift.set(key, rec = { lift: Math.min(lift, fpx * 5.5), seen: 0 });
+      }
+      rec.seen = floatFrame;
+      s.y -= rec.lift;
+      placed.push({ x: s.x, y: s.y, hw, px: fpx });
+    }
     ctx.globalAlpha = f.t < 0.7 ? 1 : 1 - (f.t - 0.7) / 0.4;
     if(f.st === 'crit'){ drawCritFloat(f, s); ctx.globalAlpha = 1; continue; }
-    ctx.font = fontTxt(touchMode && VH < 450 ? Math.max(10, f.size * 0.78) : f.size, true);   // 📱 mobitel: manji natpisi nad junacima
+    ctx.font = fontTxt(fpx, true);
     ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
     ctx.strokeStyle = 'rgba(0,0,0,0.7)';
     ctx.lineWidth = 3;
@@ -7364,6 +7394,8 @@ function drawWorldOverlay(){
     ctx.fillText(f.txt, s.x, s.y);
     ctx.globalAlpha = 1;
   }
+  for(const [k, r] of floatLift) if(r.seen !== floatFrame) floatLift.delete(k);   // natpisi kojih više nema
+  floatFrame++;
 }
 
 /* 🎬 efekti preko cijelog ekrana: bljesak ultija, crveni rub kad te jako udare, pulsiranje pri malo života */
@@ -8645,7 +8677,7 @@ function drawScoreboard(){
   const rowH = clamp(Math.floor((VH - 76 - 64 - 48 - 14) / Math.max(1, heroes.length)), 22, 34);
   const w = Math.min(760, VW - 20), h = 64 + 2 * 24 + heroes.length * rowH + 14;
   const x = (VW - w) / 2, y = Math.max(Math.min(70, VH - h - 4), VH * 0.46 - h / 2);
-  drawFrame(x, y, w, h, 12);
+  drawFrame(x, y, w, h, 12, 1);   // 🎨 v0.57: neprozirna — kroz tablicu su se nazirali izbor talenta, najave i okvir zlata
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.font = fontTxt(18, true); ctx.fillStyle = '#f3d48a';
   ctx.fillText(scoreOpen ? L('📋 Tablica  (📋 zatvara)', '📋 Scoreboard  (📋 closes)') : L('📋 Tablica  (drži Tab)', '📋 Scoreboard  (hold Tab)'), x + w / 2, y + 22);
@@ -8999,7 +9031,7 @@ function frame(now){
   lastT = now;
   frameDt = Math.min(0.1, Math.max(0, dt));
   smoothGovern(Math.max(0, dt));   // 🐢
-  dt = Math.min(dt, 0.05);
+  dt = Math.max(0, Math.min(dt, 0.05));   // nikad unatrag: negativan korak bi svim učincima PRODUŽIO trajanje (omama, ukopanost…)
   if(slowMo > 0){ slowMo -= dt; dt *= slowMo > 0.2 ? 0.35 : 0.35 + (0.2 - slowMo) / 0.2 * 0.65; }   // ⏱️ usporenje nakon tvoje pobjede nad junakom
   if(running && !paused && !gameOver){
     if(net.mode === 'guest') guestFrame(dt);   // gost ne simulira — prima snapshotte

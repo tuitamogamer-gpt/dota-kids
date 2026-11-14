@@ -5203,7 +5203,7 @@ function heroPreviewSetup(){
   if(heroPv.renderer) return;
   const r = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-  r.setSize(150, 170, false);
+  r.setSize(300, 340, false);   // 🎨 v0.57: veći pregled (index.html ga prikazuje od 120 × 136 do 300 × 340, ovisno o zaslonu — uvijek omjer 15 : 17)
   r.outputEncoding = THREE.sRGBEncoding;
   r.toneMapping = THREE.ACESFilmicToneMapping;
   r.toneMappingExposure = 1.25;
@@ -5214,16 +5214,19 @@ function heroPreviewSetup(){
   const d = new THREE.DirectionalLight(0xfff2d0, 1.2);
   d.position.set(2, 4, 3);
   s.add(d);
+  const rim = new THREE.DirectionalLight(0xa9c8ff, 0.85);   // 🎨 v0.57: hladno svjetlo straga — na tamnoj pozadini junak dobije svijetao rub
+  rim.position.set(-3, 2.5, -4);
+  s.add(rim);
   const disc = new THREE.Mesh(new THREE.CircleGeometry(0.62, 40),
-    new THREE.MeshBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.25 }));
+    new THREE.MeshBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0.32 }));
   disc.rotation.x = -Math.PI / 2;
   s.add(disc);
-  const c = new THREE.PerspectiveCamera(32, 150 / 170, 0.1, 50);
+  const c = new THREE.PerspectiveCamera(32, 300 / 340, 0.1, 50);
   c.position.set(2.6, 1.9, 3.6);
   c.lookAt(0, 0.85, 0);
   heroPv.renderer = r; heroPv.scene = s; heroPv.camera = c;
 }
-/* 🖼️ v0.56: okvir pregleda je mali (150 × 170), a kamera je bila namještena na junaka visokog ~1,9 — visokim junacima
+/* 🖼️ v0.56: okvir pregleda je mali (omjer 15 : 17), a kamera je bila namještena na junaka visokog ~1,9 — visokim junacima
    (Jelkovi rogovi, Zekine uši, šeširi, Bikoševi rogovi) vrh je bio odrezan, a Nišanu puška sa strane. Kamera se zato
    odmakne duž istog smjera (i cilja malo više) dok svi kutovi junakove kutije, u svakom položaju vrtnje, ne stanu u okvir. */
 /* 🎬 v0.56: prelazak mišem (ili dodir) preko moći na ekranu odabira pusti njezinu kretnju u 3D pregledu */

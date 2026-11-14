@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="DOTA Kids">
 <link rel="apple-touch-icon" href="assets/icon-180.png">
-<meta name="theme-color" content="#16331f">
+<meta name="theme-color" content="#0b1016">
 <meta name="description" content="DOTA Kids 3D — MOBA za djecu: 30 junaka, bitka 5 na 5 s botovima ili s prijateljem preko interneta. A MOBA for kids: 30 heroes, 5 vs 5 battles with bots or with a friend online. Hrvatski / Bosanski · Srpski · Српски · English.">
 <meta property="og:title" content="🏰 DOTA Kids 3D ⚔️">
 <meta property="og:description" content="Prava bitka 5 na 5 za djecu · A real 5 vs 5 battle arena for kids">
@@ -33,8 +33,28 @@
   @font-face{ font-family:"Nunito"; font-style:normal; font-display:swap; font-weight:200 1000;
     src:url(assets/fonts/nunito-cyrillic-ext.woff2) format("woff2");
     unicode-range:U+0460-052F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F; }
-  *{ margin:0; padding:0; box-sizing:border-box; user-select:none; -webkit-user-select:none; }
-  html,body{ width:100%; height:100%; overflow:hidden; background:#16331f;
+  *{ margin:0; padding:0; box-sizing:border-box; user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent; }
+  /* 🎨 v0.57 „Kraljevska arena”: jedan izgled za sve ekrane — tamno staklo, tanki zlatni rubovi i zlatni glavni gumbi
+     (isti kao ploče u igri i dućan). Boje, sjene i krivulja kretanja su ovdje, ostatak stilova ih samo koristi. */
+  :root{
+    --ink1:#0b0f15; --ink2:#121821; --ink3:#1a212d; --ink4:#273140;
+    --glass:linear-gradient(180deg, rgba(31,38,51,.90), rgba(11,14,20,.94));       /* ploča */
+    --glass2:linear-gradient(180deg, rgba(46,55,72,.86), rgba(17,21,29,.90));      /* gumb */
+    --well:rgba(0,0,0,.30);                                                          /* udubljenje u ploči */
+    --line:rgba(255,255,255,.09); --line2:rgba(255,255,255,.18);
+    --gline:rgba(243,212,138,.34); --gline2:rgba(243,212,138,.66);                  /* zlatni rub */
+    --gold:#fde047; --gold2:#f3d48a; --gold3:#f5b83d;
+    --txt:#eef1f6; --txt2:#b9c2d0; --txt3:#8893a4; --brown:#3a1c02;
+    --goldFace:linear-gradient(180deg, #fff1a8 0%, #ffd84a 42%, #f6a81c 100%);       /* lice zlatnog gumba */
+    --goldText:linear-gradient(180deg, #fff7cf 0%, #ffe27a 36%, #f6b63a 68%, #d08416 100%);
+    --shPanel:0 18px 50px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,244,214,.10);
+    --shBtn:inset 0 1px 0 rgba(255,255,255,.12), 0 8px 20px rgba(0,0,0,.36);
+    --shModal:0 26px 80px rgba(0,0,0,.66), inset 0 1px 0 rgba(255,244,214,.12);
+    --ease:cubic-bezier(.2,.8,.2,1);
+    --vh:100vh;   /* visina prozora; na mobitelu i tabletu bez dijela ispod trake preglednika (dvh) */
+  }
+  @supports (height:100dvh){ :root{ --vh:100dvh; } }
+  html,body{ width:100%; height:100%; overflow:hidden; background:#0b1016;
     font-family:"Nunito","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif; }
   #game{ position:fixed; inset:0; width:100%; height:100%; display:block; z-index:1; }
   #hud{ position:fixed; inset:0; z-index:4; display:block; cursor:crosshair; touch-action:none; -webkit-touch-callout:none; }
@@ -43,199 +63,327 @@
   .hidden{ display:none !important; }
 
   .overlay{ position:fixed; inset:0; z-index:20; display:flex; flex-direction:column;
-    align-items:center; justify-content:center; justify-content:safe center; overflow-y:auto; text-align:center;
-    background:radial-gradient(circle at 50% 30%, #2d6a4f 0%, #1b4332 55%, #081c15 100%); }
-  #select{ background:linear-gradient(rgba(8,20,16,.42), rgba(8,20,16,.78)),
-    url('assets/splash.jpg') center/cover no-repeat; }
+    align-items:center; justify-content:center; justify-content:safe center; overflow-y:auto; text-align:center; color:var(--txt);
+    background:radial-gradient(circle at 50% 30%, #1c3340 0%, #0f1c26 55%, #070b11 100%); }
+  /* tanki zlatni klizači u svim prozorima */
+  .overlay, .overlay *, #shop *{ scrollbar-width:thin; scrollbar-color:#8a6f3a transparent; }
+  .overlay::-webkit-scrollbar, .overlay ::-webkit-scrollbar{ width:8px; height:8px; }
+  .overlay::-webkit-scrollbar-thumb, .overlay ::-webkit-scrollbar-thumb{ background:linear-gradient(#c9a44c, #86692f); border-radius:8px; }
+  .overlay::-webkit-scrollbar-track, .overlay ::-webkit-scrollbar-track{ background:transparent; }
+  button:focus-visible, input:focus-visible, summary:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
+  /* prozor se pojavi meko (ploča malo naraste), ne trzne */
+  @keyframes ovIn{ from{ opacity:0; } to{ opacity:1; } }
+  @keyframes popIn{ from{ opacity:0; transform:translateY(10px) scale(.97); } to{ opacity:1; transform:none; } }
+  #help, #options, #pause, #end, #achPanel{ animation:ovIn .18s ease-out both; }
+  .helpBox, .optBox, .pauseBox, .achBox{ animation:popIn .26s var(--ease) both; }
+  @media (prefers-reduced-motion: reduce){
+    #help, #options, #pause, #end, #achPanel, .helpBox, .optBox, .pauseBox, .achBox, .lgBrand, .lgPlay, .lgPlay::after, .lgPickBox{ animation:none !important; }
+  }
+
+  /* ---------- gumbi ---------- */
+  /* zlatni = glavna radnja na ekranu (samo jedan) */
+  .bigBtn, .lgPlay, #helpClose, .achClose, #optResume{ font-family:inherit; font-weight:900; color:var(--brown); cursor:pointer;
+    background:linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,0) 46%), var(--goldFace); border:1px solid #fff3b8;
+    box-shadow:inset 0 -4px 0 rgba(168,92,0,.42), 0 0 0 2px rgba(58,28,2,.55), 0 10px 24px rgba(0,0,0,.42);
+    text-shadow:0 1px 0 rgba(255,255,255,.55); transition:transform .14s var(--ease), filter .14s, box-shadow .14s; }
+  .bigBtn:hover:not(:disabled), .lgPlay:hover, #helpClose:hover, .achClose:hover, #optResume:hover{ transform:translateY(-2px); filter:brightness(1.07); }
+  .bigBtn:active:not(:disabled), .lgPlay:active, #helpClose:active, .achClose:active, #optResume:active{ transform:translateY(2px); filter:brightness(.96);
+    box-shadow:inset 0 -2px 0 rgba(168,92,0,.42), 0 0 0 2px rgba(58,28,2,.55), 0 4px 10px rgba(0,0,0,.42); }
+  /* stakleni = sve ostalo */
+  .rndBtn, .ghostBtn, .achBtn, .lgBtns button, #optQuit, .fsBtn, .selBack{ font-family:inherit; font-weight:800; color:#f2ead6; cursor:pointer;
+    background:var(--glass2); border:1px solid var(--gline); box-shadow:var(--shBtn);
+    transition:transform .14s var(--ease), border-color .14s, color .14s, box-shadow .14s, filter .14s; }
+  .rndBtn:hover, .ghostBtn:hover, .achBtn:hover, .lgBtns button:hover, #optQuit:hover, .fsBtn:hover, .selBack:hover{ transform:translateY(-2px);
+    border-color:var(--gold); color:#fff; box-shadow:var(--shBtn), 0 0 0 3px rgba(253,224,71,.13); }
+  .rndBtn:active, .ghostBtn:active, .achBtn:active, .lgBtns button:active, #optQuit:active, .fsBtn:active, .selBack:active{ transform:translateY(1px); filter:brightness(.92); }
+  /* znakovi na glavnim gumbima (crtani, ne emoji — isti na svakom uređaju) */
+  .icPlay{ display:inline-block; width:0; height:0; border-style:solid; border-width:.34em 0 .34em .56em; border-color:transparent transparent transparent currentColor;
+    margin-right:.42em; vertical-align:.02em; }
+  .icOk{ display:inline-block; width:.34em; height:.62em; border:solid currentColor; border-width:0 .15em .15em 0; transform:rotate(45deg); margin:0 .55em .06em .12em; }
 
   /* ---------- odabir junaka ---------- */
-  #select{ justify-content:flex-start; padding:16px 12px 18px; overflow-y:auto; gap:10px; }
-  #select h1{ font-size:40px; line-height:1.05; color:#fde047; text-shadow:0 4px 0 #b45309, 0 8px 18px rgba(0,0,0,.5); }
-  #select .sub{ color:#d1fae5; font-size:16px; margin-top:4px; }
+  #select{ justify-content:flex-start; justify-content:safe center; padding:14px 12px 16px; overflow-y:auto; gap:10px;
+    background:linear-gradient(rgba(7,11,17,.60), rgba(7,11,17,.86)), url('assets/splash.jpg') center/cover no-repeat, #0b1016; }
+  #select header{ padding:0 52px; }   /* gumbi u kutovima (🏠 i cijeli zaslon) ne prekrivaju naslov */
+  #select h1{ font-size:34px; line-height:1.12; font-weight:900; letter-spacing:.02em;
+    background:var(--goldText); -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 2px 0 rgba(84,40,6,.95)) drop-shadow(0 8px 16px rgba(0,0,0,.5)); }
+  #select .sub{ color:var(--txt2); font-size:14.5px; margin-top:2px; text-shadow:0 1px 3px rgba(0,0,0,.6); }
   #select .ver{ opacity:.55; font-size:12px; }
-  #loadBar{ display:none; color:#fde047; font-size:13px; font-weight:bold;
-    background:rgba(0,0,0,.35); border-radius:10px; padding:4px 14px; }
-  .selWrap{ display:flex; gap:16px; align-items:flex-start; justify-content:center; max-width:100%; }
-  .pickCol{ display:flex; flex-direction:column; gap:8px; background:rgba(8,28,21,.5); border-radius:18px; padding:10px; }
-  #roleTabs{ display:flex; gap:6px; justify-content:center; }
-  #roleTabs button{ font-family:inherit; font-size:14px; font-weight:bold; border:none; border-radius:11px; padding:6px 14px;
-    background:rgba(255,255,255,.12); color:#e2e8f0; cursor:pointer; }
-  #roleTabs button.on{ background:#fde047; color:#431407; }
-  #diffTabs{ display:flex; flex-wrap:wrap; gap:5px; justify-content:center; align-items:center; color:#a7f3d0; font-size:13px; font-weight:bold; }
-  #diffTabs button{ font-family:inherit; font-size:13px; font-weight:bold; border:none; border-radius:10px; padding:5px 11px;
-    background:rgba(255,255,255,.12); color:#e2e8f0; cursor:pointer; }
-  #diffTabs button.on[data-d="easy"]{ background:#86efac; color:#14532d; }
-  #diffTabs button.on[data-d="normal"]{ background:#fde047; color:#431407; }
-  #diffTabs button.on[data-d="hard"]{ background:#f87171; color:#450a0a; }
-  #diffTabs.mpOff{ opacity:.45; pointer-events:none; }
-  #modeTabs{ display:flex; flex-wrap:wrap; gap:5px; justify-content:center; align-items:center; color:#a7f3d0; font-size:13px; font-weight:bold; }
-  #modeTabs button{ font-family:inherit; font-size:13px; font-weight:bold; border:none; border-radius:10px; padding:5px 11px; background:rgba(255,255,255,.12); color:#e2e8f0; cursor:pointer; }
-  #modeTabs button.on[data-m="normal"]{ background:#93c5fd; color:#172554; }
-  #modeTabs button.on[data-m="turbo"]{ background:#fbbf24; color:#451a03; box-shadow:0 0 10px rgba(251,191,36,.6); }
-  #modeTabs.mpOff{ opacity:.45; pointer-events:none; }
-  /* 🛣️ v0.50: odabir staze (kao uloga u LoL-u) */
-  #laneTabs{ display:flex; flex-wrap:wrap; gap:5px; justify-content:center; align-items:center; color:#a7f3d0; font-size:13px; font-weight:bold; }
-  #laneTabs button{ font-family:inherit; font-size:13px; font-weight:bold; border:none; border-radius:10px; padding:5px 11px; background:rgba(255,255,255,.12); color:#e2e8f0; cursor:pointer; }
-  #laneTabs button.on{ background:#a7f3d0; color:#064e3b; box-shadow:0 0 10px rgba(167,243,208,.45); }
-  #diffTabs.mpOff::after{ content:"(s prijateljem su botovi normalni)"; font-size:11px; font-weight:normal; margin-left:4px; }
-  #cards{ display:grid; grid-template-columns:repeat(5, 92px); gap:8px; align-content:start;
-    max-height:min(54vh, 520px); overflow-y:auto; padding:4px 6px 4px 4px; }
-  #cards::-webkit-scrollbar{ width:7px; }
-  #cards::-webkit-scrollbar-thumb{ background:#f59e0b; border-radius:4px; }
-  .card{ position:relative; background:#fffbeb; border-radius:14px; padding:5px 5px 4px; cursor:pointer;
-    border:3px solid transparent; transition:transform .12s, border-color .12s; box-shadow:0 4px 0 rgba(0,0,0,.25); }
-  .card:hover{ transform:translateY(-3px); }
-  .card.sel{ border-color:#fde047; background:#fef9c3; box-shadow:0 0 0 3px rgba(253,224,71,.45), 0 4px 0 rgba(0,0,0,.25); }
+  /* ⏳ učitavanje 3D modela: zlatna pločica s crtom koja klizi — stoji na mjestu podnaslova (ekran ne skače) */
+  #loadBar{ display:none; position:relative; overflow:hidden; width:fit-content; margin:2px auto 0; color:var(--gold2); font-size:12.5px; font-weight:800; line-height:16px;
+    background:rgba(10,13,19,.78); border:1px solid var(--gline); border-radius:999px; padding:0 16px 3px; }
+  #select header:has(#loadBar[style*="block"]) .sub{ display:none; }
+  #loadBar::after{ content:""; position:absolute; left:12px; right:12px; bottom:2px; height:2px; border-radius:2px;
+    background:linear-gradient(90deg, transparent, var(--gold), transparent) no-repeat; background-size:40% 100%; animation:loadSlide 1.1s linear infinite; }
+  @keyframes loadSlide{ from{ background-position:-70% 0; } to{ background-position:170% 0; } }
+  .selWrap{ display:flex; gap:14px; align-items:stretch; justify-content:center; max-width:100%; }
+  .pickCol, .detail, #mpBox{ background:var(--glass); border:1px solid var(--gline); box-shadow:var(--shPanel); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); }
+  .pickCol{ display:flex; flex-direction:column; gap:9px; border-radius:20px; padding:12px; }
+  #roleTabs{ display:flex; gap:4px; align-self:center; padding:4px; border-radius:14px; background:var(--well); box-shadow:inset 0 0 0 1px var(--line); }
+  #roleTabs button{ font-family:inherit; font-size:14px; font-weight:800; border:none; border-radius:10px; padding:6px 16px;
+    background:transparent; color:var(--txt2); cursor:pointer; transition:background .15s, color .15s; }
+  #roleTabs button:hover{ color:#fff; background:rgba(255,255,255,.07); }
+  #roleTabs button.on{ background:var(--goldFace); color:var(--brown); box-shadow:inset 0 1px 0 rgba(255,255,255,.6), 0 2px 10px rgba(245,184,61,.35); }
+  /* 🤖 botovi · ⏱️ igra · 🛣️ staza (kao uloga u LoL-u): natpis lijevo, gumbi popune red */
+  #diffTabs, #modeTabs, #laneTabs{ display:flex; flex-wrap:wrap; gap:5px; align-items:center; color:var(--txt3); font-size:11.5px; font-weight:800; }
+  #diffTabs > span, #modeTabs > span, #laneTabs > span{ flex:none; width:78px; text-align:left; text-transform:uppercase; letter-spacing:.05em; white-space:nowrap; }
+  #diffTabs button, #modeTabs button, #laneTabs button{ flex:1 1 auto; font-family:inherit; font-size:13px; font-weight:800; white-space:nowrap; cursor:pointer;
+    border:1px solid var(--line); border-radius:10px; padding:6px 10px; background:rgba(255,255,255,.05); color:var(--txt2);
+    transition:background .15s, color .15s, border-color .15s, box-shadow .15s; }
+  #diffTabs button:hover, #modeTabs button:hover, #laneTabs button:hover{ background:rgba(255,255,255,.11); color:#fff; }
+  #modeTabs button.on, #laneTabs button.on, #diffTabs button.on[data-d="normal"]{ background:var(--goldFace); color:var(--brown); border-color:#fff1a8;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.55), 0 2px 10px rgba(245,184,61,.3); }
+  #diffTabs button.on[data-d="easy"]{ background:linear-gradient(180deg, #34a065, #1d6a3d); color:#effff4; border-color:#7ee9a8; box-shadow:0 2px 10px rgba(74,222,128,.28); }
+  #diffTabs button.on[data-d="hard"]{ background:linear-gradient(180deg, #e2504f, #a51f29); color:#fff3f3; border-color:#ffa3a3; box-shadow:0 2px 10px rgba(248,113,113,.32); }
+  #modeTabs button.on[data-m="turbo"]{ background:linear-gradient(180deg, #ffc247, #ee8612); border-color:#ffe6a0; box-shadow:inset 0 1px 0 rgba(255,255,255,.5), 0 0 14px rgba(251,191,36,.55); }
+  #diffTabs.mpOff, #modeTabs.mpOff{ opacity:.45; pointer-events:none; }
+  #diffTabs.mpOff::after{ content:"(s prijateljem su botovi normalni)"; flex:1 0 100%; font-size:11px; font-weight:600; text-align:center; }
+  /* 🦁 mreža junaka kao u Doti: položene kartice (6 × 5), a visina reda se prilagodi visini prozora tako da svih 30 stane
+     bez klizanja (--fix = sve ostalo na ekranu po visini; --extra = otvorena ploča „S prijateljem”) */
+  #select{ --fix:393px; --extra:0px; }
+  #select:has(#mpBox:not(.hidden)){ --extra:118px; }
+  #select:has(#mpBox:not(.hidden)) .hint{ display:none; }
+  #cards{ --cw:88px; --rows:5; --room:max(190px, calc(var(--vh) - var(--fix) - var(--extra)));
+    --ch:clamp(54px, calc((var(--room) - 12px - (var(--rows) - 1) * 8px) / var(--rows)), var(--cw));
+    display:grid; grid-template-columns:repeat(6, var(--cw)); grid-auto-rows:var(--ch); gap:8px; align-content:start;
+    flex:1 1 0; min-height:min(var(--room), calc(var(--rows) * (var(--ch) + 8px) + 4px)); overflow-y:auto; padding:6px; }
+  /* kartica junaka: portret preko cijele kartice, ime na dnu preko slike */
+  .card{ position:relative; overflow:hidden; background:var(--ink3); border-radius:13px; cursor:pointer;
+    box-shadow:0 0 0 1px rgba(255,255,255,.11), 0 6px 14px rgba(0,0,0,.36); transition:transform .16s var(--ease), box-shadow .16s; }
+  .card:hover{ transform:translateY(-3px); box-shadow:0 0 0 1px var(--gline2), 0 12px 22px rgba(0,0,0,.5); }
+  .card.sel{ transform:translateY(-2px); box-shadow:0 0 0 2px var(--gold), 0 0 20px rgba(253,224,71,.5), 0 10px 20px rgba(0,0,0,.5); }
   .card.off{ display:none; }
-  .c-emoji{ font-size:40px; }
-  .c-img{ width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:10px; display:block; }
-  .c-name{ font-size:13px; font-weight:bold; color:#7c2d12; margin-top:3px; white-space:nowrap; overflow:hidden; }
-  .c-type{ position:absolute; top:8px; right:8px; font-size:13px; background:rgba(255,251,235,.92);
-    border-radius:50%; width:22px; height:22px; line-height:22px; box-shadow:0 1px 3px rgba(0,0,0,.3); }
-  .detail{ width:340px; background:rgba(255,251,235,.96); border-radius:18px; padding:14px;
-    text-align:left; color:#431407; font-size:14px; box-shadow:0 6px 0 rgba(0,0,0,.25); display:flex; flex-direction:column; gap:10px; }
-  .d-top{ display:flex; align-items:center; gap:8px; }
-  .d-model{ width:150px; height:170px; flex:none; display:flex; align-items:center; justify-content:center;
-    background:radial-gradient(circle at 50% 70%, rgba(245,158,11,.22), transparent 70%); border-radius:14px; }
-  .d-3d{ width:150px; height:170px; }
-  .d-img{ width:110px; height:110px; object-fit:cover; border-radius:50%; border:3px solid #f59e0b; }
-  .d-head{ font-size:26px; line-height:1.1; }
-  .d-role{ color:#9a3412; font-size:13px; margin:4px 0 8px; }
-  .chip{ display:inline-block; border-radius:8px; padding:3px 9px; font-size:12px; font-weight:bold; color:#fff; margin:0 4px 4px 0; }
-  .chipM{ background:#ea580c; }
-  .chipR{ background:#0d9488; }
-  .chipP{ background:#7c3aed; }
-  .chipD0{ background:#15803d; } .chipD1{ background:#a16207; } .chipD2{ background:#b91c1c; }
-  .c-easy{ position:absolute; top:8px; left:8px; font-size:11px; line-height:1; filter:drop-shadow(0 1px 1px rgba(0,0,0,.4)); }
-  .d-abils{ display:flex; gap:6px; }
-  .ab{ position:relative; flex:1; font-family:inherit; font-size:24px; background:#fef3c7; border:2px solid #fcd34d;
-    border-radius:12px; padding:6px 0 4px; cursor:pointer; transition:transform .1s; }
+  .c-emoji{ height:100%; display:flex; align-items:center; justify-content:center; font-size:34px; padding-bottom:12px; }
+  .c-img{ width:100%; height:100%; object-fit:cover; object-position:50% 20%; display:block; transition:transform .25s var(--ease), filter .2s; filter:saturate(.94) brightness(.95); }
+  .card:hover .c-img, .card.sel .c-img{ transform:scale(1.06); filter:none; }
+  .c-name{ position:absolute; left:0; right:0; bottom:0; padding:16px 4px 4px; font-size:12.5px; font-weight:800; color:#fff; white-space:nowrap; overflow:hidden;
+    text-overflow:ellipsis; background:linear-gradient(180deg, transparent, rgba(6,8,12,.88) 64%); text-shadow:0 1px 2px #000; pointer-events:none; }
+  .card.sel .c-name{ color:var(--gold); }
+  .c-type{ position:absolute; top:5px; right:5px; width:20px; height:20px; line-height:20px; font-size:11px; border-radius:50%;
+    background:rgba(8,11,16,.78); box-shadow:0 0 0 1px var(--gline); }
+  .c-easy{ position:absolute; top:6px; left:6px; font-size:10px; line-height:1; filter:drop-shadow(0 1px 1px rgba(0,0,0,.5)); }
+  .c-wins{ position:absolute; right:4px; bottom:23px; font-size:10.5px; font-weight:800; color:var(--gold); background:rgba(8,11,16,.80);
+    border-radius:8px; padding:0 5px; box-shadow:0 0 0 1px var(--gline); }
+  /* ploča odabranog junaka: visoka kao popis junaka, opis moći popuni ostatak (ploča ne skače kad je opis dug) */
+  .detail{ width:400px; min-width:300px; border-radius:20px; padding:14px; text-align:left; color:var(--txt); font-size:14px;
+    display:flex; flex-direction:column; gap:10px; }
+  .detail:empty{ align-items:center; justify-content:center; }
+  .detail:empty::before{ content:"👈 Odaberi junaka"; color:var(--txt3); font-size:18px; font-weight:800; }
+  .d-top{ display:flex; align-items:center; gap:12px; }
+  .d-model{ width:180px; height:204px; flex:none; display:flex; align-items:center; justify-content:center; border-radius:16px; overflow:hidden;
+    background:radial-gradient(ellipse 72% 24% at 50% 90%, rgba(253,224,71,.30), transparent 72%),
+      radial-gradient(circle at 50% 32%, rgba(104,150,235,.26), transparent 66%), linear-gradient(180deg, #1d2738, #0c1017);
+    box-shadow:inset 0 0 0 1px var(--line), inset 0 -34px 40px rgba(0,0,0,.34); }
+  .d-3d{ width:180px; height:204px; }
+  .d-img{ width:120px; height:120px; object-fit:cover; border-radius:50%; border:2px solid var(--gold3); box-shadow:0 0 0 5px rgba(253,224,71,.13), 0 8px 20px rgba(0,0,0,.5); }
+  .d-head{ font-size:26px; line-height:1.12; font-weight:900; }
+  .d-head b{ background:var(--goldText); -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent; }
+  .d-role{ color:var(--txt2); font-size:13px; line-height:1.35; margin:5px 0 9px; }
+  .chip{ display:inline-block; border:1px solid transparent; border-radius:999px; padding:3px 10px; font-size:11.5px; font-weight:800; margin:0 4px 5px 0; }
+  .chipM{ background:rgba(234,88,12,.20); color:#ffc7a3; border-color:rgba(251,146,60,.6); }
+  .chipR{ background:rgba(13,148,136,.22); color:#a5f7e9; border-color:rgba(45,212,191,.55); }
+  .chipP{ background:rgba(124,58,237,.24); color:#e0d4ff; border-color:rgba(167,139,250,.6); }
+  .chipD0{ background:rgba(22,163,74,.22); color:#bbf7d0; border-color:rgba(74,222,128,.55); }
+  .chipD1{ background:rgba(202,138,4,.22); color:#fde68a; border-color:rgba(250,204,21,.55); }
+  .chipD2{ background:rgba(220,38,38,.24); color:#fecaca; border-color:rgba(248,113,113,.6); }
+  .d-abils{ display:flex; gap:7px; padding-top:7px; }
+  .ab{ position:relative; flex:1; font-family:inherit; font-size:22px; color:var(--txt); background:linear-gradient(180deg, #252d3b, #151a23); border:1px solid #3a4352;
+    border-radius:12px; padding:7px 0 5px; cursor:pointer; transition:transform .14s var(--ease), border-color .14s, box-shadow .14s; }
   .ab:hover{ transform:translateY(-2px); }
-  .ab.on{ background:#fde68a; border-color:#d97706; }
-  .ab.pas{ background:#d1fae5; border-color:#34d399; }
-  .ab.pas.on{ background:#a7f3d0; border-color:#059669; }
-  .ab.ult{ background:#ede9fe; border-color:#a78bfa; }
-  .ab.ult.on{ background:#ddd6fe; border-color:#7c3aed; }
-  .ab-img{ display:block; width:34px; height:34px; margin:0 auto; border-radius:8px; object-fit:cover; box-shadow:0 1px 3px rgba(0,0,0,.35); }   /* v0.55 ikone moći */
+  .ab.on{ border-color:var(--gold); box-shadow:0 0 0 1px var(--gold), 0 0 16px rgba(253,224,71,.36); }
+  .ab.pas{ border-color:rgba(52,211,153,.5); }
+  .ab.pas.on{ border-color:#34d399; box-shadow:0 0 0 1px #34d399, 0 0 16px rgba(52,211,153,.36); }
+  .ab.ult{ border-color:rgba(167,139,250,.6); }
+  .ab.ult.on{ border-color:#a78bfa; box-shadow:0 0 0 1px #a78bfa, 0 0 16px rgba(167,139,250,.42); }
+  .ab-img{ display:block; width:38px; height:38px; margin:0 auto; border-radius:8px; object-fit:cover; box-shadow:0 1px 3px rgba(0,0,0,.5); }   /* v0.55 ikone moći */
   .tipAbImg{ width:100%; height:100%; border-radius:6px; object-fit:cover; display:block; }
-  .ab-k{ position:absolute; top:-7px; left:50%; transform:translateX(-50%); font-size:10.5px; font-weight:bold;
-    color:#fff; background:#92400e; border-radius:6px; padding:0 5px; }
-  .ab.pas .ab-k{ background:#059669; }
-  .ab.ult .ab-k{ background:#7c3aed; }
-  .d-sum{ display:flex; align-items:center; gap:5px; margin-top:8px; flex-wrap:wrap; }
-  .d-sumL{ width:100%; font-size:12px; font-weight:bold; color:#92400e; margin-bottom:1px; }
-  .d-sumL b{ background:#fde68a; border-radius:4px; padding:0 4px; }
-  .sumb{ position:relative; width:34px; height:34px; border-radius:50%; border:2px solid #d6c08a; background:#fffbeb; font-size:19px; cursor:pointer; padding:0; opacity:.6; transition:all .12s; }
-  .sumb:hover{ opacity:1; transform:scale(1.08); }
-  .sumb.on{ opacity:1; border-color:#f59e0b; background:#fde68a; box-shadow:0 0 0 2px rgba(245,158,11,.35); }
-  .sumb i{ position:absolute; right:-4px; bottom:-4px; font-style:normal; font-size:10px; font-weight:bold; color:#fff; background:#b45309; border-radius:4px; padding:0 3px; line-height:13px; }
+  .ab-k{ position:absolute; top:-8px; left:50%; transform:translateX(-50%); min-width:19px; font-size:10.5px; font-weight:900; line-height:15px;
+    color:var(--gold2); background:#0d1118; border:1px solid var(--gline2); border-radius:6px; padding:0 4px; }
+  .ab.pas .ab-k{ color:#a7f3d0; border-color:rgba(52,211,153,.65); }
+  .ab.ult .ab-k{ color:#ddd6fe; border-color:rgba(167,139,250,.75); }
+  .d-sum{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .d-sumL{ width:100%; font-size:11px; font-weight:800; color:var(--txt3); text-transform:uppercase; letter-spacing:.05em; margin-bottom:1px; }
+  .d-sumL b{ color:var(--gold2); background:#0d1118; border:1px solid var(--gline); border-radius:5px; padding:0 5px; margin-left:2px; }
+  .sumb{ position:relative; width:38px; height:38px; border-radius:50%; border:1px solid #3a4352; background:radial-gradient(circle at 50% 28%, #2c3545, #141922);
+    font-size:19px; cursor:pointer; padding:0; opacity:.6; transition:all .14s; }
+  .sumb:hover{ opacity:1; transform:scale(1.08); border-color:var(--gline2); }
+  .sumb.on{ opacity:1; border-color:var(--gold); box-shadow:0 0 0 2px rgba(253,224,71,.26), 0 0 14px rgba(253,224,71,.3); }
+  .sumb i{ position:absolute; right:-4px; bottom:-4px; font-style:normal; font-size:10px; font-weight:900; color:var(--brown); background:var(--goldFace);
+    border-radius:5px; padding:0 4px; line-height:14px; }
   .sumb i:empty{ display:none; }
-  .d-desc{ background:#fef3c7; border-radius:12px; padding:9px 11px; font-size:13px; line-height:1.4; min-height:76px; }
-  .d-desc b{ font-size:14px; }
-  .ultTag{ background:#a855f7; color:#fff; border-radius:7px; padding:1px 7px; font-size:10.5px; font-weight:bold; }
-  .pasTag{ background:#059669; color:#fff; border-radius:7px; padding:1px 7px; font-size:10.5px; font-weight:bold; }
+  .d-desc{ flex:1 1 86px; min-height:86px; overflow-y:auto; background:var(--well); border:1px solid var(--line); border-radius:12px; padding:9px 12px;
+    font-size:13px; line-height:1.45; color:#d9dfe9; }
+  .d-desc b{ font-size:14.5px; color:#fff; }
+  .d-desc > .ab-img{ display:inline-block; width:26px; height:26px; vertical-align:middle; margin:0 4px 3px 0; }
+  .ultTag, .pasTag{ display:inline-block; border-radius:999px; padding:1px 8px; font-size:10px; font-weight:800; letter-spacing:.03em; vertical-align:1px; }
+  .ultTag{ background:rgba(168,85,247,.26); color:#ecdcff; border:1px solid rgba(192,132,252,.62); }
+  .pasTag{ background:rgba(5,150,105,.26); color:#b4f5d8; border:1px solid rgba(52,211,153,.58); }
   .btnRow{ display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap; }
-  .bigBtn{ font-family:inherit; font-size:28px; font-weight:bold; color:#431407;
-    background:linear-gradient(#fde047,#f59e0b); border:none; border-radius:18px; padding:12px 50px;
-    cursor:pointer; box-shadow:0 6px 0 #b45309; transition:transform .1s; }
-  .bigBtn:hover:not(:disabled){ transform:scale(1.05); }
-  .bigBtn:active:not(:disabled){ transform:translateY(4px); box-shadow:0 2px 0 #b45309; }
-  .bigBtn:disabled{ filter:grayscale(.8); cursor:not-allowed; opacity:.6; }
-  .rndBtn, .ghostBtn{ font-family:inherit; font-size:17px; font-weight:bold; color:#fff; border:none; border-radius:14px;
-    padding:12px 18px; cursor:pointer; transition:transform .1s; }
-  .rndBtn{ background:linear-gradient(#a855f7,#7c3aed); box-shadow:0 5px 0 #5b21b6; }
-  .ghostBtn{ background:linear-gradient(#0ea5e9,#0369a1); box-shadow:0 5px 0 #075985; }
-  .talTree{ margin-top:4px; display:flex; flex-direction:column; gap:3px; font-size:12.5px; }
+  .bigBtn{ font-size:24px; letter-spacing:.05em; border-radius:16px; padding:11px 52px 13px; white-space:nowrap; }
+  .bigBtn:disabled{ filter:grayscale(.85) brightness(.82); cursor:not-allowed; opacity:.6; }
+  .rndBtn, .ghostBtn, .achBtn{ font-size:16px; border-radius:14px; padding:13px 18px; }
+  .ghostBtn.on{ border-color:#7dd3fc; color:#e0f2fe; box-shadow:var(--shBtn), 0 0 16px rgba(56,189,248,.38); }
+  .talTree{ margin-top:3px; display:flex; flex-direction:column; gap:3px; font-size:11.5px; }
   .talRow{ display:flex; align-items:center; gap:5px; }
-  .talL{ flex:none; width:26px; height:20px; line-height:20px; text-align:center; border-radius:6px; background:#b45309; color:#fff; font-weight:bold; font-size:12px; }
-  .talO{ flex:1; display:flex; align-items:center; gap:6px; padding:2px 6px 2px 2px; border-radius:6px; background:rgba(255,255,255,.55); border:1px solid #d6c08a; line-height:1.25; }
-  .talIc{ flex:none; width:26px; height:26px; border-radius:5px; border:1.5px solid #b45309; object-fit:cover; }
-  .talRow i{ font-style:normal; font-size:10.5px; color:#92400e; }
-  .achBtn{ font-family:inherit; font-size:17px; font-weight:bold; color:#fff; border:none; border-radius:14px; padding:12px 18px; cursor:pointer;
-    background:linear-gradient(#f59e0b,#b45309); box-shadow:0 5px 0 #78350f; }
-  .achBtn:hover{ transform:scale(1.06); }
-  .c-wins{ position:absolute; bottom:30px; right:6px; font-size:11px; font-weight:bold; color:#78350f; background:rgba(254,243,199,.95); border-radius:8px; padding:1px 5px; }
-  #achPanel{ z-index:60; }
-  .achBox{ background:#fffbeb; border:4px solid #f59e0b; border-radius:22px; padding:18px 22px; width:min(760px, 94vw); max-height:88vh; overflow-y:auto; color:#422006; box-shadow:0 12px 40px rgba(0,0,0,.5); }
-  .achBox h2{ text-align:center; color:#b45309; margin-bottom:6px; }
-  .achSum{ text-align:center; font-size:14px; margin-bottom:12px; color:#78350f; }
-  .achGrid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:8px; }
+  .talL{ flex:none; width:26px; height:20px; line-height:20px; text-align:center; border-radius:6px; background:var(--goldFace); color:var(--brown); font-weight:900; font-size:11.5px; }
+  .talO{ flex:1; display:flex; align-items:center; gap:5px; padding:2px 5px 2px 2px; border-radius:7px; background:rgba(255,255,255,.05); border:1px solid var(--line);
+    line-height:1.2; color:#e6ebf2; }
+  .talIc{ flex:none; width:24px; height:24px; border-radius:5px; border:1px solid var(--gline2); object-fit:cover; }
+  .talRow i{ font-style:normal; font-size:10.5px; color:var(--txt3); }
+  /* 🏆 postignuća i nagrade */
+  #achPanel{ z-index:60; background:rgba(5,8,12,.80); padding:14px; }
+  .achBox{ background:var(--glass); border:1px solid var(--gline); border-radius:20px; padding:20px 24px; width:min(820px, 100%); max-height:calc(var(--vh) - 28px);
+    overflow-y:auto; color:var(--txt); box-shadow:var(--shModal); }
+  .achBox h2{ text-align:center; color:var(--gold2); font-size:26px; font-weight:900; margin-bottom:6px; text-shadow:0 2px 4px rgba(0,0,0,.5); }
+  .achSum{ text-align:center; font-size:14px; margin-bottom:14px; color:var(--txt2); }
+  .achGrid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:8px; }
   /* 🎁 nagrade (v0.45) */
-  .cosBox{ background:linear-gradient(180deg, #fef3c7, #fde68a55); border:2px solid #f59e0b; border-radius:16px; padding:10px 12px; margin:0 0 12px; }
-  .cosBox h3{ text-align:center; color:#92400e; font-size:17px; margin-bottom:6px; }
-  .cosRow{ margin-top:6px; }
-  .cosT{ font-size:13px; font-weight:bold; color:#78350f; margin-bottom:4px; text-align:left; }
-  .cosGrid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(84px, 1fr)); gap:6px; }
-  .cosItem{ font-family:inherit; display:flex; flex-direction:column; align-items:center; gap:1px; padding:6px 4px; border-radius:12px; cursor:pointer;
-    background:#fffbeb; border:2px solid #e7d3a1; color:#422006; transition:transform .1s; }
+  .cosBox{ background:var(--well); border:1px solid var(--gline); border-radius:16px; padding:12px 14px; margin:0 0 14px; }
+  .cosBox h3{ text-align:center; color:var(--gold2); font-size:16px; margin-bottom:4px; }
+  .cosRow{ margin-top:8px; }
+  .cosT{ font-size:11px; font-weight:800; color:var(--txt3); text-transform:uppercase; letter-spacing:.05em; margin-bottom:5px; text-align:left; }
+  .cosGrid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(82px, 1fr)); gap:6px; }
+  .cosItem{ font-family:inherit; display:flex; flex-direction:column; align-items:center; gap:1px; padding:7px 4px; border-radius:12px; cursor:pointer;
+    background:linear-gradient(180deg, #252d3b, #151a23); border:1px solid #3a4352; color:var(--txt); transition:transform .14s var(--ease), border-color .14s; }
   .cosItem b{ font-size:24px; line-height:1.1; }
-  .cosItem span{ font-size:11.5px; font-weight:bold; }
-  .cosItem small{ font-size:9.5px; color:#78716c; line-height:1.15; }
-  .cosItem:hover:not(.lock){ transform:scale(1.06); border-color:#f59e0b; }
-  .cosItem.on{ background:linear-gradient(#fde047, #f59e0b); border-color:#b45309; box-shadow:0 0 0 2px #fde047, 0 3px 8px rgba(180,83,9,.4); }
-  .cosItem.lock{ opacity:.55; cursor:default; background:#f5f5f4; }
+  .cosItem span{ font-size:11.5px; font-weight:800; }
+  .cosItem small{ font-size:9.5px; color:var(--txt3); line-height:1.15; }
+  .cosItem:hover:not(.lock){ transform:translateY(-2px); border-color:var(--gline2); }
+  .cosItem.on{ background:linear-gradient(180deg, rgba(253,224,71,.28), rgba(245,158,11,.13)); border-color:var(--gold); box-shadow:0 0 0 1px var(--gold), 0 0 14px rgba(253,224,71,.3); }
+  .cosItem.on span{ color:var(--gold); }
+  .cosItem.lock{ opacity:.45; cursor:default; }
   .achGift{ border-color:#f472b6; color:#fbcfe8; background:linear-gradient(180deg, #831843, #500724); box-shadow:0 0 14px rgba(244,114,182,.55); }
-  .d-stats{ margin-top:8px; font-size:12px; color:#78350f; background:rgba(245,158,11,.12); border-radius:10px; padding:5px 8px; line-height:1.35; }
-  .achItem{ display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:12px; background:#f5f5f4; border:2px solid #e7e5e4; opacity:.65; }
-  .achItem.on{ background:#fef3c7; border-color:#f59e0b; opacity:1; }
+  .d-stats{ font-size:12px; color:var(--txt2); background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:10px; padding:6px 10px; line-height:1.4; }
+  .d-stats b{ color:var(--gold2); }
+  .achItem{ display:flex; align-items:center; gap:10px; padding:9px 11px; border-radius:12px; background:rgba(255,255,255,.035); border:1px solid var(--line); opacity:.55; }
+  .achItem.on{ background:linear-gradient(90deg, rgba(253,224,71,.17), rgba(253,224,71,.04)); border-color:var(--gline2); opacity:1; }
   .achItem b{ font-size:26px; }
   .achItem span{ display:flex; flex-direction:column; text-align:left; }
-  .achItem small{ font-size:11.5px; color:#78716c; }
-  .achClose{ display:block; margin:14px auto 0; font-family:inherit; font-size:16px; font-weight:bold; border:none; background:#f59e0b; color:#fff; padding:8px 24px; border-radius:12px; cursor:pointer; box-shadow:0 4px 0 #b45309; }
+  .achItem strong{ font-size:14px; color:#fff; }
+  .achItem.on strong{ color:var(--gold); }
+  .achItem small{ font-size:11.5px; color:var(--txt3); }
+  .achClose{ display:block; margin:16px auto 0; font-size:16px; border-radius:13px; padding:9px 28px 10px; }
   .achNew{ display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:6px; margin:0 0 8px; }
   .achNewT{ font-weight:bold; color:#fde047; font-size:15px; text-shadow:0 2px 3px #000; margin-right:4px; }
   .achBadge{ display:flex; align-items:center; gap:6px; padding:4px 12px 4px 8px; border-radius:20px; color:#fde68a; font-weight:bold; font-size:13px;
     background:linear-gradient(180deg, #78350f, #451a03); border:2px solid #fbbf24; box-shadow:0 0 14px rgba(251,191,36,.5); opacity:0; animation:achPop .6s ease-out forwards; }
   .achBadge b{ font-size:20px; line-height:1; }
   @keyframes achPop{ 0%{ opacity:0; transform:scale(.3) rotate(-8deg); } 70%{ opacity:1; transform:scale(1.15) rotate(3deg); } 100%{ opacity:1; transform:scale(1) rotate(0); } }
-  .fsBtn{ position:absolute; top:10px; right:12px; z-index:5; width:44px; height:40px; font-size:22px; line-height:1; cursor:pointer;
-    color:#fde68a; background:linear-gradient(#3b2f1c,#1f1810); border:2px solid #b8860b; border-radius:10px; box-shadow:0 3px 0 #000a; }
-  .fsBtn:hover{ transform:scale(1.08); border-color:#fde047; }
-  .ghostBtn.on{ background:linear-gradient(#38bdf8,#0ea5e9); }
-  .rndBtn:hover, .ghostBtn:hover{ transform:scale(1.06); }
-  #select .hint{ color:#a7f3d0; font-size:13px; }
-  #select .hint kbd{ font-family:inherit; font-weight:bold; background:rgba(255,255,255,.14); border-radius:6px; padding:0 6px; color:#fef3c7; }
-  @media (max-width: 880px){
+  .fsBtn, .selBack{ position:absolute; top:10px; z-index:5; width:42px; height:42px; font-size:20px; line-height:1; color:var(--gold2); border-radius:12px; }
+  .fsBtn{ right:12px; }
+  .selBack{ left:12px; }
+  #select .hint{ color:var(--txt3); font-size:12.5px; text-shadow:0 1px 3px rgba(0,0,0,.6); }
+  #select .hint kbd{ font-family:inherit; font-weight:800; font-size:11.5px; color:#f3ead2; background:linear-gradient(180deg, #2c3545, #171c26);
+    border:1px solid #3d4757; border-bottom-width:2px; border-radius:6px; padding:0 6px; }
+  @media (min-width: 1500px) and (min-height: 900px){   /* 🖥️ veliki zaslon: veći portreti (svih 30 junaka stane bez klizanja) i veći 3D pregled */
+    #cards{ --cw:108px; }
+    .c-name{ font-size:13.5px; }
+    .detail{ width:430px; font-size:15px; }
+    .d-top{ flex-direction:column; align-items:stretch; gap:10px; }   /* junak na širokoj pozornici, ime i značke ispod */
+    .d-model{ width:100%; height:272px; }
+    .d-3d{ width:240px; height:272px; }
+    .d-img{ width:180px; height:180px; }
+    .d-head{ font-size:30px; }
+    .d-role{ margin:4px 0 8px; }
+    .d-desc{ font-size:14px; }
+  }
+  @media (min-width: 2200px) and (min-height: 1250px){   /* 🖥️ 1440p i veći: još veće kartice, ploča i pozornica */
+    #select{ --fix:436px; }
+    #select h1{ font-size:42px; }
+    #cards{ --cw:132px; }
+    .c-name{ font-size:15px; padding-bottom:6px; }
+    .c-type{ width:24px; height:24px; line-height:24px; font-size:13px; }
+    #roleTabs button{ font-size:16px; padding:8px 20px; }
+    #diffTabs button, #modeTabs button, #laneTabs button{ font-size:15px; padding:8px 12px; }
+    #diffTabs > span, #modeTabs > span, #laneTabs > span{ width:92px; font-size:13px; }
+    .detail{ width:520px; font-size:16px; }
+    .d-model{ height:340px; }
+    .d-3d{ width:300px; height:340px; }
+    .d-img{ width:220px; height:220px; }
+    .d-head{ font-size:36px; }
+    .d-role{ font-size:15px; }
+    .chip{ font-size:13px; padding:4px 12px; }
+    .ab-img{ width:48px; height:48px; }
+    .d-desc{ font-size:15px; }
+    .talTree{ font-size:13.5px; }
+    .bigBtn{ font-size:28px; padding:13px 60px 15px; }
+    .rndBtn, .ghostBtn, .achBtn{ font-size:18px; padding:15px 22px; }
+  }
+  .detail:has(.d-desc .talTree) .d-stats{ display:none; }   /* dok gledaš talente (najduži opis), red sa statistikom im ustupi mjesto */
+  .d-desc:has(.talTree){ padding-top:6px; padding-bottom:6px; }
+  @media (max-height: 800px){   /* 💻 niži prozor: manja pozornica; s otvorenom pločom „S prijateljem” sve i dalje stane na ekran */
+    .d-model, .d-3d{ width:141px; height:160px; }
+    #select:has(#mpBox:not(.hidden)){ --extra:0px; }   /* botovi i brza igra ionako ne vrijede s prijateljem — njihovi redovi ustupe mjesto ploči */
+    #select:has(#mpBox:not(.hidden)) :is(.sub, .d-stats, #diffTabs, #modeTabs){ display:none; }
+  }
+  @media (max-width: 1080px){
+    #cards{ --rows:6; grid-template-columns:repeat(5, var(--cw)); }
+    .detail{ width:350px; }
+    .d-model, .d-3d{ width:150px; height:170px; }
+  }
+  @media (max-width: 900px){
     .selWrap{ flex-direction:column; align-items:center; }
-    #cards{ grid-template-columns:repeat(auto-fill, 80px); width:min(92vw, 470px); max-height:36vh; }
-    .detail{ width:min(92vw, 470px); }
-    #select h1{ font-size:30px; }
-    .btnRow{ position:sticky; bottom:6px; z-index:3; background:rgba(8,20,16,.82); padding:8px 10px; border-radius:16px; }
-    .bigBtn{ font-size:22px; padding:10px 30px; }
-    .rndBtn, .ghostBtn{ font-size:20px; padding:9px 13px; }
+    #cards{ --ch:60px; flex:none; min-height:0; grid-template-columns:repeat(auto-fill, minmax(76px, 1fr)); width:min(92vw, 470px); max-height:36vh; }
+    .detail{ width:min(calc(92vw + 26px), 496px); }
+    .d-desc{ flex:none; overflow:visible; }
+    #select h1{ font-size:26px; }
+    .btnRow{ position:sticky; bottom:6px; z-index:3; flex-wrap:nowrap; padding:8px 10px; border-radius:18px;
+      background:rgba(9,12,18,.90); border:1px solid var(--gline); box-shadow:0 10px 30px rgba(0,0,0,.5); }
+    .bigBtn{ font-size:20px; padding:10px 28px 12px; }
+    .rndBtn, .ghostBtn, .achBtn{ font-size:19px; padding:10px 13px; }
     .lbl{ display:none; }
-    .btnRow{ flex-wrap:nowrap; }
   }
-  @media (max-height: 640px){
-    #select h1{ font-size:28px; }
-    #cards{ max-height:46vh; }
-    .d-model, .d-3d{ width:120px; height:136px; }
+  @media (max-height: 700px){ .d-model, .d-3d{ width:120px; height:136px; } }
+  @media (max-height: 640px){ #select h1{ font-size:24px; } }
+  @media (max-width: 480px){   /* 📱 uski mobitel: gumbi stanu u jedan red, podnaslov je manji */
+    #select .sub{ font-size:12.5px; }
+    .bigBtn{ font-size:19px; padding:10px 18px 12px; }
+    .rndBtn, .ghostBtn, .achBtn{ padding:10px 11px; }
+    .btnRow{ gap:8px; }
   }
+  @media (max-width: 900px) and (max-height: 640px){ #cards{ max-height:46vh; } }
 
   /* ---------- multiplayer lobby ---------- */
-  #mpBox{ background:rgba(8,28,21,.55); border:2px solid rgba(125,211,252,.35);
-    border-radius:16px; padding:10px 18px; max-width:760px; }
-  .mpTitle{ color:#7dd3fc; font-size:13.5px; font-weight:bold; margin-bottom:7px; }
+  #mpBox{ border-color:rgba(125,211,252,.42); border-radius:16px; padding:12px 18px; max-width:760px; }
+  .mpTitle{ color:#7dd3fc; font-size:13.5px; font-weight:800; margin-bottom:8px; }
   .mpRow{ display:flex; align-items:center; justify-content:center; gap:9px; flex-wrap:wrap; }
-  .mpBtn{ font-family:inherit; font-size:14px; font-weight:bold; border:none; border-radius:11px;
-    padding:8px 16px; background:#0ea5e9; color:#fff; cursor:pointer; box-shadow:0 3px 0 #0369a1; }
-  .mpBtn:hover{ background:#38bdf8; }
-  .mpOr{ color:#94a3b8; font-size:12px; }
-  #mpCode{ font-family:inherit; width:86px; text-align:center; font-size:17px; font-weight:bold;
-    letter-spacing:3px; border:2px solid #0ea5e9; border-radius:10px; padding:6px; background:#0b1220;
-    color:#fde047; text-transform:uppercase; }
-  #mpCodeBig{ font-size:22px; font-weight:bold; color:#fde047; background:rgba(253,224,71,.12);
-    border:2px dashed #fde047; border-radius:10px; padding:4px 14px; letter-spacing:4px; }
-  #mpStatus{ margin-top:7px; color:#d1fae5; font-size:12.5px; }
+  .mpBtn{ font-family:inherit; font-size:14px; font-weight:800; border:1px solid #8bd8ff; border-radius:11px;
+    padding:8px 16px; background:linear-gradient(180deg, #2fa0e6, #156aa8); color:#fff; cursor:pointer;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.35), 0 4px 14px rgba(14,165,233,.3); transition:transform .14s var(--ease), filter .14s; }
+  .mpBtn:hover{ filter:brightness(1.12); transform:translateY(-1px); }
+  .mpOr{ color:var(--txt3); font-size:12px; }
+  #mpCode{ font-family:inherit; width:92px; text-align:center; font-size:17px; font-weight:900;
+    letter-spacing:3px; border:1px solid #38bdf8; border-radius:10px; padding:6px; background:#0b1220;
+    color:var(--gold); text-transform:uppercase; }
+  #mpCodeBig{ font-size:22px; font-weight:900; color:var(--gold); background:rgba(253,224,71,.10);
+    border:1px dashed var(--gold); border-radius:10px; padding:4px 14px; letter-spacing:4px; }
+  #mpStatus{ margin-top:8px; color:var(--txt2); font-size:12.5px; }
 
   /* ---------- pomoć ---------- */
-  #help{ background:rgba(8,28,21,.88); }
-  .helpBox{ background:#fffbeb; color:#431407; border-radius:20px; padding:26px 34px; max-width:580px;
-    text-align:left; font-size:16px; line-height:1.9; box-shadow:0 10px 30px rgba(0,0,0,.5); }
-  .helpBox h2{ text-align:center; color:#b45309; margin-bottom:10px; }
-  .helpBox b{ color:#9a3412; }
-  #helpClose{ margin-top:14px; font-family:inherit; font-size:18px; font-weight:bold; border:none;
-    background:#f59e0b; color:#fff; padding:8px 26px; border-radius:12px; cursor:pointer; box-shadow:0 4px 0 #b45309; }
+  #help{ background:rgba(5,8,12,.82); z-index:30; padding:14px; gap:12px; }
+  .helpBox{ width:min(1040px, 100%); max-height:calc(var(--vh) - 92px); overflow-y:auto; text-align:left; color:#d9dfe9; font-size:14.5px; line-height:1.75;
+    background:var(--glass); border:1px solid var(--gline); border-radius:20px; padding:20px 22px; box-shadow:var(--shModal); }
+  .helpBox h2{ text-align:center; color:var(--gold2); font-size:26px; font-weight:900; margin-bottom:12px; text-shadow:0 2px 4px rgba(0,0,0,.5); }
+  .helpBox b{ color:var(--gold2); }
+  /* v0.57: upute su kartice u dva stupca (znak + tekst), cilj igre je na vrhu, a popis novosti se otvara na klik */
+  .hGoal{ display:flex; align-items:center; gap:10px; padding:10px 14px; margin-bottom:12px; border-radius:14px; font-size:16px; font-weight:800; color:#fff; line-height:1.4;
+    background:linear-gradient(90deg, rgba(253,224,71,.20), rgba(253,224,71,.04)); border:1px solid var(--gline2); }
+  .hGrid{ columns:2 390px; column-gap:10px; }
+  .hRow{ break-inside:avoid; display:flex; gap:10px; padding:8px 11px; margin-bottom:8px; border-radius:12px; line-height:1.5;
+    background:rgba(255,255,255,.04); border:1px solid var(--line); }
+  .hIc{ flex:none; min-width:28px; font-size:20px; line-height:1.25; text-align:center; white-space:nowrap; }
+  .hNews{ margin-top:4px; }
+  .hNews > summary{ display:flex; align-items:center; gap:8px; cursor:pointer; list-style:none; font-weight:800; color:var(--gold2); padding:9px 14px; border-radius:12px;
+    background:rgba(255,255,255,.05); border:1px solid var(--gline); transition:background .15s; }
+  .hNews > summary::-webkit-details-marker{ display:none; }
+  .hNews > summary:hover{ background:rgba(255,255,255,.09); }
+  .hNews > summary::after{ content:""; margin-left:auto; width:8px; height:8px; border:solid currentColor; border-width:0 2px 2px 0; transform:rotate(45deg) translate(-2px, -2px); transition:transform .2s; }
+  .hNews[open] > summary::after{ transform:rotate(-135deg) translate(-2px, -2px); }
+  .hNews .hGrid{ margin-top:8px; columns:1; }
+  .hNews .hRow{ font-size:13.5px; }
+  .hVer{ flex:none; align-self:flex-start; min-width:46px; text-align:center; font-size:12px; font-weight:900; color:var(--brown); background:var(--goldFace); border-radius:8px; padding:1px 6px; margin-top:2px; }
+  #helpClose{ flex:none; font-size:17px; border-radius:13px; padding:9px 30px 11px; }
 
   /* ---------- dućan (v0.38: kategorije lijevo, kartice s imenom i cijenom, recept, torba) ---------- */
   #shop{ position:fixed; right:12px; top:84px; bottom:150px; width:min(980px, calc(100vw - 24px)); z-index:15; display:flex; flex-direction:column;
@@ -437,50 +585,60 @@
   #shopDetail #itemTipInline, .sdMain{ background:linear-gradient(180deg, #1b2029, #0e1116); border:1px solid #374151; border-radius:6px; overflow:hidden; font-size:12.5px; }
 
   /* ---------- pauza ---------- */
-  #pause{ background:rgba(8,28,21,.7); }
-  .pauseBox{ font-size:52px; font-weight:bold; color:#fde047; text-shadow:0 4px 14px rgba(0,0,0,.6); line-height:1.4; }
-  .pauseBox small{ font-size:20px; color:#d1fae5; }
+  #pause{ background:rgba(5,8,12,.62); }
+  .pauseBox{ font-size:44px; font-weight:900; letter-spacing:.06em; line-height:1.25; color:var(--gold2); text-shadow:0 3px 10px rgba(0,0,0,.6);
+    padding:26px 64px 24px; border-radius:22px; background:var(--glass); border:1px solid var(--gline2); box-shadow:var(--shModal); }
+  .pauseBox small{ display:block; margin-top:6px; font-size:16px; font-weight:700; letter-spacing:0; color:var(--txt2); text-shadow:none; }
 
   /* ---------- postavke ---------- */
-  #options{ background:rgba(8,12,18,.72); z-index:30; }
-  .optBox{ background:linear-gradient(180deg, rgba(30,36,46,.98), rgba(12,15,21,.98)); border:2px solid #6b5a35; border-radius:14px;
-    padding:20px 26px; width:min(460px, calc(100vw - 32px)); color:#e5e7eb; box-shadow:0 14px 40px rgba(0,0,0,.6); text-align:left;
-    max-height:calc(100vh - 20px); overflow-y:auto; }
-  .optBox h2{ text-align:center; color:#f3d48a; margin-bottom:12px; text-shadow:0 2px 4px #000; }
-  .optRow{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,.07); font-size:15px; }
-  .optRow small{ font-size:12px; opacity:.7; font-weight:normal; }
+  #options{ background:rgba(5,8,12,.74); z-index:30; }
+  .optBox{ background:linear-gradient(180deg, rgba(31,38,51,.98), rgba(11,14,20,.98)); border:1px solid var(--gline2); border-radius:18px;
+    padding:20px 24px; width:min(480px, calc(100vw - 28px)); color:var(--txt); box-shadow:var(--shModal); text-align:left;
+    max-height:calc(var(--vh) - 20px); overflow-y:auto; }
+  .optBox h2{ text-align:center; color:var(--gold2); font-weight:900; margin-bottom:12px; text-shadow:0 2px 4px #000; }
+  .optRow{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px solid var(--line); font-size:15px; font-weight:700; }
+  .optRow small{ font-size:12px; color:var(--txt3); font-weight:600; }
   .optCtl{ display:flex; align-items:center; gap:8px; }
-  .optCtl input{ width:150px; accent-color:#f59e0b; }
-  .optCtl b{ width:42px; text-align:right; color:#fde047; }
-  .optSeg{ display:flex; gap:3px; }
-  .optSeg button, .optTog{ font-family:inherit; font-size:13px; font-weight:bold; border:1px solid #4b5563; border-radius:8px; padding:6px 10px;
-    background:#1c2029; color:#9ca3af; cursor:pointer; }
-  .optSeg button.on{ background:linear-gradient(180deg, #4a3d22, #2a2316); color:#f3d48a; border-color:#a37f3c; }
-  .optTog{ min-width:122px; }
-  .optTog.on{ color:#bbf7d0; border-color:#16a34a; background:#14261a; }
-  .optHint{ margin:12px 0 4px; font-size:12.5px; color:#9ca3af; line-height:1.6; }
-  .optBtns{ display:flex; gap:10px; justify-content:center; margin-top:12px; flex-wrap:wrap; }
-  .optBtns button{ font-family:inherit; font-size:16px; font-weight:bold; border:none; border-radius:11px; padding:9px 20px; cursor:pointer; }
-  #optResume{ background:#f59e0b; color:#fff; box-shadow:0 4px 0 #b45309; }
-  #optQuit{ background:#334155; color:#e5e7eb; box-shadow:0 4px 0 #1e293b; }
+  .optCtl input{ width:150px; accent-color:#f5b83d; }
+  .optCtl b{ width:42px; text-align:right; color:var(--gold); }
+  .optSeg{ display:flex; gap:3px; padding:3px; border-radius:11px; background:var(--well); box-shadow:inset 0 0 0 1px var(--line); }
+  .optSeg button, .optTog{ font-family:inherit; font-size:13px; font-weight:800; cursor:pointer; transition:background .15s, color .15s, border-color .15s; }
+  .optSeg button{ border:none; border-radius:8px; padding:6px 10px; background:transparent; color:var(--txt2); }
+  .optSeg button:hover{ color:#fff; background:rgba(255,255,255,.07); }
+  .optSeg button.on{ background:var(--goldFace); color:var(--brown); box-shadow:inset 0 1px 0 rgba(255,255,255,.55); }
+  .optTog{ min-width:122px; border:1px solid #3d4757; border-radius:999px; padding:6px 12px; background:#171c26; color:var(--txt3); }
+  .optTog:hover{ border-color:var(--line2); color:#fff; }
+  .optTog.on{ color:#c9f9d8; border-color:#22c55e; background:linear-gradient(180deg, #1c3d29, #12261a); box-shadow:0 0 10px rgba(34,197,94,.22); }
+  .optHint{ margin:12px 0 4px; font-size:12.5px; color:var(--txt3); line-height:1.6; }
+  .optHint b{ color:var(--gold2); }
+  .optBtns{ display:flex; gap:10px; justify-content:center; margin-top:14px; flex-wrap:wrap; }
+  .optBtns button{ font-size:16px; border-radius:13px; padding:9px 22px 10px; }
 
   /* ---------- kraj igre ---------- */
-  #end{ background:rgba(8,28,21,.8); }   /* prozirnije: iza se vidi pobjednički ples junaka */
+  #end{ background:radial-gradient(ellipse at 50% 42%, rgba(7,10,16,.64), rgba(4,6,10,.88)); padding:12px; }
+  body:has(#end:not(.hidden)) #hud{ visibility:hidden; }   /* ploče igre ne proviruju kroz završni ekran (ostaje ples junaka) */
   #endHead{ display:contents; }          /* 📱 na niskom ekranu emoji i naslov idu u isti red */
-  #endEmoji{ font-size:56px; }
-  #end h1{ font-size:54px; text-shadow:0 5px 0 rgba(0,0,0,.4); margin:2px 0 12px; }
-  #endTable{ max-width:96vw; overflow-x:auto; flex-shrink:0; }   /* ne stišće se (inače sakrije retke) — radije se pomiče cijeli ekran */
-  #againBtn{ position:sticky; bottom:8px; z-index:2; }
-  .endT{ border-collapse:collapse; background:rgba(10,14,20,.82); border:1px solid #6b5a35; border-radius:10px; overflow:hidden; min-width:min(820px, 96vw); }
+  #endEmoji{ font-size:50px; line-height:1.1; }
+  #end h1{ font-size:56px; font-weight:900; letter-spacing:.06em; line-height:1.1; margin:0 0 12px;
+    background:linear-gradient(180deg, #ffe3e3 0%, #fda4a4 45%, #e04b4b 100%); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 3px 0 rgba(0,0,0,.5)) drop-shadow(0 0 22px rgba(248,113,113,.35)); }
+  #end.won h1{ background-image:var(--goldText); filter:drop-shadow(0 3px 0 rgba(84,40,6,.95)) drop-shadow(0 0 26px rgba(253,224,71,.45)); }
+  #endEmoji, #end h1, #endTable{ position:relative; z-index:1; }   /* konfeti padaju IZA tablice i naslova */
+  #endTable{ max-width:96vw; overflow-x:auto; flex-shrink:0; display:flex; flex-direction:column; align-items:center; }   /* ne stišće se (inače sakrije retke) — radije se pomiče cijeli ekran */
+  #againBtn{ position:sticky; bottom:8px; z-index:2; margin-top:10px; }
+  .endT{ border-collapse:separate; border-spacing:0; background:linear-gradient(180deg, rgba(27,33,45,.94), rgba(10,13,19,.95)); border:1px solid var(--gline);
+    border-radius:14px; overflow:hidden; min-width:min(860px, 96vw); box-shadow:var(--shPanel); }
   .endT th, .endT td{ padding:3px 12px; font-size:15px; color:#e5e7eb; text-align:center; white-space:nowrap; }
-  .endT .etTeam th{ text-align:left; font-size:17px; padding:8px 12px; letter-spacing:.5px; }
-  .endT .etTeam.t0 th{ background:linear-gradient(90deg, rgba(59,130,246,.45), transparent); color:#bfdbfe; }
-  .endT .etTeam.t1 th{ background:linear-gradient(90deg, rgba(239,68,68,.45), transparent); color:#fecaca; }
-  .etWin{ margin-left:10px; font-size:13px; color:#fde047; background:rgba(0,0,0,.35); border-radius:6px; padding:2px 8px; }
+  .endT td{ border-top:1px solid rgba(255,255,255,.05); }
+  .endT .etTeam th{ text-align:left; font-size:17px; font-weight:900; padding:8px 12px; letter-spacing:.5px; }
+  .endT .etTeam.t0 th{ background:linear-gradient(90deg, rgba(59,130,246,.50), rgba(59,130,246,.06)); color:#cfe2ff; }
+  .endT .etTeam.t1 th{ background:linear-gradient(90deg, rgba(239,68,68,.50), rgba(239,68,68,.06)); color:#ffd5d5; }
+  .etWin{ margin-left:10px; font-size:12.5px; color:var(--brown); background:var(--goldFace); border-radius:999px; padding:2px 10px; }
   .endT .etHead th{ font-size:11px; color:#c9b27a; text-transform:uppercase; letter-spacing:.6px; background:rgba(255,255,255,.04); }
-  .endT tr.etMe td{ background:rgba(253,224,71,.12); }
+  .endT tr.etMe td{ background:rgba(253,224,71,.13); }
+  .endT tr.etMe td:first-child{ box-shadow:inset 3px 0 0 var(--gold); }
   .etHero{ display:flex; align-items:center; gap:8px; text-align:left !important; }
-  .etHero img{ width:30px; height:30px; border-radius:6px; object-fit:cover; border:1px solid rgba(255,255,255,.2); }
+  .etHero img{ width:30px; height:30px; border-radius:7px; object-fit:cover; border:1px solid rgba(255,255,255,.22); }
   .etAw{ font-style:normal; margin-left:4px; cursor:help; }
   .etMine{ color:#fde68a; }
   .etMine small{ color:#cbd5e1; font-weight:normal; }
@@ -490,9 +648,14 @@
   .etItem{ display:inline-block; width:36px; height:26px; border-radius:3px; margin-right:2px; vertical-align:middle; }
   .etEmpty{ background:rgba(255,255,255,.06); }
   .etNeut{ width:26px; height:26px; border-radius:50%; object-fit:cover; margin-left:6px; }
-  .etMvp{ margin:8px 0 10px; font-size:16px; color:#fde68a; }
+  /* 👑 najbolji igrač, medalje, botovi, profil: značke ispod tablice */
+  .etNotes{ display:flex; flex-wrap:wrap; justify-content:center; gap:6px 8px; max-width:min(1000px, 96vw); margin:10px 0 2px; }
+  .etMvp{ font-size:14px; line-height:1.4; color:#f1e6c6; padding:4px 13px; border-radius:999px; background:rgba(12,16,23,.84); border:1px solid var(--line2); }
+  .etMvp b{ color:#fff; }
+  #endTable > .etMvp{ margin:8px 0 2px; }
   /* 📈 graf „Tko je vodio” (v0.44) */
-  .etGraphBox{ width:min(820px, 96vw); margin:10px auto 4px; padding:8px 12px 10px; border-radius:12px; background:rgba(10,14,20,.82); border:1px solid #6b5a35; }
+  .etGraphBox{ width:min(860px, 96vw); margin:10px auto 4px; padding:8px 12px 10px; border-radius:14px; background:linear-gradient(180deg, rgba(27,33,45,.94), rgba(10,13,19,.95));
+    border:1px solid var(--gline); box-shadow:var(--shPanel); }
   .etGraphT{ font-size:15px; font-weight:bold; color:#fde68a; text-align:left; margin-bottom:2px; }
   .etGraphT small{ font-weight:normal; color:#c9b27a; }
   .etGraph{ display:block; width:100%; height:auto; max-height:230px; }
@@ -527,7 +690,8 @@
     .etHero img{ width:26px; height:26px; }
     .etItem{ width:32px; height:23px; }
     .etNeut{ width:23px; height:23px; }
-    .etMvp{ display:inline-block; margin:6px 10px 8px; }
+    .etNotes{ margin:6px 0 0; }
+    .etMvp{ font-size:13px; padding:3px 11px; }
   }
   /* 📱 nizak ekran (mobitel položen): zbijeniji završni ekran, dućan preko cijele visine, zbijenije postavke */
   @media (max-height: 560px){
@@ -542,8 +706,10 @@
     .etItem{ width:26px; height:19px; }
     .etNeut{ width:19px; height:19px; }
     .etWin{ font-size:11px; padding:1px 6px; }
-    .etMvp{ margin:3px 8px 4px; font-size:12.5px; }
-    #againBtn{ font-size:18px; padding:6px 26px; box-shadow:0 4px 0 #b45309; }
+    .etNotes{ margin:4px 0 0; gap:4px 6px; }
+    .etMvp{ font-size:12px; padding:2px 10px; }
+    #againBtn{ font-size:18px; padding:6px 26px 8px; margin-top:6px; }
+    .pauseBox{ font-size:32px; padding:16px 40px; }
     #shop{ top:6px; bottom:6px; right:6px; max-height:none; z-index:25; }
     #shopBody{ min-height:60px; }
     .optBox{ padding:12px 18px; }
@@ -556,48 +722,52 @@
     .etNeut{ width:17px; height:17px; }
   }
 
-  /* ---------- 🎬 početni ekran (v0.43) ---------- */
+  /* ---------- 🎬 početni ekran (v0.43; v0.57 novi izgled) ---------- */
   #landing{ z-index:22; justify-content:space-between; padding:0; overflow-x:hidden; overflow-y:auto;
     background:
-      radial-gradient(ellipse at 50% 38%, rgba(0,0,0,0) 0%, rgba(3,10,8,.35) 70%, rgba(3,10,8,.7) 100%),
-      linear-gradient(rgba(10,20,40,.35) 0%, rgba(10,20,40,0) 26%, rgba(5,18,12,0) 52%, rgba(5,18,12,.9) 100%),
-      url('assets/splash.jpg') center/cover no-repeat, #16331f; }
+      radial-gradient(ellipse at 50% 36%, rgba(0,0,0,0) 0%, rgba(4,7,12,.30) 62%, rgba(4,7,12,.72) 100%),
+      linear-gradient(rgba(6,10,18,.50) 0%, rgba(6,10,18,0) 24%, rgba(5,8,13,0) 50%, rgba(5,8,13,.93) 100%),
+      url('assets/splash.jpg') center/cover no-repeat, #0b1016; }
   #landing.out{ animation:lgOut .45s ease-in forwards; pointer-events:none; }
   @keyframes lgOut{ to{ opacity:0; transform:scale(1.06); } }
   .lgTop{ position:absolute; top:10px; right:12px; left:12px; display:flex; justify-content:flex-end; align-items:center; gap:8px; z-index:3; }
   .lgFs{ position:static; }
-  .lgLang{ display:flex; gap:4px; padding:4px; border-radius:14px; background:rgba(15,23,42,.55); border:2px solid rgba(253,224,71,.35); backdrop-filter:blur(4px); }
-  .lgLang button, .lgBtns button, .lgPickBtns button{ font-family:inherit; cursor:pointer; transition:transform .12s, background .12s; }
-  .lgLang button{ font-size:14px; font-weight:bold; color:#e2e8f0; background:transparent; border:none; border-radius:10px; padding:6px 12px; }
-  .lgLang button.on{ background:linear-gradient(#fde047,#f59e0b); color:#431407; box-shadow:0 3px 0 #b45309; }
-  .lgLang button:not(.on):hover{ background:rgba(255,255,255,.14); }
+  .lgLang{ display:flex; gap:3px; padding:4px; border-radius:14px; background:rgba(10,13,19,.66); border:1px solid var(--gline);
+    box-shadow:var(--shBtn); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
+  .lgLang button, .lgPickBtns button{ font-family:inherit; cursor:pointer; transition:transform .14s var(--ease), background .14s, color .14s, border-color .14s; }
+  .lgLang button{ font-size:14px; font-weight:800; color:#dfe5ee; background:transparent; border:none; border-radius:10px; padding:6px 12px; }
+  .lgLang button.on{ background:var(--goldFace); color:var(--brown); box-shadow:inset 0 1px 0 rgba(255,255,255,.6), 0 2px 10px rgba(245,184,61,.35); }
+  .lgLang button:not(.on):hover{ background:rgba(255,255,255,.12); color:#fff; }
   .lgLangSh{ display:none; }
   .flag{ font-family:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif; }
-  .lgMain{ display:flex; flex-direction:column; align-items:center; gap:14px; padding:64px 16px 10px; }
-  .lgLogo{ font-size:clamp(46px, 8.2vw, 104px); line-height:1; color:#fde047; letter-spacing:1px; white-space:nowrap;
-    text-shadow:0 5px 0 #c2410c, 0 10px 0 #7c2d12, 0 16px 34px rgba(0,0,0,.6); animation:lgFloat 3.2s ease-in-out infinite; }
-  .lgL2{ display:inline-block; font-size:.58em; color:#fff; background:linear-gradient(#ef4444,#b91c1c); border:3px solid #fde047;
-    border-radius:16px; padding:2px 14px 6px; transform:rotate(-7deg) translateY(-6px); text-shadow:0 3px 0 #7f1d1d; box-shadow:0 6px 0 #7f1d1d, 0 10px 24px rgba(0,0,0,.45); }
-  @keyframes lgFloat{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-8px); } }
-  .lgTag{ max-width:660px; color:#fff; font-size:clamp(15px, 1.9vw, 20px); line-height:1.4; padding:8px 18px; border-radius:16px;
-    background:rgba(8,20,16,.5); backdrop-filter:blur(3px); text-shadow:0 2px 4px rgba(0,0,0,.6); }
-  .lgTag b{ color:#fde047; }
-  .lgPlay{ position:relative; overflow:hidden; font-family:inherit; font-size:clamp(30px, 4.4vw, 46px); font-weight:bold; color:#431407; cursor:pointer;
-    background:linear-gradient(#fef08a,#fbbf24 45%,#f59e0b); border:4px solid #fff7ad; border-radius:24px; padding:14px 74px;
-    box-shadow:0 8px 0 #b45309, 0 0 0 0 rgba(253,224,71,.7), 0 14px 30px rgba(0,0,0,.45); animation:lgPulse 1.8s ease-in-out infinite; transition:transform .1s; }
+  .lgMain{ display:flex; flex-direction:column; align-items:center; gap:14px; padding:62px 16px 10px; }
+  /* 👑 znak: kruna između dvije zlatne crte, ispod nje zlatni natpis */
+  .lgBrand{ display:flex; flex-direction:column; align-items:center; animation:lgFloat 4s ease-in-out infinite; }
+  .lgCrest{ display:flex; align-items:center; gap:14px; width:min(560px, 84vw); margin-bottom:-4px; filter:drop-shadow(0 3px 6px rgba(0,0,0,.6)); }
+  .lgCrest i{ flex:1; height:2px; border-radius:2px; background:linear-gradient(90deg, transparent, #f6c453); }
+  .lgCrest i:last-child{ background:linear-gradient(270deg, transparent, #f6c453); }
+  .lgCrest svg{ width:clamp(40px, 5vw, 60px); height:auto; flex:none; }
+  .lgLogo{ display:flex; align-items:flex-start; justify-content:center; gap:.14em; font-size:clamp(46px, 8.4vw, 108px); line-height:1.08; font-weight:1000; letter-spacing:.01em; white-space:nowrap; }
+  .lgL1{ background:var(--goldText); -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent;
+    -webkit-text-stroke:.022em #6b3306; paint-order:stroke fill;
+    filter:drop-shadow(0 .045em 0 #5a2a05) drop-shadow(0 .11em .16em rgba(0,0,0,.55)); padding:0 .04em .06em; }
+  .lgL2{ font-size:.40em; line-height:1; color:#fff; letter-spacing:.04em; margin-top:.5em; padding:.2em .46em .22em; border-radius:.42em; transform:rotate(-6deg);
+    background:linear-gradient(180deg, #ff6a5e, #c81e2c); border:.07em solid #ffe08a; text-shadow:0 .06em 0 rgba(120,10,20,.8);
+    box-shadow:inset 0 .06em 0 rgba(255,255,255,.45), 0 .2em .5em rgba(0,0,0,.45); }
+  @keyframes lgFloat{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-6px); } }
+  .lgTag{ max-width:640px; color:#f4f6fa; font-size:clamp(15px, 1.8vw, 19px); font-weight:600; line-height:1.4; padding:8px 20px; border-radius:16px;
+    background:rgba(9,12,18,.56); border:1px solid var(--line); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); text-shadow:0 1px 3px rgba(0,0,0,.6); }
+  .lgTag b{ color:var(--gold); }
+  .lgPlay{ position:relative; overflow:hidden; font-size:clamp(28px, 4vw, 42px); letter-spacing:.07em; border-radius:22px; padding:.36em 1.75em .42em;
+    animation:lgPulse 2.4s ease-in-out infinite; }
   .lgPlay::after{ content:""; position:absolute; top:-20%; bottom:-20%; width:34%; left:-50%; transform:skewX(-20deg);
-    background:linear-gradient(90deg, transparent, rgba(255,255,255,.75), transparent); animation:lgShine 3s ease-in-out infinite; }
-  .lgPlay:hover{ transform:scale(1.06); }
-  .lgPlay:active{ transform:translateY(5px); box-shadow:0 3px 0 #b45309; }
-  @keyframes lgPulse{ 0%,100%{ box-shadow:0 8px 0 #b45309, 0 0 0 0 rgba(253,224,71,.65), 0 14px 30px rgba(0,0,0,.45); }
-    50%{ box-shadow:0 8px 0 #b45309, 0 0 0 16px rgba(253,224,71,0), 0 14px 30px rgba(0,0,0,.45); } }
+    background:linear-gradient(90deg, transparent, rgba(255,255,255,.75), transparent); animation:lgShine 3.2s ease-in-out infinite; }
+  @keyframes lgPulse{ 0%,100%{ box-shadow:inset 0 -5px 0 rgba(168,92,0,.42), 0 0 0 2px rgba(58,28,2,.55), 0 12px 28px rgba(0,0,0,.45), 0 0 26px rgba(253,208,70,.28); }
+    50%{ box-shadow:inset 0 -5px 0 rgba(168,92,0,.42), 0 0 0 2px rgba(58,28,2,.55), 0 12px 28px rgba(0,0,0,.45), 0 0 54px rgba(253,208,70,.62); } }
   @keyframes lgShine{ 0%,55%{ left:-50%; } 100%{ left:130%; } }
   .lgBtns{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; }
-  .lgBtns button{ font-size:16px; font-weight:bold; color:#fff; border:2px solid rgba(255,255,255,.28); border-radius:14px; padding:9px 16px;
-    background:rgba(15,23,42,.6); backdrop-filter:blur(4px); box-shadow:0 4px 0 rgba(0,0,0,.45); }
-  .lgBtns button:hover{ transform:translateY(-2px) scale(1.04); background:rgba(30,58,138,.75); border-color:#fde047; }
-  #lgFriend{ background:linear-gradient(rgba(14,165,233,.85), rgba(3,105,161,.85)); }
-  #lgProfile{ min-height:20px; color:#fde68a; font-size:13.5px; font-weight:bold; text-shadow:0 2px 3px #000; }
+  .lgBtns button{ font-size:16px; border-radius:14px; padding:10px 18px; -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
+  #lgProfile{ min-height:20px; color:var(--gold2); font-size:13.5px; font-weight:800; text-shadow:0 2px 3px #000; }
   #lgProfile:empty{ display:none; }
   .lgBottom{ display:flex; flex-direction:column; align-items:center; gap:10px; padding:10px 14px 12px; width:100%; }
   .lgMarq{ width:min(1100px, 100%); overflow:hidden; padding:6px 0 2px;
@@ -605,41 +775,39 @@
   .lgTrack{ display:flex; gap:12px; width:max-content; animation:lgScroll 70s linear infinite; }
   .lgMarq:hover .lgTrack{ animation-play-state:paused; }
   @keyframes lgScroll{ from{ transform:translateX(0); } to{ transform:translateX(-50%); } }
-  .lgHero{ display:flex; flex-direction:column; align-items:center; gap:3px; width:76px; cursor:pointer; background:none; border:none; font-family:inherit; }
-  .lgHero img, .lgHero .lgEmo{ width:64px; height:64px; border-radius:50%; object-fit:cover; border:3px solid #fde047; background:#fffbeb;
-    box-shadow:0 4px 10px rgba(0,0,0,.5); transition:transform .15s; font-size:36px; line-height:58px; text-align:center; }
+  .lgHero{ display:flex; flex-direction:column; align-items:center; gap:4px; width:76px; cursor:pointer; background:none; border:none; font-family:inherit; }
+  .lgHero img, .lgHero .lgEmo{ width:64px; height:64px; border-radius:50%; object-fit:cover; border:2px solid #f6c453; background:var(--ink3);
+    box-shadow:0 0 0 3px rgba(8,11,16,.7), 0 6px 14px rgba(0,0,0,.55); transition:transform .18s var(--ease), box-shadow .18s; font-size:36px; line-height:58px; text-align:center; }
   .lgHero.R img, .lgHero.R .lgEmo{ border-color:#5eead4; }
-  .lgHero span{ font-size:11.5px; font-weight:bold; color:#fff; text-shadow:0 1px 3px #000, 0 0 6px #000; white-space:nowrap; }
-  .lgHero:hover img, .lgHero:hover .lgEmo{ transform:scale(1.15) translateY(-3px); }
+  .lgHero span{ font-size:11.5px; font-weight:800; color:#fff; text-shadow:0 1px 3px #000, 0 0 6px #000; white-space:nowrap; }
+  .lgHero:hover img, .lgHero:hover .lgEmo{ transform:scale(1.14) translateY(-3px); box-shadow:0 0 0 3px rgba(8,11,16,.7), 0 0 18px rgba(253,224,71,.55); }
   .lgFeats{ display:grid; grid-template-columns:repeat(6, minmax(0, 1fr)); gap:8px; width:min(1100px, 100%); }
-  .lgFeat{ display:flex; align-items:center; gap:8px; text-align:left; padding:8px 10px; border-radius:14px; color:#fff;
-    background:rgba(8,20,16,.62); border:1px solid rgba(253,224,71,.25); backdrop-filter:blur(4px); }
-  .lgFeat b{ font-size:26px; line-height:1; }
+  .lgFeat{ display:flex; align-items:center; gap:9px; text-align:left; padding:8px 11px; border-radius:14px; color:#fff;
+    background:rgba(11,14,20,.66); border:1px solid var(--gline); box-shadow:inset 0 1px 0 rgba(255,255,255,.06); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
+  .lgFeat b{ font-size:24px; line-height:1; }
   .lgFeat span{ display:flex; flex-direction:column; min-width:0; }
-  .lgFeat strong{ font-size:14px; color:#fde047; }
-  .lgFeat small{ font-size:11px; color:#d1fae5; line-height:1.25; }
-  .lgFoot{ font-size:11.5px; color:#a7f3d0; opacity:.8; }
+  .lgFeat strong{ font-size:14px; font-weight:800; color:var(--gold2); }
+  .lgFeat small{ font-size:11px; color:var(--txt2); line-height:1.25; }
+  .lgFoot{ font-size:11.5px; color:var(--txt3); }
   .lgFoot .ver{ opacity:.8; }
   #lgPick{ position:fixed; inset:0; z-index:5; display:flex; align-items:center; justify-content:center; padding:16px;
-    background:rgba(3,10,8,.72); backdrop-filter:blur(3px); }
-  .lgPickBox{ background:#fffbeb; border:4px solid #f59e0b; border-radius:24px; padding:20px 22px; width:min(560px, 100%); color:#422006;
-    box-shadow:0 14px 40px rgba(0,0,0,.55); animation:achPop .5s ease-out both; }
-  .lgPickT{ font-size:22px; font-weight:bold; color:#b45309; margin-bottom:14px; }
-  .lgPickBtns{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-  .lgPickBtns button{ display:flex; flex-direction:column; align-items:center; gap:4px; padding:14px 8px; border-radius:18px; color:#431407;
-    background:linear-gradient(#fef9c3,#fde68a); border:3px solid #f59e0b; box-shadow:0 5px 0 #b45309; }
-  .lgPickBtns button:hover{ transform:scale(1.05); background:linear-gradient(#fef08a,#fbbf24); }
+    background:rgba(4,7,12,.74); -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px); }
+  .lgPickBox{ background:var(--glass); border:1px solid var(--gline2); border-radius:22px; padding:22px 24px; width:min(580px, 100%); color:var(--txt);
+    box-shadow:var(--shModal); animation:popIn .3s var(--ease) both; }
+  .lgPickT{ font-size:22px; font-weight:900; color:var(--gold2); margin-bottom:14px; text-shadow:0 2px 4px rgba(0,0,0,.5); }
+  .lgPickBtns{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .lgPickBtns button{ display:flex; flex-direction:column; align-items:center; gap:4px; padding:14px 8px; border-radius:16px; color:#fff;
+    background:linear-gradient(180deg, #2a3342, #161b25); border:1px solid #3d4757; box-shadow:var(--shBtn); }
+  .lgPickBtns button:hover{ transform:translateY(-2px); border-color:var(--gold); box-shadow:var(--shBtn), 0 0 0 3px rgba(253,224,71,.14); }
   .lgPickBtns .flag{ font-size:40px; line-height:1.1; white-space:nowrap; }
-  .lgPickBtns b{ font-size:18px; }
-  .lgPickBtns small{ font-size:12px; color:#78350f; }
-  .lgPickS{ margin-top:12px; font-size:12px; color:#78716c; }
-  .selBack{ position:absolute; top:10px; left:12px; z-index:5; width:44px; height:40px; font-size:20px; line-height:1; cursor:pointer;
-    color:#fde68a; background:linear-gradient(#3b2f1c,#1f1810); border:2px solid #b8860b; border-radius:10px; box-shadow:0 3px 0 #000a; }
-  .selBack:hover{ transform:scale(1.08); border-color:#fde047; }
-  #help{ z-index:30; }
+  .lgPickBtns b{ font-size:18px; font-weight:800; }
+  .lgPickBtns small{ font-size:12px; color:var(--txt3); }
+  .lgPickS{ margin-top:14px; font-size:12px; color:var(--txt3); }
   html[lang="en"] #diffTabs.mpOff::after{ content:"(with a friend, bots are Normal)"; }
   html[lang="sr-Latn"] #diffTabs.mpOff::after{ content:"(sa prijateljem botovi su normalni)"; }
   html[lang="sr-Cyrl"] #diffTabs.mpOff::after{ content:"(са пријатељем ботови су нормални)"; }
+  html[lang="en"] .detail:empty::before{ content:"👈 Pick a hero"; }
+  html[lang="sr-Cyrl"] .detail:empty::before{ content:"👈 Одабери јунака"; }
   @media (max-width: 900px){
     .lgFeats{ grid-template-columns:repeat(3, minmax(0, 1fr)); }
     .lgLang .lgLangTxt{ display:none; }
@@ -650,8 +818,8 @@
     .lgLang .lgLangTxt{ display:none; }
     .lgLang .lgLangSh{ display:inline; }
     .lgMain{ padding-top:70px; gap:12px; }
-    .lgLogo{ white-space:normal; }
-    .lgPlay{ padding:12px 46px; }
+    .lgLogo{ white-space:normal; flex-wrap:wrap; }
+    .lgPlay{ padding:.4em 1.4em .46em; }
     .lgBtns button{ font-size:14px; padding:8px 11px; }
     .lgFeats{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
     .lgFeat small{ display:none; }
@@ -670,24 +838,26 @@
     .lgPickBtns button{ padding:6px 8px; flex-direction:row; justify-content:center; gap:8px; }
     .lgPickBtns .flag{ font-size:24px; }
     .lgPickBtns small{ display:none; }
-    .lgMain{ padding-top:50px; gap:7px; }
+    .lgPickS{ margin-top:8px; }
+    .lgMain{ padding-top:46px; gap:7px; }
     .lgTop{ top:6px; }
     .lgLang button{ font-size:12px; padding:5px 8px; }
     .lgLang .lgLangTxt{ display:none; }
     .lgLang .lgLangSh{ display:inline; }
-    .lgLogo{ font-size:38px; }
+    .lgCrest{ display:none; }
+    .lgLogo{ font-size:40px; }
     .lgTag{ font-size:13px; padding:4px 12px; max-width:440px; }
-    .lgPlay{ font-size:26px; padding:8px 44px; border-width:3px; }
+    .lgPlay{ font-size:25px; }
     .lgBtns button{ font-size:13px; padding:6px 10px; }
     .lgFeats{ display:none; }
     .lgBottom{ gap:4px; padding:4px 10px 6px; }
     .lgHero{ width:58px; }
-    .lgHero img, .lgHero .lgEmo{ width:46px; height:46px; border-width:2px; font-size:26px; line-height:42px; }
+    .lgHero img, .lgHero .lgEmo{ width:46px; height:46px; font-size:26px; line-height:42px; }
     .lgHero span{ font-size:10px; }
   }
   @media (max-height: 400px){
     .lgTag{ display:none; }
-    .lgLogo{ font-size:32px; }
+    .lgLogo{ font-size:33px; }
     .lgHero span{ display:none; }
   }
 </style>
@@ -709,9 +879,12 @@
     <button id="lgFs" class="fsBtn lgFs" title="Cijeli zaslon" data-en-title="Fullscreen">⛶</button>
   </div>
   <div class="lgMain">
-    <h1 class="lgLogo"><span class="lgL1">🏰 DOTA Kids</span> <span class="lgL2">3D ⚔️</span></h1>
+    <div class="lgBrand">
+      <div class="lgCrest" aria-hidden="true"><i></i><svg viewBox="0 0 64 46"><defs><linearGradient id="lgCg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3b0"/><stop offset=".5" stop-color="#ffd24a"/><stop offset="1" stop-color="#e08a12"/></linearGradient></defs><path d="M8 36 5 14l13 10L32 7l14 17 13-10-3 22z" fill="url(#lgCg)" stroke="#6b3306" stroke-width="2.4" stroke-linejoin="round"/><rect x="8" y="36" width="48" height="7" rx="3" fill="url(#lgCg)" stroke="#6b3306" stroke-width="2.4"/><circle cx="32" cy="6.5" r="3.6" fill="#ff5d5d" stroke="#6b3306" stroke-width="1.6"/><circle cx="5" cy="14" r="3" fill="#4cc3ff" stroke="#6b3306" stroke-width="1.6"/><circle cx="59" cy="14" r="3" fill="#4cc3ff" stroke="#6b3306" stroke-width="1.6"/><circle cx="32" cy="28" r="3.2" fill="#ff5d5d" stroke="#6b3306" stroke-width="1.4"/><circle cx="19.5" cy="30" r="2.2" fill="#4cc3ff" stroke="#6b3306" stroke-width="1.2"/><circle cx="44.5" cy="30" r="2.2" fill="#4cc3ff" stroke="#6b3306" stroke-width="1.2"/></svg><i></i></div>
+      <h1 class="lgLogo notr"><span class="lgL1">DOTA Kids</span><span class="lgL2">3D</span></h1>
+    </div>
     <p class="lgTag" data-en="A real <b>5 vs 5</b> battle arena for kids — pick a hero, team up and knock down the enemy throne! 👑">Prava <b>bitka 5 na 5</b> za djecu — odaberi junaka, udruži se s timom i sruši protivnički prijestol! 👑</p>
-    <button id="lgPlay" class="lgPlay" data-en="▶️ PLAY">▶️ ZAIGRAJ</button>
+    <button id="lgPlay" class="lgPlay" data-en="<i class='icPlay'></i>PLAY"><i class="icPlay"></i>ZAIGRAJ</button>
     <div class="lgBtns">
       <button id="lgFriend" data-en="👥 With a friend">👥 S prijateljem</button>
       <button id="lgHelp" data-en="❓ How to play">❓ Kako se igra</button>
@@ -730,7 +903,7 @@
       <div class="lgFeat"><b>🏆</b><span><strong data-en="Achievements">Postignuća</strong><small data-en="medals, wins and records">medalje, pobjede i rekordi</small></span></div>
       <div class="lgFeat"><b>📱</b><span><strong data-en="Tablet too">I na tabletu</strong><small data-en="joystick and skill aiming like Wild Rift">palica i nišanjenje moći kao u Wild Riftu</small></span></div>
     </div>
-    <div class="lgFoot"><span data-en="free · no ads · plays in the browser">besplatno · bez reklama · igra se u pregledniku</span> · <span class="ver">v0.56</span></div>
+    <div class="lgFoot"><span data-en="free · no ads · plays in the browser">besplatno · bez reklama · igra se u pregledniku</span> · <span class="ver notr">v0.57</span></div>
   </div>
   <div id="lgPick" class="hidden notr">
     <div class="lgPickBox">
@@ -751,10 +924,10 @@
   <button id="selBack" class="selBack" title="Natrag na početni ekran" data-en-title="Back to the start screen">🏠</button>
   <button id="fsBtn" class="fsBtn" title="Cijeli zaslon (miš ne može pobjeći iz igre)" data-en-title="Fullscreen (the mouse can't escape the game)">⛶</button>
   <header>
-    <h1>🏰 DOTA Kids 3D ⚔️</h1>
-    <p class="sub"><span data-en="Pick a hero and knock down the enemy throne! You + 4 bots 🔵 vs 5 bots 🔴 (5 vs 5)">Odaberi junaka i sruši protivnički prijestol! Ti + 4 bota 🔵 protiv 5 botova 🔴 (5 na 5)</span> <span class="ver">v0.56</span></p>
+    <h1 data-en="Choose your hero">Odaberi junaka</h1>
+    <p class="sub"><span data-en="You + 4 bots 🔵 vs 5 bots 🔴 — knock down the enemy throne! 👑">Ti + 4 bota 🔵 protiv 5 botova 🔴 — sruši protivnički prijestol! 👑</span> <span class="ver notr">v0.57</span></p>
+    <div id="loadBar" data-en="⏳ Loading 3D models…">⏳ Učitavam 3D modele…</div>
   </header>
-  <div id="loadBar" data-en="⏳ Loading 3D models…">⏳ Učitavam 3D modele…</div>
   <div class="selWrap">
     <div class="pickCol">
       <div id="roleTabs">
@@ -785,13 +958,13 @@
     <div id="heroDetail" class="detail"></div>
   </div>
   <div class="btnRow">
-    <button id="startBtn" class="bigBtn" disabled data-en="▶️ PLAY">▶️ ZAIGRAJ</button>
+    <button id="startBtn" class="bigBtn" disabled data-en="<i class='icPlay'></i>PLAY"><i class="icPlay"></i>ZAIGRAJ</button>
     <button id="randomBtn" class="rndBtn" title="Nasumični junak" data-en-title="Random hero">🎲<span class="lbl" data-en=" Random"> Nasumično</span></button>
     <button id="mpToggle" class="ghostBtn" title="Ti protiv prijatelja preko interneta (5 na 5 s botovima)" data-en-title="You vs a friend over the internet (5 vs 5 with bots)">👥<span class="lbl" data-en=" With a friend"> S prijateljem</span></button>
     <button id="achBtn" class="achBtn" title="Tvoje pobjede i postignuća" data-en-title="Your wins and achievements">🏆<span class="lbl" data-en=" Achievements"> Postignuća</span></button>
   </div>
   <div id="mpBox" class="hidden">
-    <div class="mpTitle" data-en="🌐 You vs a friend, 5 vs 5 — each of you plays mid, 4 bots help each side">🌐 Ti protiv prijatelja, 5 na 5 — svaki vodi sredinu, po 4 bota pomažu</div>
+    <div class="mpTitle" data-en="🌐 You vs a friend, 5 vs 5 — each of you picks a lane, 4 bots help each side">🌐 Ti protiv prijatelja, 5 na 5 — svatko bira svoju stazu, po 4 bota pomažu</div>
     <div class="mpRow">
       <button id="mpHost" class="mpBtn" data-en="📡 Create room">📡 Napravi sobu</button>
       <span class="mpOr" data-en="or type a code:">ili upiši kod:</span>
@@ -808,6 +981,7 @@
 <div id="help" class="overlay hidden">
   <div class="helpBox" data-lang="hr">
     <h2>❓ Kako se igra</h2>
+    🆕 <b>v0.57</b>: 🎨 <b>novi izgled cijele igre</b> — tamne staklene ploče sa zlatnim rubovima na početnom ekranu, odabiru junaka, pomoći, postignućima, pauzi i kraju igre (kao ploče u samoj igri) • 🦁 <b>veći portreti junaka</b> s imenom preko slike, na većem zaslonu svih 30 stane odjednom • 🧍 <b>veći 3D pregled</b> junaka na osvijetljenoj pozornici • ❓ <b>preglednija pomoć</b>: upute su kartice, a novosti se otvaraju na klik • 🏁 uredniji kraj igre (tablica u sredini, značke ispod nje) • 📋 tablica rezultata više nije prozirna • 🔢 brojke iznad junaka slažu se jedna iznad druge<br>
     🆕 <b>v0.56</b>: 🌲 <b>uloga DŽUNGLA</b> (na ekranu junaka, uz staze) — od levela 1 čistiš kampove: novi 🦎 <b>mali kampovi s gušterima</b> bliže bazi, 🐾 <b>Lovački nož</b> (jači protiv čudovišta, svaki udarac te liječi, više zlata) koji se nadogradi u 🍖 <b>Lovačku mačetu</b>, a 🌩️ Kazna se doda sama; tada i protivnici imaju junaka u džungli • 🏰 <b>baze kao u Doti 2</b>: na svakoj stazi kule T1 i T2, T3 na ulazu u bazu pred vojarnom i dvije T4 uz prijestol — unutarnju kulu ne možeš napasti (🔒) dok ne padne vanjska • 🪙 <b>zlato se jasno vidi</b> u okviru iznad ploče junaka • 🪙 <b>A + klik na vojnika</b> = samo jedan udarac, <b>S</b> = stani • 🛒 <b>25 novih predmeta</b> (otpor magiji, tišina, okovi, razoružavanje, munja u lancu, ledeni udarci, kraće hlađenje, jače magije…) • 🎲 botovi svaku igru biraju drukčije predmete • 🎨 <b>talenti i velike najave</b> imaju naslikane slike (zlatna traka = dobra vijest, crvena = loša) • 🌠 <b>Lunina Sveta strijela</b> leti preko pola mape i omami prvoga koga pogodi (do 3,6 s — što dalje, to dulje; i vojnik je zaustavi, a čudovište iz džungle odmah pada) • 🎯 <b>pomoć pri ciljanju</b>: strijela uperena blizu junaka pogodi njega (i gađa ispred ako hoda), krug pokaže koga će pogoditi • 💫 <b>omama</b> se jasno vidi: zvjezdice, zlatni kolut i traka koja se prazni • ⛲ <b>fontana puca</b> na neprijatelje koji uđu (crveni krug pokaže dokle) • 💰 u normalnoj igri <b>veliki predmeti su skuplji</b> (do +30 %), a ubojstva junaka nose manje zlata (asistencija se dijeli) • 📱 manje ploče na mobitelu • ⚖️ uravnoteženiji junaci (Luna, Mrak, Bambus, Mudra) • ⚡ brza igra više ne završi za 6 minuta • 🪝 <b>udica</b> (domet 1400) i 🌠 <b>Sveta strijela</b> (domet 2000) lete sporije i bez pomoći pri ciljanju — gađaj ispred junaka koji hoda, a i ti im se možeš izmaknuti • 🤢 Peckov <b>Smrdljivi oblak</b> se uključuje i isključuje (kao Rot) i radi dok ga ne ugasiš • 💨 botovi se ponekad <b>izmaknu</b> udici i strijeli (na „Teško” češće), a i ti — „Izmaknuo si se!” • 🐢 spora igra sama se olakša (manje efekata i razlučivosti) • ⚖️ obje strane mape imaju iste kampove uz istu stazu • 🐰 <b>nova junakinja Zeka</b> (zečica šerif, kao Caitlyn iz LoL-a): najdalje puca, ✨ svaki 5. hitac je Šerifov hitac, 🔫 Mirotvorac probije cijelu liniju, 🪤 zamke ukopaju junaka, 🕸️ mreža uspori i odbaci te unatrag, 🎯 As iz rukava pogodi izdaleka • 🦡 <b>novi junak Jazo</b> (jazavac samuraj, kao Juggernaut iz Dote): ✨ kritični udarci katanom, 🌪️ Vihor oštrica (vrti se, rani sve oko sebe, magije ga gotovo ne diraju), 🗿 Ljekoviti totem, ⚡ Brzi rez i 🗡️ Tisuću rezova — neranjiv skače s neprijatelja na neprijatelja • 🦌 <b>novi junak Jelko</b> (jelen lovac na čarobnjake, kao Anti-Mage): ✨ udarci kradu manu, ✨ Treptaj, 🔮 Protučarolija vraća čarolije, 🏃 usporava junake bez mane, 💥 Praznina mane jače rani što meti fali više mane • 🗂️ <b>dućan pokazuje sve predmete odjednom</b> (mreža ikona kao u Doti) • 🆕 <b>još 23 predmeta</b> (🐸 Žablji štap pretvara junaka u žabu, 🚀 Raketne čizme, 🐉 Zmajevo koplje za veći domet, 🌸 Cvijet zrcala vraća čarolije, 🧙 Čarobnjakovo žezlo za brži ulti…) • 🎬 <b>svaka moć ima svoju animaciju</b><br>
     🆕 <b>v0.55</b>: 🦛🐆🦂 <b>tri nova junaka</b> s moćima iz DotA 2: 🦛 <b>Pecko</b> — nilski konj ribar: udica koja dovuče neprijatelja skroz do njega, smrdljivi oblak i Veliki zalogaj (kao Pudge) • 🐆 <b>Inja</b> — snježni leopard, ledena strijelkinja: ledene strijele, snježni nalet koji ušutka, lepeza strijela i pasivni ulti (kao Drow Ranger) • 🦂 <b>Škorpo</b> — škorpion, kralj pijeska: podzemni juriš, nevidljiv u pješčanoj oluji, otrovni žalac i Epicentar (kao Sand King) • svi imaju 3D model, glas i talente<br>
     🆕 <b>v0.54</b>: 💰 <b>sporije zlato i predmeti</b> u normalnoj igri — vojnici, ubojstva, kule i rune daju manje zlata, pa veliki predmeti stižu kasnije i nitko ne pobjegne prerano • 🎯 <b>bogata meta</b>: junak koji je puno bogatiji od ostalih nosi ucjenu (🎯 pored trake života) — kad ga srušite, zlato dobivaju ubojica i pomagači • 🔄 bonus za povratak dijele svi koji su pomogli • 🏰 u dugoj igri (od 25. minute) junaci sve jače udaraju kule, pa igra ne zapne • ⚡ brza igra i dalje ima brzo zlato<br>
@@ -870,6 +1044,7 @@
   </div>
   <div class="helpBox" data-lang="en">
     <h2>❓ How to play</h2>
+    🆕 <b>v0.57</b>: 🎨 <b>a new look for the whole game</b> — dark glass panels with gold edges on the start screen, hero select, help, achievements, pause and the end screen (like the panels in the game itself) • 🦁 <b>bigger hero portraits</b> with the name over the picture; on a larger screen all 30 fit at once • 🧍 a <b>bigger 3D preview</b> of the hero on a lit stage • ❓ <b>clearer help</b>: the tips are cards and the news opens on a click • 🏁 a tidier end screen (the table in the middle, badges below it) • 📋 the scoreboard is no longer see-through • 🔢 numbers above a hero stack one above another<br>
     🆕 <b>v0.56</b>: 🌲 <b>JUNGLE role</b> (on the hero screen, next to the lanes) — clear camps from level 1: new 🦎 <b>small lizard camps</b> closer to the base, the 🐾 <b>Hunter's Knife</b> (stronger against monsters, every hit heals you, more gold) that upgrades into the 🍖 <b>Hunter's Machete</b>, and 🌩️ Smite is added for you; the enemies then also have a jungler • 🏰 <b>bases like in Dota 2</b>: T1 and T2 towers in every lane, T3 at the base entrance in front of the barracks and two T4 next to the throne — you can't attack an inner tower (🔒) until the outer one falls • 🪙 <b>your gold is easy to see</b> in a box above the hero panel • 🪙 <b>A + click a creep</b> = just one hit, <b>S</b> = stop • 🛒 <b>25 new items</b> (magic resistance, silence, roots, disarm, chain lightning, frost attacks, shorter cooldowns, stronger spells…) • 🎲 bots buy different items every game • 🎨 <b>talents and big announcements</b> have painted pictures (gold ribbon = good news, red = bad) • 🌠 <b>Luna’s Sacred Arrow</b> flies across half the map and stuns the first unit it hits (up to 3.6 s — the farther, the longer; a creep stops it too, and a jungle monster falls instantly) • 🎯 <b>aim assist</b>: an arrow aimed near a hero hits them (and leads a walking target), a ring shows who it will hit • 💫 <b>stuns</b> are easy to see: stars, a golden halo and a bar that runs out • ⛲ <b>the fountain shoots</b> enemies who come in (a red ring shows how far) • 💰 in normal games <b>big items cost more</b> (up to +30%) and hero kills give less gold (assist gold is shared) • 📱 smaller panels on phones • ⚖️ better-balanced heroes (Luna, Mrak, Bambus, Mudra) • ⚡ a quick game no longer ends in 6 minutes • 🪝 the <b>hook</b> (range 1400) and 🌠 <b>Sacred Arrow</b> (range 2000) fly slower and without aim assist — aim ahead of a walking hero, and you can dodge them too • 🤢 Petsko’s <b>Stinky Cloud</b> switches on and off (like Rot) and works until you turn it off • 💨 bots sometimes <b>dodge</b> the hook and the arrow (more often on Hard), and so can you — “You dodged it!” • 🐢 a slow game lightens itself (fewer effects, lower resolution) • ⚖️ both sides of the map have the same camps by the same lane • 🐰 <b>new hero Zeka</b> (a sheriff bunny, like Caitlyn from LoL): longest range, ✨ every 5th shot is a Sheriff Shot, 🔫 Peacemaker pierces a whole line, 🪤 traps hold a hero in place, 🕸️ the net slows and kicks you backwards, 🎯 Ace in the Hole hits from far away • 🦡 <b>new hero Jazo</b> (a badger samurai, like Juggernaut from Dota): ✨ critical katana strikes, 🌪️ Blade Fury (spins, hurts everyone around, spells barely touch him), 🗿 Healing Totem, ⚡ Swift Slash and 🗡️ Omnislash — leaps from enemy to enemy and nobody can touch him • 🦌 <b>new hero Yelko</b> (a deer mage hunter, like Anti-Mage): ✨ hits burn mana, ✨ Blink, 🔮 Counterspell bounces spells back, 🏃 slows heroes low on mana, 💥 Mana Void hurts more the more mana the target is missing • 🗂️ <b>the shop shows every item at once</b> (a grid of icons like in Dota) • 🆕 <b>23 more items</b> (🐸 Frog Staff turns a hero into a frog, 🚀 Rocket Boots, 🐉 Dragon Lance for longer range, 🌸 Mirror Blossom bounces spells back, 🧙 Wizard's Scepter for a faster ult…) • 🎬 <b>every ability has its own animation</b><br>
     🆕 <b>v0.55</b>: 🦛🐆🦂 <b>three new heroes</b> with abilities from DotA 2: 🦛 <b>Petsko</b> — a hippo fisherman: a hook that reels an enemy all the way in, a stinky cloud and the Big Gulp (like Pudge) • 🐆 <b>Inya</b> — a snow leopard frost archer: frost arrows, a silencing snow gust, an arrow fan and a passive ultimate (like Drow Ranger) • 🦂 <b>Skorpo</b> — a scorpion, king of the sands: burrow strike, invisible in a sandstorm, a venom stinger and Epicenter (like Sand King) • each has a 3D model, a voice and talents<br>
     🆕 <b>v0.54</b>: 💰 <b>slower gold and items</b> in a normal game — creeps, kills, towers and runes give less gold, so big items come later and nobody runs away too early • 🎯 <b>rich target</b>: a hero who is much richer than the others carries a bounty (🎯 next to the health bar) — take them down and the killer and helpers get the gold • 🔄 the comeback bonus is shared by everyone who helped • 🏰 in a long game (from minute 25) heroes hit towers harder and harder, so the game never gets stuck • ⚡ the quick game still has fast gold<br>

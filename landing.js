@@ -95,3 +95,32 @@
     if(e.key === 'Enter'){ e.preventDefault(); $('lgPlay').click(); }
   });
 })();
+
+/* ❓ v0.57 pomoć bez zida teksta: cilj igre na vrhu, upute kao kartice (znak + tekst) u dva stupca, a popis novosti po
+   verzijama se otvara na klik. Tekst ostaje u index.html (redci odvojeni s <br>, novosti počinju s 🆕) — ovdje se samo presloži. */
+(function(){
+  const box = document.querySelector('#help .helpBox');
+  if(!box || box.dataset.pretty) return;
+  try {
+    const h2 = box.querySelector('h2');
+    const title = h2 ? h2.outerHTML : '';
+    const lines = box.innerHTML.replace(title, '').split(/<br\s*\/?>/i).map(t => t.trim()).filter(Boolean);
+    if(lines.length < 4) return;
+    const split = t => {   // prvi komad bez razmaka su znakovi na početku retka (🖱️, ⚔️/🏹, 💪🤸🧠) — ako u njemu nema slova ni oznaka
+      const m = /^(\S+)\s+([\s\S]+)$/.exec(t);
+      return m && !/[<&0-9A-Za-z\u00C0-\u024F\u0400-\u04FF]/.test(m[1]) ? [m[1], m[2]] : ['', t];
+    };
+    const row = t => { const [ic, tx] = split(t); return `<div class="hRow">${ic ? `<span class="hIc">${ic}</span>` : ''}<div>${tx}</div></div>`; };
+    const newsRow = t => {
+      const m = /^\S+\s*<b>([^<]{2,8})<\/b>:?\s*([\s\S]+)$/.exec(t);
+      return m ? `<div class="hRow"><span class="hVer">${m[1]}</span><div>${m[2]}</div></div>` : row(t);
+    };
+    const isNews = t => t.indexOf('🆕') === 0;
+    const news = lines.filter(isNews), guide = lines.filter(t => !isNews(t));
+    let goal = '';
+    if(guide.length && guide[guide.length - 1].indexOf('🏆') === 0){ const [ic, tx] = split(guide.pop()); goal = `<div class="hGoal"><span class="hIc">${ic}</span><div>${tx}</div></div>`; }
+    box.innerHTML = title + goal + `<div class="hGrid">${guide.map(row).join('')}</div>` +
+      (news.length ? `<details class="hNews"><summary>🆕 ${L('Što je novo u igri', 'What’s new in the game')}</summary><div class="hGrid">${news.map(newsRow).join('')}</div></details>` : '');
+    box.dataset.pretty = '1';
+  } catch(e){}
+})();

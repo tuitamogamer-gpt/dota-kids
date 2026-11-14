@@ -1,7 +1,8 @@
 /* 🧪 Probna igra u pregledniku (Playwright + Chromium): učita igru s malim poslužiteljem, odabere junaka, pokrene igru
    i pusti je nekoliko sekundi — svaka greška na stranici (i u 3D crtanju, koje simulacija ne pokreće) ruši provjeru.
    Uz to provjeri geometriju svih 3D modela: nijedan komad ne smije biti izvrnut naopako (insideOutPieces),
-   i da svaka moć svakog junaka ima svoju animaciju (isječak abQ / abW / abE / abR u modelu).
+   da svaka moć svakog junaka ima svoju animaciju (isječak abQ / abW / abE / abR u modelu),
+   te izgled (v0.57): odabir junaka stane na ekran 1280 × 720, pomoć je presložena u kartice, tablica na kraju je u sredini.
      npm i --no-save playwright && npx playwright install chromium && node tools/smoke.js */
 'use strict';
 const http = require('http'), fs = require('fs'), path = require('path');
@@ -54,6 +55,22 @@ function insideOutPieces(){
     await p.evaluate(() => document.getElementById('lgPlay').click());
     await p.waitForTimeout(800);
     await p.evaluate(() => selectHero(Math.floor(Math.random() * HEROES.length)));
+    if(lang === 'hr'){   // 🎨 v0.57 izgled: odabir junaka stane na ekran, pomoć je presložena u kartice
+      await p.setViewportSize({ width: 1280, height: 720 });
+      await p.waitForTimeout(300);
+      const ui = await p.evaluate(() => {
+        const sel = document.getElementById('select'), cards = document.getElementById('cards'), btn = document.getElementById('startBtn').getBoundingClientRect();
+        return { fitsV: sel.scrollHeight <= sel.clientHeight + 2, fitsH: sel.scrollWidth <= sel.clientWidth + 1, cards: cards.querySelectorAll('.card').length, heroes: HEROES.length,
+          allSeen: cards.scrollHeight <= cards.clientHeight + 1, btnIn: btn.top >= 0 && btn.bottom <= innerHeight && btn.width > 100,
+          helpRows: document.querySelectorAll('#help .hRow').length, news: !!document.querySelector('#help details.hNews:not([open])'), goal: !!document.querySelector('#help .hGoal') };
+      });
+      console.log('izgled: ' + JSON.stringify(ui));
+      if(!ui.fitsV || !ui.fitsH || !ui.btnIn) errors.push('odabir junaka ne stane na ekran 1280 × 720: ' + JSON.stringify(ui));
+      if(ui.cards !== ui.heroes) errors.push('kartice junaka: ' + ui.cards + ' od ' + ui.heroes);
+      if(ui.heroes <= 30 && !ui.allSeen) errors.push('svih ' + ui.heroes + ' junaka ne stane u mrežu bez klizanja (index.html: #cards --rows)');
+      if(ui.helpRows < 20 || !ui.news || !ui.goal) errors.push('pomoć nije presložena u kartice (landing.js): ' + JSON.stringify(ui));
+      await p.setViewportSize({ width: 1100, height: 650 });
+    }
     await p.evaluate(() => { const s = document.getElementById('startBtn'); s.disabled = false; s.click(); });
     await p.waitForTimeout(4000);
     // preskoči pripremu i pusti igru (logika + crtanje) da se vrti
@@ -70,6 +87,15 @@ function insideOutPieces(){
       const noAnim = await p.evaluate(() => HEROES.flatMap(h => h.abilities.filter(a => !a.passive && !(MODELS.clips['hero_' + h.id] || {})['ab' + a.key]).map(a => h.id + ':' + a.key)));
       console.log('modeli: moći bez vlastite animacije ' + noAnim.length);
       if(noAnim.length) errors.push('moći bez animacije: ' + noAnim.join(', '));
+      // 🏁 kraj igre: tablica je u sredini ekrana, naslov pobjede je zlatan (v0.57 — prije je tablica stajala uz lijevi rub)
+      await p.evaluate(() => endGame(player.team));
+      await p.waitForFunction(() => !document.getElementById('end').classList.contains('hidden'), null, { timeout: 30000 });
+      await p.waitForTimeout(500);
+      const end = await p.evaluate(() => { const t = document.querySelector('#endTable .endT').getBoundingClientRect();
+        return { off: Math.round((t.left + t.right) / 2 - innerWidth / 2), rows: document.querySelectorAll('#endTable .endT tr').length, notes: document.querySelectorAll('#endTable .etNotes .etMvp').length,
+          won: document.getElementById('end').classList.contains('won') }; });
+      console.log('kraj igre: ' + JSON.stringify(end));
+      if(Math.abs(end.off) > 3 || end.rows < 12 || end.notes < 2 || !end.won) errors.push('završni ekran: ' + JSON.stringify(end));
     }
     await p.close();
   }

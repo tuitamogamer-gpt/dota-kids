@@ -114,13 +114,18 @@ function netResetLobby(){
   net.otherSum = null; net.otherLane = 'mid';
   if(!running){   // gumb i kod sobe natrag na običnu igru
     const sb = document.getElementById('startBtn'), big = document.getElementById('mpCodeBig');
-    if(sb) sb.textContent = L('▶️ ZAIGRAJ', '▶️ PLAY');
+    if(sb) startBtnLabel(false);
     if(big && big.classList) big.classList.add('hidden');
   }
 }
+/* natpis glavnog gumba: ▶ ZAIGRAJ, a kad je prijatelj spojen ✓ SPREMAN! (znak je nacrtan u CSS-u: .icPlay / .icOk) */
+function startBtnLabel(ready){
+  const sb = document.getElementById('startBtn');
+  if(sb) sb.innerHTML = ready ? L('<i class="icOk"></i>SPREMAN!', '<i class="icOk"></i>READY!') : L('<i class="icPlay"></i>ZAIGRAJ', '<i class="icPlay"></i>PLAY');
+}
 function bindConn(){
   net.conn.on('open', () => {
-    document.getElementById('startBtn').textContent = L('✅ SPREMAN!', '✅ READY!');
+    startBtnLabel(true);
     netStatus(net.mode === 'host'
       ? L('✅ Prijatelj je tu! Odaberite junake pa stisnite SPREMAN.', '✅ Your friend is here! Both pick heroes, then press READY.')
       : L('✅ Spojen! Ti si 🔴 crveni — odaberi junaka pa SPREMAN.', '✅ Connected! You are 🔴 Red — pick a hero, then READY.'));
@@ -158,7 +163,7 @@ function onNetClose(){
     net.conn = null;
     net.otherPick = -1; net.otherReady = false; net.otherSum = null; net.otherLane = 'mid';   // novi prijatelj bira ispočetka
     if(net.mode === 'guest') netResetLobby();   // gost: može se spojiti ponovno ili igrati sam (domaćinova soba ostaje otvorena)
-    else if(!running) document.getElementById('startBtn').textContent = L('▶️ ZAIGRAJ', '▶️ PLAY');
+    else if(!running) startBtnLabel(false);
   }
 }
 
