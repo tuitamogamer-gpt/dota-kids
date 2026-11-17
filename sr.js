@@ -6,7 +6,7 @@
 const SR_PHRASES = [
   ["i je li prijatelj", "i da li je prijatelj"],
   ["Oživjet ćeš", "Oživećeš"],
-  ["dobit ćeš", "dobićeš"], ["Dobit ćeš", "Dobićeš"], ["Vidjet ćeš", "Videćeš"],
+  ["dobit ćeš", "dobićeš"], ["Dobit ćeš", "Dobićeš"], ["Vidjet ćeš", "Videćeš"], ["vratit će se", "vratiće se"],
   ["vidjet ćeš što radi", "videćeš šta radi"],
   ["Što kupiti", "Šta kupiti"],
   ["pokazuje što", "pokazuje šta"],
@@ -18,9 +18,13 @@ const SR_PHRASES = [
   ["kratke upute", "kratka uputstva"],
   // v0.56: rod i padež koje zamjena riječ po riječ ne pogodi (gumb → dugme je srednji rod; tipke = tasteri / tastera)
   ["ovaj gumb", "ovo dugme"], ["iznad tipke", "iznad tastera"], ["Sve tipke", "Svi tasteri"], ["sve tipke", "svi tasteri"],
-  ["predmeti: tipke", "predmeti: tasteri"], ["(tipke D i F)", "(tasteri D i F)"]
+  ["predmeti: tipke", "predmeti: tasteri"], ["(tipke D i F)", "(tasteri D i F)"],
+  // v0.58 zapovijedi timu
+  ["tipke 1–8", "tasteri 1–8"], ["sve zapovijedi", "sve komande"], ["tipka C ili gumb", "taster C ili dugme"], ["piše što", "piše šta"]
 ];
 const SR_WORDS = {
+  // v0.58 (zapovijedi timu)
+  "zapovijedi":"komande", "zapovijed":"komanda", "zapovjednik":"komandant", "prijeđi":"pređi", "prijeđe":"pređe", "vrijedi":"važi",
   // v0.56 (džungla, predmeti; nova imena predmeta)
   "gumba":"dugmeta", "preglednik":"pregledač", "preglednika":"pregledača", "suigračem":"saigračem", "suigraču":"saigraču", "suigrače":"saigrače",
   "vojarnom":"kasarnom", "vanjska":"spoljna",

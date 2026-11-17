@@ -240,6 +240,8 @@ const TOP_TIPS = {
   fs: [L('⛶ Cijeli zaslon', '⛶ Fullscreen'), L('Igra preko cijelog ekrana — miš ne može pobjeći iz igre, a kamera se lakše pomiče uz rub.', 'The game fills the whole screen — the mouse stays inside the game, and the camera moves more easily at the edge.'), L('Tipka F11 (ili ovaj gumb)', 'Key F11 (or this button)')],
   mute: [L('🔊 Zvuk', '🔊 Sound'), L('Uključi ili isključi sav zvuk i glasove.', 'Turn all sound and voices on or off.'), L('Tipka M', 'Key M')],
   help: [L('❓ Pomoć', '❓ Help'), L('Sve tipke i kako se igra.', 'All keys and how to play.'), L('Tipka H', 'Key H')],
+  cmdBtn: [L('📣 Zapovijedi timu', '📣 Team commands'), L('Ti vodiš tim: zadaj plan svim botovima (za mnom, guramo stazu, branimo bazu, Veliki Zmaj, povlačenje) ili reci svakome posebno što da radi.',
+    'You lead the team: give all bots a plan (follow me, push a lane, defend the base, Great Dragon, retreat) or tell each one separately what to do.'), L('Tipka C', 'Key C')],
 };
 function updateHudTip(){
   if(!player || !hoverUi){ if(hudTipKey) hideItemTip(); return; }
@@ -250,6 +252,14 @@ function updateHudTip(){
     if(hudTipKey === 'top' + t) return;
     hudTipKey = 'top' + t;
     showItemTip(simpleTipHtml(...TOP_TIPS[t]), rect, 'below');
+    return;
+  }
+  if(t === 'cmdPlan' || t === 'cmdBot'){   // 📣 v0.58 gumbi u ploči zapovijedi: opis lijevo od ploče
+    const r = (t === 'cmdPlan' ? uiRects.cmdPlans : uiRects.cmdBots) || [], b = r[hoverUi.i], pn = uiRects.cmdPanel, tip = b && pn ? cmdTip(t, hoverUi.i) : null;
+    if(!tip) return hideItemTip();
+    if(hudTipKey === t + hoverUi.i) return;
+    hudTipKey = t + hoverUi.i;
+    showItemTip(simpleTipHtml(escHtml(tip[0]), escHtml(tip[1]), escHtml(tip[2])), { x: pn.x * UI_K, y: b.y * UI_K, w: pn.w * UI_K, h: b.h * UI_K }, 'left');
     return;
   }
   if(t === 'buff'){

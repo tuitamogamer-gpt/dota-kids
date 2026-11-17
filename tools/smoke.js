@@ -2,7 +2,8 @@
    i pusti je nekoliko sekundi — svaka greška na stranici (i u 3D crtanju, koje simulacija ne pokreće) ruši provjeru.
    Uz to provjeri geometriju svih 3D modela: nijedan komad ne smije biti izvrnut naopako (insideOutPieces),
    da svaka moć svakog junaka ima svoju animaciju (isječak abQ / abW / abE / abR u modelu),
-   te izgled (v0.57): odabir junaka stane na ekran 1280 × 720, pomoć je presložena u kartice, tablica na kraju je u sredini.
+   te izgled (v0.57): odabir junaka stane na ekran 1280 × 720, pomoć je presložena u kartice, tablica na kraju je u sredini,
+   i zapovijedi (v0.58): tipka C otvori ploču, tipka 3 zada plan i svi živi botovi ga prime.
      npm i --no-save playwright && npx playwright install chromium && node tools/smoke.js */
 'use strict';
 const http = require('http'), fs = require('fs'), path = require('path');
@@ -87,6 +88,16 @@ function insideOutPieces(){
       const noAnim = await p.evaluate(() => HEROES.flatMap(h => h.abilities.filter(a => !a.passive && !(MODELS.clips['hero_' + h.id] || {})['ab' + a.key]).map(a => h.id + ':' + a.key)));
       console.log('modeli: moći bez vlastite animacije ' + noAnim.length);
       if(noAnim.length) errors.push('moći bez animacije: ' + noAnim.join(', '));
+      // 📣 v0.58 zapovijedi: tipka C otvori ploču (8 planova, red za svakog bota), tipka 3 zada „Guramo SREDINU”
+      await p.keyboard.press('c');
+      await p.waitForFunction(() => cmdOpen && uiRects.cmdPlans && uiRects.cmdPlans.length === 8, null, { timeout: 30000 }).catch(() => {});
+      const cp = await p.evaluate(() => ({ open: cmdOpen, plans: (uiRects.cmdPlans || []).length, botBtns: (uiRects.cmdBots || []).length, bots: myBots().length }));
+      await p.keyboard.press('3');
+      await p.waitForTimeout(500);
+      const cq = await p.evaluate(() => { const c = teamAI[myTeam].cmd; return { plan: c ? c.type + ':' + c.lane : null, open: cmdOpen,
+        pushing: units.filter(u => u.kind === 'hero' && u.team === myTeam && u.bot && !u.dead && u.bot.order && u.bot.order.type === 'push').length, alive: aiBots(myTeam).length }; });
+      console.log('zapovijedi: ' + JSON.stringify(cp) + ' ' + JSON.stringify(cq));
+      if(!cp.open || cp.plans !== 8 || cp.botBtns !== cp.bots * 5 || cq.plan !== 'push:mid' || cq.open || cq.pushing !== cq.alive) errors.push('ploča zapovijedi: ' + JSON.stringify(cp) + ' ' + JSON.stringify(cq));
       // 🏁 kraj igre: tablica je u sredini ekrana, naslov pobjede je zlatan (v0.57 — prije je tablica stajala uz lijevi rub)
       await p.evaluate(() => endGame(player.team));
       await p.waitForFunction(() => !document.getElementById('end').classList.contains('hidden'), null, { timeout: 30000 });

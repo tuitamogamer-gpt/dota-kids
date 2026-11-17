@@ -251,6 +251,9 @@ function onNetData(d){
     case 'chat': if(net.mode === 'host' && remoteHero) sendChat(remoteHero, d.i | 0); break;
     case 'ping': if(net.mode === 'host' && remoteHero) addPing(remoteHero, +d.x || 0, +d.y || 0); break;
     case 'talent': if(net.mode === 'host' && remoteHero) chooseTalent(remoteHero, d.l, d.p === 'b' ? 'b' : 'a'); break;
+    // 📣 v0.58: gost zapovijeda svojim botovima (plan tima / jednom botu)
+    case 'plan': if(net.mode === 'host' && remoteHero) commandTeam(remoteHero, String(d.t), d.l); break;
+    case 'bplan': if(net.mode === 'host' && remoteHero) commandBot(remoteHero, units.find(u => u.id === d.id), String(d.t), d.l); break;
   }
 }
 
@@ -272,6 +275,8 @@ function netGlyph(){ sendNet({ c: 'glyph' }); }
 function netChat(i){ sendNet({ c: 'chat', i }); }
 function netPing(x, y){ sendNet({ c: 'ping', x: Math.round(x), y: Math.round(y) }); }
 function netTalent(l, p){ sendNet({ c: 'talent', l, p }); }
+function netPlan(t, l){ sendNet({ c: 'plan', t, l: l || 0 }); }                 // 📣 plan tima
+function netBotPlan(id, t, l){ sendNet({ c: 'bplan', id, t, l: l || 0 }); }     // 📣 zapovijed jednom botu
 
 /* ---------- SNAPSHOT: domaćin → gost ---------- */
 function packStatus(st){
@@ -350,6 +355,10 @@ function buildSnapshot(){
       if(u.aegis) b.ag = 1;
       b.it2 = u.items.map(i => i.id).join(',');
       if(u.neutral) b.nt = u.neutral.id;
+      if(u.bot && u.team === TEAM_RED){   // 📣 v0.58: gostovi botovi — što rade, na kojoj su stazi, prati li ga koji
+        b.tk = botTaskCode(u); b.hl = LANE_LIST.indexOf(u.homeLane || u.lane);
+        if(u.bot.pcmd && u.bot.pcmd.type === 'follow') b.pc = 1;
+      }
     }
     else if(u.kind === 'creep'){ if(u.rangedCreep) b.rc = 1; if(u.siege) b.sg = 1; if(u.summonModel) b.sm = u.summonModel; if(u.superCreep) b.su = 1; }
     else if(u.kind === 'barracks'){ b.iv = u.invuln ? 1 : 0; b.ln = u.lane; }
@@ -387,6 +396,7 @@ function buildSnapshot(){
     tr: traps.map(t => [t.id, Math.round(t.x), Math.round(t.y), t.team, t.arm > 0 ? 1 : 0]),   // 🪤 Zekine zamke
     tt: totems.map(t => [t.id, Math.round(t.x), Math.round(t.y), t.team, Math.round(t.t)]),       // 🗿 Jazini totemi
     tc: treesCut.slice(),   // 🌳 pojedena / posječena stabla
+    pl: (c => c && gameTime <= c.until ? [PLAN_KEYS.indexOf(c.type), LANE_LIST.indexOf(c.lane), Math.ceil(c.until - gameTime)] : 0)(teamAI[TEAM_RED] && teamAI[TEAM_RED].cmd),   // 📣 plan gostova tima
   };
 }
 function maybeSendSnapshot(now){
@@ -513,6 +523,7 @@ function applySnapshot(d){
       if(!u.isPlayer) u.items = (b.it2 || '').split(',').map(id => ITEM_BY_ID[id]).filter(Boolean);
       u.neutral = b.nt ? ITEM_BY_ID[b.nt] || null : null;
       if(b.pl === 2 && !u.isPlayer){ u.isPlayer = true; }
+      u.taskK = b.tk != null ? b.tk : null; u.laneK = b.hl; u.pcK = b.pc || 0;   // 📣 v0.58
     }
     if(u.kind === 'ancient' || u.kind === 'barracks' || u.kind === 'tower') u.invuln = !!b.iv;
     if(b.tr) u.tier = b.tr;
@@ -612,6 +623,7 @@ function applySnapshot(d){
     pings = d.pg.map(v => { const ex = old.find(p => p.x === v[0] && p.y === v[1] && p.team === v[2] && v[3] >= p.t - 0.5);
       if(ex){ ex.t = v[3]; return ex; } return { x: v[0], y: v[1], team: v[2], t: v[3] }; });
   }
+  net.planView = d.pl || 0;   // 📣 v0.58 plan mog tima (za ploču zapovijedi)
   if(d.cu){   // 🫏 isti objekti kurira (3D model se gradi samo jednom)
     if(couriers.length !== d.cu.length) makeCouriers();
     d.cu.forEach((v, i) => { const c = couriers[i]; c.x = v[0]; c.y = v[1]; c.dir = v[2]; c.state = ['home', 'go', 'back'][v[3]] || 'home'; c.carry = v[4]; });
@@ -736,7 +748,7 @@ function resetMatchState(){
   makeShrines(); makeCouriers(); creepTier = 0; bossKills = 0; coinDrops = [];
   teamDrakes = [[], []]; nextDrake = null; scoreOpen = false;
   neutralDrops = [{ 1: 0, 2: 0, 3: 0 }, { 1: 0, 2: 0, 3: 0 }]; neutralFx = [];
-  resetExtraRunes(); pings = []; chatOpen = false;
+  resetExtraRunes(); pings = []; chatOpen = false; cmdOpen = false; net.planView = 0;
   pendingCast = null;
   gameTime = 0; waveTimer = CFG.firstWave; waveCount = 0;
   firstBlood = false; gameOver = false; paused = false;

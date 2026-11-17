@@ -4,7 +4,7 @@
    prazni stubovi), pa pusti da botovi vode OBA tima — i tvog junaka.
    Koristi se za provjeru ravnoteže, veličine mape i umjetne inteligencije.
 
-     node tools/sim/sim.js [broj igara] [--max=sekunde] [--diff=normal] [--quiet] [--json=datoteka.jsonl]
+     node tools/sim/sim.js [broj igara] [--max=sekunde] [--diff=normal] [--quiet] [--json=datoteka.jsonl] [--plan=push|mix] [--seed=broj]
 
    Ispis po igri: trajanje, pobjednik, ubojstva, srušene kule, statistike
    razmaka među junacima (koliko je mapa "gužva"), gankovi i guranja.
@@ -17,6 +17,18 @@ const N = parseInt(args.find(a => /^\d+$/.test(a)) || '1', 10);
 const MAX = parseFloat((args.find(a => a.startsWith('--max=')) || '--max=2400').slice(6));
 const DIFF = (args.find(a => a.startsWith('--diff=')) || '--diff=normal').slice(7);
 const QUIET = args.includes('--quiet');
+/* 📣 v0.58 zapovjednik: "tvoj" junak (plavi tim) zadaje planove timu kao što bi igrač (tipka C) — mjeri koliko zapovijedi vrijede
+     --plan=push   pretjeruje: od 6. minute bez prestanka „Guramo” stazu na kojoj je naš val najdalje
+     --plan=mix    razumno, u pravom trenutku: „Branimo bazu” kad junaci ruše kulu u bazi, vojarnu ili prijestol; „Guramo” kad
+                   su barem dva protivnika pala (a nas je živih barem troje); „Veliki Zmaj” kad su pala tri — inače botovi sami */
+const PLAN = (args.find(a => a.startsWith('--plan=')) || '').slice(7);
+/* 🎲 --seed=broj: ista igra svaki put (isti junaci, isti tijek) — i-ta igra ima sjeme broj + i − 1. Tako se dvije verzije igre mogu
+     usporediti na ISTIM igrama: ako se ponašanje botova nije promijenilo, ispis je (osim vremena izvođenja) isti do zadnje znamenke. */
+const SEED = parseInt((args.find(a => a.startsWith('--seed=')) || '').slice(7), 10) || 0;
+function seedRandom(n){   // mulberry32 umjesto Math.random (Math je zajednički simulatoru i igri)
+  let a = n >>> 0;
+  Math.random = function(){ a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+}
 const HERO = (args.find(a => a.startsWith('--hero=')) || '').slice(7);   // tvoj junak (id), npr. --hero=nisan
 const VS = (args.find(a => a.startsWith('--vs=')) || '').slice(5);       // junaci koji su sigurno u igri, npr. --vs=bikos,nisan
 const CHECK = args.includes('--check');                                   // ispiši stanje svakog junaka na kraju
@@ -74,6 +86,7 @@ const SRC = ['sr.js', 'i18n.js', 'data.js', 'voices.js'].map(f => fs.readFileSyn
 ;globalThis.__G = { get units(){ return units; }, get gameTime(){ return gameTime; }, get gameOver(){ return gameOver; },
   get winnerTeam(){ return winnerTeam; }, get kills(){ return kills; }, get player(){ return player; }, get teamAI(){ return typeof teamAI !== 'undefined' ? teamAI : null; },
   HEROES, CFG, WORLD, SETTINGS, startGame, update, netWorth, botSpendPoints, LANE_PTS, FOUNTAIN, trees: () => trees, camps: () => camps,
+  commandTeam, pushLane, bossUnit, findThreat, gameClock, aiBots,
   treesCut: () => treesCut.length, treeEaten: () => trees.filter(t => t.everCut).length };
 { const cA = castAbility; castAbility = function(u, i, aim){ const cd0 = u.abilities[i] && u.abilities[i].cd; cA(u, i, aim); const ab = u.abilities[i];
     if(ab && cd0 <= 0 && ab.cd > 0){ u.casts = u.casts || {}; u.casts[ab.def.key] = (u.casts[ab.def.key] || 0) + 1; } }; }
@@ -83,6 +96,7 @@ const SRC = ['sr.js', 'i18n.js', 'data.js', 'voices.js'].map(f => fs.readFileSyn
 function runGame(gi){
   const ctx = makeContext();
   vm.createContext(ctx);
+  if(SEED) seedRandom((SEED + gi - 1) * 7919 + 13);
   vm.runInContext(SRC, ctx, { filename: 'game-bundle.js' });
   const G = ctx.__G;
   G.SETTINGS.diff = DIFF;
@@ -101,11 +115,24 @@ function runGame(gi){
   G.botSpendPoints(p);   // kao i ostali botovi: poen s levela 1 odmah (prije ga je "igrač" čekao do levela 2)
   if(p.jungler) p.summoners = ['flash', 'smite'];
   const dt = 0.05;
-  const stat = { nearSum: 0, nearN: 0, crowd: 0, crowdN: 0, fightT: 0, towerKills: [0, 0], heroDeaths: 0, tDeath: [], spread: 0 };
+  const stat = { nearSum: 0, nearN: 0, crowd: 0, crowdN: 0, fightT: 0, towerKills: [0, 0], heroDeaths: 0, tDeath: [], spread: 0, plans: {} };
   let tLog = 0;
   while(!G.gameOver && G.gameTime < MAX){
     G.update(dt);
     if(G.gameTime < 0) continue;
+    if(PLAN && Math.floor(G.gameTime / 3) !== Math.floor((G.gameTime - dt) / 3) && !G.teamAI[p.team].cmd){   // 📣 zapovjednik (svake 3 s, kad nema plana)
+      const th = G.findThreat(p.team), clk = G.gameClock(), bots = G.aiBots(p.team);
+      let plan = null;
+      if(PLAN === 'push'){ if(clk > 360) plan = ['push', G.pushLane(p.team)]; }
+      else if(PLAN === 'mix'){
+        const foes = G.units.filter(u => u.kind === 'hero' && u.team !== p.team), down = foes.filter(u => u.dead && u.deadT > 8).length;
+        const base = th && th.nh > 0 && (th.s.kind !== 'tower' || th.s.tier >= 3 || th.s.isGuard);
+        if(base) plan = ['defend'];
+        else if(clk > 600 && down >= 3 && bots.length >= 3 && G.bossUnit()) plan = ['boss'];
+        else if(clk > 300 && down >= 2 && bots.length >= 3) plan = ['push', G.pushLane(p.team)];
+      }
+      if(plan && (plan[0] !== 'push' || plan[1]) && G.commandTeam(p, plan[0], plan[1])) stat.plans[plan[0]] = (stat.plans[plan[0]] || 0) + 1;
+    }
     // svake sekunde: razmak do najbližeg neprijateljskog junaka, gužva (junaci unutar 700)
     if(Math.floor(G.gameTime) !== Math.floor(G.gameTime - dt)){
       const hs = G.units.filter(u => u.kind === 'hero' && !u.dead);
@@ -141,6 +168,7 @@ function runGame(gi){
     fightPct: +(100 * stat.fightT / Math.max(1, stat.nearN)).toFixed(1),
     ai: G.teamAI ? G.teamAI.map(a => a.stats) : null,
     deaths: heroes.reduce((a, h) => a + h.deaths, 0),
+    plans: PLAN ? stat.plans : null,
   };
   if(JSON_OUT) fs.appendFileSync(JSON_OUT, JSON.stringify({ min: res.min, win: res.win, heroes: heroes.map(h => ({ id: h.hero.id, t: h.team, jg: h.jungler ? 1 : 0, k: h.kills, d: h.deaths, a: h.assists, nw: G.netWorth(h), lv: h.level, hd: Math.round(h.heroDmg || 0), c: h.casts || {}, it: h.items.filter(Boolean).map(i => i.id) })) }) + '\n');
   if(CHECK) for(const h of heroes){
@@ -160,7 +188,7 @@ for(let i = 0; i < N; i++){
   all.push(r);
   console.log(`#${r.i} ${r.hero.padEnd(9)} ${String(r.min).padStart(5)} min  pobjeda: ${r.win == null ? '—' : (r.win === 0 ? 'plavi' : 'crveni')}  K ${r.kills[0]}:${r.kills[1]}` +
     `  kule ${r.towers[0]}/${r.towers[1]}  lvl ${r.lvl[0]}/${r.lvl[1]}  neto ${r.nw[0]}/${r.nw[1]}  razmak ${r.nearEnemy}  gužva ${r.crowd}  borba ${r.fightPct}%` +
-    (r.ai ? '  AI ' + JSON.stringify(r.ai) : '') + `  (${((Date.now() - t0) / 1000).toFixed(1)} s)`);
+    (r.ai ? '  AI ' + JSON.stringify(r.ai) : '') + (r.plans ? '  📣 ' + JSON.stringify(r.plans) : '') + `  (${((Date.now() - t0) / 1000).toFixed(1)} s)`);
 }
 if(N > 1){
   const avg = k => (all.reduce((a, r) => a + r[k], 0) / all.length).toFixed(1);

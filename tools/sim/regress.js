@@ -242,6 +242,106 @@ check('Novi predmeti rade kako piše (domet, ulti, žaba, medalja, zrcalo, veo, 
       out.crimson[0] === 8 && out.crimson[1] === 200 && out.lotus[0] === 0 && out.lotus[1];
     return ok || out;`);
 });
+/* 📣 v0.58 zapovijedi: zajednička priprema — igra traje 40 s (botovi su na stazama), igrač P stoji gdje ga test stavi,
+   saveznički botovi imaju golem život (ne bježe ranjeni), a protivnički junaci stoje u svojoj bazi */
+const CMD_SETUP = `
+  startGame(0); gameTime = 0;
+  const P = player; P.bot = null;
+  const mine = () => units.filter(u => u.kind === 'hero' && u.team === P.team && u.bot);
+  const foes = () => units.filter(u => u.kind === 'hero' && u.team !== P.team);
+  const hold = () => { P.moveTarget = null; P.hp = P.maxhp = 1e6; for(const u of mine()){ u.maxhp = 1e6; u.hp = 1e6; }
+    for(const e of foes()){ e.bot = null; e.x = FOUNTAIN[e.team].x; e.y = FOUNTAIN[e.team].y; e.moveTarget = null; e.attackTarget = null; } };
+  const run = (sec, each) => { for(let k = 0; k < sec * 20; k++){ hold(); if(each) each(k); update(0.05); } };
+  run(40);
+`;
+check('Zapovijed „Svi za mnom”: botovi dođu do igrača, napadaju njegovu metu, plan istekne', () => {
+  const g = game();
+  return g(CMD_SETUP + `
+    const f = FOUNTAIN[P.team];
+    const camp = camps.filter(c => c.type !== 'boss' && c.type !== 'drake' && c.units.length).sort((a, b) => distXY(a.x, a.y, f.x, f.y) - distXY(b.x, b.y, f.x, f.y))[0];
+    P.x = camp.x - 420; P.y = camp.y + 60; P.attackTarget = null;
+    if(!commandTeam(P, 'follow')) return 'plan nije primljen';
+    const got = mine().filter(u => u.bot.order && u.bot.order.type === 'follow' && u.bot.order.cmd === 1).length;
+    run(32, () => { P.attackTarget = null; });
+    const far = mine().filter(u => dist(u, P) > 560).map(u => u.name + ' ' + Math.round(dist(u, P)));
+    // uz igrača STOJE: ne trzaju se prema svojoj stazi i natrag (zbroj pomaka u 4 s)
+    const last = mine().map(u => ({ x: u.x, y: u.y })), path = mine().map(() => 0);
+    run(4, () => { P.attackTarget = null; mine().forEach((u, i) => { path[i] += Math.hypot(u.x - last[i].x, u.y - last[i].y); last[i] = { x: u.x, y: u.y }; }); });
+    const jitter = Math.round(Math.max(...path));
+    const mob = camp.units[0]; mob.maxhp = mob.hp = 1e7;
+    run(4, () => { P.attackTarget = mob; mob.hp = 1e7; });
+    const focus = mine().filter(u => u.attackTarget === mob).length;
+    run(12, () => { P.attackTarget = null; });
+    const after = { plan: teamAI[P.team].cmd, orders: mine().filter(u => u.bot.order && u.bot.order.cmd).length };
+    return (got === 4 && far.length === 0 && jitter < 200 && focus >= 3 && !after.plan && after.orders === 0) || { got, far, jitter, focus, after: { plan: !!after.plan, orders: after.orders } };`);
+});
+check('Zapovijed „Guramo SREDINU”: svi botovi prijeđu na tu stazu, a poslije se vrate na svoju', () => {
+  const g = game();
+  return g(CMD_SETUP + `
+    P.x = FOUNTAIN[P.team].x; P.y = FOUNTAIN[P.team].y;
+    const home = mine().map(u => u.homeLane);
+    if(!commandTeam(P, 'push', 'mid')) return 'plan nije primljen';
+    const got = mine().filter(u => u.bot.order && u.bot.order.type === 'push' && u.lane === 'mid').length;
+    endOrder(mine()[0]);   // kao kad bot padne: ostane bez zadatka — plan mu ga mora dati ponovno
+    run(4);
+    const again = !!(mine()[0].bot.order && mine()[0].bot.order.type === 'push');
+    run(30);
+    const fp = laneFront(P.team, 'mid');
+    const near = mine().filter(u => dist(u, fp) < 1100).length;
+    run(34);   // plan traje 60 s
+    const back = mine().every((u, i) => u.lane === home[i] && !(u.bot.order && u.bot.order.cmd));
+    return (got === 4 && again && near >= 3 && back && !teamAI[P.team].cmd) || { got, again, near, back, lanes: mine().map(u => u.lane + '/' + u.homeLane), plan: !!teamAI[P.team].cmd };`);
+});
+check('Zapovijed jednom botu vrijedi i uz plan tima; prijestol tim brani i usred plana', () => {
+  const g = game();
+  return g(CMD_SETUP + `
+    P.x = FOUNTAIN[P.team].x + 500; P.y = FOUNTAIN[P.team].y - 500;
+    const [a, b] = mine();
+    const r = {};
+    // sve u istom trenutku igre (spor uređaj: vrijeme igre gotovo stoji): različite zapovijedi prolaze odmah, ista dvaput ne
+    r.call = commandBot(P, a, 'follow');
+    r.twice = commandBot(P, a, 'follow');
+    r.lane = commandBot(P, b, 'lane', b.homeLane === 'top' ? 'bot' : 'top');
+    const bl = b.homeLane;
+    r.plan = commandTeam(P, 'push', 'mid');
+    r.planTwice = commandTeam(P, 'push', 'mid');
+    run(3);
+    r.aFollows = !!(a.bot.order && a.bot.order.type === 'follow' && a.bot.order.cmd === 2);     // osobna zapovijed ostaje
+    r.bStays = b.lane === bl && !(b.bot.order && b.bot.order.type === 'push');                 // poslan na stazu: plan tima ga ne dira
+    r.othersPush = mine().filter(u => u !== a && u !== b && u.bot.order && u.bot.order.type === 'push').length;
+    run(22);
+    r.aNear = dist(a, P) < 560;
+    // napad na prijestol: junak ga ruši — tim brani iako plan „Guramo” još traje
+    const A = ancients[P.team], E = foes()[0];
+    A.invuln = false;
+    run(6, () => { E.x = A.x + 180; E.y = A.y + 60; A.lastDmgT = gameTime; });
+    r.defend = mine().filter(u => u.bot.order && u.bot.order.type === 'defend' && u.bot.order.s === A).length;
+    r.planOn = !!teamAI[P.team].cmd;
+    r.free = commandBot(P, a, 'free') && !a.bot.pcmd;
+    return (r.call && !r.twice && r.lane && r.plan && !r.planTwice && r.aFollows && r.bStays && r.othersPush === 2 && r.aNear && r.defend >= 2 && r.planOn && r.free) || r;`);
+});
+check('Gost zapovijeda svojim botovima preko domaćina i vidi plan i poslove botova', () => {
+  const host = JSON.parse(game()(`
+    startGame(0); gameTime = 0;
+    for(let k = 0; k < 800; k++) update(0.05);
+    net.mode = 'host'; remoteHero = units.find(u => u.kind === 'hero' && u.team === TEAM_RED); remoteHero.human = true; remoteHero.bot = null;
+    const red = units.filter(u => u.kind === 'hero' && u.team === TEAM_RED && u !== remoteHero);
+    for(const u of red){ u.dead = false; u.maxhp = u.hp = 1e6; u.bot.state = 'lane'; }
+    remoteHero.dead = false;
+    onNetData({ c: 'plan', t: 'push', l: 'top' });
+    onNetData({ c: 'bplan', id: red[0].id, t: 'follow', l: 0 });
+    const out = JSON.stringify({ snap: buildSnapshot(), plan: teamAI[TEAM_RED].cmd && teamAI[TEAM_RED].cmd.type, pushing: red.filter(u => u.bot.order && u.bot.order.type === 'push').length,
+      follows: !!(red[0].bot.pcmd && red[0].bot.order && red[0].bot.order.type === 'follow'), blue: !!teamAI[TEAM_BLUE].cmd, bad: (onNetData({ c: 'plan', t: 'nema', l: 'top' }), teamAI[TEAM_RED].cmd.type) });
+    net.mode = 'local'; return out;`));
+  const r = game()(`
+    startGame(0); net.mode = 'guest'; myTeam = TEAM_RED; units = [];
+    applySnapshot(${JSON.stringify(host.snap)});
+    const pl = myPlan(), bots = units.filter(u => u.kind === 'hero' && u.team === TEAM_RED && u.taskK != null);
+    const out = { plan: pl && pl.type + ':' + pl.lane, left: pl && pl.left, tasks: bots.map(u => botTaskCode(u)).sort().join(','), follow: bots.filter(botFollowsMe).length };
+    net.mode = 'local'; return out;`);
+  return (host.plan === 'push' && host.pushing === 3 && host.follows && !host.blue && host.bad === 'push' &&
+    r.plan === 'push:top' && r.left >= 55 && r.tasks === 'f,p0,p0,p0' && r.follow === 1) || { host: { plan: host.plan, pushing: host.pushing, follows: host.follows, blue: host.blue, bad: host.bad }, guest: r };
+});
 check('Svaka moć svakog junaka: bez iznimke i bez NaN', () => {
   const g = game();
   const n = g('return HEROES.length;');

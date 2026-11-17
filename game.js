@@ -500,6 +500,8 @@ function updateExtraRunes(dt){
 let pings = [];                 // { x, y, team, t }
 let botBragT = -99, botHelpT = [-99, -99];   // 🤫 botovi ne zatrpavaju poruke
 let chatOpen = false;
+let cmdOpen = false;                // 📣 v0.58 ploča zapovijedi (tipka C ili gumb 📣)
+let cmdN = 0;                       // koliko je planova i zapovijedi ovaj igrač zadao u ovoj igri (savjet, zadatak, postignuće)
 function say(h, txt){
   if(!h) return;
   if(gameTime - (h.chatT == null ? -9 : h.chatT) < 1.2) return;
@@ -514,6 +516,8 @@ function sendChat(h, i){
     const e = units.filter(e => e.kind === 'hero' && e.team !== h.team && !e.dead && isVisibleTo(h.team, e) && dist(h, e) < 1400).sort((a, b) => dist(a, h) - dist(b, h))[0];
     if(e) botsAnswer(h, e.x, e.y);
   }
+  else if(i === 1 && isHuman(h) && !h.dead) botsAnswer(h, h.x, h.y);   // 🆘 Pomoć! — 📣 v0.58: dva najbliža bota dolaze k tebi
+  else if(i === 3 && isHuman(h)) commandTeam(h, 'retreat');             // 🏃 Povlačenje! — cijeli tim se povuče do svojih kula
 }
 function addPing(h, x, y){
   if(!h || gameTime - (h.pingT == null ? -9 : h.pingT) < 0.8) return;
@@ -3258,7 +3262,8 @@ function botUseAbilities(u, eh, plan){
    🏰 GURANJE — kad smo jači (više živih, veći level ili zlato) ili kasno u igri: tim se skupi na jednoj stazi
    🐲 ZMAJ    — kad protivnici leže mrtvi ili (v0.51) kad ga botovi u blizini brzo sruše, a protivnici ga ne mogu oteti
    🔁 STAZE   — staza bez naših junaka kojoj prijete neprijateljski vojnici dobiva bota s gušće staze
-   Saveznici slušaju i tebe: 📍 ping (V) na neprijatelja / kulu ili "⚔️ Napadamo!" (G pa 3) pozove pomoć. */
+   Saveznici slušaju i tebe: 📣 zapovijedi (C) — plan tima ili svakom botu posebno (v0.58, vidi „ZAPOVIJEDI”);
+   📍 ping (V) na neprijatelja / kulu ili "⚔️ Napadamo!" (G pa 3) pozove pomoć. */
 let teamAI = [];
 function resetTeamAI(){
   teamAI = [0, 1].map(team => ({ team, t: 4 + team, rotT: 45, gankT: 75 + team * 7, push: null, pushCd: 0,
@@ -3519,7 +3524,20 @@ function planTeam(ai){
   const th = findThreat(team);
   const creepsOnly = !!th && th.nh === 0 && th.s.kind !== 'ancient' && !th.s.isGuard;
   const block = !!th && !creepsOnly;   // 🧠 v0.51: ostale planove prekida samo napad junaka (ili na prijestol), ne val vojnika
-  if(th){
+  // 📣 v0.58 zapovijedi igrača: plan tima vrijedi dok ne istekne; tim sam brani samo prijestol i čuvarske kule
+  if(ai.cmd){
+    const c = ai.cmd;
+    if(gameTime > c.until) clearTeamPlan(ai, L('📣 Plan je istekao — botovi opet odlučuju sami', '📣 The plan is over — the bots decide for themselves again'));
+    else if(!c.by || c.by.removeMe) clearTeamPlan(ai);
+    // plan se sam završi kad je posao gotov ili kad postane preopasan (tim ne stoji bez posla i ne gine uzalud)
+    else if(c.type === 'boss' && !bossUnit()) clearTeamPlan(ai, L('🐲 Zmaj je pao — plan je gotov', '🐲 The dragon is down — the plan is done'));
+    else if(c.type === 'defend' && gameTime - c.t0 > 10 && !baseInDanger(team)) clearTeamPlan(ai, L('🛡️ Baza je sigurna — plan je gotov', '🛡️ The base is safe — the plan is done'));
+    else if(c.type === 'push' && gameTime - c.t0 > 6 && theirsAlive.length > mineAlive.length)
+      clearTeamPlan(ai, L('⚔️ Protivnika je više nego nas — guranje je gotovo', '⚔️ The enemies outnumber us — the push is over'));
+  }
+  keepBotCommands(team);
+  const crit = !!th && (th.s.kind === 'ancient' || th.s.isGuard);
+  if(th && (!ai.cmd || crit || ai.cmd.type === 'defend')){
     const need = th.s.kind === 'ancient' || th.s.isGuard ? 5 : Math.min(4, Math.max(1, th.nh + 1));
     let have = mine.filter(h => !h.dead && dist(h, th.s) < 1100).length;
     // ⚖️ v0.49: dovoljno branitelja i po SNAZI (jak protivnik traži više junaka — da ne dolaze jedan po jedan)
@@ -3529,7 +3547,7 @@ function planTeam(ai){
     //   dolaze samo kad je napadaju i junaci, a njima se isplati otići (na svojoj stazi nemaju posla); nitko se ne teleportira
     const t1Safe = lp && th.s.kind === 'tower' && th.s.tier === 1 && th.s.hp > th.s.maxhp * 0.5, minor = t1Safe && th.nh === 0;
     // samo vojnici (bez junaka) na kuli ili vojarni: dovoljan je jedan branitelj — ne prekida guranje ni gank drugih botova
-    const cand = bots.filter(u => (aiFree(u) || (!creepsOnly && u.bot.order && u.bot.order.type !== 'defend')) && u.hp > u.maxhp * 0.45 && dist(u, th.s) > 1100 &&
+    const cand = bots.filter(u => (aiFree(u) || (!creepsOnly && u.bot.order && u.bot.order.type !== 'defend' && (!u.bot.order.cmd || crit))) && u.hp > u.maxhp * 0.45 && dist(u, th.s) > 1100 &&
       (!t1Safe || u.lane === th.s.lane || (!minor && roamCost(u) < 0.35)))
       .sort((a, b) => dist(a, th.s) - dist(b, th.s));
     for(const u of cand){
@@ -3543,6 +3561,7 @@ function planTeam(ai){
     }
     ai.log = 'obrana';
   }
+  if(ai.cmd){ applyTeamPlan(ai); ai.log = 'plan ' + ai.cmd.type; return; }   // 📣 dok plan igrača traje, tim ne smišlja svoje (zmaj, guranje, gank, staze)
   // 🐲 2) Veliki Zmaj — kad protivnici leže, ili 🧠 v0.51 po procjeni: barem trojica botova (level 9+) u blizini zajedno ga
   //   sruše za manje od ~16 s, a zmaj im pritom odnese manje od 40 % zajedničkog života, i protivnici ga ne mogu oteti
   //   (onih koji su blizu ili u magli ima manje nego nas). Zmaj daje štit, zlato i jače udarce — s njim tim lakše ruši kule.
@@ -3654,7 +3673,7 @@ function planTeam(ai){
       const ours = mine.filter(h => !h.dead && dist(h, tw) < 1700).length;
       if(foes < 4 || ours > 0) continue;
       const count = l => mine.filter(h => !h.dead && h.lane === l && !h.jungler).length;   // 🌲 junak u džungli ne drži stazu
-      const donor = bots.filter(u => aiFree(u) && !u.jungler && u.lane !== lane && count(u.lane) >= 2).sort((a, b) => dist(a, tw) - dist(b, tw))[0];
+      const donor = bots.filter(u => aiFree(u) && !u.jungler && u.lane !== lane && count(u.lane) >= 2 && !(u.bot.laneLock > gameTime)).sort((a, b) => dist(a, tw) - dist(b, tw))[0];   // 📣 ne onoga kojeg je igrač poslao na stazu
       if(!donor) continue;
       donor.lane = donor.homeLane = lane; ai.stats.rot++;
       teamSay(team, L('🔁 ' + donor.emoji + ' ' + donor.name + ' prelazi na stazu ' + laneLabel(lane) + '!', '🔁 ' + donor.emoji + ' ' + donor.name + ' moves to the ' + laneLabel(lane) + ' lane!'));
@@ -3701,11 +3720,32 @@ function followOrder(u, eh){
       u.attackTarget = null; u.moveTarget = gankApproach(u, o);
       return true;
     }
+    case 'follow': {   // 📣 v0.58 „za mnom”: uz igrača; njegova meta je i moja
+      const ld = o.target;
+      if(!ld || ld.removeMe){ endOrder(u); return false; }
+      if(ld.dead) return false;   // vođa čeka oživljavanje — do tada po starom (zadatak ostaje)
+      const d = dist(u, ld);
+      if(d > 2600 && u.tpCd <= 0 && !eh){   // daleko: teleport do naše kule uz vođu
+        const tw = units.find(sd => sd.kind === 'tower' && sd.team === u.team && !sd.removeMe && dist(sd, ld) < 1000);
+        if(tw){ startTeleport(u, tw); return true; }
+      }
+      if(eh && dist(u, eh) < 700 && d < 900) return false;   // uz vođu, a neprijatelj je tu: procjena borbe
+      const t = ld.attackTarget;   // junak, čudovište (i zmaj) ili građevina — vojnike na stazi ne otima vođi (zlato zadnjeg udarca je njegovo)
+      if(t && t.kind !== 'creep' && !t.dead && !t.removeMe && t.team !== u.team && d < 1000 && dist(u, t) < 900 && isVisibleTo(u.team, t) && !(t.status && t.status.invisT > 0 && t.status.trackT <= 0) &&
+         !(isStructure(t) && (t.invuln || countOwnCreepsNear(u.team, t, 350) === 0))){ u.attackTarget = t; u.moveTarget = null; return true; }
+      if(d > 380){ u.attackTarget = null; u.moveTarget = followSlot(ld, o); return true; }
+      return false;   // uz vođu: holdByOrder (bije se s onim što je tu ili stoji)
+    }
+    case 'fallback': {   // 📣 v0.58 „povlačenje”: do svoje kule iza leđa, i pokraj neprijatelja
+      if(!o.p) o.p = safePoint(u);
+      if(distXY(u.x, u.y, o.p.x, o.p.y) > 260){ u.attackTarget = null; u.moveTarget = o.p; return true; }
+      return false;
+    }
     case 'defend': {
       const sd = o.s;
       if(!sd || sd.removeMe){ endOrder(u); return false; }
       if(eh && dist(u, eh) < 700) return false;   // ⚖️ v0.49: uz neprijatelja odlučuje procjena borbe (slabiji čeka suigrače)
-      if(gameTime - (sd.lastDmgT || -99) > 8 && dist(u, sd) < 1000){ endOrder(u); return false; }
+      if(!o.cmd && gameTime - (sd.lastDmgT || -99) > 8 && dist(u, sd) < 1000){ endOrder(u); return false; }   // (zapovijed igrača traje do kraja plana)
       if(dist(u, sd) > 2400 && u.tpCd <= 0 && !eh){ startTeleport(u, sd); return true; }
       if(dist(u, sd) > 700){ u.attackTarget = null; u.moveTarget = stepToward(sd, FOUNTAIN[u.team], 120); return true; }
       return false;   // na mjestu: borba oko kule po običnim pravilima
@@ -3741,14 +3781,284 @@ function botsAnswer(h, x, y){
   if(!near.length) return;
   for(const u of near){
     endOrder(u);
-    if(foe) giveOrder(u, { type: 'gank', target: foe, lx: foe.x, ly: foe.y, lastSeen: gameTime, until: gameTime + 15 });
+    if(foe) giveOrder(u, { type: 'gank', target: foe, lx: foe.x, ly: foe.y, lastSeen: gameTime, until: gameTime + 15, ping: 1 });
     else {
       const sd = units.filter(s => isStructure(s) && s.team === h.team && !s.removeMe && distXY(s.x, s.y, x, y) < 700)[0];
-      if(sd) giveOrder(u, { type: 'defend', s: sd, until: gameTime + 18 });
+      if(sd) giveOrder(u, { type: 'defend', s: sd, until: gameTime + 18, ping: 1 });
       else { u.bot.order = { type: 'gank', target: null, until: 0 }; u.moveTarget = { x, y }; u.bot.order = null; u.bot.goT = gameTime + 8; u.bot.goTo = { x, y }; }
     }
   }
   say(near[0], foe ? L('👍 Idem na ' + foe.name + '!', '👍 Going for ' + foe.name + '!') : L('👍 Dolazim!', '👍 On my way!'));
+}
+
+/* ================= 📣 v0.58 ZAPOVIJEDI: igrač zove botove i zadaje im plan =================
+   Do sada su saveznički botovi slušali samo ping (V) i „Napadamo!”. Sada igrač vodi tim (tipka C ili gumb 📣):
+   PLAN TIMA vrijedi za sve savezničke botove i traje ograničeno (piše na vrhu ekrana; novi plan zamijeni stari):
+     👥 Svi za mnom!     — botovi dođu do igrača i ostanu uz njega: napadaju junaka, čudovište ili kulu koju on napada
+     ⚔️ Guramo GORE / SREDINU / DOLJE — svi se skupe na toj stazi i guraju s vojnicima; plan se sam završi kad protivnika
+                           bude više nego nas
+     🛡️ Branimo bazu     — svi do građevine koju ruše; dok nitko ništa ne ruši, svatko čuva kulu na svojoj stazi; plan se
+                           sam završi kad opasnost prođe
+     🐲 Veliki Zmaj      — tim se skupi kod zmaja i napadne kad ih je dovoljno; plan se završi kad zmaj padne
+     🏃 Povlačenje!      — svi se povuku do svoje najbliže kule iza sebe
+     🤖 Odlučite sami    — plan se ukida, botovi opet odlučuju sami
+   Dok plan traje, tim ne smišlja svoje (gank, guranje, zmaj, promjene staza) — zato su planovi kratki: botovi koji rade
+   po planu manje skupljaju zlato i iskustvo. Bez zapovijedi botovi rade točno kao prije (isto sjeme = ista igra).
+   POJEDINOM BOTU (njegov red u ploči): 👥 dođi k meni i prati me / ⬆️ ↗️ ➡️ prijeđi na tu stazu / 🤖 odluči sam.
+   Bot i dalje pazi na sebe: ranjen se vrati u bazu pa nastavi po planu, ne stoji pod kulom bez vojnika, slabiji se ne
+   zalijeće. Prijestol i čuvarske kule tim brani sam i usred plana. Protivnički botovi nemaju zapovjednika (osim
+   prijatelja u mrežnoj igri, koji zapovijeda svojima preko domaćina: net.js 'plan' i 'bplan'). */
+const PLAN_KEYS = ['follow', 'push', 'defend', 'boss', 'retreat'];
+const PLAN_DUR = { follow: 45, push: 60, defend: 45, boss: 60, retreat: 12 };   // najdulje toliko sekundi; kratko namjerno — dok tim radi po planu, botovi manje skupljaju zlato
+const PLAN_PUSH_D = L('Svi se skupe na toj stazi i guraju je zajedno s vojnicima. Najbolje kad su protivnici pali ili ste jači — dok guraju, botovi manje skupljaju zlato.',
+  'Everyone gathers on that lane and pushes it together with the creeps. Best when enemies are down or you are stronger — while pushing, the bots collect less gold.');
+const PLAN_LIST = [   // redoslijed u ploči = tipke 1–8 (d = opis kad mišem prijeđeš preko gumba)
+  { type: 'follow', e: '👥', n: L('Svi za mnom!', 'Everyone, follow me!'),
+    d: L('Svi tvoji botovi dođu do tebe i ostanu uz tebe. Napadaju junaka, čudovište ili kulu koju ti napadaš. Dobro za zajedničku borbu.', 'All your bots come to you and stay with you. They attack the hero, monster or tower you attack. Good for a team fight.') },
+  { type: 'push', lane: 'top', e: '⚔️', n: L('Guramo GORE', 'Push TOP'), d: PLAN_PUSH_D },
+  { type: 'push', lane: 'mid', e: '⚔️', n: L('Guramo SREDINU', 'Push MID'), d: PLAN_PUSH_D },
+  { type: 'push', lane: 'bot', e: '⚔️', n: L('Guramo DOLJE', 'Push BOTTOM'), d: PLAN_PUSH_D },
+  { type: 'defend', e: '🛡️', n: L('Branimo bazu', 'Defend the base'),
+    d: L('Svi dolaze do građevine koju protivnici ruše. Dok nitko ništa ne ruši, svatko čuva kulu na svojoj stazi.', 'Everyone comes to the building the enemies are attacking. While nothing is being attacked, each bot guards the tower on its lane.') },
+  { type: 'boss', e: '🐲', n: L('Veliki Zmaj', 'Great Dragon'),
+    d: L('Tim se skupi kod Velikog Zmaja i napadne kad ih je dovoljno. Zmaj daje štit, zlato i jače udarce.', 'The team gathers at the Great Dragon and attacks once enough of them are there. The dragon gives a shield, gold and stronger hits.') },
+  { type: 'retreat', e: '🏃', n: L('Povlačenje!', 'Retreat!'),
+    d: L('Svi se odmah povuku do svoje kule iza leđa — kad borba krene loše.', 'Everyone falls back to their tower right away — for when a fight goes badly.') },
+  { type: 'free', e: '🤖', n: L('Odlučite sami', 'Decide for yourselves'),
+    d: L('Ukida plan i sve zapovijedi: botovi opet odlučuju sami (staze, džungla, gankovi).', 'Cancels the plan and all orders: the bots decide for themselves again (lanes, jungle, ganks).') },
+];
+const PLAN_ACK = { follow: L('👍 Dolazim!', '👍 On my way!'), push: L('👍 Guramo!', '👍 Pushing!'), defend: L('👍 Branim!', '👍 Defending!'),
+  boss: L('👍 Na zmaja!', '👍 To the dragon!'), retreat: L('👍 Povlačim se!', '👍 Falling back!') };
+function planName(type, lane){ const d = PLAN_LIST.find(q => q.type === type && (q.lane || null) === (lane || null)); return d ? d.e + ' ' + d.n : ''; }
+function bossUnit(){ const bc = camps.find(c => c.type === 'boss'), bs = bc && bc.units[0]; return bs && !bs.dead && !bs.removeMe ? bs : null; }
+function teamBots(team){ return units.filter(u => u.kind === 'hero' && u.team === team && u.bot && !u.removeMe); }   // i oni koji čekaju oživljavanje
+/* poruka samo svom timu: red u popisu poruka i natpis iznad junaka */
+function sayTeam(h, txt){
+  if(!h) return;
+  feedMsg(h.emoji + ' ' + h.name + ': ' + txt, TEAM_COLOR[h.team], h.team);
+  if(!h.dead) addFloat(h.x, h.y - 46, txt, '#ffffff', 15, h.team);
+}
+function cmdNote(h, txt){ if(h) addFloat(h.x, h.y - 30, txt, '#e5e7eb', 13, h.team); }   // zašto zapovijed nije primljena (vidi samo taj tim)
+/* 📣 igrač h zadaje plan svom timu (type iz PLAN_KEYS ili 'free'); vraća true kad je plan primljen */
+function commandTeam(h, type, lane){
+  if(!h || !isHuman(h) || gameOver) return false;
+  if(!teamAI.length) resetTeamAI();
+  const ai = teamAI[h.team];
+  if(type === 'free'){
+    clearTeamPlan(ai);
+    for(const u of teamBots(h.team)){
+      u.bot.laneLock = 0;   // tim ga opet smije sam premjestiti na drugu stazu
+      if(u.bot.pcmd){ u.bot.pcmd = null; if(u.bot.order && u.bot.order.cmd) endOrder(u); }
+    }
+    feedMsg('📣 ' + h.emoji + ' ' + h.name + ': ' + planName('free'), TEAM_COLOR[h.team], h.team);
+    return true;
+  }
+  if(!PLAN_KEYS.includes(type) || (type === 'push' && !LANE_LIST.includes(lane))) return false;
+  if(gameTime < 0){ cmdNote(h, L('⏳ Plan zadaj kad bitka počne', '⏳ Give the plan once the battle starts')); return false; }
+  if(type === 'follow' && h.dead){ cmdNote(h, L('💀 Prvo oživi, pa zovi tim', '💀 Respawn first, then call the team')); return false; }
+  if(type === 'boss' && !bossUnit()){ cmdNote(h, L('🐲 Velikog Zmaja sada nema — vratit će se', '🐲 The Great Dragon is away right now — it will be back')); return false; }
+  if(!teamBots(h.team).length){ cmdNote(h, L('🤖 U tvom timu nema botova', '🤖 There are no bots on your team')); return false; }
+  // dvostruki dodir ili držanje tipke: isti plan je upravo zadan — ne ponavljaj poruke. (Druga zapovijed prolazi odmah: na
+  // sporom uređaju vrijeme igre teče sporije od stvarnog, pa bi stanka mjerena vremenom igre gutala i namjerne klikove.)
+  if(ai.cmd && ai.cmd.by === h && ai.cmd.type === type && ai.cmd.lane === (type === 'push' ? lane : null) && gameTime - ai.cmd.t0 < 1) return false;
+  clearTeamPlan(ai);
+  ai.cmd = { type, lane: type === 'push' ? lane : null, by: h, t0: gameTime, until: gameTime + PLAN_DUR[type] };
+  if(type === 'push') ai.push = { lane, until: ai.cmd.until };
+  applyTeamPlan(ai);
+  feedMsg('📣 ' + h.emoji + ' ' + h.name + ': ' + planName(type, ai.cmd.lane) + ' (' + PLAN_DUR[type] + ' ' + U_SEC + ')', TEAM_COLOR[h.team], h.team);
+  const pt = planPoint(ai);
+  if(pt){ pings.push({ x: pt.x, y: pt.y, team: h.team, t: 0 }); if(pings.length > 8) pings.shift(); }
+  const ack = aiBots(h.team).filter(u => u.bot.state !== 'retreat' && u.bot.order && u.bot.order.cmd === 1).sort((a, b) => dist(a, h) - dist(b, h))[0];
+  if(ack) sayTeam(ack, PLAN_ACK[type]);
+  return true;
+}
+/* kraj plana tima (istekao, zamijenjen ili ukinut): botovi koji su ga slijedili opet su slobodni */
+function clearTeamPlan(ai, note){
+  const c = ai.cmd;
+  ai.cmd = null;
+  if(!c) return;
+  if(c.type === 'push' && ai.push && ai.push.lane === c.lane) ai.push = null;
+  for(const u of teamBots(ai.team)) if(u.bot.order && u.bot.order.cmd === 1) endOrder(u);
+  if(note) feedMsg(note, TEAM_COLOR[ai.team], ai.team);
+}
+/* mjesto na koje plan vodi (za ping na mapi) */
+function planPoint(ai){
+  const c = ai.cmd;
+  if(!c) return null;
+  if(c.type === 'follow') return c.by && !c.by.dead ? { x: c.by.x, y: c.by.y } : null;
+  if(c.type === 'push') return laneFront(ai.team, c.lane);
+  if(c.type === 'boss'){ const bs = bossUnit(); return bs ? { x: bs.x, y: bs.y } : null; }
+  if(c.type === 'defend'){ const sd = planThreat(ai) || ancients[ai.team]; return sd ? { x: sd.x, y: sd.y } : null; }
+  return null;
+}
+/* 🛡️ „Branimo bazu”: svi do građevine koju upravo ruše — prijetnja se pamti dok traje, da tim ne skače s kule na kulu
+   (druga građevina je preuzme tek kad je prijestol / čuvarska kula ili je napad na nju jasno jači). Dok nitko ništa ne
+   ruši, svaki bot čuva najdalju našu kulu na svojoj stazi (pa vojarnu, pa prijestol). */
+function planThreat(ai){
+  const c = ai.cmd, th = findThreat(ai.team);
+  const cur = c.spot && !c.spot.removeMe && gameTime - (c.spot.lastDmgT || -99) < 6 ? c.spot : null;
+  if(th && (!cur || th.s === cur || th.s.kind === 'ancient' || th.s.isGuard || th.w > (c.spotW || 0) * 1.5)){ c.spot = th.s; c.spotW = th.w; }
+  else if(!cur) c.spot = null;
+  return c.spot;
+}
+/* prijeti li što našim građevinama: nešto su upravo rušili, ili je vidljiv protivnički junak uz našu građevinu */
+function baseInDanger(team){
+  for(const sd of units){
+    if(!isStructure(sd) || sd.team !== team || sd.removeMe) continue;
+    if(gameTime - (sd.lastDmgT || -99) < 8) return true;
+    for(const e of units) if(e.kind === 'hero' && e.team !== team && e.team !== TEAM_NEUTRAL && !e.dead && !e.removeMe && isVisibleTo(team, e) && dist(e, sd) < 1100) return true;
+  }
+  return false;
+}
+function laneGuardSpot(u){
+  const lane = u.homeLane || u.lane;
+  let best = null;
+  for(const sd of units){
+    if(sd.team !== u.team || sd.removeMe || sd.lane !== lane) continue;
+    if(sd.kind === 'tower'){ if(!best || best.kind !== 'tower' || (sd.tier || 9) < (best.tier || 9)) best = sd; }
+    else if(sd.kind === 'barracks' && !best) best = sd;
+  }
+  return best || ancients[u.team];
+}
+/* zadatak koji plan daje ovom botu */
+function planOrder(ai, u, k){
+  const c = ai.cmd;
+  switch(c.type){
+    case 'follow': return { type: 'follow', target: c.by, slot: k };
+    case 'push': return { type: 'push', lane: c.lane };
+    case 'defend': return { type: 'defend', s: planThreat(ai) || laneGuardSpot(u) };
+    case 'boss': return { type: 'boss', need: Math.min(3, aiBots(ai.team).length + (c.by && !c.by.dead ? 1 : 0)) };
+    case 'retreat': return { type: 'fallback' };
+  }
+  return null;
+}
+/* plan tima → zadaci botova. Zove se kad plan nastane i pri svakom planiranju tima (bot koji je oživio ili se vratio
+   iz baze dobije zadatak; „Branimo bazu” prati gdje je sada najveća prijetnja). */
+function applyTeamPlan(ai){
+  const c = ai.cmd;
+  if(!c) return;
+  const spot = c.type === 'defend' ? planThreat(ai) : null;
+  let k = 0;
+  for(const u of teamBots(ai.team)){
+    k++;
+    if(u.dead || (u === c.by && c.type === 'follow')) continue;   // (zapovjednik kojeg vodi bot — simulacija, gost koji je izašao — ne prati sam sebe)
+    if(u.bot.pcmd && gameTime < u.bot.pcmd.until) continue;   // ima osobnu zapovijed
+    const o = u.bot.order;
+    if(o && o.cmd === 1 && o.plan === c.t0){ if(o.type === 'defend') o.s = spot || laneGuardSpot(u); continue; }   // već radi po ovom planu
+    if(o && !o.cmd && (o.ping || (o.type === 'defend' && o.s && (o.s.kind === 'ancient' || o.s.isGuard)))) continue;   // brani prijestol ili ide na tvoj ping — to je preče
+    if(u.bot.goTo && gameTime < u.bot.goT) continue;   // ide na mjesto koje si pingao
+    if(o) endOrder(u);
+    const od = planOrder(ai, u, k);
+    if(od) giveOrder(u, Object.assign(od, { cmd: 1, plan: c.t0, until: c.until }));
+  }
+}
+/* 📣 zapovijed jednom botu: 'follow' (dođi k meni i prati me), 'lane' (prijeđi na stazu), 'free' (slobodan) */
+function commandBot(h, u, type, lane){
+  if(!h || !isHuman(h) || gameOver || !u || u.kind !== 'hero' || u.team !== h.team || !u.bot || u.removeMe) return false;
+  const b = u.bot, pc = b.pcmd;
+  if(pc && pc.by === h && pc.type === type && (pc.lane || null) === (type === 'lane' ? lane : null) && gameTime - pc.t0 < 1) return false;   // dvostruki dodir: ista zapovijed je upravo zadana
+  if(type === 'follow'){
+    if(h.dead){ cmdNote(h, L('💀 Prvo oživi, pa zovi tim', '💀 Respawn first, then call the team')); return false; }
+    b.pcmd = { type: 'follow', by: h, t0: gameTime, until: gameTime + 60 };
+    if(!u.dead){ endOrder(u); giveOrder(u, { type: 'follow', target: h, slot: 0, cmd: 2, until: b.pcmd.until }); }
+    sayTeam(u, u.dead ? L('👍 Dolazim čim oživim!', '👍 Coming as soon as I respawn!') : PLAN_ACK.follow);
+  } else if(type === 'lane' && LANE_LIST.includes(lane)){
+    if(b.order && (b.order.cmd || b.order.type === 'push')) endOrder(u);
+    b.pcmd = { type: 'lane', lane, by: h, t0: gameTime, until: gameTime + 90 };   // toliko ga ne dira ni plan tima (ide kamo si ga poslao)
+    u.lane = u.homeLane = lane; u.jungler = false; b.camp = null;
+    b.laneLock = gameTime + 240;   // tim ga neko vrijeme ne premješta sam (🔁 promjena staze)
+    sayTeam(u, L('👍 Idem ' + laneLabel(lane) + '!', '👍 Going ' + laneLabel(lane) + '!'));
+  } else if(type === 'free'){
+    b.pcmd = null; b.laneLock = 0;
+    if(b.order && b.order.cmd === 2) endOrder(u);
+    sayTeam(u, L('👍 Dobro, odlučujem sam!', '👍 OK, I decide myself!'));
+  } else return false;
+  return true;
+}
+/* osobne zapovijedi traju i kad bot padne ili se vrati iz baze */
+function keepBotCommands(team){
+  for(const u of teamBots(team)){
+    const pc = u.bot.pcmd;
+    if(!pc) continue;
+    if(gameTime > pc.until || !pc.by || pc.by.removeMe){ u.bot.pcmd = null; if(u.bot.order && u.bot.order.cmd === 2) endOrder(u); continue; }
+    if(pc.type !== 'follow' || u.dead || (u.bot.order && u.bot.order.cmd === 2)) continue;
+    const o = u.bot.order;
+    if(o && !o.cmd && (o.ping || (o.type === 'defend' && o.s && (o.s.kind === 'ancient' || o.s.isGuard)))) continue;
+    if(o) endOrder(u);
+    giveOrder(u, { type: 'follow', target: pc.by, slot: 0, cmd: 2, until: pc.until });
+  }
+}
+/* mjesto uz vođu (svaki bot svoje, da ne stoje jedan u drugome) */
+function followSlot(ld, o){
+  const a = (o.slot || 0) * 1.7 + 0.6, r = 150 + 40 * ((o.slot || 0) % 2);
+  return { x: clamp(ld.x + Math.cos(a) * r, 40, WORLD - 40), y: clamp(ld.y + Math.sin(a) * r, 40, WORLD - 40) };
+}
+/* 🏃 kamo se bot povlači: naša najbliža kula koja mu je iza leđa (prema bazi), inače fontana */
+function safePoint(u){
+  const f = FOUNTAIN[u.team], du = distXY(u.x, u.y, f.x, f.y);
+  let best = null, bd = 1e9;
+  for(const sd of units){
+    if(sd.kind !== 'tower' || sd.team !== u.team || sd.removeMe) continue;
+    if(distXY(sd.x, sd.y, f.x, f.y) > du + 250) continue;   // samo kule iza mene (ili ova uz koju već stojim)
+    const d = dist(u, sd);
+    if(d < bd){ bd = d; best = sd; }
+  }
+  return best ? stepToward(best, f, 220) : { x: f.x, y: f.y };
+}
+/* 📣 bot je na mjestu koje mu je zapovijed odredila (uz igrača, kulu koju brani ili kulu do koje se povukao): bije se s
+   onim što je tu, inače stoji — ne vraća se na svoju stazu dok zapovijed traje */
+function holdByOrder(u, fear){
+  const o = u.bot.order;
+  if(!o || !o.cmd) return false;
+  let p = null, r = 0;
+  if(o.type === 'follow'){ const ld = o.target; if(!ld || ld.dead || ld.removeMe) return false; p = followSlot(ld, o); r = 380; if(dist(u, ld) <= r) p = null; }
+  else if(o.type === 'defend'){ if(!o.s || o.s.removeMe) return false; p = stepToward(o.s, FOUNTAIN[u.team], 120); r = 700; if(dist(u, o.s) <= r) p = null; }
+  else if(o.type === 'fallback'){ if(!o.p) return false; p = o.p; if(distXY(u.x, u.y, p.x, p.y) <= 260) p = null; }
+  else return false;
+  if(p){ u.attackTarget = null; u.moveTarget = p; return true; }
+  const lh = lowestHpEnemyCreep(u, 520);
+  if(lh && !(fear && dist(lh, fear) < fear.atkRange + 260)){ u.attackTarget = lh; return true; }
+  const et = nearestEnemyOf(u, 520, e => e.kind === 'tower' || e.kind === 'barracks');
+  if(et && countOwnCreepsNear(u.team, et, 350) > 0 && !(fear && dist(et, fear) < 700)){ u.attackTarget = et; return true; }
+  u.attackTarget = null; u.moveTarget = null;
+  return true;
+}
+/* što bot upravo radi — kratka šifra za ploču zapovijedi i natpis uz ime (gostu stiže u snimci svijeta):
+   x pao · r vraća se u bazu · f prati igrača · p0/p1/p2 gura stazu · d brani · b zmaj · h povlači se · g<n> gank na junaka n
+   · j džungla · l0/l1/l2 na stazi */
+function botTaskCode(u){
+  if(u.taskK != null && !u.bot) return u.taskK;   // gost: iz snimke
+  const b = u.bot;
+  if(!b) return '';
+  if(u.dead) return 'x';
+  if(b.state === 'retreat') return 'r';
+  const o = b.order;
+  if(o){
+    if(o.type === 'follow') return 'f';
+    if(o.type === 'push') return 'p' + Math.max(0, LANE_LIST.indexOf(o.lane));
+    if(o.type === 'defend') return 'd';
+    if(o.type === 'boss') return 'b';
+    if(o.type === 'fallback') return 'h';
+    if(o.type === 'gank') return 'g' + (o.target && o.target.hero ? HEROES.indexOf(o.target.hero) : '');
+  }
+  if(u.jungler || b.camp) return 'j';
+  return 'l' + Math.max(0, LANE_LIST.indexOf(u.lane));
+}
+function botTaskText(code){
+  const k = code.charAt(0), n = parseInt(code.slice(1), 10), ln = LANE_LIST[n] ? laneLabel(LANE_LIST[n]) : '';
+  switch(k){
+    case 'x': return L('💀 čeka oživljavanje', '💀 waiting to respawn');
+    case 'r': return L('🩹 liječi se u bazi', '🩹 healing at the base');
+    case 'f': return L('👥 prati te', '👥 follows you');
+    case 'p': return L('⚔️ gura: ' + ln, '⚔️ pushing ' + ln);
+    case 'd': return L('🛡️ brani', '🛡️ defending');
+    case 'b': return L('🐲 ide na zmaja', '🐲 going for the dragon');
+    case 'h': return L('🏃 povlači se', '🏃 falling back');
+    case 'g': return HEROES[n] ? L('🗡️ napada: ' + HEROES[n].name, '🗡️ attacking ' + HEROES[n].name) : L('🗡️ u ganku', '🗡️ ganking');
+    case 'j': return L('🌲 u džungli', '🌲 in the jungle');
+    case 'l': return L('🛣️ staza: ' + ln, '🛣️ lane: ' + ln);
+  }
+  return '';
 }
 
 /* 🤖 težina botova (igra protiv botova): protivnički botovi na "Lako" sporije reagiraju, rjeđe bacaju moći i
@@ -3934,7 +4244,11 @@ function botThink(u){
   if(followOrder(u, eh)) return;   // 🤖 zadatak tima: gank, obrana, guranje, zmaj
   if(eh){
     // ⚖️ v0.49: napadni samo kad je naša strana dovoljno jaka; slabiji se ne zalijeće sam nego se povuče do suigrača ili kule
-    if(plan.engage){ u.attackTarget = eh; return; }
+    if(plan.engage){   // 📣 v0.58: tko prati igrača, u borbi napada junaka kojeg napada igrač (ako mu je nadohvat)
+      const ld = b.order && b.order.type === 'follow' ? b.order.target : null, ft = ld && !ld.dead ? ld.attackTarget : null;
+      u.attackTarget = ft && ft.kind === 'hero' && ft.team !== u.team && !ft.dead && isVisibleTo(u.team, ft) && dist(u, ft) < 800 ? ft : eh;
+      return;
+    }
     if(plan.weaker){
       b.fear = { h: eh, until: gameTime + 4 };
       u.attackTarget = null;
@@ -3948,6 +4262,7 @@ function botThink(u){
     }
   }
   const fear = b.fear && gameTime < b.fear.until && !b.fear.h.dead && !b.fear.h.removeMe ? b.fear.h : null;   // jači junak kojeg izbjegavam
+  if(holdByOrder(u, fear)) return;   // 📣 v0.58: uz igrača / kulu po zapovijedi — bije se tu, ne vraća se na svoju stazu
   if(!eh){   // 💰📘 uzmi runu u blizini
     let rn = null, bd = 650;
     for(const r of extraRunes){ const d = distXY(u.x, u.y, r.x, r.y); if(d < bd){ bd = d; rn = r; } }
@@ -5278,7 +5593,7 @@ function startGame(heroIdx){
   makeShrines(); makeCouriers(); creepTier = 0; bossKills = 0; coinDrops = [];
   teamDrakes = [[], []]; nextDrake = null; scoreOpen = false;
   neutralDrops = [{ 1: 0, 2: 0, 3: 0 }, { 1: 0, 2: 0, 3: 0 }]; neutralFx = [];
-  resetExtraRunes(); pings = []; chatOpen = false; botBragT = -99; botHelpT = [-99, -99];
+  resetExtraRunes(); pings = []; chatOpen = false; cmdOpen = false; cmdN = 0; botBragT = -99; botHelpT = [-99, -99];
   pendingCast = null; resetTeamAI();
   tip.cur = null; tip.done = {}; tip.next = 8; slowMo = 0; gameRecorded = false;
   gameHist = { pts: [], ev: [], nextT: 0 };   // 📈
@@ -5535,6 +5850,7 @@ const ACHIEVEMENTS = [
   { k: 'hard',       e: '🦸', n: L('Junak', 'Hero'),          d: L('pobijedi botove na težini 🔥 Teško', 'beat the bots on 🔥 Hard') },
   { k: 'five',       e: '🌈', n: L('Svestran', 'All-Rounder'),       d: L('pobijedi s 5 različitih junaka', 'win with 5 different heroes') },
   { k: 'ten_wins',   e: '🏆', n: L('Prvak', 'Champion'),          d: L('ukupno 10 pobjeda', '10 wins in total') },
+  { k: 'leader',     e: '📣', n: L('Zapovjednik', 'Commander'),      d: L('pobijedi u igri u kojoj si timu zadao 3 plana', 'win a game in which you gave your team 3 plans') },   // v0.58
 ];
 function loadProfile(){
   let p = null;
@@ -5563,7 +5879,7 @@ function recordGame(won){
     spree: (h.bestStreak || h.streak || 0) >= 5, survivor: won && h.deaths === 0, helper: h.assists >= 15,
     towers: (h.towerKills || 0) >= 3, dragon: !!h.bossKill, tango: (h.treesEaten || 0) >= 4, mvp: mvp === h,
     legend: h.level >= 25, hard: won && net.mode !== 'host' && net.mode !== 'guest' && SETTINGS.diff === 'hard',
-    five: Object.keys(p.heroWins).length >= 5, ten_wins: p.wins >= 10,
+    five: Object.keys(p.heroWins).length >= 5, ten_wins: p.wins >= 10, leader: won && cmdN >= 3,
   };
   const fresh = [];
   for(const a of ACHIEVEMENTS) if(got[a.k] && !p.ach[a.k]){ p.ach[a.k] = Date.now(); fresh.push(a); }
@@ -6242,14 +6558,15 @@ function hudPanelAt(sx, sy){
   const HL = hudLayout(), tw = 280, W = uiLogical ? VW : VW / UI_K;   // 📱 logične mjere kao i ostale ploče (na mobitelu je gornja ploča bila pomaknuta)
   return inRect(sx, sy, { x: HL.px, y: HL.py, w: HL.pw, h: HL.ph }) ||
     inRect(sx, sy, { x: HL.cardX, y: HL.cardY, w: HL.cardW, h: HL.cardH }) ||
-    inRect(sx, sy, { x: (W - tw) / 2, y: 8, w: tw, h: 64 });
+    inRect(sx, sy, { x: (W - tw) / 2, y: 8, w: tw, h: 64 }) ||
+    (cmdOpen && !!uiRects.cmdPanel && inRect(sx, sy, uiRects.cmdPanel));   // 📣 ploča zapovijedi
 }
 /* 👆 je li dodir na HUD-u (gumbi, predmeti, minimapa, ploče)? — tamo prst ne pomiče kameru */
 function hudHit(sx, sy){
   const R = uiRects;
   for(const L of [R.learn, R.abil, R.sum, R.inv, R.qb, R.buff, chatOpen ? R.chat : null])
     for(const r of L || []) if(r && inRect(sx, sy, r)) return true;
-  for(const r of [R.prepSkip, R.buyback, R.statBtn, R.glyph, R.tp, R.shop, R.mute, R.help, R.opts, R.score, R.center, R.mini, R.atk, R.atkCreep, R.atkTower, R.gold,
+  for(const r of [R.prepSkip, R.buyback, R.statBtn, R.glyph, R.tp, R.shop, R.mute, R.help, R.opts, R.score, R.center, R.mini, R.atk, R.atkCreep, R.atkTower, R.gold, R.cmdBtn, R.cmdPill, cmdOpen ? R.cmdPanel : null,
     R.neutral, R.passive, R.talent && R.talent.a, R.talent && R.talent.b]) if(r && inRect(sx, sy, r)) return true;
   return hudPanelAt(sx, sy);
 }
@@ -6297,6 +6614,14 @@ function setupInput(){
       if(uiRects.fs && inRect(sx, sy, uiRects.fs)){ toggleFullscreen(); sfx('click'); return; }
       if(uiRects.score && inRect(sx, sy, uiRects.score)){ scoreOpen = !scoreOpen; sfx('click'); return; }
       if(uiRects.dance && inRect(sx, sy, uiRects.dance)){ pressDance(); return; }
+      if(uiRects.cmdBtn && inRect(sx, sy, uiRects.cmdBtn)){ toggleCmd(); sfx('click'); return; }   // 📣 v0.58
+      if(uiRects.cmdPill && inRect(sx, sy, uiRects.cmdPill)){ cmdOpen = true; chatOpen = false; sfx('click'); return; }
+      if(cmdOpen && uiRects.cmdPanel && inRect(sx, sy, uiRects.cmdPanel)){
+        if(inRect(sx, sy, uiRects.cmdClose)){ cmdOpen = false; sfx('click'); return; }
+        for(const r of uiRects.cmdPlans || []) if(inRect(sx, sy, r)){ const d = PLAN_LIST[r.i]; issuePlan(d.type, d.lane); cmdOpen = false; return; }
+        for(const r of uiRects.cmdBots || []) if(inRect(sx, sy, r)){ issueBotPlan(units.find(u => u.id === r.id), r.act, r.lane); return; }
+        return;   // klik u ploču pokraj gumba ne pomiče junaka
+      }
       if(uiRects.center && inRect(sx, sy, uiRects.center)){ cam.follow = true; if(player){ cam.x = player.x; cam.y = player.y; } sfx('click'); return; }
       for(const lr of uiRects.learn){
         if(inRect(sx, sy, lr)){
@@ -6454,7 +6779,12 @@ function setupInput(){
     if(inRect(mouse.sx, mouse.sy, uiRects.shop) || inRect(mouse.sx, mouse.sy, uiRects.gold)) hoverUi = { type: 'shop' };
     if(inRect(mouse.sx, mouse.sy, uiRects.mute)) hoverUi = { type: 'mute' };
     if(inRect(mouse.sx, mouse.sy, uiRects.help)) hoverUi = { type: 'help' };
-    for(const k of ['opts', 'fs', 'score', 'center', 'dance']) if(uiRects[k] && inRect(mouse.sx, mouse.sy, uiRects[k])) hoverUi = { type: k };
+    for(const k of ['opts', 'fs', 'score', 'center', 'dance', 'cmdBtn']) if(uiRects[k] && inRect(mouse.sx, mouse.sy, uiRects[k])) hoverUi = { type: k };
+    if(cmdOpen){   // 📣 opisi gumba u ploči zapovijedi (opis samog gumba 📣 ne prekriva otvorenu ploču)
+      if(hoverUi && hoverUi.type === 'cmdBtn') hoverUi = null;
+      (uiRects.cmdPlans || []).forEach((r, i) => { if(inRect(mouse.sx, mouse.sy, r)) hoverUi = { type: 'cmdPlan', i }; });
+      (uiRects.cmdBots || []).forEach((r, i) => { if(inRect(mouse.sx, mouse.sy, r)) hoverUi = { type: 'cmdBot', i }; });
+    }
     if(uiRects.prepSkip && inRect(mouse.sx, mouse.sy, uiRects.prepSkip)) hoverUi = { type: 'prep' };
     if(!running) hudCv.style.cursor = hoverUi ? 'pointer' : 'default';   // u igri pokazivač postavlja refreshPointer()
     if(!invDrag || !invDrag.moved) updateHudTip();
@@ -6708,7 +7038,14 @@ function setupInput(){
     if(k === 'd'){ amovePending = false; pressSummoner(0, quick); qKey(); }
     if(k === 'f'){ amovePending = false; pressSummoner(1, quick); qKey(); }
     if(k === 'k'){ const on = togglePost(); feedMsg(on ? L('✨ Efekti uključeni (sjaj, boje)', '✨ Effects on (glow, colors)') : L('✨ Efekti isključeni', '✨ Effects off'), '#e5e7eb'); }
-    if(k === 'g' && player){ chatOpen = !chatOpen; return; }
+    if(k === 'g' && player){ chatOpen = !chatOpen; if(chatOpen) cmdOpen = false; return; }
+    if(k === 'c' && player && !e.ctrlKey && !e.metaKey){ toggleCmd(); return; }   // 📣 v0.58 zapovijedi timu
+    if(cmdOpen && k >= '1' && k <= '8'){
+      const d = PLAN_LIST[parseInt(k, 10) - 1];
+      issuePlan(d.type, d.lane);
+      cmdOpen = false;
+      return;
+    }
     if(k === 'v' && player){ if(net.mode === 'guest') netPing(mouse.wx, mouse.wy); else addPing(player, mouse.wx, mouse.wy); }
     if(k === 'j') pressDance();   // 💃 ples
     if(chatOpen && k >= '1' && k <= '6'){
@@ -6723,6 +7060,7 @@ function setupInput(){
     if(k === 'p' && net.mode === 'local'){ paused = !paused; document.getElementById('pause').classList.toggle('hidden', !paused); }   // u mrežnoj igri nema pauze (svijet bi stao samo jednom igraču)
     if(k === 'escape'){
       if(optionsOpen()) toggleOptions();
+      else if(cmdOpen) cmdOpen = false;
       else if(chatOpen) chatOpen = false;
       else if(pendingCast) pendingCast = null;
       else if(amovePending) amovePending = false;
@@ -7109,6 +7447,8 @@ const TIPS = [
     test: p => p.dead && p.gold >= 250 },
   { k: 'tp', txt: L('🌀 Jedna staza je daleko? T pa klik na svoju kulu — teleport do nje!', '🌀 A lane is far away? Press T, then click your tower — teleport there!'),
     test: p => gameTime > 300 && !p.dead && p.tpCd <= 0 && nearBase(p) },
+  { k: 'cmd', txt: L('📣 Ti vodiš tim! Pritisni C (ili gumb 📣) i reci botovima: za mnom, guramo stazu, branimo bazu…', '📣 You lead the team! Press C (or the 📣 button) and tell the bots: follow me, push a lane, defend the base…'),
+    test: p => gameClock() > 150 && !p.dead && cmdN === 0 && myBots().length > 0 },   // 📣 v0.58
 ];
 function tipNextBuy(p){   // sljedeći korak iz vodiča koji si možeš priuštiti
   if(typeof quickBuyList !== 'function' || p.dead || shopOpen) return null;
@@ -7181,6 +7521,7 @@ const QUESTS = [
   { e: '⚔️', n: L('Pobijedi neprijateljskog junaka ili pomozi timu', 'Defeat an enemy hero or help your team do it'), gold: 100, goal: 1, v: p => p.kills + p.assists },
   { e: '🌟', n: L('Dođi do levela 6 i otključaj ULTI (R)', 'Reach level 6 and unlock your ULT (R)'), gold: 100, goal: 1,
     v: p => p.abilities[3] && p.abilities[3].rank > 0 ? 1 : 0 },
+  { e: '📣', n: L('Zadaj plan timu — tipka C ili gumb 📣', 'Give your team a plan — key C or the 📣 button'), gold: 60, goal: 1, v: () => cmdN > 0 ? 1 : 0 },   // v0.58
   { e: '🗼', n: L('Budi blizu kad tvoj tim sruši neprijateljsku kulu', 'Be close when your team knocks down an enemy tower'), gold: 150, goal: 1, v: p => p.qTower ? 1 : 0 },
 ];
 const quest = { i: 0, doneT: 0, chk: 0, allT: 0, last: null };
@@ -7253,6 +7594,7 @@ function lastHitMark(c){
   return c.hp < c.maxhp * CFG.denyHp ? 'deny' : null;
 }
 function drawWorldOverlay(){
+  const ovPlan = myPlan();
   for(const u of units){
     if(u.dead || u.removeMe) continue;
     if(!seenByPlayer(u)) continue;   // magla rata
@@ -7265,7 +7607,8 @@ function drawWorldOverlay(){
       ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
       ctx.strokeStyle = 'rgba(0,0,0,0.6)';
       ctx.lineWidth = 3;
-      const nm = (u.streak >= 3 ? '🔥 ' : '') + (phone && u.isPlayer ? '⭐' : u.name + (u.isPlayer ? ' ⭐' : ''));   // 🔥 niz pobjeda (3+)
+      let nm = (u.streak >= 3 ? '🔥 ' : '') + (phone && u.isPlayer ? '⭐' : u.name + (u.isPlayer ? ' ⭐' : ''));   // 🔥 niz pobjeda (3+)
+      if(u.team === myTeam && !u.isPlayer){ const ci = cmdIcon(u, ovPlan); if(ci) nm += ' ' + ci; }   // 📣 v0.58: radi po tvojoj zapovijedi
       ctx.strokeText(nm, s.x + 8, s.y - 13);
       ctx.fillStyle = '#fff';
       ctx.fillText(nm, s.x + 8, s.y - 13);
@@ -7491,6 +7834,184 @@ function drawChatWheel(){
     ctx.font = fontEmoji(13);
     ctx.fillText(ln, r.x + 26, r.y + r.h / 2);
   });
+}
+
+/* ================= 📣 v0.58 ploča zapovijedi =================
+   Isti kod kod domaćina i gosta: gostu plan tima i poslovi botova stižu u snimci svijeta (net.js), a zapovijed šalje domaćinu. */
+function myPlan(){
+  if(net.mode === 'guest'){ const v = net.planView; return v ? { type: PLAN_KEYS[v[0]], lane: LANE_LIST[v[1]] || null, left: v[2], dur: PLAN_DUR[PLAN_KEYS[v[0]]] } : null; }
+  const ai = teamAI[myTeam], c = ai && ai.cmd;
+  return c && gameTime <= c.until ? { type: c.type, lane: c.lane, left: c.until - gameTime, dur: PLAN_DUR[c.type] } : null;
+}
+function myBots(){ return units.filter(u => u.kind === 'hero' && u.team === myTeam && u !== player && !u.removeMe && (net.mode === 'guest' || u.bot)).sort((a, b) => a.id - b.id); }
+function botFollowsMe(u){ return net.mode === 'guest' ? !!u.pcK : !!(u.bot && u.bot.pcmd && u.bot.pcmd.type === 'follow'); }
+function botHomeLane(u){ return net.mode === 'guest' ? LANE_LIST[u.laneK] : (u.homeLane || u.lane); }
+function bossAlive(){ return units.some(u => u.kind === 'neutral' && u.boss && !u.dead && !u.removeMe); }
+/* 🗣️ bot koji primi zapovijed javi se svojim glasom („Idem!”, „Naprijed!” — replike za hodanje); čuje ga samo onaj tko zapovijeda */
+function cmdVoice(u){
+  if(u && !u.dead && u.hero && typeof voxSay === 'function') voxSay(u.hero.id, Math.random() < 0.5 ? 'move1' : 'move2', { pri: 2, gain: 0.85 });
+}
+function issuePlan(type, lane){
+  if(!player || gameOver) return;
+  if(net.mode === 'guest') netPlan(type, lane);
+  else if(!commandTeam(player, type, lane)) return;
+  sfx('tick');
+  if(type === 'free') return;
+  cmdN++;
+  cmdVoice(myBots().filter(u => !u.dead).sort((a, b) => dist(a, player) - dist(b, player))[0]);
+}
+function issueBotPlan(u, type, lane){
+  if(!player || !u || gameOver) return;
+  if(net.mode === 'guest') netBotPlan(u.id, type, lane);
+  else if(!commandBot(player, u, type, lane)) return;
+  sfx('tick');
+  if(type === 'free') return;
+  cmdN++;
+  cmdVoice(u);
+}
+function toggleCmd(){ cmdOpen = !cmdOpen; if(cmdOpen) chatOpen = false; }
+/* znak uz ime savezničkog bota koji radi po tvojoj zapovijedi (prati te, povlači se; uz plan tima: gura, brani, zmaj) */
+function cmdIcon(u, plan){
+  const c = botTaskCode(u).charAt(0);
+  return c === 'f' ? '👥' : c === 'h' ? '🏃' : !plan ? '' : c === 'p' ? '⚔️' : c === 'd' ? '🛡️' : c === 'b' ? '🐲' : '';
+}
+const CMD_BOT_BTNS = [['👥', 'follow', null], ['⬆️', 'lane', 'top'], ['↗️', 'lane', 'mid'], ['➡️', 'lane', 'bot'], ['🤖', 'free', null]];
+/* opis gumba u ploči (naslov, tekst, podnožje) — prikazuje ga shop.js updateHudTip kao i opise ostalih gumba */
+function cmdTip(kind, i){
+  if(kind === 'cmdPlan'){
+    const d = PLAN_LIST[i];
+    return [d.e + ' ' + d.n, d.d, (PLAN_DUR[d.type] ? L('Traje do ' + PLAN_DUR[d.type] + ' s · ', 'Lasts up to ' + PLAN_DUR[d.type] + ' s · ') : '') + L('tipka ' + (i + 1), 'key ' + (i + 1))];
+  }
+  const r = uiRects.cmdBots && uiRects.cmdBots[i], u = r && units.find(x => x.id === r.id);
+  if(!u) return null;
+  if(r.act === 'follow') return [L('👥 Dođi k meni', '👥 Come to me'), L(u.name + ' dođe do tebe i prati te: napada ono što ti napadaš.', u.name + ' comes to you and follows you, attacking what you attack.'), L('Traje 60 s', 'Lasts 60 s')];
+  if(r.act === 'lane') return [CMD_BOT_BTNS.find(b => b[2] === r.lane)[0] + ' ' + L('Staza: ' + laneLabel(r.lane), 'Lane: ' + laneLabel(r.lane)),
+    L(u.name + ' prijeđe na tu stazu i ostane na njoj.', u.name + ' moves to that lane and stays there.'), L('Plan tima ga 90 s ne dira', 'The team plan leaves it alone for 90 s')];
+  return [L('🤖 Odluči sam', '🤖 Decide yourself'), L(u.name + ' opet radi po svome (ili po planu tima).', u.name + ' goes back to its own decisions (or the team plan).'), ''];
+}
+function drawCmdPanel(){
+  uiRects.cmdPanel = uiRects.cmdPlans = uiRects.cmdBots = uiRects.cmdClose = uiRects.cmdPill = null;
+  if(!player || gameOver) return;
+  const pl = myPlan();
+  ctx.textBaseline = 'middle';
+  if(pl && !cmdOpen){   // traka aktivnog plana lijevo od ploče rezultata: što tim radi i koliko još (klik otvara ploču)
+    const sbx = (VW - 280) / 2, w = Math.min(250, sbx - 20), h = 30, x = sbx - w - 10, y = 14;
+    if(w >= 120){
+      const r = uiRects.cmdPill = { x, y, w, h };
+      drawFrame(x, y, w, h, 8, 1);
+      ctx.fillStyle = 'rgba(253,224,71,0.85)';
+      ctx.fillRect(x + 8, y + h - 6, (w - 16) * clamp(pl.left / pl.dur, 0, 1), 2);
+      ctx.font = fontTxt(12.5, true); ctx.textAlign = 'left'; ctx.fillStyle = '#fde68a';
+      let txt = '📣 ' + planName(pl.type, pl.lane);
+      const tw = w - 58;
+      while(ctx.measureText(txt).width > tw && txt.length > 6) txt = txt.slice(0, -2);
+      ctx.fillText(txt, x + 10, y + h / 2 - 2);
+      ctx.textAlign = 'right'; ctx.fillStyle = '#fff';
+      ctx.fillText(Math.ceil(pl.left) + ' ' + U_SEC, x + w - 10, y + h / 2 - 2);
+      if(inRect(mouse.sx, mouse.sy, r)){ ctx.strokeStyle = '#fde047'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.roundRect(x + 2, y + 2, w - 4, h - 4, 6); ctx.stroke(); }
+    }
+  }
+  if(!cmdOpen){
+    if(hoverUi && (hoverUi.type === 'cmdPlan' || hoverUi.type === 'cmdBot')){ hoverUi = null; if(typeof hideItemTip === 'function') hideItemTip(); }   // ploča se zatvorila tipkom: makni opis gumba
+    return;
+  }
+  const HL = hudLayout(), touch = wrOn(), bots = myBots();
+  /* raspored: miš — uska ploča ispod gumba gore desno (planovi gore, suigrači ispod); dodir — veći gumbi za prst, u sredini;
+     📱 nizak zaslon na dodir (mobitel položen) — široka ploča: planovi lijevo, suigrači desno, da gumbi ostanu veliki */
+  const y = touch ? 78 : 52, avail = (touch ? VH - 62 : HL.cardY - 6) - y, gridY = y + 34;   // na dodir ispod ploče rezultata
+  const wide = touch && VW >= 900 && avail < 34 + 4 * 42 + 22 + bots.length * 48 + 22;
+  let w, rp, rb, cw, botsX, botsY, botsW, h;
+  if(wide){
+    rp = 42; rb = 46; cw = 184; w = Math.min(VW - 16, 16 + 2 * cw + 6 + 14 + 430);
+    botsX = Math.round((VW - w) / 2) + 8 + 2 * cw + 6 + 14; botsY = gridY; botsW = w - 16 - 2 * cw - 6 - 14;
+    h = 34 + Math.max(4 * (rp + 4), bots.length * rb) + 24;
+  } else {
+    w = Math.min(touch ? 540 : 452, VW - 16); cw = (w - 16 - 6) / 2;
+    for(const sz of touch ? [[38, 48], [32, 40], [27, 33]] : [[32, 40], [27, 33]]){   // kad ne stane — zbijenije
+      rp = sz[0]; rb = sz[1]; botsY = gridY + 4 * (rp + 4) + 22; h = botsY - y + bots.length * rb + (bots.length ? 22 : 30);
+      if(h <= avail) break;
+    }
+  }
+  const x = touch ? Math.round((VW - w) / 2) : VW - w - 12;
+  if(!wide){ botsX = x + 8; botsW = w - 16; }
+  const fk = rp >= 38 ? 1.12 : 1;
+  uiRects.cmdPanel = { x, y, w, h };
+  drawFrame(x, y, w, h, 12, 1);
+  ctx.font = fontTxt(15, true); ctx.textAlign = 'left'; ctx.fillStyle = '#f3d48a';
+  ctx.fillText(L('📣 Zapovijedi timu', '📣 Team commands'), x + 14, y + 19);
+  ctx.font = fontTxt(10.5, true); ctx.fillStyle = '#c9b27a'; ctx.textAlign = 'right';
+  if(!touch) ctx.fillText(L('tipke 1–8 · C zatvara', 'keys 1–8 · C closes'), x + w - 40, y + 19);
+  const cl = uiRects.cmdClose = { x: x + w - 34, y: y + 7, w: 24, h: 24 };
+  ctx.fillStyle = inRect(mouse.sx, mouse.sy, cl) ? '#fff' : '#cbd5e1'; ctx.font = fontTxt(15, true); ctx.textAlign = 'center';
+  ctx.fillText('✖', cl.x + cl.w / 2, cl.y + cl.h / 2);
+  // plan tima: 8 gumba u dva stupca
+  uiRects.cmdPlans = [];
+  const boss = bossAlive();
+  PLAN_LIST.forEach((d, i) => {
+    const r = { x: x + 8 + Math.floor(i / 4) * (cw + 6), y: gridY + (i % 4) * (rp + 4), w: cw, h: rp, i };
+    uiRects.cmdPlans.push(r);
+    const on = !!pl && pl.type === d.type && (pl.lane || null) === (d.lane || null);
+    const off = (d.type === 'boss' && !boss) || (d.type === 'follow' && player.dead) || (d.type === 'free' && !pl && !bots.some(botFollowsMe));
+    const hov = inRect(mouse.sx, mouse.sy, r);
+    ctx.globalAlpha = off ? 0.45 : 1;
+    ctx.fillStyle = on ? '#4a3510' : (hov ? '#334155' : '#1e293b');
+    ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 7); ctx.fill();
+    if(on || hov){ ctx.strokeStyle = on ? '#fde047' : '#64748b'; ctx.lineWidth = on ? 2 : 1; ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 7); ctx.stroke(); }
+    ctx.textAlign = 'center'; ctx.font = fontTxt(11.5, true); ctx.fillStyle = '#4ade80';
+    ctx.fillText(String(i + 1), r.x + 12, r.y + r.h / 2);
+    let tw = r.w - 32;   // natpis mora stati (uz aktivan plan desno piše koliko još traje)
+    if(on){ ctx.textAlign = 'right'; ctx.font = fontTxt(11.5, true); ctx.fillStyle = '#fde047'; const tl = Math.ceil(pl.left) + ' ' + U_SEC; ctx.fillText(tl, r.x + r.w - 8, r.y + r.h / 2); tw -= ctx.measureText(tl).width + 8; }
+    let fz = 13.5 * fk;
+    ctx.font = fontEmoji(fz);
+    while(ctx.measureText(d.e + ' ' + d.n).width > tw && fz > 9.5){ fz -= 0.5; ctx.font = fontEmoji(fz); }
+    ctx.textAlign = 'left'; ctx.fillStyle = on ? '#fde68a' : '#f8fafc';
+    ctx.fillText(d.e + ' ' + d.n, r.x + 24, r.y + r.h / 2);
+    ctx.globalAlpha = 1;
+  });
+  // suigrači: što svaki radi + zapovijed samo njemu
+  ctx.textAlign = 'left'; ctx.font = fontTxt(11.5, true); ctx.fillStyle = '#c9b27a';
+  ctx.fillText(bots.length ? L('Suigrači — svakome možeš reći nešto drugo:', 'Teammates — you can tell each one something else:') : L('U tvom timu nema botova.', 'There are no bots on your team.'),
+    botsX + 4, wide ? y + 20 : botsY - 10);
+  uiRects.cmdBots = [];
+  const bs = rb - 12, bx0 = botsX + botsW - 4 - CMD_BOT_BTNS.length * bs - (CMD_BOT_BTNS.length - 1) * 4;
+  bots.forEach((u, j) => {
+    const ry = botsY + j * rb, ps = rb - 10, code = botTaskCode(u);
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.beginPath(); ctx.roundRect(botsX, ry, botsW, rb - 4, 7); ctx.fill();
+    const pim = GFX.heroes[u.hero.id], px = botsX + 4;
+    ctx.globalAlpha = u.dead ? 0.4 : 1;
+    if(imgReady(pim)){ ctx.save(); ctx.beginPath(); ctx.roundRect(px, ry + 3, ps, ps, 6); ctx.clip(); ctx.drawImage(pim, px, ry + 3, ps, ps); ctx.restore(); }
+    else { ctx.font = fontEmoji(ps * 0.7); ctx.textAlign = 'center'; ctx.fillText(u.emoji, px + ps / 2, ry + 3 + ps / 2); }
+    ctx.globalAlpha = 1;
+    const tx = px + ps + 8, tw = bx0 - tx - 8;
+    ctx.textAlign = 'left'; ctx.font = fontTxt(13 * fk, true); ctx.fillStyle = TEAM_LIGHT[u.team];
+    ctx.fillText(u.name, tx, ry + (rb - 4) * 0.30);
+    const nw = ctx.measureText(u.name).width;
+    ctx.font = fontTxt(10.5, true); ctx.fillStyle = '#94a3b8';
+    ctx.fillText('lvl ' + u.level, tx + nw + 6, ry + (rb - 4) * 0.30 + 0.5);
+    ctx.font = fontEmoji(11 * fk); ctx.fillStyle = '#cbd5e1';
+    let st = botTaskText(code);
+    while(ctx.measureText(st).width > tw && st.length > 6) st = st.slice(0, -2);
+    ctx.fillText(st, tx, ry + (rb - 4) * 0.72);
+    if(!u.dead){ ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(px, ry + ps + 1, ps, 3); ctx.fillStyle = u.hp < u.maxhp * 0.35 ? '#f87171' : '#4ade80'; ctx.fillRect(px, ry + ps + 1, ps * clamp(u.hp / u.maxhp, 0, 1), 3); }
+    const lane = botHomeLane(u), fol = botFollowsMe(u);
+    CMD_BOT_BTNS.forEach((bt, k) => {
+      const r = { x: bx0 + k * (bs + 4), y: ry + (rb - 4 - bs) / 2, w: bs, h: bs, id: u.id, act: bt[1], lane: bt[2] };
+      uiRects.cmdBots.push(r);
+      const on = bt[1] === 'follow' ? fol : (bt[1] === 'lane' && !fol && lane === bt[2]);
+      const hov = inRect(mouse.sx, mouse.sy, r);
+      ctx.fillStyle = on ? '#4a3510' : (hov ? '#334155' : '#1e293b');
+      ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 6); ctx.fill();
+      ctx.strokeStyle = on ? '#fde047' : (hov ? '#94a3b8' : '#3a4352'); ctx.lineWidth = on ? 2 : 1;
+      ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 6); ctx.stroke();
+      ctx.font = fontEmoji(bs * 0.55); ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
+      ctx.fillText(bt[0], r.x + r.w / 2, r.y + r.h / 2 + 1);
+    });
+  });
+  if(bots.length){
+    ctx.font = fontEmoji(10.5); ctx.textAlign = 'center'; ctx.fillStyle = '#94a3b8';
+    ctx.fillText(L('👥 dođi k meni · ⬆️ ↗️ ➡️ prijeđi na tu stazu · 🤖 odluči sam', '👥 come to me · ⬆️ ↗️ ➡️ move to that lane · 🤖 decide yourself'), x + w / 2, y + h - 12);
+  }
 }
 
 /* položaji dijelova HUD-a (Warcraft 3 raspored) */
@@ -8545,6 +9066,8 @@ function drawHud(){
     }
     uiRects.dance = { x: VW - (touchMode ? 312 : 224), y: 12, w: 38, h: 32 };   // 💃 ples (J)
     topBtns.push(['💃', uiRects.dance, player.danceT > 0]);
+    uiRects.cmdBtn = { x: VW - (touchMode ? 356 : 268), y: 12, w: 38, h: 32 };   // 📣 v0.58 zapovijedi timu (C)
+    topBtns.push(['📣', uiRects.cmdBtn, cmdOpen || !!myPlan()]);
     for(const [em, r, on] of topBtns){
       drawFrame(r.x, r.y, r.w, r.h, 7);
       if(on){ ctx.strokeStyle = '#fde047'; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(r.x + 2, r.y + 2, r.w - 4, r.h - 4, 6); ctx.stroke(); }
@@ -9070,6 +9593,7 @@ function frame(now){
       drawTip();
       drawQuest();
       drawChatWheel();
+      drawCmdPanel();
     } finally {
       VW = cw; VH = chh; uiLogical = false;
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
